@@ -1,0 +1,5 @@
+dependencies {
+    api project(":brane-core")
+    api project(":brane-rpc")
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+}

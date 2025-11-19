@@ -1,0 +1,7 @@
+.gradle/
+.jdk/
+
+**/build/
+**/out/
+
+.DS_Store

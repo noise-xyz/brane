@@ -1,0 +1,107 @@
+apply plugin: 'java-library'
+apply plugin: 'signing'
+apply plugin: 'org.jreleaser'
+apply plugin: 'maven-publish'
+
+tasks.register('javadocsJar', Jar) {
+    archiveClassifier = 'javadoc'
+    from javadoc
+}
+
+tasks.register('sourcesJar', Jar) {
+    archiveClassifier = 'sources'
+    from sourceSets.main.allSource
+}
+
+tasks.register('testsJar', Jar) {
+    archiveClassifier = 'tests'
+    from sourceSets.test.output
+}
+
+java {
+    withJavadocJar()
+    withSourcesJar()
+}
+
+publishing {
+    publications {
+        maven(MavenPublication) {
+            from components.java
+
+            pom {
+                name = project.name
+                description.set(project.provider({ project.description }))
+                url = 'https://web3j.io'
+
+                licenses {
+                    license {
+                        name = 'The Apache License, Version 2.0'
+                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                    }
+                }
+
+                scm {
+                    def slug = rootProject.name
+                    if (project.hasProperty('rootProjectOverride')) {
+                        slug = project.rootProjectOverride
+                    }
+
+                    url = "https://github.com/LFDT-web3j/$slug"
+                    connection = "scm:https://github.com/LFDT-web3j/${slug}.git"
+                    developerConnection = "scm:git://github.com/LFDT-web3j/${slug}.git"
+                }
+
+                developers {
+                    developer {
+                        id = 'conor10'
+                        name = 'Conor Svensson'
+                        email = 'conor10@gmail.com'
+                    }
+                }
+            }
+        }
+    }
+
+    repositories {
+        maven {
+            name = "localStaging"
+            url = uri(layout.buildDirectory.dir("staging-deploy"))
+        }
+        maven {
+            name = "sonatypeSnapshots"
+            url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+            credentials {
+                username = findProperty("JRELEASER_MAVENCENTRAL_CENTRAL_USERNAME") ?: System.getenv("JRELEASER_MAVENCENTRAL_CENTRAL_USERNAME")
+                password = findProperty("JRELEASER_MAVENCENTRAL_CENTRAL_PASSWORD") ?: System.getenv("JRELEASER_MAVENCENTRAL_CENTRAL_PASSWORD")
+        }
+    }
+    }
+}
+
+jreleaser {
+    signing {
+        active = 'ALWAYS'
+        armored = true
+    }
+    deploy {
+        maven {
+            mavenCentral {
+                'central' {
+                    active = 'RELEASE'
+                    url = 'https://central.sonatype.com/api/v1/publisher'
+                    applyMavenCentralRules = true
+                    stagingRepository("${buildDir}/staging-deploy")
+                }
+            }
+        }
+    }
+}
+
+tasks.register("publishSnapshot") {
+    dependsOn("publishMavenPublicationToSonatypeSnapshotsRepository")
+    onlyIf { version.endsWith("-SNAPSHOT") }
+}
+
+tasks.named("jreleaserDeploy").configure {
+    dependsOn("publishMavenPublicationToLocalStagingRepository")
+}

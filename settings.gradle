@@ -1,0 +1,5 @@
+rootProject.name = "brane"
+
+include("brane-core")
+include("brane-rpc")
+include("brane-contract")

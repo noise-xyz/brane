@@ -1,0 +1,6 @@
+dependencies {
+    api "org.bouncycastle:bcprov-jdk15on:${bouncyCastleVersion}"
+    api "org.bouncycastle:bcpkix-jdk15on:${bouncyCastleVersion}"
+    implementation "org.slf4j:slf4j-api:${slf4jVersion}"
+    implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+}

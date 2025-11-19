@@ -1,0 +1,36 @@
+ext {
+    jacksonVersion = '2.17.1'
+    bouncyCastleVersion = '1.70'
+    slf4jVersion = '2.0.13'
+}
+
+allprojects {
+    group = 'io.brane'
+    version = '0.1.0-alpha'
+
+    repositories {
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java-library'
+
+    java {
+        toolchain {
+            languageVersion = JavaLanguageVersion.of(17)
+        }
+    }
+
+    tasks.withType(JavaCompile).configureEach {
+        options.encoding = 'UTF-8'
+    }
+
+    tasks.withType(Test).configureEach {
+        useJUnitPlatform()
+    }
+
+    dependencies {
+        testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    }
+}
