@@ -11,6 +11,8 @@ public record TransactionRequest(
         Optional<Wei> value,
         Optional<Long> gasLimit,
         Optional<Wei> gasPrice,
+        Optional<Wei> maxPriorityFeePerGas,
+        Optional<Wei> maxFeePerGas,
         Optional<Long> nonce,
         HexData data) {
 
@@ -19,6 +21,9 @@ public record TransactionRequest(
         value = value == null ? Optional.empty() : value;
         gasLimit = gasLimit == null ? Optional.empty() : gasLimit;
         gasPrice = gasPrice == null ? Optional.empty() : gasPrice;
+        maxPriorityFeePerGas =
+                maxPriorityFeePerGas == null ? Optional.empty() : maxPriorityFeePerGas;
+        maxFeePerGas = maxFeePerGas == null ? Optional.empty() : maxFeePerGas;
         nonce = nonce == null ? Optional.empty() : nonce;
     }
 }

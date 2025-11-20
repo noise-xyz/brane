@@ -13,6 +13,7 @@ import io.brane.rpc.Client;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.HttpClient;
 import io.brane.rpc.PublicClient;
+
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.net.URI;
@@ -20,12 +21,19 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * Example usage:
- * ./gradlew :brane-examples:run --no-daemon \
- *   -DmainClass=io.brane.examples.Erc20Example \
- *   -Dbrane.examples.erc20.rpc=http://127.0.0.1:8545 \
- *   -Dbrane.examples.erc20.contract=0x... \
- *   -Dbrane.examples.erc20.holder=0x...
+ * ERC-20 read-only demo using three paths:
+ *
+ *  1) Contract.read + HttpClient (direct RPC client)
+ *  2) PublicClient + Abi.FunctionCall (raw eth_call)
+ *  3) ReadOnlyContract + PublicClient (read-only façade)
+ *
+ * Usage:
+ *
+ *   ./gradlew :brane-examples:run --no-daemon \
+ *     -PmainClass=io.brane.examples.Erc20Example \
+ *     -Dbrane.examples.erc20.rpc=http://127.0.0.1:8545 \
+ *     -Dbrane.examples.erc20.contract=0x... \
+ *     -Dbrane.examples.erc20.holder=0x...
  */
 public final class Erc20Example {
 
@@ -73,10 +81,15 @@ public final class Erc20Example {
         runWithReadOnlyContract(rpcUrl, token, holder, abi);
     }
 
+    /**
+     * Path 1: legacy Contract + HttpClient.
+     */
     private static void runWithContractRead(
             final String rpcUrl, final Address token, final Address holder, final Abi abi) {
+
         final Client client = new HttpClient(URI.create(rpcUrl));
         final Contract contract = new Contract(token, abi, client);
+
         try {
             final BigInteger decimals = contract.read("decimals", BigInteger.class);
             final BigInteger balance = contract.read("balanceOf", BigInteger.class, holder);
@@ -85,15 +98,19 @@ public final class Erc20Example {
 
             System.out.println("[Contract.read] decimals  = " + decimals);
             System.out.println("[Contract.read] balanceOf = " + balance + " (raw), " + human);
-        } catch (RevertException e) {
+        } catch (final RevertException e) {
             System.err.println("[Contract.read] Revert: " + e.revertReason());
-        } catch (RpcException e) {
+        } catch (final RpcException e) {
             System.err.println("[Contract.read] RPC error (" + e.code() + "): " + e.getMessage());
         }
     }
 
+    /**
+     * Path 2: PublicClient + Abi.FunctionCall + raw eth_call.
+     */
     private static void runWithPublicClient(
             final String rpcUrl, final Address token, final Address holder, final Abi abi) {
+
         try {
             final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
             final PublicClient publicClient = PublicClient.from(provider);
@@ -119,37 +136,40 @@ public final class Erc20Example {
 
             System.out.println("[PublicClient] decimals  = " + decimals);
             System.out.println("[PublicClient] balanceOf = " + balance + " (raw), " + human);
-        } catch (RpcException e) {
+        } catch (final RpcException e) {
             System.err.println("[PublicClient] RPC error: " + e.getMessage());
-        } catch (AbiEncodingException | AbiDecodingException e) {
+        } catch (final AbiEncodingException | AbiDecodingException e) {
             System.err.println("[PublicClient] ABI error: " + e.getMessage());
         }
     }
 
+    /**
+     * Path 3: ReadOnlyContract façade over PublicClient.
+     */
     private static void runWithReadOnlyContract(
             final String rpcUrl, final Address token, final Address holder, final Abi abi) {
+
         try {
-            BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-            PublicClient publicClient = PublicClient.from(provider);
+            final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
+            final PublicClient publicClient = PublicClient.from(provider);
 
-            ReadOnlyContract contract = ReadOnlyContract.from(token, abi, publicClient);
+            final ReadOnlyContract contract = ReadOnlyContract.from(token, abi, publicClient);
 
-            BigInteger decimals = contract.call("decimals", BigInteger.class);
-            BigInteger balance = contract.call("balanceOf", BigInteger.class, holder);
-            BigDecimal human =
+            final BigInteger decimals = contract.call("decimals", BigInteger.class);
+            final BigInteger balance = contract.call("balanceOf", BigInteger.class, holder);
+            final BigDecimal human =
                     new BigDecimal(balance).divide(BigDecimal.TEN.pow(decimals.intValue()));
 
             System.out.println("[ReadOnlyContract] decimals  = " + decimals);
             System.out.println("[ReadOnlyContract] balanceOf = " + balance + " (raw), " + human);
-        } catch (RevertException e) {
+        } catch (final RevertException e) {
             System.err.println("[ReadOnlyContract] Revert: " + e.revertReason());
-        } catch (RpcException e) {
+        } catch (final RpcException e) {
             System.err.println("[ReadOnlyContract] RPC error: " + e.getMessage());
-        } catch (AbiEncodingException | AbiDecodingException e) {
+        } catch (final AbiEncodingException | AbiDecodingException e) {
             System.err.println("[ReadOnlyContract] ABI error: " + e.getMessage());
         }
     }
-
 
     private static boolean isBlank(final String value) {
         return value == null || value.trim().isEmpty();

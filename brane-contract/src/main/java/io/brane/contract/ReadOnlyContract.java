@@ -14,13 +14,13 @@ import java.util.Objects;
 /**
  * Read-only façade for contract calls using Abi + PublicClient.
  */
-public final class ReadOnlyContract {
+public class ReadOnlyContract {
 
     private final Address address;
     private final Abi abi;
     private final PublicClient client;
 
-    private ReadOnlyContract(final Address address, final Abi abi, final PublicClient client) {
+    protected ReadOnlyContract(final Address address, final Abi abi, final PublicClient client) {
         this.address = Objects.requireNonNull(address, "address must not be null");
         this.abi = Objects.requireNonNull(abi, "abi must not be null");
         this.client = Objects.requireNonNull(client, "client must not be null");

@@ -139,6 +139,7 @@ Provides the JSON-RPC transport and public client API:
   * `Client` + `HttpClient`: typed wrapper over the transport for contract ABI calls.
   * `BraneProvider` + `HttpBraneProvider`: low-level JSON-RPC 2.0 transport abstraction that handles request/response serialization.
   * `PublicClient`: high-level read-only client for chain data (`getBlockByNumber`, `getTransactionByHash`, `eth_call`, etc.) that maps node JSON into Brane’s value types (`BlockHeader`, `Transaction`, `Hash`, `Address`, `Wei`, ...).
+  * `WalletClient` + `DefaultWalletClient`: fills nonce/gas/fees, enforces chainId, signs raw transactions via a provided signer, sends via `eth_sendRawTransaction`, and can poll for receipts.
 
 ### `brane-contract`
 
@@ -149,6 +150,7 @@ Provides high-level contract interaction:
       * `read(...)`: Implements `eth_call`, handles ABI encoding/decoding, and specifically catches reverts to throw a decoded `RevertException`.
       * `write(...)`: Implements the simple raw-transaction signing/sending flow using `Signer`.
   * `ReadOnlyContract`: a lightweight façade over `Abi` + `PublicClient.call` for read-only calls (no signing), with revert decoding.
+  * `ReadWriteContract`: extends `ReadOnlyContract` and wires in a `WalletClient` for sending transactions (builds `TransactionRequest` with ABI-encoded input).
   * `Signer` interface / `PrivateKeySigner`: Wrap private keys via our value types (no web3j types leak out).
 
 ### `brane-examples`
@@ -166,6 +168,17 @@ Runnable demos that exercise `Contract.read`/`write` against a running node.
       -Dbrane.examples.erc20.holder=0xHolderAddress
     ```
     Ensure the RPC endpoint is running and the contract/holder addresses are valid.
+  * `io.brane.examples.Erc20TransferExample` – sends an ERC-20 `transfer` using the new wallet client + signer:
+
+    ```bash
+    ./gradlew :brane-examples:run \
+      -PmainClass=io.brane.examples.Erc20TransferExample \
+      -Dbrane.examples.erc20.rpc=http://127.0.0.1:8545 \
+      -Dbrane.examples.erc20.contract=0xYourTokenAddress \
+      -Dbrane.examples.erc20.recipient=0xRecipient \
+      -Dbrane.examples.erc20.pk=0xYourPrivateKey \
+      -Dbrane.examples.erc20.amount=1
+    ```
 
 -----
 
