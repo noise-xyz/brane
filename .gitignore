@@ -1,6 +1,7 @@
 .gradle/
 .jdk/
 
+cache/
 build/
 **/build/
 **/out/
