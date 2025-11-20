@@ -29,6 +29,8 @@ public interface Abi {
 
     FunctionCall encodeFunction(String name, Object... args);
 
+    <T> java.util.List<T> decodeEvents(String eventName, java.util.List<io.brane.core.model.LogEntry> logs, Class<T> eventType);
+
     private static String requireNonEmpty(final String value, final String name) {
         if (value == null || value.isBlank()) {
             throw new IllegalArgumentException(name + " must be provided");

@@ -1,387 +1,371 @@
-## Implementation.md (Step 5 – Wallet / Signer Completion)
+## Implementation.md (Step 6 – Historical log fetching)
 
-````markdown
-# Step 5 – Wallet / Signer Client Completion
+You can paste this as `Implementation.md` (or append under a new `## Step 6` section).
 
-## Context
+````md
+# Step 6 – Historical log fetching (ERC-20 Transfer events)
 
-We already have:
+## Goal
 
-- Core error model in `brane-core` (including `ChainMismatchException`).
-- Transaction request model (`TransactionRequest`).
-- Read-only flow:
-  - `BraneProvider` + `PublicClient`
-  - `Abi`, `ReadOnlyContract`
-  - `Erc20Example` (decimals + balanceOf via 3 paths)
-- Write-path scaffolding:
-  - `WalletClient` + `DefaultWalletClient` (in `brane-rpc`)
-  - `TransactionSigner` (in `brane-rpc`)
-  - `ReadWriteContract` (in `brane-contract`)
-  - `Erc20TransferExample` (in `brane-examples`)
+Add **log fetching + ABI-based event decoding** so Brane can:
 
-Codex also identified an old, minimal write path in `io.brane.contract.Contract.write(...)` that is not robust, and a lack of an explicit private-key signer type.
+1. Fetch logs via `eth_getLogs` with:
+   - `fromBlock` / `toBlock`
+   - `address`
+   - `topics` array
+2. Decode those logs into **typed Java event objects** using the existing ABI metadata.
 
-This step finishes the write path so we can say:
+Milestone:
 
-> “Point Brane at an ABI + address + signer, and you can send an ERC-20 transfer and get a receipt with good errors.”
+> “Fetch and decode all ERC-20 `Transfer` events in a block range.”
 
----
-
-## Goals
-
-1. **Signer abstraction is complete**  
-   - Concrete private-key signer (`PrivateKeyTransactionSigner`) implements the existing `TransactionSigner` interface.
-   - Clean handling of invalid keys and signing failures.
-
-2. **Wallet client is production-grade (for a minimal single-account use case)**  
-   - `DefaultWalletClient` is the canonical write-path client:
-     - Builds **legacy + EIP-1559** transactions.
-     - Fills **nonce** automatically.
-     - Fills **gas** (either estimate + margin or a safe default).
-     - Uses **chainId** correctly and throws `ChainMismatchException` when mismatched.
-     - Sends tx and can optionally **poll for a receipt**.
-
-3. **Contract write façade is cohesive**  
-   - `ReadWriteContract` wraps:
-     - ABI encoding
-     - `WalletClient` send / send-and-wait logic
-   - It feels symmetric with `ReadOnlyContract`’s `.call(...)`.
-
-4. **Examples + docs prove the flow end-to-end**  
-   - `Erc20TransferExample` uses the new wallet/signer to send a real ERC-20 transfer on Anvil.
-   - README documents the flow and CLI invocation.
-
----
-
-## 1. Signer abstraction and private-key implementation
-
-**Module:** `brane-rpc`
-
-### 1.1 Confirm / keep the `TransactionSigner` interface
-
-- Do **not** change the public method signature(s) already in `TransactionSigner.java`.
-- This interface is the generic signing abstraction used by `DefaultWalletClient`.
-
-### 1.2 Implement `PrivateKeyTransactionSigner`
-
-**File:** `brane-rpc/src/main/java/io/brane/rpc/PrivateKeyTransactionSigner.java`
-
-Responsibilities:
-
-- Constructed from a **hex private key string** (no `0x` or with `0x`, normalize internally).
-- Uses the existing vendored crypto / web3j internals (already in `brane-core`) to:
-  - Parse the private key.
-  - Sign the given payload (whatever `TransactionSigner` expects).
-- On invalid key format or signing failure:
-  - Throw a **checked or runtime** exception that matches the existing error model (preferably a subclass of `BraneException` or reuse an existing signing-related exception if present).
-- No new external dependencies; reuse the vendored web3j-like code already present in `brane-core`.
-
-### 1.3 Unit tests
-
-**File:** `brane-rpc/src/test/java/io/brane/rpc/PrivateKeyTransactionSignerTest.java`
-
-Cover:
-
-- Valid private key:
-  - Construct `PrivateKeyTransactionSigner`.
-  - Call its `sign(...)` method.
-  - Assert result:
-    - Not null / not empty.
-    - **Optionally** compare against a known reference signature if that’s easy, otherwise just sanity-check format.
-- Invalid private key (too short, non-hex, etc.):
-  - Constructor throws a **clear** exception (e.g. `IllegalArgumentException` or a Brane-specific error).
-
----
-
-## 2. Harden `DefaultWalletClient`
-
-**Module:** `brane-rpc`
-
-We already have `WalletClient` and `DefaultWalletClient`. This step ensures they are the canonical write path.
-
-### 2.1 Factory / construction
-
-- Provide a clear factory method, e.g.:
+We want a DX like:
 
 ```java
-public static DefaultWalletClient create(
-        BraneProvider provider,
-        Address from,
-        TransactionSigner signer
-)
+List<LogEntry> logs = publicClient.getLogs(filter);
+List<TransferEvent> events = contract.decodeEvents("Transfer", logs, TransferEvent.class);
 ````
 
-Requirements:
+---
 
-* No **new** module dependencies (keep `brane-rpc` independent of `brane-contract`).
-* Store:
+## Guardrails / Constraints
 
-  * `provider`
-  * `from` address
-  * `signer`
-  * optional `chainId` if configured on `BraneProvider`.
+* **No new dependency from `brane-rpc` → `brane-contract`.**
 
-### 2.2 Transaction building behavior
+  * `brane-contract` is allowed to depend on `brane-rpc` models (it already uses `Client`, `PublicClient`, etc.).
+  * `brane-rpc` must remain free of `io.brane.contract.*` imports.
+* Do **not** break Steps 0–5:
 
-Given a `TransactionRequest` (or equivalent), `DefaultWalletClient` must:
+  * `DefaultWalletClient`, `TransactionSigner`, `PrivateKeyTransactionSigner`, `ReadOnlyContract`, `ReadWriteContract`, `Erc20Example`, `Erc20TransferExample` must all continue to compile and tests must remain green.
+* Prefer **additive** changes:
 
-1. **Fill nonce** if missing:
+  * Only touch existing code when necessary for integration.
+  * Add new classes / methods where possible instead of rewriting old ones.
+* Keep code style aligned with existing code (immutability bias, small value types, checked domain exceptions, etc.).
 
-   * Call `eth_getTransactionCount(from, "latest")`.
-   * Parse hex to `BigInteger`.
+---
 
-2. **Fill gas / gasLimit** if missing:
+## 1. RPC log models + `getLogs` in `brane-rpc`
 
-   * Build an estimate request (same fields as the final tx, but without gas/gasPrice/maxFeePerGas).
-   * Call `eth_estimateGas`.
-   * Apply a small safety margin (e.g. +10% or at least a minimum gas).
+### 1.1 Add a `LogEntry` model
 
-3. **Fee model selection:**
+Create a log model in `brane-rpc`, e.g.:
 
-   * If `TransactionRequest` already has fee fields:
+* Package: `io.brane.rpc.model` (or wherever existing block/tx models live).
+* Class: `LogEntry`
 
-     * Use them as-is.
-   * Else:
-
-     * Try EIP-1559 first:
-
-       * Optionally call `eth_maxPriorityFeePerGas` (or use a sane default priority fee).
-       * Call `eth_feeHistory` or `eth_gasPrice` as a fallback to derive `maxFeePerGas`.
-     * Fallback to **legacy gasPrice** if the node doesn’t support EIP-1559 (or if that’s simpler for now).
-
-4. **Chain ID handling:**
-
-   * If `BraneProvider` exposes chainId:
-
-     * Ensure every signed transaction uses that chain ID.
-     * If the transaction request carries a different chain ID:
-
-       * Throw `ChainMismatchException` (with clear message: expected vs actual).
-   * If no chainId is configured:
-
-     * Either detect it via `eth_chainId` or treat as “no enforcement” for now (document the behavior in code comments).
-
-### 2.3 Sending and receipt polling
-
-Implement methods like:
+Include at least:
 
 ```java
-TxHash send(TransactionRequest request) throws RpcException, BraneException;
+public final class LogEntry {
+    private final String address;          // hex-encoded address (0x...)
+    private final List<String> topics;     // topic0..topicN (0x...)
+    private final String data;             // 0x... ABI-encoded data
 
-TransactionReceipt sendAndWait(TransactionRequest request) throws RpcException, BraneException;
+    private final String blockHash;        // nullable
+    private final String blockNumber;      // hex string, nullable
+    private final String transactionHash;  // nullable
+    private final String transactionIndex; // hex, nullable
+    private final String logIndex;         // hex, nullable
+    private final boolean removed;         // default false
+
+    // constructor, getters, equals/hashCode/toString
+}
+```
+
+Implementation notes:
+
+* Match JSON-RPC `eth_getLogs` shape.
+* Use the same Jackson / JSON mapping strategy as existing RPC models
+  (whatever `brane-rpc` is already using for `Block`, `Transaction`, etc.).
+
+### 1.2 Add a `LogFilter` type
+
+Create a filter type for log queries, e.g.:
+
+* Package: `io.brane.rpc.model`
+* Class: `LogFilter`
+
+Fields:
+
+* `String fromBlock;`
+
+  * E.g. `"0x1"`, `"latest"`, `"earliest"`, or `"0x0"` etc.
+* `String toBlock;`
+* `String address;`
+
+  * The contract address to filter on (ERC-20 address).
+* `List<Object> topics;`
+
+  * Represent the JSON-RPC `topics` array. Support:
+
+    * `null` → wildcard
+    * `String` (single topic)
+    * `List<String>` (OR group, e.g. `[topic1, topic2]`)
+
+Add a helper builder/static factory, e.g.:
+
+```java
+public static LogFilter forSingleAddressAndTopic(
+        String fromBlock,
+        String toBlock,
+        String address,
+        String topic0) {
+    // topics[0] = topic0, rest = null
+}
+```
+
+### 1.3 Implement `PublicClient.getLogs`
+
+Extend `io.brane.rpc.PublicClient` with a **read-only** method:
+
+```java
+public List<LogEntry> getLogs(LogFilter filter) throws RpcException
 ```
 
 Behavior:
 
-* `send`:
+* Build a JSON filter object:
 
-  * Build final tx (fill nonce/gas/fees/chainId).
-  * Encode as raw transaction bytes.
-  * Sign using `TransactionSigner`.
-  * Call `eth_sendRawTransaction`.
-  * Return `TxHash` type (whatever wrapper you already use, or plain string if that’s the current model).
+  ```json
+  {
+    "fromBlock": "0x...",
+    "toBlock": "0x...",
+    "address": "0x...",
+    "topics": [ "0x...", null, ... ]
+  }
+  ```
 
-* `sendAndWait`:
+* Call `eth_getLogs` via the underlying `BraneProvider`.
 
-  * Call `send(...)` to get hash.
-  * Poll `eth_getTransactionReceipt` until:
+* Decode the result into `List<LogEntry>`.
 
-    * Receipt is non-null, then return it.
-    * A timeout is reached, then throw a clear exception (e.g. `RpcException` with “receipt not found after N attempts”).
+Error handling:
 
-### 2.4 Tests
+* If the node returns the typical `"query returned more than X results"` error (`-32005` or similar),
+  wrap it into a **clear** `RpcException` message (or a dedicated `BraneRpcException` if that’s existing style),
+  e.g. `"eth_getLogs: block range too large"`.
 
-**File:** `brane-rpc/src/test/java/io/brane/rpc/DefaultWalletClientTest.java`
+Testing:
 
-Ensure coverage for:
+* Add `PublicClientLogsTest` (or extend an existing test suite) that:
 
-* **Legacy send path**:
+  * Uses a fake `BraneProvider` to capture the RPC method name + params.
+  * Verifies:
 
-  * Fake provider returns nonce, gas estimate, gas price, and a tx hash.
-  * Verify:
-
-    * Calls are made in the expected order with expected params.
-    * Hash is propagated correctly.
-
-* **Receipt polling**:
-
-  * First few `eth_getTransactionReceipt` calls return `null`.
-  * Then return a valid receipt.
-  * `sendAndWait` returns the final receipt and stops polling.
-
-* **Chain mismatch**:
-
-  * Provider chainId = A, TransactionRequest chainId = B.
-  * `send(...)` throws `ChainMismatchException`.
+    * Correct JSON shape for `eth_getLogs` requests.
+    * Proper decoding of a small sample log response into `LogEntry`.
+    * Clear error message when the provider returns an error for `eth_getLogs`.
 
 ---
 
-## 3. Write-path contract façade (`ReadWriteContract`)
+## 2. ABI-based event decoding in `brane-contract`
 
-**Module:** `brane-contract`
+We already have:
 
-We already have `ReadOnlyContract` and `ReadWriteContract`. This step ensures the write path is polished and matches the roadmap.
+* `Abi` parsing JSON ABI.
+* `eventTopic(String)` helper for `topic0`.
+* Internal ABI machinery (`InternalAbi`) for encoding/decoding.
 
-### 3.1 API shape
+Now we want to reuse that to decode logs.
 
-`ReadWriteContract` should look roughly like:
+### 2.1 Add event decoding helper to `Abi` / `InternalAbi`
+
+In `io.brane.contract`:
+
+* Add methods (or a small internal type) to decode events from a single `LogEntry`.
+
+Example shape (adjust to fit existing patterns):
 
 ```java
-public final class ReadWriteContract extends ReadOnlyContract {
+public final class Abi {
 
-    public static ReadWriteContract from(
-            Address address,
-            Abi abi,
-            WalletClient walletClient
-    ) { ... }
+    // Existing stuff...
 
-    public String send(
-            String functionName,
-            Object... args
-    ) throws RpcException, BraneException { ... }
+    public <T> T decodeEvent(
+            String eventName,
+            LogEntry log,
+            Class<T> eventType) throws AbiDecodingException {
+        // 1. Find the event in the ABI by name
+        // 2. Compute topic0 via eventTopic(signature)
+        // 3. Check log.address and log.topics[0] match
+        // 4. Decode indexed + non-indexed arguments via InternalAbi
+        // 5. Map decoded values into eventType (POJO or record)
+    }
 
-    public TransactionReceipt sendAndWait(
-            String functionName,
-            Object... args
-    ) throws RpcException, BraneException { ... }
+    public <T> List<T> decodeEvents(
+            String eventName,
+            List<LogEntry> logs,
+            Class<T> eventType) throws AbiDecodingException {
+        // map over logs, filter by address + topic0, decode each
+    }
 }
 ```
 
-Notes:
+Implementation notes:
 
-* Reuse the existing signatures / helpers that already exist in `ReadWriteContract.java`.
-* Keep a **clear separation**:
+* **Address filtering:** optional but nice. In most cases, the caller will already filter by address in `eth_getLogs`, but filtering again is a cheap guard.
+* **Topic filtering:**
 
-  * `ReadOnlyContract.call(...)` is pure read-only.
-  * `ReadWriteContract.send(...)` / `sendAndWait(...)` are write paths.
+  * Use `Abi.eventTopic("Transfer(address,address,uint256)")` internally
+  * Compare with `log.getTopics().get(0)`
+* **Mapping into `eventType`:**
 
-### 3.2 Implementation details
+  * For this step, you can assume `eventType` is a **record** or simple POJO in the example
+    whose constructor parameters match the decoded event arguments in order.
+  * For ERC-20 `Transfer`, that means: `from`, `to`, `value` (plus optionally `txHash`, `blockNumber` if you choose to include metadata).
+* Throw `AbiDecodingException` with a clear message when:
 
-For `send` / `sendAndWait`:
+  * The event name is not found in the ABI.
+  * Topics/data length doesn’t match expectations.
+  * Mapping into `eventType` fails.
 
-1. Use `Abi` to encode the function call:
+### 2.2 Expose event decoding via `ReadOnlyContract` / `ReadWriteContract`
+
+Extend the contract facades to make event decoding ergonomic.
+
+In `ReadOnlyContract` (and inherited by `ReadWriteContract`):
 
 ```java
-Abi.FunctionCall call = abi.encodeFunction(functionName, args);
-String data = call.data();
+public <T> List<T> decodeEvents(
+        String eventName,
+        List<LogEntry> logs,
+        Class<T> eventType) throws AbiDecodingException {
+    return abi.decodeEvents(eventName, logs, eventType);
+}
 ```
 
-2. Build a `TransactionRequest` with:
+* No RPC calls here — this is purely a helper on top of the ABI and log data.
+* Keep it symmetrical with how function calls are encoded/decoded.
 
-   * `to = contractAddress`
-   * `from` is **inside** `WalletClient` (configured at construction time).
-   * `data = encoded data`
-   * `value = 0` (for typical ERC-20 transfers; you can parameterize later).
+Testing:
 
-3. Delegate to `walletClient.send(...)` / `walletClient.sendAndWait(...)`.
+* Add/extend a test class, e.g. `AbiEventDecodingTest` or `ReadOnlyContractEventTest`, to:
 
-### 3.3 Tests
+  * Build a fake ERC-20 ABI containing a `Transfer` event.
+  * Construct a synthetic `LogEntry` with:
 
-**File:** `brane-contract/src/test/java/io/brane/contract/ReadWriteContractTest.java`
-
-Use a fake `WalletClient` to verify:
-
-* Correct ABI encoding is passed into the `TransactionRequest.data`.
-* `send(...)` delegates to `walletClient.send(...)` and returns the same hash.
-* `sendAndWait(...)` delegates to `walletClient.sendAndWait(...)`.
+    * `topics[0] = eventTopic("Transfer(address,address,uint256)")`
+    * indexed topic encodings for `from` and `to`
+    * data encoding for `value`
+  * Verify `decodeEvents("Transfer", List.of(log), TransferEvent.class)` returns the expected values.
 
 ---
 
-## 4. Example + README
+## 3. Example: ERC-20 Transfer event history
 
-**Modules:** `brane-examples`, root `README.md`
+Add a small example to `brane-examples` that ties everything together.
 
-### 4.1 Erc20TransferExample
+### 3.1 `Erc20TransferLogExample`
 
-We already have `Erc20TransferExample`. Confirm / adjust it so it:
+Create:
 
-* Reads system properties:
+* `brane-examples/src/main/java/io/brane/examples/Erc20TransferLogExample.java`
 
-  * `brane.examples.erc20.rpc`
-  * `brane.examples.erc20.contract`
-  * `brane.examples.erc20.recipient`
-  * `brane.examples.erc20.pk`
-  * `brane.examples.erc20.amount` (optional, default to `1 * 10^decimals` or `1e18`)
+Behavior:
 
-* Builds:
+1. Read system properties:
 
-```java
-BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-PublicClient publicClient = PublicClient.from(provider);
-Abi abi = Abi.fromJson(ERC20_ABI);
+   ```text
+   -Dbrane.examples.erc20.rpc=<RPC URL>
+   -Dbrane.examples.erc20.contract=<ERC-20 contract address>
+   -Dbrane.examples.erc20.fromBlock=<hex or "latest - N">
+   -Dbrane.examples.erc20.toBlock=<hex or "latest">
+   ```
 
-TransactionSigner signer = new PrivateKeyTransactionSigner(privateKeyHex);
-WalletClient walletClient =
-        DefaultWalletClient.create(provider, fromAddress, signer);
+   For simplicity, you can require hex strings, e.g. `0x1`, `0x3`, etc.
 
-ReadWriteContract token =
-        ReadWriteContract.from(tokenAddress, abi, walletClient);
-```
+2. Construct:
 
-* Sends the transfer via the contract:
+   ```java
+   BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
+   PublicClient publicClient = PublicClient.from(provider);
+   Abi abi = Abi.fromJson(ERC20_ABI_WITH_TRANSFER);
+   ReadOnlyContract contract = ReadOnlyContract.from(tokenAddress, abi, publicClient);
+   ```
 
-```java
-String txHash = token.send("transfer", recipient, amount);
-System.out.println("Sent transfer tx: " + txHash);
+   Make sure the ERC-20 ABI for this example includes the `Transfer` event definition.
 
-// Optional:
-TransactionReceipt receipt =
-        token.sendAndWait("transfer", recipient, amount);
-System.out.println("Mined tx in block: " + receipt.blockNumber());
-```
+3. Build a `LogFilter`:
 
-### 4.2 README
+   ```java
+   LogFilter filter =
+       LogFilter.forSingleAddressAndTopic(
+           fromBlock,
+           toBlock,
+           tokenAddress,
+           Abi.eventTopic("Transfer(address,address,uint256)").value());
+   ```
 
-In `README.md`:
+4. Fetch logs:
 
-* Add a **short “Write Path” section** showing:
+   ```java
+   List<LogEntry> logs = publicClient.getLogs(filter);
+   ```
 
-```java
-BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-PublicClient publicClient = PublicClient.from(provider);
-Abi abi = Abi.fromJson(ERC20_ABI);
+5. Define a small `TransferEvent` record inside the example:
 
-TransactionSigner signer = new PrivateKeyTransactionSigner(privateKey);
-WalletClient wallet = DefaultWalletClient.create(provider, from, signer);
+   ```java
+   public record TransferEvent(Address from, Address to, BigInteger value) {}
+   ```
 
-ReadWriteContract token = ReadWriteContract.from(tokenAddress, abi, wallet);
-String hash = token.send("transfer", to, amount);
-```
+6. Decode:
 
-* Add the CLI example:
+   ```java
+   List<TransferEvent> events =
+       contract.decodeEvents("Transfer", logs, TransferEvent.class);
+   ```
+
+7. Print them:
+
+   ```java
+   for (TransferEvent e : events) {
+       System.out.println(
+           "Transfer from " + e.from()
+               + " to " + e.to()
+               + " value " + e.value());
+   }
+   ```
+
+A typical run command (assuming Anvil and your `BraneToken` example):
 
 ```bash
 ./gradlew :brane-examples:run --no-daemon \
-  -PmainClass=io.brane.examples.Erc20TransferExample \
+  -PmainClass=io.brane.examples.Erc20TransferLogExample \
   -Dbrane.examples.erc20.rpc=http://127.0.0.1:8545 \
-  -Dbrane.examples.erc20.contract=0x... \
-  -Dbrane.examples.erc20.recipient=0x... \
-  -Dbrane.examples.erc20.pk=<ANVIL_PRIVATE_KEY> \
-  -Dbrane.examples.erc20.amount=1000000000000000000
+  -Dbrane.examples.erc20.contract=0xa513E6E4b8f2a923D98304ec87F64353C4D5C853 \
+  -Dbrane.examples.erc20.fromBlock=0x0 \
+  -Dbrane.examples.erc20.toBlock=latest
 ```
+
+You should see the `Transfer` events emitted by:
+
+* The constructor mint
+* Any `transfer` calls you made via `Erc20TransferExample`
 
 ---
 
-## 5. Cleanup + verification
+## 4. Verification checklist
 
-1. **Optionally** deprecate the old `io.brane.contract.Contract.write(...)`:
+After implementing Step 6:
 
-   * Either add `@Deprecated` with a Javadoc pointing to `ReadWriteContract`.
-   * Or make it a thin wrapper internally delegating to the new `WalletClient` path (if that’s easy without introducing new dependencies).
+1. All tests remain green:
 
-2. Run:
+   ```bash
+   ./gradlew :brane-rpc:test --no-daemon
+   ./gradlew :brane-contract:test --no-daemon
+   ./gradlew clean check --no-daemon
+   ```
 
-```bash
-./gradlew :brane-rpc:test --no-daemon
-./gradlew :brane-contract:test --no-daemon
-./gradlew clean check --no-daemon
-```
+2. On a running Anvil + `BraneToken` deployment, you can:
 
-3. Ensure no new module cycles:
+   * Use `Erc20TransferExample` to send a few transfers.
+   * Use `Erc20TransferLogExample` to:
 
-   * `brane-rpc` MUST NOT depend on `brane-contract`.
-   * `brane-contract` may depend on `brane-rpc` types like `WalletClient`.
+     * Fetch logs over a block range.
+     * Decode them into `TransferEvent` objects.
+     * Print them with sensible values.
 
-Once all of this is green and the ERC-20 transfer example works on Anvil, Step 5 is functionally complete.
+At that point Step 6 is functionally complete.
 
 ````

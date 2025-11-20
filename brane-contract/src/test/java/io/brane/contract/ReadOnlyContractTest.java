@@ -145,5 +145,11 @@ class ReadOnlyContractTest {
             }
             return callResult;
         }
+
+        @Override
+        public java.util.List<io.brane.core.model.LogEntry> getLogs(
+                final io.brane.rpc.LogFilter filter) {
+            return java.util.Collections.emptyList();
+        }
     }
 }

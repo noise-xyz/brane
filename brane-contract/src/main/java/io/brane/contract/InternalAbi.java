@@ -294,7 +294,8 @@ final class InternalAbi implements Abi {
                 throw new AbiEncodingException("ABI parameter missing type");
             }
             final String name = param.path("name").asText("");
-            params.add(new AbiParameter(name, type));
+            final boolean indexed = param.path("indexed").asBoolean(false);
+            params.add(new AbiParameter(name, type, indexed));
         }
         return params;
     }
@@ -316,7 +317,7 @@ final class InternalAbi implements Abi {
         return value;
     }
 
-    private record AbiParameter(String name, String type) {}
+    private record AbiParameter(String name, String type, boolean indexed) {}
 
     private record AbiFunction(String name, List<AbiParameter> inputs, List<AbiParameter> outputs) {
         String signature() {
@@ -338,6 +339,140 @@ final class InternalAbi implements Abi {
             Map<String, List<AbiFunction>> functionsByName,
             Map<String, AbiFunction> functionsBySignature,
             Map<String, AbiEvent> eventsBySignature) {}
+
+    @Override
+    public <T> List<T> decodeEvents(
+            final String eventName,
+            final List<io.brane.core.model.LogEntry> logs,
+            final Class<T> eventType) {
+        Objects.requireNonNull(eventName, "eventName");
+        Objects.requireNonNull(logs, "logs");
+        final List<AbiEvent> matching =
+                eventsBySignature.values().stream()
+                        .filter(ev -> ev.name().equals(eventName))
+                        .toList();
+        if (matching.isEmpty()) {
+            throw new AbiDecodingException("Unknown event '" + eventName + "'");
+        }
+
+        final List<T> decoded = new ArrayList<>();
+        for (io.brane.core.model.LogEntry log : logs) {
+            for (AbiEvent event : matching) {
+                if (!matchesEvent(event, log)) {
+                    continue;
+                }
+                decoded.add(decodeEvent(event, log, eventType));
+            }
+        }
+        return decoded;
+    }
+
+    private boolean matchesEvent(final AbiEvent event, final io.brane.core.model.LogEntry log) {
+        if (log.topics() == null || log.topics().isEmpty()) {
+            return false;
+        }
+        final String topic0 = Abi.eventTopic(event.signature()).value();
+        return topic0.equalsIgnoreCase(log.topics().get(0).value());
+    }
+
+    private <T> T decodeEvent(
+            final AbiEvent event, final io.brane.core.model.LogEntry log, final Class<T> eventType) {
+        final List<AbiParameter> params = event.inputs();
+        final List<Object> values = new ArrayList<>(params.size());
+
+        int topicIdx = 1;
+        final List<TypeReference<?>> nonIndexed = new ArrayList<>();
+        for (AbiParameter param : params) {
+            if (param.indexed()) {
+                if (log.topics().size() <= topicIdx) {
+                    throw new AbiDecodingException("Missing topic for indexed param '" + param.name() + "'");
+                }
+                final String topic = log.topics().get(topicIdx).value();
+                try {
+                    @SuppressWarnings("unchecked")
+                    final TypeReference<Type> ref =
+                            (TypeReference<Type>) TypeReference.makeTypeReference(param.type());
+                    final Type decoded = TypeDecoder.decode(topic, ref.getClassType());
+                    values.add(toJavaValue(decoded));
+                } catch (Exception e) {
+                    throw new AbiDecodingException("Failed to decode indexed param '" + param.name() + "'", e);
+                }
+                topicIdx++;
+            } else {
+                try {
+                    @SuppressWarnings("unchecked")
+                    final TypeReference<Type> ref =
+                            (TypeReference<Type>) TypeReference.makeTypeReference(param.type());
+                    nonIndexed.add(ref);
+                } catch (ClassNotFoundException e) {
+                    throw new AbiDecodingException("Unsupported non-indexed type '" + param.type() + "'", e);
+                }
+            }
+        }
+
+        if (!nonIndexed.isEmpty()) {
+            final List<Type> decoded =
+                    FunctionReturnDecoder.decode(log.data().value(), castNonIndexed(nonIndexed));
+            for (Type t : decoded) {
+                values.add(toJavaValue(t));
+            }
+        }
+
+        if (eventType == List.class || List.class.isAssignableFrom(eventType)) {
+            @SuppressWarnings("unchecked")
+            final T cast = (T) values;
+            return cast;
+        }
+        if (eventType == Object[].class) {
+            @SuppressWarnings("unchecked")
+            final T cast = (T) values.toArray();
+            return cast;
+        }
+
+        for (var ctor : eventType.getDeclaredConstructors()) {
+            if (ctor.getParameterCount() == values.size()) {
+                try {
+                    ctor.setAccessible(true);
+                    @SuppressWarnings("unchecked")
+                    final T instance = (T) ctor.newInstance(values.toArray());
+                    return instance;
+                } catch (Exception ignore) {
+                    // try next
+                }
+            }
+        }
+        throw new AbiDecodingException(
+                "Cannot map event '" + event.name() + "' to " + eventType.getName());
+    }
+
+    private static Object toJavaValue(final Type type) {
+        if (type instanceof io.brane.internal.web3j.abi.datatypes.Address addr) {
+            return new Address(addr.getValue());
+        }
+        if (type instanceof Bool b) {
+            return b.getValue();
+        }
+        if (type instanceof Utf8String s) {
+            return s.getValue();
+        }
+        if (type instanceof DynamicBytes dyn) {
+            return new HexData("0x" + Numeric.toHexStringNoPrefix(dyn.getValue()));
+        }
+        if (type instanceof io.brane.internal.web3j.abi.datatypes.Bytes bytes) {
+            return new HexData("0x" + Numeric.toHexStringNoPrefix(bytes.getValue()));
+        }
+        if (type instanceof Array<?> array) {
+            final List<Object> list = new ArrayList<>();
+            for (Type t : array.getValue()) {
+                list.add(toJavaValue(t));
+            }
+            return list;
+        }
+        if (type.getValue() instanceof BigInteger bi) {
+            return bi;
+        }
+        return type.getValue();
+    }
 
     private static final class Call implements Abi.FunctionCall {
         private final AbiFunction abiFunction;
@@ -546,5 +681,14 @@ final class InternalAbi implements Abi {
             }
             throw new AbiDecodingException("Cannot map numeric value to " + targetType.getName());
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<TypeReference<Type>> castNonIndexed(final List<TypeReference<?>> list) {
+        final List<TypeReference<Type>> result = new ArrayList<>(list.size());
+        for (TypeReference<?> ref : list) {
+            result.add((TypeReference<Type>) ref);
+        }
+        return result;
     }
 }

@@ -187,6 +187,11 @@ class DefaultWalletClientTest {
         public String call(java.util.Map<String, Object> callObject, String blockTag) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public java.util.List<io.brane.core.model.LogEntry> getLogs(final LogFilter filter) {
+            return java.util.Collections.emptyList();
+        }
     }
 
     private static final class FakeBraneProvider implements BraneProvider {

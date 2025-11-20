@@ -60,6 +60,13 @@ public class ReadOnlyContract {
         }
     }
 
+    public <T> java.util.List<T> decodeEvents(
+            final String eventName,
+            final java.util.List<io.brane.core.model.LogEntry> logs,
+            final Class<T> eventType) {
+        return abi.decodeEvents(eventName, logs, eventType);
+    }
+
     private static void handlePotentialRevert(final RpcException e) throws RevertException {
         final String raw = e.data();
         if (raw != null && raw.startsWith("0x") && raw.length() > 10) {
