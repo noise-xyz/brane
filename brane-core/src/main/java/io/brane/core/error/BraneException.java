@@ -4,7 +4,7 @@ package io.brane.core.error;
  * Base runtime exception for Brane-specific failures.
  */
 public sealed class BraneException extends RuntimeException
-        permits RpcException, RevertException {
+        permits AbiDecodingException, AbiEncodingException, RevertException, RpcException {
 
     public BraneException(final String message) {
         super(message);

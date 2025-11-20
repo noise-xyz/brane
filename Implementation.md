@@ -1,329 +1,299 @@
-
-
 ````md
-## Step 2 – Read-only “PublicClient” (brane-rpc)
+## Step 3 – Basic ABI encoding/decoding primitives
 
-Now that the Provider abstraction is solid and Contract.read works end-to-end, we add an ergonomic **read-only client** on top of BraneProvider.
+We now have:
 
-The goals:
+- BraneProvider / HttpBraneProvider (Step 1)
+- PublicClient / DefaultPublicClient (Step 2)
+- A working `Abi` + `Contract.read(...)` path for `echo(uint256)` calls.
 
-- Give developers a simple, typed API for **read** operations:
-  - `getLatestBlock`
-  - `getBlockByNumber`
-  - `getTransactionByHash`
-  - `call` (generic `eth_call`)
-- Keep it in **brane-rpc** (no ABI, no signing, no web3j).
-- Use our **core model types** from `brane-core` (`Hash`, `Address`, `Transaction`, etc.).
-- Zero web3j type leakage (guardrails still apply).
+Step 3 is about turning the ad-hoc ABI bits into **deliberate, table-stakes ABI primitives**, aligned with viem/alloy’s core capabilities:
 
----
+- Function encoding (selector + arguments)
+- Basic output decoding to Java types
+- Event signature hashing (`topic0`)
 
-### 1. Placement & dependencies
+Target milestone:
 
-We keep the module graph:
+> **“Call ERC-20 `decimals()` and `balanceOf(address)` from Java using Brane.”**
+
+That means, by the end of this step, we should be able to:
+
+1. Parse an ERC-20 ABI JSON.
+2. Encode:
+   - `decimals()` as call data.
+   - `balanceOf(address)` as call data.
+3. Use `PublicClient.call` (or `Contract.read`) to perform `eth_call`.
+4. Decode:
+   - `decimals()` → `Integer` or `BigInteger` = 18.
+   - `balanceOf(address)` → `BigInteger` balance.
+
+### 1. Where ABI logic lives
+
+ABI remains in **brane-contract**, not brane-rpc:
 
 ```text
-brane-core       ←  brane-rpc        ←  brane-contract
-     ↑                                 ↑
-     └─────────────────────────────────┘
+brane-contract/src/main/java/io/brane/contract/
+  Abi.java               // ABI entrypoint (public surface)
+  Contract.java          // High-level wrapper around Abi + Client
+  ...
 ````
 
-PublicClient lives in **brane-rpc**:
+Requirements:
 
-```text
-brane-rpc/src/main/java/io/brane/rpc/
-  BraneProvider.java
-  HttpBraneProvider.java
-  JsonRpcRequest.java
-  JsonRpcResponse.java
-  JsonRpcError.java
-  RpcConfig.java
-  HttpClient.java
-  PublicClient.java          // NEW (interface)
-  DefaultPublicClient.java   // NEW (implementation)
-```
+* `Abi` is the **only** public ABI entrypoint.
+* `Abi` may use `io.brane.internal.web3j.abi.*` internally.
+* **No `org.web3j` imports** in public packages (`io.brane.contract.*`) – internal web3j only under `io.brane.internal.web3j.*` (guardrails).
 
-It depends on `brane-core` value/model types:
+### 2. Abi surface – function calls
 
-* `io.brane.core.types.Hash`
-* `io.brane.core.types.Address`
-* `io.brane.core.types.Wei`
-* `io.brane.core.model.Transaction`
-* `io.brane.core.model.TransactionReceipt`
-* `io.brane.core.model.LogEntry`
-* `io.brane.core.model.BlockHeader` (we’ll add this).
+We already have (from earlier work):
 
----
+* `Abi.fromJson(String json)`
+* `Abi.FunctionCall abi.encodeFunction(String fn, Object... args)`
+* `call.data()` (encoded data)
+* `call.decode(String rawResultHex, Class<T> returnType)`
 
-### 2. Add BlockHeader model in brane-core
+Step 3 is about making these **real and well-defined**, not just “whatever web3j did”.
 
-In `brane-core/src/main/java/io/brane/core/model/` add:
+#### 2.1 `Abi.fromJson`
 
-```text
-BlockHeader.java
-```
+Keep the existing method, but make sure it:
 
-This is a minimal view of an Ethereum block for read-only APIs:
+* Parses a JSON ABI array string.
+* Internally builds a map of:
+
+  * function name → function definition (including inputs/outputs, types).
+* Supports at least:
+
+  * `function` entries with:
+
+    * `name`
+    * `inputs` (type + name)
+    * `outputs` (type + name)
+  * `event` entries (for hashing later).
+
+Implementation detail:
+
+* You can use internal web3j ABI JSON parser if already present (under `io.brane.internal.web3j`), but keep that **internal** to `Abi`.
+
+#### 2.2 `Abi.FunctionCall` encoding
+
+`Abi.encodeFunction(fnName, Object... args)` must:
+
+1. Look up the function definition by `name` (and number/types of inputs).
+2. Map Java arguments → ABI `Type` objects, based on function input types.
+
+Supported input types (P0):
+
+* `uint256`:
+
+  * Java: `BigInteger`, `Long`, `Integer`.
+* `int256` (optional P0 but nice):
+
+  * Java: `BigInteger`, `Long`, `Integer` (allow negative).
+* `address`:
+
+  * Java: `io.brane.core.types.Address`.
+* `bool`:
+
+  * Java: `Boolean`.
+* `string`:
+
+  * Java: `String`.
+* `bytes` / `bytesN`:
+
+  * Java: `byte[]`, `io.brane.core.types.HexData`.
+
+Array support (P0):
+
+* Static: `uint256[]`, `address[]`, `bool[]`, `string[]`.
+* Java: `List<?>` or `Object[]` (we can keep it simple; support `List<T>` for now).
+* We don’t need multi-dimensional arrays yet.
+
+`Abi.FunctionCall` should:
+
+* Hold:
+
+  * The function metadata (inputs/outputs).
+  * The encoded data (function selector + arguments) as a hex string.
+
+Public methods:
 
 ```java
-package io.brane.core.model;
+public final class Abi {
 
-import io.brane.core.types.Hash;
+    public static Abi fromJson(String json) { ... }
 
-public record BlockHeader(
-    Hash hash,
-    Long number,
-    Hash parentHash,
-    Long timestamp
-) {}
+    public FunctionCall encodeFunction(String name, Object... args) { ... }
+
+    public static final class FunctionCall {
+        private final String name;
+        private final String data; // "0x..."
+
+        public String name() { return name; }
+
+        public String data() { return data; }
+
+        public <T> T decode(String rawResultHex, Class<T> returnType) { ... }
+    }
+}
 ```
 
-Notes:
+#### 2.3 Decoding outputs
 
-* We only include the fields we need for now:
+`FunctionCall.decode(rawResultHex, returnType)` must:
 
-  * `hash` (`blockHash` from JSON-RPC)
-  * `number` (decoded from hex `number`)
-  * `parentHash`
-  * `timestamp` (decoded from hex)
-* JSON-RPC returns hex strings; `DefaultPublicClient` will do the mapping.
+1. Use the ABI outputs for this function to determine output types.
+2. Decode the raw hex (e.g. `"0x000...002a"`) into a list of ABI values.
+3. If there is:
 
-Later, if needed, we can add more fields or a richer `Block` model. For 0.1.0, this is enough.
+   * A **single output**, map it to `returnType`:
 
----
+     * `uint256` → `BigInteger` / `Long` / `Integer`
+     * `address` → `Address`
+     * `bool` → `Boolean`
+     * `string` → `String`
+     * `bytes` → `HexData` or `byte[]`
+     * array types → `List<T>` (P0).
+   * Multiple outputs (tuple):
 
-### 3. PublicClient interface (brane-rpc)
+     * P0: we can throw `AbiDecodingException` unless `returnType` is `Object[]` or `List<?>`. (We don’t need multi-return for ERC-20.)
 
-Create:
+Error handling:
+
+* If the raw hex is `"0x"` or too short:
+
+  * Throw `AbiDecodingException` (a `BraneException` subclass you’ll add if not present yet), not return `null`.
+* If types don’t match `returnType`:
+
+  * Throw `AbiDecodingException`.
+
+Again, implementation may use internal web3j `FunctionReturnDecoder` under the hood, but wrap all errors into `AbiEncodingException`/`AbiDecodingException`.
+
+### 3. Event signature hashing
+
+Add simple event helpers to `Abi`:
 
 ```java
-package io.brane.rpc;
+public final class Abi {
 
-import io.brane.core.model.BlockHeader;
-import io.brane.core.model.Transaction;
-import io.brane.core.types.Hash;
-import java.util.Map;
-
-public interface PublicClient {
-
-    BlockHeader getLatestBlock();
-
-    BlockHeader getBlockByNumber(long blockNumber);
-
-    Transaction getTransactionByHash(Hash hash);
+    // existing stuff...
 
     /**
-     * Raw eth_call. Returns the hex-encoded result (e.g. "0x...").
+     * Computes topic0 (Keccak-256) for an event signature string,
+     * e.g. "Transfer(address,address,uint256)".
      */
-    String call(Map<String, Object> callObject, String blockTag);
+    public static Hash eventTopic(String eventSignature) { ... }
+
+    /**
+     * Computes function selector (first 4 bytes) for a function signature string,
+     * e.g. "balanceOf(address)".
+     */
+    public static HexData functionSelector(String functionSignature) { ... }
 }
 ```
 
-Notes:
+Implementation:
 
-* `blockTag` is a JSON-RPC tag, e.g. `"latest"`, `"pending"`, or a hex block number string. For now we only need `"latest"`.
-* `callObject` is the same shape we already use in `Contract.read`: `{ "to": "0x...", "data": "0x..." }`. PublicClient doesn’t know ABI; it just returns hex strings.
+* Use whatever Keccak-256 you already have (likely via internal web3j `org.web3j.crypto.Hash.keccak256(...)` or vendored equivalent under `io.brane.internal.web3j.crypto.Hash`).
+* `eventTopic`:
 
----
+  * Input: `"Transfer(address,address,uint256)"`.
+  * Compute Keccak-256 of UTF-8 bytes.
+  * Return as `Hash` (`0x` + 64 hex chars).
+* `functionSelector`:
 
-### 4. DefaultPublicClient implementation
+  * Same hash as above, but return first 4 bytes as `HexData` (`"0x" + 8 hex chars`).
 
-Add:
+### 4. Tests for Abi
+
+Create or extend:
 
 ```text
-brane-rpc/src/main/java/io/brane/rpc/DefaultPublicClient.java
+brane-contract/src/test/java/io/brane/contract/AbiEncodingDecodingTest.java
 ```
 
-Implementation sketch:
+Tests to add:
 
-```java
-package io.brane.rpc;
+1. **Function encoding – simple types**
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.brane.core.error.RpcException;
-import io.brane.core.model.BlockHeader;
-import io.brane.core.model.Transaction;
-import io.brane.core.types.Hash;
+   * Given ABI JSON for:
 
-import java.math.BigInteger;
-import java.util.List;
-import java.util.Map;
-
-public final class DefaultPublicClient implements PublicClient {
-
-    private final BraneProvider provider;
-    private final ObjectMapper mapper;
-
-    public DefaultPublicClient(BraneProvider provider) {
-        this.provider = provider;
-        this.mapper = new ObjectMapper();
-    }
-
-    @Override
-    public BlockHeader getLatestBlock() throws RpcException {
-        return getBlockByTag("latest");
-    }
-
-    @Override
-    public BlockHeader getBlockByNumber(long blockNumber) throws RpcException {
-        String hex = "0x" + Long.toHexString(blockNumber);
-        return getBlockByTag(hex);
-    }
-
-    private BlockHeader getBlockByTag(String tag) throws RpcException {
-        JsonRpcResponse rpcResponse =
-            provider.send("eth_getBlockByNumber", List.of(tag, false));
-
-        Object result = rpcResponse.result();
-        if (result == null) {
-            return null; // block not found
-        }
-
-        Map<?, ?> blockMap = mapper.convertValue(result, Map.class);
-
-        String hash = (String) blockMap.get("hash");
-        String parentHash = (String) blockMap.get("parentHash");
-        String numberHex = (String) blockMap.get("number");
-        String timestampHex = (String) blockMap.get("timestamp");
-
-        Long number = numberHex != null ? new BigInteger(numberHex.substring(2), 16).longValue() : null;
-        Long timestamp = timestampHex != null ? new BigInteger(timestampHex.substring(2), 16).longValue() : null;
-
-        return new BlockHeader(
-            hash != null ? new Hash(hash) : null,
-            number,
-            parentHash != null ? new Hash(parentHash) : null,
-            timestamp
-        );
-    }
-
-    @Override
-    public Transaction getTransactionByHash(Hash hash) throws RpcException {
-        JsonRpcResponse rpcResponse =
-            provider.send("eth_getTransactionByHash", List.of(hash.value()));
-
-        Object result = rpcResponse.result();
-        if (result == null) {
-            return null; // tx not found
-        }
-
-        return mapper.convertValue(result, Transaction.class);
-    }
-
-    @Override
-    public String call(Map<String, Object> callObject, String blockTag) throws RpcException {
-        JsonRpcResponse rpcResponse =
-            provider.send("eth_call", List.of(callObject, blockTag));
-
-        Object result = rpcResponse.result();
-        return result != null ? result.toString() : null;
-    }
-}
-```
-
-Rules:
-
-* Do **not** catch `RpcException` here; propagate it.
-* Do **not** introduce `org.web3j` types (guardrails).
-* `result == null` is treated as “not found” and returns `null` for block/tx directly.
-
-We can later add a static factory:
-
-```java
-public static PublicClient from(BraneProvider provider) {
-    return new DefaultPublicClient(provider);
-}
-```
-
-either in `PublicClient` or a small `PublicClients` utility.
-
----
-
-### 5. Tests for PublicClient
-
-Create:
-
-```text
-brane-rpc/src/test/java/io/brane/rpc/DefaultPublicClientTest.java
-```
-
-Use a simple FakeProvider (like we did for FakeClient in Contract tests) to simulate responses.
-
-#### 5.1 FakeProvider
-
-```java
-private static final class FakeProvider implements BraneProvider {
-    private final Map<String, JsonRpcResponse> responses;
-
-    FakeProvider(Map<String, JsonRpcResponse> responses) {
-        this.responses = responses;
-    }
-
-    @Override
-    public JsonRpcResponse send(String method, List<?> params) throws RpcException {
-        JsonRpcResponse resp = responses.get(method);
-        if (resp == null) {
-            throw new RpcException(-32601, "Method not mocked: " + method, null, null);
-        }
-        if (resp.error() != null) {
-            throw new RpcException(resp.error().code(), resp.error().message(), String.valueOf(resp.error().data()), null);
-        }
-        return resp;
-    }
-}
-```
-
-#### 5.2 Tests
-
-1. **getLatestBlock maps JSON → BlockHeader**
-
-   * Mock `eth_getBlockByNumber` with result:
-
-     ```json
-     {
-       "hash": "0xabc...",
-       "parentHash": "0xdef...",
-       "number": "0x10",
-       "timestamp": "0x5"
-     }
+     ```solidity
+     function balanceOf(address account) view returns (uint256);
+     function decimals() view returns (uint8);
      ```
+
+   * `Abi.fromJson(ERC20_ABI_JSON)`
+
+   * `Abi.FunctionCall call = abi.encodeFunction("balanceOf", new Address("0x" + "1".repeat(40)));`
 
    * Assert:
 
-     * `header.hash().value()` equals that hash.
-     * `header.number()` is 16.
-     * `header.timestamp()` is 5.
+     * `call.data()` starts with correct selector (use known fn selector from ERC-20).
+     * Encoded args length is > selector length.
 
-2. **getBlockByNumber(1) uses hex and maps correctly**
+   * `Abi.FunctionCall decimalsCall = abi.encodeFunction("decimals");`
 
-   * Same as above, but call `client.getBlockByNumber(1L)` and assert same mapping.
+     * `data()` should be just selector (no args).
 
-3. **getTransactionByHash returns Transaction**
+2. **Decoding – uint256 / address / bool / string**
 
-   * Mock `eth_getTransactionByHash` returning a minimal tx JSON object with fields that match `io.brane.core.model.Transaction`.
-   * Assert that the returned `Transaction` has the right hash and from/to addresses.
+   * Build known hex outputs and ensure round-trip decode:
 
-4. **call returns raw hex**
+     * `uint256` → `BigInteger`:
 
-   * Mock `eth_call` returning `"0x2a"`.
-   * Assert `client.call(callObject, "latest")` returns `"0x2a"`.
+       * e.g. raw hex for `42` as single return.
+     * `string`:
 
-All tests must stay within Brane types and JDK; no web3j imports. Guardrails still apply.
+       * raw hex representing `"hello"`.
+     * `address`:
 
----
+       * raw hex representing an address.
+     * `bool`:
 
-### 6. Example usage (for docs)
+       * raw hex for true / false.
 
-Once implemented, we can document a simple usage in README (not part of this step’s code change, but for later):
+   * You can either:
 
-```java
-BraneProvider provider = BraneProvider.http("http://127.0.0.1:8545");
-PublicClient publicClient = new DefaultPublicClient(provider);
+     * Encode via internal ABI, then decode via Brane `Abi.FunctionCall.decode`.
+     * Or use hard-coded test vectors.
 
-BlockHeader latest = publicClient.getLatestBlock();
-System.out.println("Latest block: #" + latest.number() + " hash=" + latest.hash().value());
-```
+3. **Event topic hashing**
 
-This gives the “Brane: get latest block in 3 lines” demo we wanted.
+   * `Abi.eventTopic("Transfer(address,address,uint256)")`
+   * Assert equals the known topic0 from ERC-20:
 
----
+     * `0xddf252ad...` (full 32-byte hash).
+   * Maybe also test `Approval(address,address,uint256)`.
+
+4. **ERC-20 integration test (optional / property-based)**
+
+   * Similar to `ContractReadTest.echoReturnsSameValue`, but for ERC-20:
+
+     * Have a test that is only enabled when `brane.anvil.rpc` and `brane.anvil.erc20.address` are set.
+     * Use `Abi + Contract.read` or `Abi + PublicClient.call` to:
+
+       * Call `decimals()` and assert result == 18.
+       * Call `balanceOf(some known address)` and assert expected balance.
+   * Mark with JUnit `Assumptions` so it only runs when configured.
+
+### 5. Guardrails
+
+* `Abi` is allowed to import from:
+
+  * `io.brane.internal.web3j.abi.*`
+  * `io.brane.internal.web3j.crypto.*`
+
+* No `org.web3j` imports.
+
+* No public API types from web3j leak through:
+
+  * `Abi` only exposes Brane types (`Address`, `Hash`, `HexData`, etc.) and standard Java types.
+
+Once tests pass, we’ll have:
+
+* A robust `Abi` layer.
+* `Contract.read` still working but now generalizable to real ERC-20 calls.
+* A path to step 4 (events/log decoding and eventually write/WalletClient).

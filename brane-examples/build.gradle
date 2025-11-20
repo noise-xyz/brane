@@ -8,10 +8,23 @@ dependencies {
     implementation project(':brane-contract')
 }
 
+/**
+ * Allow overriding the main class from the command line:
+ *
+ *   -PmainClass=io.brane.examples.Erc20Example
+ *
+ * Default is the original echo example: io.brane.examples.Main
+ */
 application {
-    mainClass = 'io.brane.examples.Main'
+    mainClass = project.findProperty("mainClass") ?: "io.brane.examples.Main"
 }
 
+/**
+ * Helper: read a property from:
+ *   1. Gradle project properties (-Pkey=value)
+ *   2. JVM system properties (-Dkey=value)
+ * with a fallback.
+ */
 def defaultProp = { String key, String fallback ->
     if (project.hasProperty(key)) {
         return project.property(key)
@@ -19,7 +32,44 @@ def defaultProp = { String key, String fallback ->
     return System.getProperty(key, fallback)
 }
 
-tasks.named('run') {
-    systemProperty 'brane.examples.rpc', defaultProp('brane.examples.rpc', 'http://127.0.0.1:8545')
-    systemProperty 'brane.examples.contract', defaultProp('brane.examples.contract', '0x0000000000000000000000000000000000000000')
+/**
+ * Helper: forward a property from either project prop (-P) or system prop (-D)
+ * to the JavaExec environment, but only if it’s actually set.
+ */
+def forwardProp = { JavaExec task, String key ->
+    if (project.hasProperty(key)) {
+        task.systemProperty key, project.property(key)
+    } else {
+        def value = System.getProperty(key)
+        if (value != null) {
+            task.systemProperty key, value
+        }
+    }
+}
+
+/**
+ * Configure the run task so that:
+ *
+ * - Echo example (io.brane.examples.Main) still gets sensible defaults:
+ *     brane.examples.rpc
+ *     brane.examples.contract
+ *
+ * - ERC-20 example (io.brane.examples.Erc20Example) can receive:
+ *     brane.examples.erc20.rpc
+ *     brane.examples.erc20.contract
+ *     brane.examples.erc20.holder
+ *
+ *   when passed via -D... on the Gradle command line.
+ */
+tasks.named('run', JavaExec) { JavaExec t ->
+    // Echo example defaults (used by io.brane.examples.Main)
+    t.systemProperty 'brane.examples.rpc',
+            defaultProp('brane.examples.rpc', 'http://127.0.0.1:8545')
+    t.systemProperty 'brane.examples.contract',
+            defaultProp('brane.examples.contract', '0x0000000000000000000000000000000000000000')
+
+    // ERC-20 example props (only forwarded if explicitly set)
+    forwardProp(t, 'brane.examples.erc20.rpc')
+    forwardProp(t, 'brane.examples.erc20.contract')
+    forwardProp(t, 'brane.examples.erc20.holder')
 }

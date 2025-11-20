@@ -1,0 +1,130 @@
+package io.brane.examples;
+
+import io.brane.contract.Abi;
+import io.brane.contract.Contract;
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.error.AbiEncodingException;
+import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
+import io.brane.core.types.Address;
+import io.brane.rpc.BraneProvider;
+import io.brane.rpc.Client;
+import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.HttpClient;
+import io.brane.rpc.PublicClient;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.net.URI;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
+/**
+ * Example usage:
+ * ./gradlew :brane-examples:run --no-daemon \
+ *   -DmainClass=io.brane.examples.Erc20Example \
+ *   -Dbrane.examples.erc20.rpc=http://127.0.0.1:8545 \
+ *   -Dbrane.examples.erc20.contract=0x... \
+ *   -Dbrane.examples.erc20.holder=0x...
+ */
+public final class Erc20Example {
+
+    private static final String ERC20_ABI =
+            """
+            [
+              {
+                "inputs": [],
+                "name": "decimals",
+                "outputs": [{ "internalType": "uint8", "name": "", "type": "uint8" }],
+                "stateMutability": "view",
+                "type": "function"
+              },
+              {
+                "inputs": [{ "internalType": "address", "name": "account", "type": "address" }],
+                "name": "balanceOf",
+                "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+                "stateMutability": "view",
+                "type": "function"
+              }
+            ]
+            """;
+
+    private Erc20Example() {}
+
+    public static void main(final String[] args) {
+        final String rpcUrl = System.getProperty("brane.examples.erc20.rpc");
+        final String tokenAddress = System.getProperty("brane.examples.erc20.contract");
+        final String holderAddress = System.getProperty("brane.examples.erc20.holder");
+
+        if (isBlank(rpcUrl) || isBlank(tokenAddress) || isBlank(holderAddress)) {
+            System.out.println("Please set the following system properties:");
+            System.out.println("  -Dbrane.examples.erc20.rpc=<RPC URL>");
+            System.out.println("  -Dbrane.examples.erc20.contract=<ERC-20 contract address>");
+            System.out.println("  -Dbrane.examples.erc20.holder=<holder address>");
+            return;
+        }
+
+        final Address token = new Address(tokenAddress);
+        final Address holder = new Address(holderAddress);
+        final Abi abi = Abi.fromJson(ERC20_ABI);
+
+        runWithContractRead(rpcUrl, token, holder, abi);
+        runWithPublicClient(rpcUrl, token, holder, abi);
+    }
+
+    private static void runWithContractRead(
+            final String rpcUrl, final Address token, final Address holder, final Abi abi) {
+        final Client client = new HttpClient(URI.create(rpcUrl));
+        final Contract contract = new Contract(token, abi, client);
+        try {
+            final BigInteger decimals = contract.read("decimals", BigInteger.class);
+            final BigInteger balance = contract.read("balanceOf", BigInteger.class, holder);
+            final BigDecimal human =
+                    new BigDecimal(balance).divide(BigDecimal.TEN.pow(decimals.intValue()));
+
+            System.out.println("[Contract.read] decimals  = " + decimals);
+            System.out.println("[Contract.read] balanceOf = " + balance + " (raw), " + human);
+        } catch (RevertException e) {
+            System.err.println("[Contract.read] Revert: " + e.revertReason());
+        } catch (RpcException e) {
+            System.err.println("[Contract.read] RPC error (" + e.code() + "): " + e.getMessage());
+        }
+    }
+
+    private static void runWithPublicClient(
+            final String rpcUrl, final Address token, final Address holder, final Abi abi) {
+        try {
+            final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
+            final PublicClient publicClient = PublicClient.from(provider);
+
+            final Abi.FunctionCall decimalsCall = abi.encodeFunction("decimals");
+            final Abi.FunctionCall balanceCall = abi.encodeFunction("balanceOf", holder);
+
+            final Map<String, Object> decimalsCallObj = new LinkedHashMap<>();
+            decimalsCallObj.put("to", token.value());
+            decimalsCallObj.put("data", decimalsCall.data());
+
+            final Map<String, Object> balanceCallObj = new LinkedHashMap<>();
+            balanceCallObj.put("to", token.value());
+            balanceCallObj.put("data", balanceCall.data());
+
+            final String decimalsRaw = publicClient.call(decimalsCallObj, "latest");
+            final String balanceRaw = publicClient.call(balanceCallObj, "latest");
+
+            final BigInteger decimals = decimalsCall.decode(decimalsRaw, BigInteger.class);
+            final BigInteger balance = balanceCall.decode(balanceRaw, BigInteger.class);
+            final BigDecimal human =
+                    new BigDecimal(balance).divide(BigDecimal.TEN.pow(decimals.intValue()));
+
+            System.out.println("[PublicClient] decimals  = " + decimals);
+            System.out.println("[PublicClient] balanceOf = " + balance + " (raw), " + human);
+        } catch (RpcException e) {
+            System.err.println("[PublicClient] RPC error: " + e.getMessage());
+        } catch (AbiEncodingException | AbiDecodingException e) {
+            System.err.println("[PublicClient] ABI error: " + e.getMessage());
+        }
+    }
+
+    private static boolean isBlank(final String value) {
+        return value == null || value.trim().isEmpty();
+    }
+}

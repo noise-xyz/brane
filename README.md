@@ -197,6 +197,20 @@ The project uses **Foundry** for a reliable testing environment:
      -Dbrane.examples.contract=0x5FbDB2315678afecb367f032d93F642f64180aa3
    ```
 
+   *Echo example* (default): runs `io.brane.examples.Main` and calls `echo(uint256)`.
+
+   *ERC-20 example*: calls `decimals()` and `balanceOf(address)` two ways (Contract.read and PublicClient + Abi). If your build allows overriding the main class, run:
+
+   ```bash
+   ./gradlew :brane-examples:run \
+     -PmainClass=io.brane.examples.Erc20Example \
+     -Dbrane.examples.erc20.rpc=http://127.0.0.1:8545 \
+     -Dbrane.examples.erc20.contract=0xYourTokenAddress \
+     -Dbrane.examples.erc20.holder=0xHolderAddress
+   ```
+
+   Make sure the RPC node is running, the contract address points to a deployed ERC-20, and the holder has a balance to see a non-zero result.
+
 4. **Full verification**
 
    ```bash
