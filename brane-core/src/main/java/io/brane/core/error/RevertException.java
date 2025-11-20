@@ -1,14 +1,15 @@
-package io.brane.core;
+package io.brane.core.error;
 
 /**
- * Exception describing an EVM revert response.
+ * Exception describing an EVM revert.
  */
 public final class RevertException extends BraneException {
 
     private final String revertReason;
     private final String rawDataHex;
 
-    public RevertException(final String revertReason, final String rawDataHex, final Throwable cause) {
+    public RevertException(
+            final String revertReason, final String rawDataHex, final Throwable cause) {
         super(messageFor(revertReason, rawDataHex), cause);
         this.revertReason = revertReason;
         this.rawDataHex = rawDataHex;

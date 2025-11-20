@@ -1,381 +1,329 @@
-## 1️⃣ Top Priority: Make the Gradle build clean and reproducible
 
-**Goal:** `./gradlew clean check` runs successfully with no compilation errors.
 
-### Instructions for Codex
+````md
+## Step 2 – Read-only “PublicClient” (brane-rpc)
 
-1. **Open `settings.gradle` and confirm modules:**
+Now that the Provider abstraction is solid and Contract.read works end-to-end, we add an ergonomic **read-only client** on top of BraneProvider.
 
-   Make sure it looks like:
+The goals:
 
-   ```groovy
-   rootProject.name = 'brane'
-
-   include 'brane-core'
-   include 'brane-rpc'
-   include 'brane-contract'
-   ```
-
-2. **Root `build.gradle`: define shared config**
-
-   In `build.gradle` at the repo root, ensure something like:
-
-   ```groovy
-   plugins {
-       id 'java-library' apply false
-   }
-
-   allprojects {
-       group = 'io.brane'
-       version = '0.1.0-alpha'
-
-       repositories {
-           mavenCentral()
-       }
-   }
-
-   subprojects {
-       apply plugin: 'java-library'
-
-       java {
-           toolchain {
-               languageVersion = JavaLanguageVersion.of(17)
-           }
-       }
-
-       tasks.withType(Test).configureEach {
-           useJUnitPlatform()
-       }
-
-       dependencies {
-           testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
-       }
-   }
-   ```
-
-3. **Module `brane-core/build.gradle`**
-
-   * Should NOT depend on other Brane modules.
-   * Only needs JUnit (already supplied from root) and maybe nothing else.
-
-   Example:
-
-   ```groovy
-   dependencies {
-       // No external deps here unless needed
-       // testImplementation already inherited
-   }
-   ```
-
-4. **Module `brane-rpc/build.gradle`**
-
-   * Must depend on `brane-core`.
-   * Needs Jackson for JSON.
-
-   ```groovy
-   dependencies {
-       api project(':brane-core')
-       implementation 'com.fasterxml.jackson.core:jackson-databind:2.17.0'
-   }
-   ```
-
-5. **Module `brane-contract/build.gradle`**
-
-   * Must depend on `brane-core` and `brane-rpc`.
-
-   ```groovy
-   dependencies {
-       api project(':brane-core')
-       api project(':brane-rpc')
-   }
-   ```
-
-6. **Now run the build (locally):**
-
-   ```bash
-   ./gradlew clean check
-   ```
-
-7. **Fix all compilation errors**:
-
-   * If any imports are missing (e.g. Jackson, HttpClient, web3j internals), update them.
-   * If `internal` classes are wrongly referenced in public APIs, move those references behind `io.brane.contract.InternalAbi` or helper methods.
-   * Keep iterating until `./gradlew clean check` passes.
+- Give developers a simple, typed API for **read** operations:
+  - `getLatestBlock`
+  - `getBlockByNumber`
+  - `getTransactionByHash`
+  - `call` (generic `eth_call`)
+- Keep it in **brane-rpc** (no ABI, no signing, no web3j).
+- Use our **core model types** from `brane-core` (`Hash`, `Address`, `Transaction`, etc.).
+- Zero web3j type leakage (guardrails still apply).
 
 ---
 
-## 2️⃣ High Priority: Unit tests for `RevertDecoder` (no network needed)
+### 1. Placement & dependencies
 
-**Goal:** Prove that `RevertDecoder` correctly decodes `Error(string)` and safely handles non-Error data.
+We keep the module graph:
 
-### Instructions for Codex
+```text
+brane-core       ←  brane-rpc        ←  brane-contract
+     ↑                                 ↑
+     └─────────────────────────────────┘
+````
 
-1. **Create test class in `brane-core`:**
+PublicClient lives in **brane-rpc**:
 
-   File: `brane-core/src/test/java/io/brane/core/RevertDecoderTest.java`
+```text
+brane-rpc/src/main/java/io/brane/rpc/
+  BraneProvider.java
+  HttpBraneProvider.java
+  JsonRpcRequest.java
+  JsonRpcResponse.java
+  JsonRpcError.java
+  RpcConfig.java
+  HttpClient.java
+  PublicClient.java          // NEW (interface)
+  DefaultPublicClient.java   // NEW (implementation)
+```
 
-2. **Write two tests:**
+It depends on `brane-core` value/model types:
 
-   **a) Decodes `Error(string)` correctly**
-
-   ```java
-   package io.brane.core;
-
-   import io.brane.internal.web3j.abi.datatypes.Utf8String;
-   import io.brane.internal.web3j.abi.TypeEncoder;
-   import org.junit.jupiter.api.Test;
-
-   import static org.junit.jupiter.api.Assertions.*;
-
-   class RevertDecoderTest {
-
-       @Test
-       void decodesErrorString() {
-           Utf8String msg = new Utf8String("simple reason");
-           String encodedArg = TypeEncoder.encode(msg); // "0x" + 32-byte length + data
-
-           String rawData = "0x08c379a0" + encodedArg.substring(2);
-
-           RevertDecoder.Decoded decoded = RevertDecoder.decode(rawData);
-
-           assertEquals("simple reason", decoded.reason());
-           assertEquals(rawData, decoded.rawDataHex());
-       }
-   }
-   ```
-
-   **b) Non-Error data returns null reason**
-
-   ```java
-       @Test
-       void nonErrorDataReturnsNullReason() {
-           String rawData = "0x12345678deadbeef";
-           RevertDecoder.Decoded decoded = RevertDecoder.decode(rawData);
-
-           assertNull(decoded.reason());
-           assertEquals(rawData, decoded.rawDataHex());
-       }
-   }
-   ```
-
-3. **Run tests again:**
-
-   ```bash
-   ./gradlew :brane-core:test
-   ```
-
-   Fix any issues (e.g. wrong package for `TypeEncoder`, small API mismatches) until tests pass.
+* `io.brane.core.types.Hash`
+* `io.brane.core.types.Address`
+* `io.brane.core.types.Wei`
+* `io.brane.core.model.Transaction`
+* `io.brane.core.model.TransactionReceipt`
+* `io.brane.core.model.LogEntry`
+* `io.brane.core.model.BlockHeader` (we’ll add this).
 
 ---
 
-## 3️⃣ High Priority: Unit tests for `Contract.read` using a mock `Client`
+### 2. Add BlockHeader model in brane-core
 
-**Goal:** Verify that `Contract.read`:
+In `brane-core/src/main/java/io/brane/core/model/` add:
 
-* Returns decoded value on success.
-* Throws `RevertException` when `Client.call` fails with revert data in `RpcException.data()`.
+```text
+BlockHeader.java
+```
 
-This does **not** require a real node or Foundry yet; just a fake `Client`.
+This is a minimal view of an Ethereum block for read-only APIs:
 
-### Instructions for Codex
+```java
+package io.brane.core.model;
 
-1. **Create test class in `brane-contract`:**
+import io.brane.core.types.Hash;
 
-   File: `brane-contract/src/test/java/io/brane/contract/ContractReadTest.java`
+public record BlockHeader(
+    Hash hash,
+    Long number,
+    Hash parentHash,
+    Long timestamp
+) {}
+```
 
-2. **Create a `FakeClient` in the test to simulate RPC responses:**
+Notes:
 
-   ```java
-   package io.brane.contract;
+* We only include the fields we need for now:
 
-   import io.brane.core.RpcException;
-   import io.brane.rpc.Client;
+  * `hash` (`blockHash` from JSON-RPC)
+  * `number` (decoded from hex `number`)
+  * `parentHash`
+  * `timestamp` (decoded from hex)
+* JSON-RPC returns hex strings; `DefaultPublicClient` will do the mapping.
 
-   final class FakeClient implements Client {
+Later, if needed, we can add more fields or a richer `Block` model. For 0.1.0, this is enough.
 
-       private final Object result;
-       private final RpcException toThrow;
+---
 
-       FakeClient(Object result, RpcException toThrow) {
-           this.result = result;
-           this.toThrow = toThrow;
-       }
+### 3. PublicClient interface (brane-rpc)
 
-       @Override
-       @SuppressWarnings("unchecked")
-       public <T> T call(String method, Class<T> responseType, Object... params) throws RpcException {
-           if (toThrow != null) throw toThrow;
-           return (T) result;
-       }
-   }
-   ```
+Create:
 
-3. **Prepare a trivial ABI for a function `echo(uint256) returns (uint256)`**
+```java
+package io.brane.rpc;
 
-   Add a string constant in the test:
+import io.brane.core.model.BlockHeader;
+import io.brane.core.model.Transaction;
+import io.brane.core.types.Hash;
+import java.util.Map;
 
-   ```java
-   private static final String ECHO_ABI = """
-   [
+public interface PublicClient {
+
+    BlockHeader getLatestBlock();
+
+    BlockHeader getBlockByNumber(long blockNumber);
+
+    Transaction getTransactionByHash(Hash hash);
+
+    /**
+     * Raw eth_call. Returns the hex-encoded result (e.g. "0x...").
+     */
+    String call(Map<String, Object> callObject, String blockTag);
+}
+```
+
+Notes:
+
+* `blockTag` is a JSON-RPC tag, e.g. `"latest"`, `"pending"`, or a hex block number string. For now we only need `"latest"`.
+* `callObject` is the same shape we already use in `Contract.read`: `{ "to": "0x...", "data": "0x..." }`. PublicClient doesn’t know ABI; it just returns hex strings.
+
+---
+
+### 4. DefaultPublicClient implementation
+
+Add:
+
+```text
+brane-rpc/src/main/java/io/brane/rpc/DefaultPublicClient.java
+```
+
+Implementation sketch:
+
+```java
+package io.brane.rpc;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import io.brane.core.error.RpcException;
+import io.brane.core.model.BlockHeader;
+import io.brane.core.model.Transaction;
+import io.brane.core.types.Hash;
+
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
+
+public final class DefaultPublicClient implements PublicClient {
+
+    private final BraneProvider provider;
+    private final ObjectMapper mapper;
+
+    public DefaultPublicClient(BraneProvider provider) {
+        this.provider = provider;
+        this.mapper = new ObjectMapper();
+    }
+
+    @Override
+    public BlockHeader getLatestBlock() throws RpcException {
+        return getBlockByTag("latest");
+    }
+
+    @Override
+    public BlockHeader getBlockByNumber(long blockNumber) throws RpcException {
+        String hex = "0x" + Long.toHexString(blockNumber);
+        return getBlockByTag(hex);
+    }
+
+    private BlockHeader getBlockByTag(String tag) throws RpcException {
+        JsonRpcResponse rpcResponse =
+            provider.send("eth_getBlockByNumber", List.of(tag, false));
+
+        Object result = rpcResponse.result();
+        if (result == null) {
+            return null; // block not found
+        }
+
+        Map<?, ?> blockMap = mapper.convertValue(result, Map.class);
+
+        String hash = (String) blockMap.get("hash");
+        String parentHash = (String) blockMap.get("parentHash");
+        String numberHex = (String) blockMap.get("number");
+        String timestampHex = (String) blockMap.get("timestamp");
+
+        Long number = numberHex != null ? new BigInteger(numberHex.substring(2), 16).longValue() : null;
+        Long timestamp = timestampHex != null ? new BigInteger(timestampHex.substring(2), 16).longValue() : null;
+
+        return new BlockHeader(
+            hash != null ? new Hash(hash) : null,
+            number,
+            parentHash != null ? new Hash(parentHash) : null,
+            timestamp
+        );
+    }
+
+    @Override
+    public Transaction getTransactionByHash(Hash hash) throws RpcException {
+        JsonRpcResponse rpcResponse =
+            provider.send("eth_getTransactionByHash", List.of(hash.value()));
+
+        Object result = rpcResponse.result();
+        if (result == null) {
+            return null; // tx not found
+        }
+
+        return mapper.convertValue(result, Transaction.class);
+    }
+
+    @Override
+    public String call(Map<String, Object> callObject, String blockTag) throws RpcException {
+        JsonRpcResponse rpcResponse =
+            provider.send("eth_call", List.of(callObject, blockTag));
+
+        Object result = rpcResponse.result();
+        return result != null ? result.toString() : null;
+    }
+}
+```
+
+Rules:
+
+* Do **not** catch `RpcException` here; propagate it.
+* Do **not** introduce `org.web3j` types (guardrails).
+* `result == null` is treated as “not found” and returns `null` for block/tx directly.
+
+We can later add a static factory:
+
+```java
+public static PublicClient from(BraneProvider provider) {
+    return new DefaultPublicClient(provider);
+}
+```
+
+either in `PublicClient` or a small `PublicClients` utility.
+
+---
+
+### 5. Tests for PublicClient
+
+Create:
+
+```text
+brane-rpc/src/test/java/io/brane/rpc/DefaultPublicClientTest.java
+```
+
+Use a simple FakeProvider (like we did for FakeClient in Contract tests) to simulate responses.
+
+#### 5.1 FakeProvider
+
+```java
+private static final class FakeProvider implements BraneProvider {
+    private final Map<String, JsonRpcResponse> responses;
+
+    FakeProvider(Map<String, JsonRpcResponse> responses) {
+        this.responses = responses;
+    }
+
+    @Override
+    public JsonRpcResponse send(String method, List<?> params) throws RpcException {
+        JsonRpcResponse resp = responses.get(method);
+        if (resp == null) {
+            throw new RpcException(-32601, "Method not mocked: " + method, null, null);
+        }
+        if (resp.error() != null) {
+            throw new RpcException(resp.error().code(), resp.error().message(), String.valueOf(resp.error().data()), null);
+        }
+        return resp;
+    }
+}
+```
+
+#### 5.2 Tests
+
+1. **getLatestBlock maps JSON → BlockHeader**
+
+   * Mock `eth_getBlockByNumber` with result:
+
+     ```json
      {
-       "inputs": [{ "internalType": "uint256", "name": "x", "type": "uint256" }],
-       "name": "echo",
-       "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
-       "stateMutability": "pure",
-       "type": "function"
+       "hash": "0xabc...",
+       "parentHash": "0xdef...",
+       "number": "0x10",
+       "timestamp": "0x5"
      }
-   ]
-   """;
-   ```
+     ```
 
-4. **Test: successful read**
+   * Assert:
 
-   ```java
-   import io.brane.core.RevertException;
-   import org.junit.jupiter.api.Test;
+     * `header.hash().value()` equals that hash.
+     * `header.number()` is 16.
+     * `header.timestamp()` is 5.
 
-   import java.math.BigInteger;
+2. **getBlockByNumber(1) uses hex and maps correctly**
 
-   import static org.junit.jupiter.api.Assertions.*;
+   * Same as above, but call `client.getBlockByNumber(1L)` and assert same mapping.
 
-   class ContractReadTest {
+3. **getTransactionByHash returns Transaction**
 
-       @Test
-       void readSuccessDecodesReturnValue() throws RpcException, RevertException {
-           // Result will be hex-encoded return from eth_call
-           // For uint256 42, the encoded result is 32-byte padded hex.
-           String encoded = "0x" + "0".repeat(63) + "2a";
+   * Mock `eth_getTransactionByHash` returning a minimal tx JSON object with fields that match `io.brane.core.model.Transaction`.
+   * Assert that the returned `Transaction` has the right hash and from/to addresses.
 
-           Client client = new FakeClient(encoded, null);
-           Abi abi = Abi.fromJson(ECHO_ABI);
-           Contract contract = new Contract("0x1234", abi, client);
+4. **call returns raw hex**
 
-           BigInteger result = contract.read("echo", BigInteger.class, BigInteger.valueOf(42));
+   * Mock `eth_call` returning `"0x2a"`.
+   * Assert `client.call(callObject, "latest")` returns `"0x2a"`.
 
-           assertEquals(BigInteger.valueOf(42), result);
-       }
-   }
-   ```
-
-5. **Test: revert path**
-
-   ```java
-       @Test
-       void readRevertThrowsRevertException() {
-           // Make revert data using same technique as in RevertDecoderTest
-           Utf8String msg = new Utf8String("simple reason");
-           String encodedArg = TypeEncoder.encode(msg);
-           String rawData = "0x08c379a0" + encodedArg.substring(2);
-
-           RpcException rpcEx = new RpcException(
-               3, // arbitrary JSON-RPC code
-               "execution reverted",
-               rawData,
-               null
-           );
-
-           Client client = new FakeClient(null, rpcEx);
-           Abi abi = Abi.fromJson(ECHO_ABI);
-           Contract contract = new Contract("0x1234", abi, client);
-
-           RevertException ex = assertThrows(
-               RevertException.class,
-               () -> contract.read("echo", BigInteger.class, BigInteger.valueOf(42))
-           );
-
-           assertEquals("simple reason", ex.revertReason());
-           assertEquals(rawData, ex.rawDataHex());
-       }
-   }
-   ```
-
-6. **Run tests:**
-
-   ```bash
-   ./gradlew :brane-contract:test
-   ```
-
-   Fix any decoding or ABI wiring issues in `InternalAbi` / `Contract.read` until tests pass.
+All tests must stay within Brane types and JDK; no web3j imports. Guardrails still apply.
 
 ---
 
-## 4️⃣ Medium Priority: Sanity-test against a real node (Foundry + Anvil)
+### 6. Example usage (for docs)
 
-Once unit tests pass, we want to confirm that the **real RPC error format** from a node matches our assumptions.
+Once implemented, we can document a simple usage in README (not part of this step’s code change, but for later):
 
-**Goal:** With `anvil` running and a simple contract deployed, calling a reverting function through Brane should produce a `RevertException` with the correct `revertReason()`.
+```java
+BraneProvider provider = BraneProvider.http("http://127.0.0.1:8545");
+PublicClient publicClient = new DefaultPublicClient(provider);
 
-### Instructions for Codex
+BlockHeader latest = publicClient.getLatestBlock();
+System.out.println("Latest block: #" + latest.number() + " hash=" + latest.hash().value());
+```
 
-1. **Create a `foundry/` directory (manually, you can do this yourself).**
-
-   Inside it:
-
-   ```bash
-   forge init brane-foundry-test
-   ```
-
-2. **Add `RevertExample.sol` to the Foundry project:**
-
-   ```solidity
-   // SPDX-License-Identifier: MIT
-   pragma solidity ^0.8.20;
-
-   contract RevertExample {
-       function alwaysRevert() external pure {
-           revert("simple reason");
-       }
-   }
-   ```
-
-3. **Run Anvil in a terminal:**
-
-   ```bash
-   anvil
-   ```
-
-4. **In a JUnit test (`brane-contract` module), hardcode the deployed contract address** (for alpha, you can deploy once manually via Foundry script or use Anvil’s default pre-funded account + raw tx, then paste the address).
-
-   Then:
-
-   ```java
-   @Test
-   void alwaysRevertAgainstAnvil() {
-       Client client = new HttpClient(URI.create("http://127.0.0.1:8545"));
-       Abi abi = Abi.fromJson(REVERT_EXAMPLE_ABI_JSON);
-       Contract contract = new Contract(REVERT_EXAMPLE_ADDRESS, abi, client);
-
-       RevertException ex = assertThrows(
-           RevertException.class,
-           () -> contract.read("alwaysRevert", Void.class)
-       );
-
-       assertEquals("simple reason", ex.revertReason());
-   }
-   ```
-
-5. **Fix any mismatch between actual `error.data` format and our assumptions.**
-
-   * If `RpcException.data()` is not exactly the raw revert payload, adjust `HttpClient` / error parsing to extract the right field.
-   * Ensure we’re always passing the actual revert data into `RevertDecoder.decode(...)`.
+This gives the “Brane: get latest block in 3 lines” demo we wanted.
 
 ---
-
-## 5️⃣ Lower Priority: Add `brane-examples` module and polish docs
-
-Once 1–4 are stable, you can:
-
-1. **Add `brane-examples` module** with:
-
-   * Small `Main` class that:
-
-     * Connects to a node
-     * Calls a non-reverting function
-     * Calls a reverting function and prints `RevertException`
-
-2. **Cross-check README code samples**:
-
-   * Ensure the Quickstart snippet compiles and runs against your actual API.
-   * Fix any signature mismatches.
-
-3. **Add basic Javadoc to public APIs** (`BraneException`, `RpcException`, `RevertException`, `Client`, `Abi`, `Contract`).

@@ -1,7 +1,7 @@
-package io.brane.core;
+package io.brane.core.error;
 
 /**
- * Base runtime exception for any Brane specific failures.
+ * Base runtime exception for Brane-specific failures.
  */
 public sealed class BraneException extends RuntimeException
         permits RpcException, RevertException {

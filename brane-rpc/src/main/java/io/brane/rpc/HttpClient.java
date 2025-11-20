@@ -1,64 +1,65 @@
 package io.brane.rpc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import io.brane.core.RpcException;
+import io.brane.core.error.RpcException;
+import java.math.BigInteger;
 import java.net.URI;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.Map;
+import java.util.Arrays;
+import java.util.List;
 
 public final class HttpClient implements Client {
 
-    private final URI endpoint;
-    private final java.net.http.HttpClient http;
+    private final BraneProvider provider;
     private final ObjectMapper mapper = new ObjectMapper();
 
     public HttpClient(final URI endpoint) {
-        this.endpoint = endpoint;
-        this.http = java.net.http.HttpClient.newHttpClient();
+        this(BraneProvider.http(endpoint.toString()));
+    }
+
+    public HttpClient(final BraneProvider provider) {
+        this.provider = provider;
     }
 
     @Override
     public <T> T call(final String method, final Class<T> responseType, final Object... params)
             throws RpcException {
-        try {
-            final Map<String, Object> body =
-                    Map.of(
-                            "jsonrpc", "2.0",
-                            "id", 1,
-                            "method", method,
-                            "params", params == null ? new Object[0] : params);
-
-            final String json = mapper.writeValueAsString(body);
-
-            final HttpRequest req =
-                    HttpRequest.newBuilder(endpoint)
-                            .header("Content-Type", "application/json")
-                            .POST(HttpRequest.BodyPublishers.ofString(json))
-                            .build();
-
-            final HttpResponse<String> resp =
-                    http.send(req, HttpResponse.BodyHandlers.ofString());
-
-            final Map<?, ?> map = mapper.readValue(resp.body(), Map.class);
-
-            if (map.containsKey("error")) {
-                final Map<?, ?> err = (Map<?, ?>) map.get("error");
-                final int code = ((Number) err.get("code")).intValue();
-                final String message = (String) err.get("message");
-                final Object dataValue = err.get("data");
-                final String data = dataValue != null ? dataValue.toString() : null;
-                throw new RpcException(code, message, data, null);
-            }
-
-            final Object result = map.get("result");
-            final String resultJson = mapper.writeValueAsString(result);
-            return mapper.readValue(resultJson, responseType);
-
-        } catch (RpcException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RpcException(-1, "RPC serialization error", null, e);
+        final List<?> safeParams =
+                (params == null || params.length == 0) ? List.of() : Arrays.asList(params);
+        final JsonRpcResponse response = provider.send(method, safeParams);
+        final Object result = response.result();
+        if (result == null) {
+            return null;
         }
+        try {
+            return mapResult(result, responseType);
+        } catch (IllegalArgumentException e) {
+            throw new RpcException(-32700, "Unable to map RPC result", null, e);
+        }
+    }
+
+    private <T> T mapResult(final Object result, final Class<T> responseType) {
+        if (responseType == String.class) {
+            return responseType.cast(result.toString());
+        }
+        if (responseType == BigInteger.class) {
+            return responseType.cast(convertToBigInteger(result));
+        }
+        return mapper.convertValue(result, responseType);
+    }
+
+    private BigInteger convertToBigInteger(final Object value) {
+        if (value instanceof BigInteger bigInteger) {
+            return bigInteger;
+        }
+        if (value instanceof Number number) {
+            return BigInteger.valueOf(number.longValue());
+        }
+        if (value instanceof String s) {
+            if (s.startsWith("0x") || s.startsWith("0X")) {
+                return new BigInteger(s.substring(2), 16);
+            }
+            return new BigInteger(s, 10);
+        }
+        throw new IllegalArgumentException("Cannot convert value to BigInteger: " + value);
     }
 }

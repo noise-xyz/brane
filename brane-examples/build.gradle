@@ -1,0 +1,25 @@
+plugins {
+    id 'application'
+}
+
+dependencies {
+    implementation project(':brane-core')
+    implementation project(':brane-rpc')
+    implementation project(':brane-contract')
+}
+
+application {
+    mainClass = 'io.brane.examples.Main'
+}
+
+def defaultProp = { String key, String fallback ->
+    if (project.hasProperty(key)) {
+        return project.property(key)
+    }
+    return System.getProperty(key, fallback)
+}
+
+tasks.named('run') {
+    systemProperty 'brane.examples.rpc', defaultProp('brane.examples.rpc', 'http://127.0.0.1:8545')
+    systemProperty 'brane.examples.contract', defaultProp('brane.examples.contract', '0x0000000000000000000000000000000000000000')
+}

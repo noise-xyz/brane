@@ -36,9 +36,19 @@ Add the necessary dependencies to your Maven or Gradle project:
 Here's an example of how to interact with a smart contract:
 
 ```java
-Client client = new HttpClient(URI.create("[http://127.0.0.1:8545](http://127.0.0.1:8545)"));
+import io.brane.contract.Abi;
+import io.brane.contract.Contract;
+import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
+import io.brane.core.types.Address;
+import io.brane.rpc.Client;
+import io.brane.rpc.HttpClient;
+import java.math.BigInteger;
+import java.net.URI;
+
+Client client = new HttpClient(URI.create("http://127.0.0.1:8545"));
 Abi abi = Abi.fromJson(MY_CONTRACT_ABI);
-Contract contract = new Contract(MY_CONTRACT_ADDRESS, abi, client);
+Contract contract = new Contract(new Address(MY_CONTRACT_ADDRESS), abi, client);
 
 try {
     BigInteger balance = contract.read("balanceOf", BigInteger.class, userAddress);
@@ -51,6 +61,11 @@ try {
     // JSON-RPC / Node-level communication failure
     System.err.println("RPC error: " + e.code() + " " + e.getMessage());
 }
+
+// Performing a write call using the default Anvil key:
+Signer signer = new PrivateKeySigner("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
+String txHash = contract.write(signer, "setValue", BigInteger.valueOf(1337));
+System.out.println("sent tx: " + txHash);
 ```
 
 -----
@@ -113,20 +128,17 @@ Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-
 
 Defines the core types and the error hierarchy:
 
-  * `BraneException` (sealed base class)
-      * `RpcException`: For JSON-RPC errors (with `code()` and raw `data()`).
-      * `RevertException`: For EVM reverts (with decoded `revertReason()` and full `rawDataHex()`).
-  * `RevertDecoder`: A utility to decode `Error(string)` from raw revert data.
+  * `io.brane.core.error` – `BraneException`, `RpcException`, `RevertException`, `RevertDecoder`.
+  * `io.brane.core.types` – reusable value objects (`Address`, `Hash`, `HexData`, `Wei`).
+  * `io.brane.core.model` – domain DTOs (`Transaction`, `TransactionReceipt`, `LogEntry`, `TransactionRequest`, `ChainProfile`, etc.).
 
 ### `brane-rpc`
 
-Provides the minimal synchronous JSON-RPC client:
+Provides the JSON-RPC transport and public client API:
 
-  * `Client` interface:
-    ```java
-    <T> T call(String method, Class<T> responseType, Object... params) throws RpcException;
-    ```
-  * `HttpClient` implementation: Handles request building, synchronous HTTP POST, and JSON-RPC response parsing/error checking.
+  * `Client` + `HttpClient`: typed wrapper over the transport for contract ABI calls.
+  * `BraneProvider` + `HttpBraneProvider`: low-level JSON-RPC 2.0 transport abstraction that handles request/response serialization.
+  * `PublicClient`: high-level read-only client for chain data (`getBlockByNumber`, `getTransactionByHash`, `eth_call`, etc.) that maps node JSON into Brane’s value types (`BlockHeader`, `Transaction`, `Hash`, `Address`, `Wei`, ...).
 
 ### `brane-contract`
 
@@ -135,8 +147,12 @@ Provides high-level contract interaction:
   * `Abi` interface: A thin wrapper for ABI parsing via `Abi.fromJson(String json)`.
   * `Contract` class:
       * `read(...)`: Implements `eth_call`, handles ABI encoding/decoding, and specifically catches reverts to throw a decoded `RevertException`.
-      * `write(...)`: Implements the simple raw transaction signing/sending flow.
-  * `Signer` interface: Used for transaction signing (e.g., implemented by `PrivateKeySigner`).
+      * `write(...)`: Implements the simple raw-transaction signing/sending flow using `Signer`.
+  * `Signer` interface / `PrivateKeySigner`: Wrap private keys via our value types (no web3j types leak out).
+
+### `brane-examples`
+
+Runnable demos (see `io.brane.examples.Main`) that exercise `Contract.read`/`write` against a running node.
 
 -----
 
@@ -147,8 +163,44 @@ The project uses **Foundry** for a reliable testing environment:
 1.  **Solidity Contract:** A simple `RevertExample.sol` is used to test various revert paths (e.g., `revert("simple reason")` for `Error(string)` and `revert CustomError(...)` for custom reverts).
 2.  **Local Node:** Tests run against an `anvil` instance (e.g., at `http://127.0.0.1:8545`).
 3.  **JUnit Tests:** Verify:
-      * `Error(string)` is caught and correctly decoded into `RevertException.revertReason()`.
-      * Non-reverting calls pass and decode values correctly.
-      * Custom errors are caught as `RevertException` but gracefully handle the lack of an `Error(string)` reason string.
+      * Core value types (`Address`, `Hash`, `HexData`, `Wei`) behave as expected.
+      * `Contract.read` correctly decodes values and generates `RevertException` when `error.data` contains revert payloads.
+      * `Contract.write` signs/sends transactions via `Signer`.
 
 <!-- end list -->
+## ✅ Local testing checklist
+
+1. **Pure unit tests**
+
+   ```bash
+   ./gradlew :brane-core:test
+   ./gradlew :brane-contract:test        # without extra props runs only pure tests
+   ```
+
+2. **Anvil-backed integration tests**
+
+   Deploy `RevertExample.sol` + `Storage.sol` (see `foundry/anvil-tests/`), then run:
+
+   ```bash
+   ./gradlew :brane-contract:test \
+     -Dbrane.anvil.rpc=http://127.0.0.1:8545 \
+     -Dbrane.anvil.revertExample.address=0x5FbDB2315678afecb367f032d93F642f64180aa3 \
+     -Dbrane.anvil.storage.address=0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512 \
+     -Dbrane.anvil.signer.privateKey=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
+   ```
+
+3. **Examples**
+
+   ```bash
+   ./gradlew :brane-examples:run \
+     -Dbrane.examples.rpc=http://127.0.0.1:8545 \
+     -Dbrane.examples.contract=0x5FbDB2315678afecb367f032d93F642f64180aa3
+   ```
+
+4. **Full verification**
+
+   ```bash
+   ./gradlew clean check
+   ```
+
+The guardrails in `Guardrail.md` ensure web3j internals never leak into public APIs; the layout above follows those rules.
