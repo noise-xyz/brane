@@ -144,15 +144,28 @@ Provides the JSON-RPC transport and public client API:
 
 Provides high-level contract interaction:
 
-  * `Abi` interface: A thin wrapper for ABI parsing via `Abi.fromJson(String json)`.
+  * `Abi` interface: parse ABI JSON, encode/decode function calls, and raise `AbiEncodingException` / `AbiDecodingException` on invalid inputs.
   * `Contract` class:
       * `read(...)`: Implements `eth_call`, handles ABI encoding/decoding, and specifically catches reverts to throw a decoded `RevertException`.
       * `write(...)`: Implements the simple raw-transaction signing/sending flow using `Signer`.
+  * `ReadOnlyContract`: a lightweight façade over `Abi` + `PublicClient.call` for read-only calls (no signing), with revert decoding.
   * `Signer` interface / `PrivateKeySigner`: Wrap private keys via our value types (no web3j types leak out).
 
 ### `brane-examples`
 
-Runnable demos (see `io.brane.examples.Main`) that exercise `Contract.read`/`write` against a running node.
+Runnable demos that exercise `Contract.read`/`write` against a running node.
+
+  * `io.brane.examples.Main` – echo example calling `echo(uint256)`.
+  * `io.brane.examples.Erc20Example` – calls `decimals()` and `balanceOf(address)` (via both `Contract.read` and `PublicClient` + `Abi`). Run with:
+
+    ```bash
+    ./gradlew :brane-examples:run \
+      -PmainClass=io.brane.examples.Erc20Example \
+      -Dbrane.examples.erc20.rpc=http://127.0.0.1:8545 \
+      -Dbrane.examples.erc20.contract=0xYourTokenAddress \
+      -Dbrane.examples.erc20.holder=0xHolderAddress
+    ```
+    Ensure the RPC endpoint is running and the contract/holder addresses are valid.
 
 -----
 

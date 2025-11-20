@@ -2,6 +2,7 @@ package io.brane.examples;
 
 import io.brane.contract.Abi;
 import io.brane.contract.Contract;
+import io.brane.contract.ReadOnlyContract;
 import io.brane.core.error.AbiDecodingException;
 import io.brane.core.error.AbiEncodingException;
 import io.brane.core.error.RevertException;
@@ -69,6 +70,7 @@ public final class Erc20Example {
 
         runWithContractRead(rpcUrl, token, holder, abi);
         runWithPublicClient(rpcUrl, token, holder, abi);
+        runWithReadOnlyContract(rpcUrl, token, holder, abi);
     }
 
     private static void runWithContractRead(
@@ -123,6 +125,31 @@ public final class Erc20Example {
             System.err.println("[PublicClient] ABI error: " + e.getMessage());
         }
     }
+
+    private static void runWithReadOnlyContract(
+            final String rpcUrl, final Address token, final Address holder, final Abi abi) {
+        try {
+            BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
+            PublicClient publicClient = PublicClient.from(provider);
+
+            ReadOnlyContract contract = ReadOnlyContract.from(token, abi, publicClient);
+
+            BigInteger decimals = contract.call("decimals", BigInteger.class);
+            BigInteger balance = contract.call("balanceOf", BigInteger.class, holder);
+            BigDecimal human =
+                    new BigDecimal(balance).divide(BigDecimal.TEN.pow(decimals.intValue()));
+
+            System.out.println("[ReadOnlyContract] decimals  = " + decimals);
+            System.out.println("[ReadOnlyContract] balanceOf = " + balance + " (raw), " + human);
+        } catch (RevertException e) {
+            System.err.println("[ReadOnlyContract] Revert: " + e.revertReason());
+        } catch (RpcException e) {
+            System.err.println("[ReadOnlyContract] RPC error: " + e.getMessage());
+        } catch (AbiEncodingException | AbiDecodingException e) {
+            System.err.println("[ReadOnlyContract] ABI error: " + e.getMessage());
+        }
+    }
+
 
     private static boolean isBlank(final String value) {
         return value == null || value.trim().isEmpty();

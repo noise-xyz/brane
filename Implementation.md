@@ -1,299 +1,348 @@
-````md
-## Step 3 – Basic ABI encoding/decoding primitives
+## `implementation-step4-contract-facade.md`
 
-We now have:
+### Goal of Step 4
 
-- BraneProvider / HttpBraneProvider (Step 1)
-- PublicClient / DefaultPublicClient (Step 2)
-- A working `Abi` + `Contract.read(...)` path for `echo(uint256)` calls.
-
-Step 3 is about turning the ad-hoc ABI bits into **deliberate, table-stakes ABI primitives**, aligned with viem/alloy’s core capabilities:
-
-- Function encoding (selector + arguments)
-- Basic output decoding to Java types
-- Event signature hashing (`topic0`)
-
-Target milestone:
-
-> **“Call ERC-20 `decimals()` and `balanceOf(address)` from Java using Brane.”**
-
-That means, by the end of this step, we should be able to:
-
-1. Parse an ERC-20 ABI JSON.
-2. Encode:
-   - `decimals()` as call data.
-   - `balanceOf(address)` as call data.
-3. Use `PublicClient.call` (or `Contract.read`) to perform `eth_call`.
-4. Decode:
-   - `decimals()` → `Integer` or `BigInteger` = 18.
-   - `balanceOf(address)` → `BigInteger` balance.
-
-### 1. Where ABI logic lives
-
-ABI remains in **brane-contract**, not brane-rpc:
-
-```text
-brane-contract/src/main/java/io/brane/contract/
-  Abi.java               // ABI entrypoint (public surface)
-  Contract.java          // High-level wrapper around Abi + Client
-  ...
-````
-
-Requirements:
-
-* `Abi` is the **only** public ABI entrypoint.
-* `Abi` may use `io.brane.internal.web3j.abi.*` internally.
-* **No `org.web3j` imports** in public packages (`io.brane.contract.*`) – internal web3j only under `io.brane.internal.web3j.*` (guardrails).
-
-### 2. Abi surface – function calls
-
-We already have (from earlier work):
-
-* `Abi.fromJson(String json)`
-* `Abi.FunctionCall abi.encodeFunction(String fn, Object... args)`
-* `call.data()` (encoded data)
-* `call.decode(String rawResultHex, Class<T> returnType)`
-
-Step 3 is about making these **real and well-defined**, not just “whatever web3j did”.
-
-#### 2.1 `Abi.fromJson`
-
-Keep the existing method, but make sure it:
-
-* Parses a JSON ABI array string.
-* Internally builds a map of:
-
-  * function name → function definition (including inputs/outputs, types).
-* Supports at least:
-
-  * `function` entries with:
-
-    * `name`
-    * `inputs` (type + name)
-    * `outputs` (type + name)
-  * `event` entries (for hashing later).
-
-Implementation detail:
-
-* You can use internal web3j ABI JSON parser if already present (under `io.brane.internal.web3j`), but keep that **internal** to `Abi`.
-
-#### 2.2 `Abi.FunctionCall` encoding
-
-`Abi.encodeFunction(fnName, Object... args)` must:
-
-1. Look up the function definition by `name` (and number/types of inputs).
-2. Map Java arguments → ABI `Type` objects, based on function input types.
-
-Supported input types (P0):
-
-* `uint256`:
-
-  * Java: `BigInteger`, `Long`, `Integer`.
-* `int256` (optional P0 but nice):
-
-  * Java: `BigInteger`, `Long`, `Integer` (allow negative).
-* `address`:
-
-  * Java: `io.brane.core.types.Address`.
-* `bool`:
-
-  * Java: `Boolean`.
-* `string`:
-
-  * Java: `String`.
-* `bytes` / `bytesN`:
-
-  * Java: `byte[]`, `io.brane.core.types.HexData`.
-
-Array support (P0):
-
-* Static: `uint256[]`, `address[]`, `bool[]`, `string[]`.
-* Java: `List<?>` or `Object[]` (we can keep it simple; support `List<T>` for now).
-* We don’t need multi-dimensional arrays yet.
-
-`Abi.FunctionCall` should:
-
-* Hold:
-
-  * The function metadata (inputs/outputs).
-  * The encoded data (function selector + arguments) as a hex string.
-
-Public methods:
+Add a **simple, read-only contract façade** on top of `Abi` + `PublicClient` so users can do:
 
 ```java
-public final class Abi {
+Abi erc20 = Abi.fromJson(ERC20_ABI);
+PublicClient publicClient = PublicClient.from(provider);
 
-    public static Abi fromJson(String json) { ... }
+ReadOnlyContract token = ReadOnlyContract.from(
+    new Address("0x..."),
+    erc20,
+    publicClient
+);
 
-    public FunctionCall encodeFunction(String name, Object... args) { ... }
+BigInteger decimals = token.call("decimals", BigInteger.class);
+BigInteger balance  = token.call("balanceOf", BigInteger.class, holderAddress);
+```
 
-    public static final class FunctionCall {
-        private final String name;
-        private final String data; // "0x..."
+This must be:
 
-        public String name() { return name; }
+* **Purely read-only** (no signing, no `eth_sendRawTransaction`).
+* Built on **existing pieces**: `Abi`, `Abi.FunctionCall`, `PublicClient.call`, and Brane’s error model.
+* Zero **web3j type leakage** in public APIs (respect `guardrails.md`).
 
-        public String data() { return data; }
+We **do not** change the existing `Contract.write(...)` path; that’s still the “write-capable” façade backed by `Client`/`HttpClient`.
 
-        public <T> T decode(String rawResultHex, Class<T> returnType) { ... }
+---
+
+## 1. New class: `ReadOnlyContract`
+
+**Location**
+
+Create a new class in brane-contract:
+
+```text
+brane-contract/src/main/java/io/brane/contract/ReadOnlyContract.java
+```
+
+**Package**
+
+```java
+package io.brane.contract;
+```
+
+**Dependencies allowed**
+
+* `io.brane.core.types.Address`
+* `io.brane.core.types.HexData` (if needed)
+* `io.brane.core.error.*` (`RpcException`, `RevertException`, `AbiEncodingException`, `AbiDecodingException`)
+* `io.brane.rpc.PublicClient`
+* `io.brane.core.RevertDecoder`
+* Standard Java collections (`Map`, `LinkedHashMap`, etc.)
+
+**NO org.web3j / web3j types** in this class.
+
+### 1.1. Fields & constructor
+
+```java
+public final class ReadOnlyContract {
+
+    private final Address address;
+    private final Abi abi;
+    private final PublicClient client;
+
+    private ReadOnlyContract(Address address, Abi abi, PublicClient client) {
+        this.address = Objects.requireNonNull(address, "address must not be null");
+        this.abi = Objects.requireNonNull(abi, "abi must not be null");
+        this.client = Objects.requireNonNull(client, "client must not be null");
+    }
+
+    public static ReadOnlyContract from(Address address, Abi abi, PublicClient client) {
+        return new ReadOnlyContract(address, abi, client);
+    }
+
+    public Address address() {
+        return address;
+    }
+
+    public Abi abi() {
+        return abi;
     }
 }
 ```
 
-#### 2.3 Decoding outputs
+---
 
-`FunctionCall.decode(rawResultHex, returnType)` must:
+### 1.2. Core API: `call(...)`
 
-1. Use the ABI outputs for this function to determine output types.
-2. Decode the raw hex (e.g. `"0x000...002a"`) into a list of ABI values.
-3. If there is:
+We want a **simple, generic call** method that:
 
-   * A **single output**, map it to `returnType`:
+* Encodes arguments via `Abi.encodeFunction(fnName, args...)`.
+* Builds a JSON-RPC call object:
 
-     * `uint256` → `BigInteger` / `Long` / `Integer`
-     * `address` → `Address`
-     * `bool` → `Boolean`
-     * `string` → `String`
-     * `bytes` → `HexData` or `byte[]`
-     * array types → `List<T>` (P0).
-   * Multiple outputs (tuple):
+  * `to` = contract address (string)
+  * `data` = encoded data (hex string)
+* Calls `publicClient.call(callObject, "latest")`.
+* Decodes the result with `FunctionCall.decode(rawResultHex, returnType)`.
 
-     * P0: we can throw `AbiDecodingException` unless `returnType` is `Object[]` or `List<?>`. (We don’t need multi-return for ERC-20.)
-
-Error handling:
-
-* If the raw hex is `"0x"` or too short:
-
-  * Throw `AbiDecodingException` (a `BraneException` subclass you’ll add if not present yet), not return `null`.
-* If types don’t match `returnType`:
-
-  * Throw `AbiDecodingException`.
-
-Again, implementation may use internal web3j `FunctionReturnDecoder` under the hood, but wrap all errors into `AbiEncodingException`/`AbiDecodingException`.
-
-### 3. Event signature hashing
-
-Add simple event helpers to `Abi`:
+Signature:
 
 ```java
-public final class Abi {
+public <T> T call(String functionName, Class<T> returnType, Object... args)
+        throws RpcException, RevertException, AbiEncodingException, AbiDecodingException
+```
 
-    // existing stuff...
+Implementation sketch:
 
-    /**
-     * Computes topic0 (Keccak-256) for an event signature string,
-     * e.g. "Transfer(address,address,uint256)".
-     */
-    public static Hash eventTopic(String eventSignature) { ... }
+```java
+public <T> T call(String functionName, Class<T> returnType, Object... args)
+        throws RpcException, RevertException, AbiEncodingException, AbiDecodingException {
 
-    /**
-     * Computes function selector (first 4 bytes) for a function signature string,
-     * e.g. "balanceOf(address)".
-     */
-    public static HexData functionSelector(String functionSignature) { ... }
+    final Abi.FunctionCall fnCall = abi.encodeFunction(functionName, args);
+    final String data = fnCall.data();
+
+    final Map<String, Object> callObject = new LinkedHashMap<>();
+    callObject.put("to", address.value());
+    callObject.put("data", data);
+
+    try {
+        final String raw = client.call(callObject, "latest");
+        // PublicClient.call should never return null in the happy path;
+        // if it does, treat it as ABI decode error.
+        if (raw == null || raw.isBlank()) {
+            throw new AbiDecodingException(
+                    "eth_call returned empty result for function '" + functionName + "'");
+        }
+        return fnCall.decode(raw, returnType);
+    } catch (RpcException e) {
+        // If RpcException contains revert data, translate to RevertException
+        handlePotentialRevert(e);
+        throw e;
+    }
 }
 ```
 
-Implementation:
+`handlePotentialRevert` should mirror the logic in `Contract`:
 
-* Use whatever Keccak-256 you already have (likely via internal web3j `org.web3j.crypto.Hash.keccak256(...)` or vendored equivalent under `io.brane.internal.web3j.crypto.Hash`).
-* `eventTopic`:
-
-  * Input: `"Transfer(address,address,uint256)"`.
-  * Compute Keccak-256 of UTF-8 bytes.
-  * Return as `Hash` (`0x` + 64 hex chars).
-* `functionSelector`:
-
-  * Same hash as above, but return first 4 bytes as `HexData` (`"0x" + 8 hex chars`).
-
-### 4. Tests for Abi
-
-Create or extend:
-
-```text
-brane-contract/src/test/java/io/brane/contract/AbiEncodingDecodingTest.java
+```java
+private static void handlePotentialRevert(final RpcException e) throws RevertException {
+    final String raw = e.data();
+    if (raw != null && raw.startsWith("0x") && raw.length() > 10) {
+        final var decoded = RevertDecoder.decode(raw);
+        throw new RevertException(decoded.reason(), decoded.rawDataHex(), e);
+    }
+}
 ```
 
-Tests to add:
+**Notes**
 
-1. **Function encoding – simple types**
+* Use `AbiEncodingException` / `AbiDecodingException` as thrown from `Abi.encodeFunction` / `FunctionCall.decode`. Don’t swallow them.
+* This class does **not** know about `Signer` or `eth_sendRawTransaction`.
 
-   * Given ABI JSON for:
+---
 
-     ```solidity
-     function balanceOf(address account) view returns (uint256);
-     function decimals() view returns (uint8);
-     ```
+### 1.3. Optional: multi-return support
 
-   * `Abi.fromJson(ERC20_ABI_JSON)`
+If you want a second method now (optional but nice):
 
-   * `Abi.FunctionCall call = abi.encodeFunction("balanceOf", new Address("0x" + "1".repeat(40)));`
+```java
+public Object[] callTuple(String functionName, Object... args)
+        throws RpcException, RevertException, AbiEncodingException, AbiDecodingException
+```
 
-   * Assert:
+Where `FunctionCall.decodeTuple(...)` (if available) returns `Object[]`. If your current ABI API only supports single return type, you can skip this for now.
 
-     * `call.data()` starts with correct selector (use known fn selector from ERC-20).
-     * Encoded args length is > selector length.
+---
 
-   * `Abi.FunctionCall decimalsCall = abi.encodeFunction("decimals");`
+## 2. Tests for `ReadOnlyContract`
 
-     * `data()` should be just selector (no args).
+Add a unit test class:
 
-2. **Decoding – uint256 / address / bool / string**
+```text
+brane-contract/src/test/java/io/brane/contract/ReadOnlyContractTest.java
+```
 
-   * Build known hex outputs and ensure round-trip decode:
+Package:
 
-     * `uint256` → `BigInteger`:
+```java
+package io.brane.contract;
+```
 
-       * e.g. raw hex for `42` as single return.
-     * `string`:
+### 2.1. FakePublicClient
 
-       * raw hex representing `"hello"`.
-     * `address`:
+Create a simple fake implementation of `PublicClient` inside the test class (or as a private static nested class):
 
-       * raw hex representing an address.
-     * `bool`:
+```java
+private static final class FakePublicClient implements PublicClient {
 
-       * raw hex for true / false.
+    private final String result;
+    private final RpcException toThrow;
 
-   * You can either:
+    private FakePublicClient(String result, RpcException toThrow) {
+        this.result = result;
+        this.toThrow = toThrow;
+    }
 
-     * Encode via internal ABI, then decode via Brane `Abi.FunctionCall.decode`.
-     * Or use hard-coded test vectors.
+    @Override
+    public String call(Object callObject, String blockTag) throws RpcException {
+        if (toThrow != null) {
+            throw toThrow;
+        }
+        return result;
+    }
 
-3. **Event topic hashing**
+    // If PublicClient has other methods (getBlockByNumber, etc.), you can either:
+    // - throw UnsupportedOperationException, or
+    // - provide trivial implementations if required by interface.
+}
+```
 
-   * `Abi.eventTopic("Transfer(address,address,uint256)")`
-   * Assert equals the known topic0 from ERC-20:
+Adjust to match the exact `PublicClient` interface you have (you might need to implement `getBlockByNumber`, `getTransactionByHash`, etc. as no-op throws).
 
-     * `0xddf252ad...` (full 32-byte hash).
-   * Maybe also test `Approval(address,address,uint256)`.
+### 2.2. Test 1 – happy path: echo-style function
 
-4. **ERC-20 integration test (optional / property-based)**
+Test that:
 
-   * Similar to `ContractReadTest.echoReturnsSameValue`, but for ERC-20:
+* `ReadOnlyContract.call("echo", BigInteger.class, 42)` returns 42 when the fake client returns a valid ABI-encoded `uint256`.
 
-     * Have a test that is only enabled when `brane.anvil.rpc` and `brane.anvil.erc20.address` are set.
-     * Use `Abi + Contract.read` or `Abi + PublicClient.call` to:
+Use your existing internal ABI helpers in tests (just like `ContractReadTest`):
 
-       * Call `decimals()` and assert result == 18.
-       * Call `balanceOf(some known address)` and assert expected balance.
-   * Mark with JUnit `Assumptions` so it only runs when configured.
+```java
+@Test
+void callReturnsDecodedValue() throws Exception {
+    String encoded = "0x" + TypeEncoder.encode(new Uint256(BigInteger.valueOf(42)));
+    PublicClient client = new FakePublicClient(encoded, null);
 
-### 5. Guardrails
+    Abi abi = Abi.fromJson(
+            """
+            [
+              {
+                "inputs": [{ "internalType": "uint256", "name": "x", "type": "uint256" }],
+                "name": "echo",
+                "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+                "stateMutability": "pure",
+                "type": "function"
+              }
+            ]
+            """
+    );
 
-* `Abi` is allowed to import from:
+    ReadOnlyContract contract =
+            ReadOnlyContract.from(
+                    new Address("0x0000000000000000000000000000000000001234"),
+                    abi,
+                    client);
 
-  * `io.brane.internal.web3j.abi.*`
-  * `io.brane.internal.web3j.crypto.*`
+    BigInteger result = contract.call("echo", BigInteger.class, BigInteger.valueOf(42));
 
-* No `org.web3j` imports.
+    assertEquals(BigInteger.valueOf(42), result);
+}
+```
 
-* No public API types from web3j leak through:
+(Use the same Address/TypeEncoder/U256 imports pattern as in `ContractReadTest`.)
 
-  * `Abi` only exposes Brane types (`Address`, `Hash`, `HexData`, etc.) and standard Java types.
+### 2.3. Test 2 – revert → RevertException
 
-Once tests pass, we’ll have:
+Test that an RpcException with revert data becomes `RevertException`:
 
-* A robust `Abi` layer.
-* `Contract.read` still working but now generalizable to real ERC-20 calls.
-* A path to step 4 (events/log decoding and eventually write/WalletClient).
+* Build revert payload using `FunctionEncoder` and `Error(string)` like your existing test.
+
+```java
+@Test
+void callRevertThrowsRevertException() {
+    List<Type> inputs = List.of((Type) new Utf8String("simple reason"));
+    String rawData = FunctionEncoder.encode(new Function("Error", inputs, List.of()));
+
+    RpcException rpcEx = new RpcException(3, "execution reverted", rawData, null);
+    PublicClient client = new FakePublicClient(null, rpcEx);
+
+    Abi abi = Abi.fromJson(ECHO_ABI);
+    ReadOnlyContract contract =
+            ReadOnlyContract.from(
+                    new Address("0x0000000000000000000000000000000000001234"),
+                    abi,
+                    client);
+
+    RevertException ex =
+            assertThrows(
+                    RevertException.class,
+                    () -> contract.call("echo", BigInteger.class, BigInteger.valueOf(42)));
+
+    assertEquals("simple reason", ex.revertReason());
+    assertEquals(rawData, ex.rawDataHex());
+}
+```
+
+### 2.4. Test 3 – empty / invalid result → AbiDecodingException
+
+Test that if `PublicClient.call` returns an empty string/null/too-short hex, `ReadOnlyContract.call` throws `AbiDecodingException` (from the guard you added in `InternalAbi.Call.decode`):
+
+```java
+@Test
+void emptyResultThrowsAbiDecodingException() {
+    PublicClient client = new FakePublicClient("0x", null);
+
+    Abi abi = Abi.fromJson(ECHO_ABI);
+    ReadOnlyContract contract =
+            ReadOnlyContract.from(
+                    new Address("0x0000000000000000000000000000000000001234"),
+                    abi,
+                    client);
+
+    assertThrows(
+            AbiDecodingException.class,
+            () -> contract.call("echo", BigInteger.class, BigInteger.valueOf(42)));
+}
+```
+
+---
+
+## 3. Guardrails to respect
+
+When implementing Step 4:
+
+* ❌ No `org.web3j.*` imports in any **public** API or non-`internal` package.
+* ✅ Only use web3j internals under `io.brane.internal.web3j.*` inside tests or internal logic (if absolutely needed).
+* ✅ `ReadOnlyContract` must speak in terms of **Brane types** (`Address`, `BraneException` subclasses, etc.).
+* ✅ Don’t change existing behavior of:
+
+  * `Contract.read`
+  * `Contract.write`
+  * `Erc20Example` / `Main` (except maybe adding a tiny usage of `ReadOnlyContract` in a new example later, not required for Step 4).
+
+---
+
+## 4. How to verify
+
+After Codex implements Step 4:
+
+1. Compile and run tests:
+
+```bash
+./gradlew :brane-contract:test --no-daemon
+./gradlew :brane-rpc:test --no-daemon
+./gradlew clean check --no-daemon
+```
+
+2. (Optional) Add a tiny usage to `Erc20Example`:
+
+```java
+ReadOnlyContract readOnly =
+    ReadOnlyContract.from(token, abi, PublicClient.from(provider));
+BigInteger balanceViaFacade = readOnly.call("balanceOf", BigInteger.class, holder);
+```
+
+But that’s optional; core milestone is the new façade + tests.
