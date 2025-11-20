@@ -54,6 +54,14 @@ public final class DefaultWalletClient implements WalletClient {
                 provider, publicClient, signer, senderAddress, expectedChainId);
     }
 
+    public static DefaultWalletClient create(
+            final BraneProvider provider,
+            final PublicClient publicClient,
+            final TransactionSigner signer,
+            final Address senderAddress) {
+        return new DefaultWalletClient(provider, publicClient, signer, senderAddress, 0L);
+    }
+
     @Override
     public Hash sendTransaction(final TransactionRequest request) {
         final long chainId = enforceChainId();

@@ -1,14 +1,13 @@
 package io.brane.examples;
 
 import io.brane.contract.Abi;
-import io.brane.contract.PrivateKeySigner;
 import io.brane.contract.ReadWriteContract;
-import io.brane.contract.Signer;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.rpc.BraneProvider;
+import io.brane.rpc.PrivateKeyTransactionSigner;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
@@ -78,10 +77,10 @@ public final class Erc20TransferExample {
 
         final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
         final PublicClient publicClient = PublicClient.from(provider);
-        final Signer signer = new PrivateKeySigner(privateKey);
-        final TransactionSigner txSigner = tx -> signer.signTransaction(tx);
+        final PrivateKeyTransactionSigner signer = new PrivateKeyTransactionSigner(privateKey);
+        final TransactionSigner txSigner = signer::sign;
         final WalletClient walletClient =
-                DefaultWalletClient.from(provider, publicClient, txSigner, signer.address(), 0L);
+                DefaultWalletClient.create(provider, publicClient, txSigner, signer.address());
 
         final Abi abi = Abi.fromJson(ERC20_ABI);
         final ReadWriteContract contract =

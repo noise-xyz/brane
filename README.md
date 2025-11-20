@@ -139,7 +139,7 @@ Provides the JSON-RPC transport and public client API:
   * `Client` + `HttpClient`: typed wrapper over the transport for contract ABI calls.
   * `BraneProvider` + `HttpBraneProvider`: low-level JSON-RPC 2.0 transport abstraction that handles request/response serialization.
   * `PublicClient`: high-level read-only client for chain data (`getBlockByNumber`, `getTransactionByHash`, `eth_call`, etc.) that maps node JSON into Brane’s value types (`BlockHeader`, `Transaction`, `Hash`, `Address`, `Wei`, ...).
-  * `WalletClient` + `DefaultWalletClient`: fills nonce/gas/fees, enforces chainId, signs raw transactions via a provided signer, sends via `eth_sendRawTransaction`, and can poll for receipts.
+  * `WalletClient` + `DefaultWalletClient`: fills nonce/gas/fees, enforces chainId, signs raw transactions via a provided signer (see `PrivateKeyTransactionSigner`), sends via `eth_sendRawTransaction`, and can poll for receipts.
 
 ### `brane-contract`
 
@@ -179,6 +179,7 @@ Runnable demos that exercise `Contract.read`/`write` against a running node.
       -Dbrane.examples.erc20.pk=0xYourPrivateKey \
       -Dbrane.examples.erc20.amount=1
     ```
+    Uses `PrivateKeyTransactionSigner` + `DefaultWalletClient` + `ReadWriteContract`.
 
 -----
 
