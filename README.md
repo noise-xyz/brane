@@ -40,8 +40,10 @@ import io.brane.contract.Abi;
 import io.brane.contract.Contract;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
+import io.brane.core.chain.ChainProfiles;
 import io.brane.core.types.Address;
 import io.brane.rpc.Client;
+import io.brane.rpc.BranePublicClient;
 import io.brane.rpc.HttpClient;
 import java.math.BigInteger;
 import java.net.URI;
@@ -66,6 +68,13 @@ try {
 Signer signer = new PrivateKeySigner("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
 String txHash = contract.write(signer, "setValue", BigInteger.valueOf(1337));
 System.out.println("sent tx: " + txHash);
+
+// Build a read-only client from a typed chain profile
+BranePublicClient baseSepolia = BranePublicClient
+        .forChain(ChainProfiles.BASE_SEPOLIA)
+        .withRpcUrl("https://sepolia.base.org") // override the default if needed
+        .build();
+System.out.println("Base Sepolia chainId: " + baseSepolia.profile().chainId);
 ```
 
 -----
@@ -131,6 +140,7 @@ Defines the core types and the error hierarchy:
   * `io.brane.core.error` – `BraneException`, `RpcException`, `RevertException`, `RevertDecoder`.
   * `io.brane.core.types` – reusable value objects (`Address`, `Hash`, `HexData`, `Wei`).
   * `io.brane.core.model` – domain DTOs (`Transaction`, `TransactionReceipt`, `LogEntry`, `TransactionRequest`, `ChainProfile`, etc.).
+  * `io.brane.core.chain` – typed chain profiles (`ChainProfiles`) capturing chainId, default RPC URL, and EIP-1559 support.
 
 ### `brane-rpc`
 
@@ -139,6 +149,7 @@ Provides the JSON-RPC transport and public client API:
   * `Client` + `HttpClient`: typed wrapper over the transport for contract ABI calls.
   * `BraneProvider` + `HttpBraneProvider`: low-level JSON-RPC 2.0 transport abstraction that handles request/response serialization.
   * `PublicClient`: high-level read-only client for chain data (`getBlockByNumber`, `getTransactionByHash`, `eth_call`, etc.) that maps node JSON into Brane’s value types (`BlockHeader`, `Transaction`, `Hash`, `Address`, `Wei`, ...).
+  * `BranePublicClient`: builder/wrapper that constructs a `PublicClient` from a `ChainProfile` with optional RPC URL override (keeps `PublicClient.from(BraneProvider)` intact).
   * `WalletClient` + `DefaultWalletClient`: fills nonce/gas/fees, enforces chainId, signs raw transactions via a provided signer (see `PrivateKeyTransactionSigner`), sends via `eth_sendRawTransaction`, and can poll for receipts.
   * `getLogs(LogFilter)`: fetch historical logs (e.g., ERC-20 `Transfer` events) with block/topic filters.
 
@@ -181,6 +192,13 @@ Runnable demos that exercise `Contract.read`/`write` against a running node.
       -Dbrane.examples.erc20.amount=1
     ```
     Uses `PrivateKeyTransactionSigner` + `DefaultWalletClient` + `ReadWriteContract`.
+  * `io.brane.examples.MultiChainLatestBlockExample` – shows how to build clients from `ChainProfiles`. Always queries Anvil; optionally queries Base Sepolia when an RPC URL is provided:
+
+    ```bash
+    ./gradlew :brane-examples:run --no-daemon \
+      -PmainClass=io.brane.examples.MultiChainLatestBlockExample \
+      -Dbrane.examples.rpc.base-sepolia=https://sepolia.base.org
+    ```
 
 -----
 

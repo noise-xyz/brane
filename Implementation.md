@@ -1,371 +1,224 @@
-## Implementation.md (Step 6 – Historical log fetching)
+````markdown
+## 7. Basic multi-chain / network support (#7)
 
-You can paste this as `Implementation.md` (or append under a new `## Step 6` section).
+Goal: Provide simple, typed “chain profiles” (mainnet, testnets, local) and a small builder that wires a `BraneProvider` + `PublicClient` together from those profiles. This is mostly DX sugar, but it gives us a clean place to hang chainId + fee model in the future.
 
-````md
-# Step 6 – Historical log fetching (ERC-20 Transfer events)
+### 7.1 Add ChainProfile model + predefined profiles
 
-## Goal
+**Files:**
 
-Add **log fetching + ABI-based event decoding** so Brane can:
+- `brane-core/src/main/java/io/brane/core/chain/ChainProfile.java`
+- `brane-core/src/main/java/io/brane/core/chain/ChainProfiles.java`
 
-1. Fetch logs via `eth_getLogs` with:
-   - `fromBlock` / `toBlock`
-   - `address`
-   - `topics` array
-2. Decode those logs into **typed Java event objects** using the existing ABI metadata.
+**Tasks:**
 
-Milestone:
+1. Create a simple immutable `ChainProfile` type:
 
-> “Fetch and decode all ERC-20 `Transfer` events in a block range.”
+   - Package: `io.brane.core.chain`
+   - Fields:
+     - `long chainId`
+     - `String defaultRpcUrl` (nullable)
+     - `boolean supportsEip1559`
+   - Private constructor + `of(long, String, boolean)` factory.
+   - `toString()` for debugging.
 
-We want a DX like:
+2. Create a `ChainProfiles` utility class with common chain presets:
 
-```java
-List<LogEntry> logs = publicClient.getLogs(filter);
-List<TransferEvent> events = contract.decodeEvents("Transfer", logs, TransferEvent.class);
+   - Package: `io.brane.core.chain`
+   - Class is `final` with private constructor, all fields `public static final ChainProfile`.
+
+   Add at least:
+
+   ```java
+   public static final ChainProfile ETH_MAINNET = ChainProfile.of(
+       1L,
+       "https://ethereum.publicnode.com",
+       true
+   );
+
+   public static final ChainProfile ETH_SEPOLIA = ChainProfile.of(
+       11155111L,
+       "https://sepolia.infura.io/v3/YOUR_KEY",
+       true
+   );
+
+   public static final ChainProfile BASE = ChainProfile.of(
+       8453L,
+       "https://mainnet.base.org",
+       true
+   );
+
+   public static final ChainProfile BASE_SEPOLIA = ChainProfile.of(
+       84532L,
+       "https://sepolia.base.org",
+       true
+   );
+
+   public static final ChainProfile ANVIL_LOCAL = ChainProfile.of(
+       31337L,
+       "http://127.0.0.1:8545",
+       true // Anvil behaves like an EIP-1559 chain
+   );
 ````
 
----
+Notes:
 
-## Guardrails / Constraints
+* URLs are “nice defaults” only; callers can override.
+* We store the EIP-1559 flag now even if we don’t fully use it yet.
 
-* **No new dependency from `brane-rpc` → `brane-contract`.**
+### 7.2 Add BranePublicClient wrapper + builder
 
-  * `brane-contract` is allowed to depend on `brane-rpc` models (it already uses `Client`, `PublicClient`, etc.).
-  * `brane-rpc` must remain free of `io.brane.contract.*` imports.
-* Do **not** break Steps 0–5:
+**Files:**
 
-  * `DefaultWalletClient`, `TransactionSigner`, `PrivateKeyTransactionSigner`, `ReadOnlyContract`, `ReadWriteContract`, `Erc20Example`, `Erc20TransferExample` must all continue to compile and tests must remain green.
-* Prefer **additive** changes:
+* `brane-rpc/src/main/java/io/brane/rpc/BranePublicClient.java`
 
-  * Only touch existing code when necessary for integration.
-  * Add new classes / methods where possible instead of rewriting old ones.
-* Keep code style aligned with existing code (immutability bias, small value types, checked domain exceptions, etc.).
+**Tasks:**
 
----
+1. Create `BranePublicClient` in package `io.brane.rpc`:
 
-## 1. RPC log models + `getLogs` in `brane-rpc`
+   * Wraps a `PublicClient` and a `ChainProfile`.
+   * Implements `PublicClient` and delegates all methods to the inner `PublicClient` so it’s drop-in compatible.
 
-### 1.1 Add a `LogEntry` model
-
-Create a log model in `brane-rpc`, e.g.:
-
-* Package: `io.brane.rpc.model` (or wherever existing block/tx models live).
-* Class: `LogEntry`
-
-Include at least:
-
-```java
-public final class LogEntry {
-    private final String address;          // hex-encoded address (0x...)
-    private final List<String> topics;     // topic0..topicN (0x...)
-    private final String data;             // 0x... ABI-encoded data
-
-    private final String blockHash;        // nullable
-    private final String blockNumber;      // hex string, nullable
-    private final String transactionHash;  // nullable
-    private final String transactionIndex; // hex, nullable
-    private final String logIndex;         // hex, nullable
-    private final boolean removed;         // default false
-
-    // constructor, getters, equals/hashCode/toString
-}
-```
-
-Implementation notes:
-
-* Match JSON-RPC `eth_getLogs` shape.
-* Use the same Jackson / JSON mapping strategy as existing RPC models
-  (whatever `brane-rpc` is already using for `Block`, `Transaction`, etc.).
-
-### 1.2 Add a `LogFilter` type
-
-Create a filter type for log queries, e.g.:
-
-* Package: `io.brane.rpc.model`
-* Class: `LogFilter`
-
-Fields:
-
-* `String fromBlock;`
-
-  * E.g. `"0x1"`, `"latest"`, `"earliest"`, or `"0x0"` etc.
-* `String toBlock;`
-* `String address;`
-
-  * The contract address to filter on (ERC-20 address).
-* `List<Object> topics;`
-
-  * Represent the JSON-RPC `topics` array. Support:
-
-    * `null` → wildcard
-    * `String` (single topic)
-    * `List<String>` (OR group, e.g. `[topic1, topic2]`)
-
-Add a helper builder/static factory, e.g.:
-
-```java
-public static LogFilter forSingleAddressAndTopic(
-        String fromBlock,
-        String toBlock,
-        String address,
-        String topic0) {
-    // topics[0] = topic0, rest = null
-}
-```
-
-### 1.3 Implement `PublicClient.getLogs`
-
-Extend `io.brane.rpc.PublicClient` with a **read-only** method:
-
-```java
-public List<LogEntry> getLogs(LogFilter filter) throws RpcException
-```
-
-Behavior:
-
-* Build a JSON filter object:
-
-  ```json
-  {
-    "fromBlock": "0x...",
-    "toBlock": "0x...",
-    "address": "0x...",
-    "topics": [ "0x...", null, ... ]
-  }
-  ```
-
-* Call `eth_getLogs` via the underlying `BraneProvider`.
-
-* Decode the result into `List<LogEntry>`.
-
-Error handling:
-
-* If the node returns the typical `"query returned more than X results"` error (`-32005` or similar),
-  wrap it into a **clear** `RpcException` message (or a dedicated `BraneRpcException` if that’s existing style),
-  e.g. `"eth_getLogs: block range too large"`.
-
-Testing:
-
-* Add `PublicClientLogsTest` (or extend an existing test suite) that:
-
-  * Uses a fake `BraneProvider` to capture the RPC method name + params.
-  * Verifies:
-
-    * Correct JSON shape for `eth_getLogs` requests.
-    * Proper decoding of a small sample log response into `LogEntry`.
-    * Clear error message when the provider returns an error for `eth_getLogs`.
-
----
-
-## 2. ABI-based event decoding in `brane-contract`
-
-We already have:
-
-* `Abi` parsing JSON ABI.
-* `eventTopic(String)` helper for `topic0`.
-* Internal ABI machinery (`InternalAbi`) for encoding/decoding.
-
-Now we want to reuse that to decode logs.
-
-### 2.1 Add event decoding helper to `Abi` / `InternalAbi`
-
-In `io.brane.contract`:
-
-* Add methods (or a small internal type) to decode events from a single `LogEntry`.
-
-Example shape (adjust to fit existing patterns):
-
-```java
-public final class Abi {
-
-    // Existing stuff...
-
-    public <T> T decodeEvent(
-            String eventName,
-            LogEntry log,
-            Class<T> eventType) throws AbiDecodingException {
-        // 1. Find the event in the ABI by name
-        // 2. Compute topic0 via eventTopic(signature)
-        // 3. Check log.address and log.topics[0] match
-        // 4. Decode indexed + non-indexed arguments via InternalAbi
-        // 5. Map decoded values into eventType (POJO or record)
-    }
-
-    public <T> List<T> decodeEvents(
-            String eventName,
-            List<LogEntry> logs,
-            Class<T> eventType) throws AbiDecodingException {
-        // map over logs, filter by address + topic0, decode each
-    }
-}
-```
-
-Implementation notes:
-
-* **Address filtering:** optional but nice. In most cases, the caller will already filter by address in `eth_getLogs`, but filtering again is a cheap guard.
-* **Topic filtering:**
-
-  * Use `Abi.eventTopic("Transfer(address,address,uint256)")` internally
-  * Compare with `log.getTopics().get(0)`
-* **Mapping into `eventType`:**
-
-  * For this step, you can assume `eventType` is a **record** or simple POJO in the example
-    whose constructor parameters match the decoded event arguments in order.
-  * For ERC-20 `Transfer`, that means: `from`, `to`, `value` (plus optionally `txHash`, `blockNumber` if you choose to include metadata).
-* Throw `AbiDecodingException` with a clear message when:
-
-  * The event name is not found in the ABI.
-  * Topics/data length doesn’t match expectations.
-  * Mapping into `eventType` fails.
-
-### 2.2 Expose event decoding via `ReadOnlyContract` / `ReadWriteContract`
-
-Extend the contract facades to make event decoding ergonomic.
-
-In `ReadOnlyContract` (and inherited by `ReadWriteContract`):
-
-```java
-public <T> List<T> decodeEvents(
-        String eventName,
-        List<LogEntry> logs,
-        Class<T> eventType) throws AbiDecodingException {
-    return abi.decodeEvents(eventName, logs, eventType);
-}
-```
-
-* No RPC calls here — this is purely a helper on top of the ABI and log data.
-* Keep it symmetrical with how function calls are encoded/decoded.
-
-Testing:
-
-* Add/extend a test class, e.g. `AbiEventDecodingTest` or `ReadOnlyContractEventTest`, to:
-
-  * Build a fake ERC-20 ABI containing a `Transfer` event.
-  * Construct a synthetic `LogEntry` with:
-
-    * `topics[0] = eventTopic("Transfer(address,address,uint256)")`
-    * indexed topic encodings for `from` and `to`
-    * data encoding for `value`
-  * Verify `decodeEvents("Transfer", List.of(log), TransferEvent.class)` returns the expected values.
-
----
-
-## 3. Example: ERC-20 Transfer event history
-
-Add a small example to `brane-examples` that ties everything together.
-
-### 3.1 `Erc20TransferLogExample`
-
-Create:
-
-* `brane-examples/src/main/java/io/brane/examples/Erc20TransferLogExample.java`
-
-Behavior:
-
-1. Read system properties:
-
-   ```text
-   -Dbrane.examples.erc20.rpc=<RPC URL>
-   -Dbrane.examples.erc20.contract=<ERC-20 contract address>
-   -Dbrane.examples.erc20.fromBlock=<hex or "latest - N">
-   -Dbrane.examples.erc20.toBlock=<hex or "latest">
-   ```
-
-   For simplicity, you can require hex strings, e.g. `0x1`, `0x3`, etc.
-
-2. Construct:
+   Sketch:
 
    ```java
-   BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-   PublicClient publicClient = PublicClient.from(provider);
-   Abi abi = Abi.fromJson(ERC20_ABI_WITH_TRANSFER);
-   ReadOnlyContract contract = ReadOnlyContract.from(tokenAddress, abi, publicClient);
-   ```
+   public final class BranePublicClient implements PublicClient {
+       private final PublicClient delegate;
+       private final ChainProfile profile;
 
-   Make sure the ERC-20 ABI for this example includes the `Transfer` event definition.
+       private BranePublicClient(PublicClient delegate, ChainProfile profile) {
+           this.delegate = delegate;
+           this.profile = profile;
+       }
 
-3. Build a `LogFilter`:
+       public ChainProfile profile() {
+           return profile;
+       }
 
-   ```java
-   LogFilter filter =
-       LogFilter.forSingleAddressAndTopic(
-           fromBlock,
-           toBlock,
-           tokenAddress,
-           Abi.eventTopic("Transfer(address,address,uint256)").value());
-   ```
-
-4. Fetch logs:
-
-   ```java
-   List<LogEntry> logs = publicClient.getLogs(filter);
-   ```
-
-5. Define a small `TransferEvent` record inside the example:
-
-   ```java
-   public record TransferEvent(Address from, Address to, BigInteger value) {}
-   ```
-
-6. Decode:
-
-   ```java
-   List<TransferEvent> events =
-       contract.decodeEvents("Transfer", logs, TransferEvent.class);
-   ```
-
-7. Print them:
-
-   ```java
-   for (TransferEvent e : events) {
-       System.out.println(
-           "Transfer from " + e.from()
-               + " to " + e.to()
-               + " value " + e.value());
+       // delegate PublicClient methods to `delegate`...
    }
    ```
 
-A typical run command (assuming Anvil and your `BraneToken` example):
+2. Add a nested `Builder` (or separate `BranePublicClientBuilder`) with:
 
-```bash
-./gradlew :brane-examples:run --no-daemon \
-  -PmainClass=io.brane.examples.Erc20TransferLogExample \
-  -Dbrane.examples.erc20.rpc=http://127.0.0.1:8545 \
-  -Dbrane.examples.erc20.contract=0xa513E6E4b8f2a923D98304ec87F64353C4D5C853 \
-  -Dbrane.examples.erc20.fromBlock=0x0 \
-  -Dbrane.examples.erc20.toBlock=latest
+   * Fields:
+
+     * `ChainProfile profile` (required)
+     * `String rpcUrlOverride` (optional)
+
+   * Static entry point:
+
+     ```java
+     public static Builder forChain(ChainProfile profile)
+     ```
+
+   * Builder methods:
+
+     ```java
+     public Builder withRpcUrl(String rpcUrl); // override default
+     public BranePublicClient build();
+     ```
+
+   * `build()` behavior:
+
+     * Determine `rpcUrl`:
+
+       ```java
+       final String rpcUrl = rpcUrlOverride != null
+           ? rpcUrlOverride
+           : profile.defaultRpcUrl;
+       ```
+
+       If `rpcUrl` is `null`, throw `IllegalStateException` with a clear message (“No RPC URL configured for chain X; either configure defaultRpcUrl or call withRpcUrl(…)”).
+
+     * Create a `BraneProvider` using the existing HTTP provider:
+
+       ```java
+       BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
+       ```
+
+       (Don’t change the existing `HttpBraneProvider` API.)
+
+     * Build a `PublicClient` from the provider via the existing factory:
+
+       ```java
+       PublicClient publicClient = PublicClient.from(provider);
+       ```
+
+     * Return a new `BranePublicClient(publicClient, profile)`.
+
+3. Ensure no existing code is broken:
+
+   * Do **not** remove or change `PublicClient.from(BraneProvider)`.
+   * `BranePublicClient` is additive, not a replacement.
+
+### 7.3 Usage: client creation from chain profiles
+
+We want the following usage pattern to compile and work:
+
+```java
+import static io.brane.core.chain.ChainProfiles.*;
+
+BranePublicClient client = BranePublicClient
+    .forChain(ChainProfiles.ETH_SEPOLIA)
+    .withRpcUrl("https://sepolia.infura.io/v3/YOUR_KEY")
+    .build();
 ```
 
-You should see the `Transfer` events emitted by:
+or, when the default URL is acceptable:
 
-* The constructor mint
-* Any `transfer` calls you made via `Erc20TransferExample`
+```java
+BranePublicClient client = BranePublicClient
+    .forChain(ChainProfiles.ANVIL_LOCAL)
+    .build();
+```
 
----
+### 7.4 Tests for ChainProfiles + builder
 
-## 4. Verification checklist
+**Files:**
 
-After implementing Step 6:
+* `brane-core/src/test/java/io/brane/core/chain/ChainProfilesTest.java`
+* `brane-rpc/src/test/java/io/brane/rpc/BranePublicClientBuilderTest.java`
 
-1. All tests remain green:
+**Tasks:**
 
-   ```bash
-   ./gradlew :brane-rpc:test --no-daemon
-   ./gradlew :brane-contract:test --no-daemon
-   ./gradlew clean check --no-daemon
-   ```
+1. **ChainProfilesTest**
 
-2. On a running Anvil + `BraneToken` deployment, you can:
+   * Assert that:
 
-   * Use `Erc20TransferExample` to send a few transfers.
-   * Use `Erc20TransferLogExample` to:
+     ```java
+     ETH_MAINNET.chainId == 1L
+     ETH_SEPOLIA.chainId == 11155111L
+     BASE.chainId == 8453L
+     BASE_SEPOLIA.chainId == 84532L
+     ANVIL_LOCAL.chainId == 31337L
+     ```
 
-     * Fetch logs over a block range.
-     * Decode them into `TransferEvent` objects.
-     * Print them with sensible values.
+   * Assert that `supportsEip1559` is `true` for all of them.
 
-At that point Step 6 is functionally complete.
+   * Assert that `defaultRpcUrl` is non-null for all the profiles we set defaults for.
+
+2. **BranePublicClientBuilderTest**
+
+   * Use a fake provider or stub HTTP client if needed, or just rely on the existing `HttpBraneProvider.builder(rpcUrl).build()` as long as it doesn’t actually hit the network in tests.
+   * Test that:
+
+     * `BranePublicClient.forChain(ChainProfiles.ANVIL_LOCAL).build()`:
+
+       * Does not throw.
+       * Returns a `BranePublicClient` whose `profile().chainId` is `31337`.
+
+     * `BranePublicClient.forChain(ChainProfile.of(1234L, null, true)).build()`:
+
+       * Throws `IllegalStateException` because there is no `defaultRpcUrl` and no override.
+
+     * `BranePublicClient.forChain(ChainProfiles.ETH_SEPOLIA).withRpcUrl("https://example.com").build()`:
+
+       * Uses the override instead of the default (you can indirectly assert this by checking that no exception is thrown and the builder doesn’t complain about missing RPC URL).
+
+### 7.5 Optional: update docs / examples
+
+* Add a short code snippet to the README or a comment in an example showing how to create a `BranePublicClient` from a chain profile rather than manually wiring the provider.
+* Do **not** change the existing example wiring yet; keep it simple and backward-compatible for now.
 
 ````

@@ -48,4 +48,8 @@ tasks.named('run') {
             propOrSystem('brane.examples.erc20.fromBlock', null)
     systemProperty 'brane.examples.erc20.toBlock',
             propOrSystem('brane.examples.erc20.toBlock', null)
+
+    // Multi-chain example: Base Sepolia override
+    systemProperty 'brane.examples.rpc.base-sepolia',
+            propOrSystem('brane.examples.rpc.base-sepolia', null)
 }
