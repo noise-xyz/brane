@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.brane.core.error.ChainMismatchException;
+import io.brane.core.error.InvalidSenderException;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
@@ -85,6 +86,38 @@ class DefaultWalletClientTest {
                         new HexData("0x"));
 
         assertThrows(ChainMismatchException.class, () -> wallet.sendTransaction(request));
+    }
+
+    @Test
+    void invalidSenderRaisesInvalidSenderException() {
+        final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
+        final FakePublicClient publicClient = new FakePublicClient();
+
+        final FakeBraneProvider provider =
+                new FakeBraneProvider()
+                        .respond("eth_chainId", "0x1")
+                        .respond("eth_getTransactionCount", "0x0")
+                        .respond("eth_estimateGas", "0x5208")
+                        .respond("eth_gasPrice", "0x3b9aca00")
+                        .respondError("eth_sendRawTransaction", -32000, "invalid sender");
+
+        DefaultWalletClient wallet =
+                DefaultWalletClient.from(
+                        provider, publicClient, signer.asSigner(), signer.address(), 1L);
+
+        TransactionRequest request =
+                new TransactionRequest(
+                        signer.address(),
+                        Optional.of(new Address("0x" + "2".repeat(40))),
+                        Optional.of(Wei.of(0)),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty(),
+                        Optional.empty(),
+                        new HexData("0x"));
+
+        assertThrows(InvalidSenderException.class, () -> wallet.sendTransaction(request));
     }
 
     @Test
@@ -200,6 +233,12 @@ class DefaultWalletClientTest {
 
         FakeBraneProvider respond(final String method, final Object result) {
             responses.add(new JsonRpcResponse("2.0", result, null, "1"));
+            methods.add(method);
+            return this;
+        }
+
+        FakeBraneProvider respondError(final String method, final int code, final String message) {
+            responses.add(new JsonRpcResponse("2.0", null, new JsonRpcError(code, message, null), "1"));
             methods.add(method);
             return this;
         }

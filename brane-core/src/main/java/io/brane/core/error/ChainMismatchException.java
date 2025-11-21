@@ -3,7 +3,7 @@ package io.brane.core.error;
 /**
  * Thrown when the connected chainId does not match the expected one.
  */
-public final class ChainMismatchException extends BraneException {
+public final class ChainMismatchException extends TxnException {
 
     private final long expected;
     private final long actual;

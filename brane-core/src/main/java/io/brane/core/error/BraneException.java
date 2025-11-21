@@ -6,9 +6,9 @@ package io.brane.core.error;
 public sealed class BraneException extends RuntimeException
         permits AbiDecodingException,
                 AbiEncodingException,
-                ChainMismatchException,
                 RevertException,
-                RpcException {
+                RpcException,
+                TxnException {
 
     public BraneException(final String message) {
         super(message);

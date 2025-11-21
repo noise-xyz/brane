@@ -141,6 +141,7 @@ Defines the core types and the error hierarchy:
   * `io.brane.core.types` – reusable value objects (`Address`, `Hash`, `HexData`, `Wei`).
   * `io.brane.core.model` – domain DTOs (`Transaction`, `TransactionReceipt`, `LogEntry`, `TransactionRequest`, `ChainProfile`, etc.).
   * `io.brane.core.chain` – typed chain profiles (`ChainProfiles`) capturing chainId, default RPC URL, and EIP-1559 support.
+  * Error diagnostics: `RpcException` helpers for `isBlockRangeTooLarge()`/`isFilterNotFound()`; `TxnException` helpers for `isInvalidSender()`/`isChainIdMismatch()`.
 
 ### `brane-rpc`
 
@@ -150,6 +151,7 @@ Provides the JSON-RPC transport and public client API:
   * `BraneProvider` + `HttpBraneProvider`: low-level JSON-RPC 2.0 transport abstraction that handles request/response serialization.
   * `PublicClient`: high-level read-only client for chain data (`getBlockByNumber`, `getTransactionByHash`, `eth_call`, etc.) that maps node JSON into Brane’s value types (`BlockHeader`, `Transaction`, `Hash`, `Address`, `Wei`, ...).
   * `BranePublicClient`: builder/wrapper that constructs a `PublicClient` from a `ChainProfile` with optional RPC URL override (keeps `PublicClient.from(BraneProvider)` intact).
+  * Provider errors are wrapped in `RpcException` with method context; wallet send errors surface `TxnException` subclasses such as `InvalidSenderException`.
   * `WalletClient` + `DefaultWalletClient`: fills nonce/gas/fees, enforces chainId, signs raw transactions via a provided signer (see `PrivateKeyTransactionSigner`), sends via `eth_sendRawTransaction`, and can poll for receipts.
   * `getLogs(LogFilter)`: fetch historical logs (e.g., ERC-20 `Transfer` events) with block/topic filters.
 
@@ -192,6 +194,27 @@ Runnable demos that exercise `Contract.read`/`write` against a running node.
       -Dbrane.examples.erc20.amount=1
     ```
     Uses `PrivateKeyTransactionSigner` + `DefaultWalletClient` + `ReadWriteContract`.
+  * `io.brane.examples.MultiChainLatestBlockExample` – shows how to build clients from `ChainProfiles`. Always queries Anvil; optionally queries Base Sepolia when an RPC URL is provided:
+
+    ```bash
+    ./gradlew :brane-examples:run --no-daemon \
+      -PmainClass=io.brane.examples.MultiChainLatestBlockExample \
+      -Dbrane.examples.rpc.base-sepolia=https://sepolia.base.org
+    ```
+  * `io.brane.examples.ErrorDiagnosticsExample` – exercises the error model and diagnostics:
+
+    Helpers only (no network):
+    ```bash
+    ./gradlew :brane-examples:run --no-daemon \
+      -PmainClass=io.brane.examples.ErrorDiagnosticsExample \
+      -Pbrane.examples.mode=helpers
+    ```
+    RPC error demo (uses a bad URL to show `RpcException`):
+    ```bash
+    ./gradlew :brane-examples:run --no-daemon \
+      -PmainClass=io.brane.examples.ErrorDiagnosticsExample \
+      -Pbrane.examples.mode=rpc-error
+    ```
   * `io.brane.examples.MultiChainLatestBlockExample` – shows how to build clients from `ChainProfiles`. Always queries Anvil; optionally queries Base Sepolia when an RPC URL is provided:
 
     ```bash

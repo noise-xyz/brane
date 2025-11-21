@@ -2,6 +2,7 @@ package io.brane.rpc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.brane.core.error.ChainMismatchException;
+import io.brane.core.error.InvalidSenderException;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.LogEntry;
 import io.brane.core.model.TransactionReceipt;
@@ -95,8 +96,16 @@ public final class DefaultWalletClient implements WalletClient {
                                 valueParts.data);
 
         final String signedHex = signer.sign(rawTx);
-        final String txHash =
-                callRpc("eth_sendRawTransaction", List.of(signedHex), String.class, null);
+        final String txHash;
+        try {
+            txHash = callRpc("eth_sendRawTransaction", List.of(signedHex), String.class, null);
+        } catch (RpcException e) {
+            if (e.getMessage() != null
+                    && e.getMessage().toLowerCase().contains("invalid sender")) {
+                throw new InvalidSenderException(e.getMessage(), e);
+            }
+            throw e;
+        }
         return new Hash(txHash);
     }
 

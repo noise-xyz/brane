@@ -52,4 +52,8 @@ tasks.named('run') {
     // Multi-chain example: Base Sepolia override
     systemProperty 'brane.examples.rpc.base-sepolia',
             propOrSystem('brane.examples.rpc.base-sepolia', null)
+
+    // Error diagnostics example
+    systemProperty 'brane.examples.mode',
+            propOrSystem('brane.examples.mode', 'helpers')
 }

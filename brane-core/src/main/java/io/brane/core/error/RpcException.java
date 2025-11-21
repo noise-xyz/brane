@@ -22,4 +22,23 @@ public final class RpcException extends BraneException {
     public String data() {
         return data;
     }
+
+    public boolean isBlockRangeTooLarge() {
+        final String msg = getMessage();
+        final String d = data;
+        return (msg != null && msg.toLowerCase().contains("block range"))
+                || (d != null && d.toLowerCase().contains("block range"));
+    }
+
+    public boolean isFilterNotFound() {
+        final String msg = getMessage();
+        final String d = data;
+        return (msg != null && msg.toLowerCase().contains("filter not found"))
+                || (d != null && d.toLowerCase().contains("filter not found"));
+    }
+
+    @Override
+    public String toString() {
+        return "RpcException{code=" + code + ", message=" + getMessage() + ", data=" + data + "}";
+    }
 }

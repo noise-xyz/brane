@@ -44,10 +44,14 @@ public final class HttpBraneProvider implements BraneProvider {
 
         final HttpResponse<String> response = execute(httpRequest);
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            throw new RpcException(-32001, "HTTP error: " + response.statusCode(), response.body(), null);
+            throw new RpcException(
+                    -32001,
+                    "HTTP error for method " + method + ": " + response.statusCode(),
+                    response.body(),
+                    null);
         }
 
-        final JsonRpcResponse rpcResponse = parseResponse(response.body());
+        final JsonRpcResponse rpcResponse = parseResponse(method, response.body());
         if (rpcResponse.hasError()) {
             final JsonRpcError err = rpcResponse.error();
             throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), null);
@@ -59,7 +63,8 @@ public final class HttpBraneProvider implements BraneProvider {
         try {
             return mapper.writeValueAsString(request);
         } catch (JsonProcessingException e) {
-            throw new RpcException(-32700, "Unable to serialize JSON-RPC request", null, e);
+            throw new RpcException(
+                    -32700, "Unable to serialize JSON-RPC request for " + request.method(), null, e);
         }
     }
 
@@ -82,17 +87,18 @@ public final class HttpBraneProvider implements BraneProvider {
             return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RpcException(-32000, "Network error", null, e);
+            throw new RpcException(-32000, "Network error during JSON-RPC call", null, e);
         } catch (IOException e) {
-            throw new RpcException(-32000, "Network error", null, e);
+            throw new RpcException(-32000, "Network error during JSON-RPC call", null, e);
         }
     }
 
-    private JsonRpcResponse parseResponse(final String body) throws RpcException {
+    private JsonRpcResponse parseResponse(final String method, final String body) throws RpcException {
         try {
             return mapper.readValue(body, JsonRpcResponse.class);
         } catch (JsonProcessingException e) {
-            throw new RpcException(-32700, "Unable to parse JSON-RPC response", body, e);
+            throw new RpcException(
+                    -32700, "Unable to parse JSON-RPC response for method " + method, body, e);
         }
     }
 
