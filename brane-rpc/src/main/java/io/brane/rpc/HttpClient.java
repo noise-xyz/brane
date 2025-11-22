@@ -48,18 +48,15 @@ public final class HttpClient implements Client {
     }
 
     private BigInteger convertToBigInteger(final Object value) {
-        if (value instanceof BigInteger bigInteger) {
-            return bigInteger;
-        }
-        if (value instanceof Number number) {
-            return BigInteger.valueOf(number.longValue());
-        }
-        if (value instanceof String s) {
-            if (s.startsWith("0x") || s.startsWith("0X")) {
-                return new BigInteger(s.substring(2), 16);
-            }
-            return new BigInteger(s, 10);
-        }
-        throw new IllegalArgumentException("Cannot convert value to BigInteger: " + value);
+        return switch (value) {
+            case BigInteger bigInteger -> bigInteger;
+            case Number number -> BigInteger.valueOf(number.longValue());
+            case String s when s.startsWith("0x") || s.startsWith("0X") ->
+                    new BigInteger(s.substring(2), 16);
+            case String s -> new BigInteger(s, 10);
+            case null -> throw new IllegalArgumentException("Cannot convert value to BigInteger: null");
+            default -> throw new IllegalArgumentException(
+                    "Cannot convert value to BigInteger: " + value);
+        };
     }
 }
