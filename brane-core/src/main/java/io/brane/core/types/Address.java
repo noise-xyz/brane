@@ -1,6 +1,6 @@
 package io.brane.core.types;
 
-import io.brane.internal.web3j.utils.Numeric;
+import io.brane.primitives.Hex;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -20,13 +20,13 @@ public record Address(String value) {
     }
 
     public byte[] toBytes() {
-        return Numeric.hexStringToByteArray(value);
+        return Hex.decode(value);
     }
 
     public static Address fromBytes(final byte[] bytes) {
         if (bytes == null || bytes.length != 20) {
             throw new IllegalArgumentException("Address must be exactly 20 bytes");
         }
-        return new Address("0x" + Numeric.toHexStringNoPrefix(bytes));
+        return new Address("0x" + Hex.encodeNoPrefix(bytes));
     }
 }
