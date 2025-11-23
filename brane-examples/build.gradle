@@ -56,4 +56,8 @@ tasks.named('run') {
     // Error diagnostics example
     systemProperty 'brane.examples.mode',
             propOrSystem('brane.examples.mode', 'helpers')
+
+    // TxBuilder integration test
+    systemProperty 'brane.examples.pk',
+            propOrSystem('brane.examples.pk', null)
 }

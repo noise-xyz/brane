@@ -58,16 +58,15 @@ public final class LegacyBuilder implements TxBuilder<LegacyBuilder> {
     @Override
     public TransactionRequest build() {
         validateTarget();
-        if (gasPrice == null) {
-            throw new BraneTxBuilderException("Legacy transaction requires gasPrice");
-        }
-        return new TransactionRequest(from, to, value, gasLimit, gasPrice, null, null, nonce, data);
+
+        return new TransactionRequest(from, to, value, gasLimit, gasPrice, null, null, nonce, data, false);
     }
 
     private void validateTarget() {
         if (to == null && data == null) {
             throw new BraneTxBuilderException("Transaction must have a recipient or data");
         }
+
         if (to == null && data != null && data.value().isBlank()) {
             throw new BraneTxBuilderException("Contract creation requires non-empty data");
         }

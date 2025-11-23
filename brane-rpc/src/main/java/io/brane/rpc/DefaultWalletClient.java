@@ -213,8 +213,7 @@ public final class DefaultWalletClient implements WalletClient {
         final BigInteger value = request.value() != null ? request.value().value() : BigInteger.ZERO;
         final String data = request.data() != null ? request.data().value() : "0x";
 
-        final boolean has1559 =
-                request.maxFeePerGas() != null || request.maxPriorityFeePerGas() != null;
+        final boolean has1559 = request.isEip1559();
 
         if (has1559) {
             final BigInteger maxFee =

@@ -64,15 +64,13 @@ public final class Eip1559Builder implements TxBuilder<Eip1559Builder> {
     @Override
     public TransactionRequest build() {
         validateTarget();
-        if (maxFeePerGas == null || maxPriorityFeePerGas == null) {
-            throw new BraneTxBuilderException(
-                    "EIP-1559 transaction requires maxFeePerGas and maxPriorityFeePerGas");
-        }
+
         return new TransactionRequest(
-                from, to, value, gasLimit, null, maxPriorityFeePerGas, maxFeePerGas, nonce, data);
+                from, to, value, gasLimit, null, maxPriorityFeePerGas, maxFeePerGas, nonce, data, true);
     }
 
     private void validateTarget() {
+
         if (to == null && data == null) {
             throw new BraneTxBuilderException("Transaction must have a recipient or data");
         }

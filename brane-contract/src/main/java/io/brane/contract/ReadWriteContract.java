@@ -37,7 +37,7 @@ public final class ReadWriteContract extends ReadOnlyContract {
                 TxBuilder.legacy()
                         .to(address())
                         .value(Wei.of(0))
-                        .gasPrice(Wei.of(1))
+
                         .data(new HexData(fnCall.data()))
                         .build();
         return walletClient.sendTransaction(request);
@@ -53,7 +53,7 @@ public final class ReadWriteContract extends ReadOnlyContract {
                 TxBuilder.legacy()
                         .to(address())
                         .value(Wei.of(0))
-                        .gasPrice(Wei.of(1))
+
                         .data(new HexData(fnCall.data()))
                         .build();
         return walletClient.sendTransactionAndWait(request, timeoutMillis, pollIntervalMillis);

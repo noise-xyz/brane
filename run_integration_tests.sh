@@ -135,4 +135,12 @@ echo "$OUT"
 if ! echo "$OUT" | grep -q "Anvil latest block"; then echo "FAILED: MultiChainLatestBlockExample (Anvil)"; exit 1; fi
 if ! echo "$OUT" | grep -q "Base Sepolia latest block"; then echo "FAILED: MultiChainLatestBlockExample (Base Sepolia)"; exit 1; fi
 
+echo "Running TxBuilderIntegrationTest..."
+OUT=$(./gradlew :brane-examples:run --no-daemon \
+  -PmainClass=io.brane.examples.TxBuilderIntegrationTest \
+  -Dbrane.examples.rpc=$RPC_URL \
+  -Dbrane.examples.pk=$PRIVATE_KEY)
+echo "$OUT"
+if ! echo "$OUT" | grep -q "TxBuilder Integration Tests Passed!"; then echo "FAILED: TxBuilderIntegrationTest"; exit 1; fi
+
 echo "All Tests and Examples Completed Successfully."

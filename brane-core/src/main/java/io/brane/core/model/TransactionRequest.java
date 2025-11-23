@@ -14,7 +14,8 @@ public record TransactionRequest(
         Wei maxPriorityFeePerGas,
         Wei maxFeePerGas,
         Long nonce,
-        HexData data) {
+        HexData data,
+        boolean isEip1559) {
 
     public Optional<Address> toOpt() {
         return Optional.ofNullable(to);

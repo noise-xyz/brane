@@ -23,15 +23,17 @@ class TxBuilderTest {
     }
 
     @Test
-    void requiresLegacyGasPrice() {
-        assertThrows(BraneTxBuilderException.class, () -> TxBuilder.legacy().to(new Address("0x1")).build());
+    void allowsMissingLegacyGasPriceForAutoFill() {
+        TransactionRequest request = TxBuilder.legacy().to(new Address("0x" + "0".repeat(40))).build();
+        assertNull(request.gasPrice());
     }
 
     @Test
-    void requiresEipFees() {
-        assertThrows(
-                BraneTxBuilderException.class,
-                () -> TxBuilder.eip1559().to(new Address("0x1")).maxFeePerGas(Wei.of(1)).build());
+    void allowsMissingEipFeesForAutoFill() {
+        TransactionRequest request =
+                TxBuilder.eip1559().to(new Address("0x" + "0".repeat(40))).maxFeePerGas(Wei.of(1)).build();
+        assertEquals(Wei.of(1), request.maxFeePerGas());
+        assertNull(request.maxPriorityFeePerGas());
     }
 
     @Test

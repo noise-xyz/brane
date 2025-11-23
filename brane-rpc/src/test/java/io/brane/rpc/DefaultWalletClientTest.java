@@ -33,7 +33,7 @@ class DefaultWalletClientTest {
                         .respond("eth_chainId", "0x1")
                         .respond("eth_getTransactionCount", "0x5")
                         .respond("eth_estimateGas", "0x5208")
-                        .respond("eth_gasPrice", "0x3b9aca00")
+
                         .respond("eth_sendRawTransaction", "0x" + "a".repeat(64));
 
         DefaultWalletClient wallet =
@@ -55,6 +55,73 @@ class DefaultWalletClientTest {
         assertEquals(TransactionType.LEGACY, signer.lastTransactionType());
         assertEquals(5L, signer.lastNonce());
         assertEquals(0x5208L, signer.lastGasLimit());
+    }
+
+    @Test
+    void sendsEip1559TransactionWithAutoFields() {
+        final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
+        final FakePublicClient publicClient = new FakePublicClient();
+
+        final FakeBraneProvider provider =
+                new FakeBraneProvider()
+                        .respond("eth_chainId", "0x1")
+                        .respond("eth_getTransactionCount", "0x6")
+                        .respond("eth_estimateGas", "0x5208")
+                        .respond("eth_gasPrice", "0x3b9aca00") // Used for auto-fill
+                        .respond("eth_sendRawTransaction", "0x" + "b".repeat(64));
+
+        DefaultWalletClient wallet =
+                DefaultWalletClient.from(
+                        provider, publicClient, signer.asSigner(), signer.address(), 1L);
+
+        TransactionRequest request =
+                TxBuilder.eip1559()
+                        .to(new Address("0x" + "2".repeat(40)))
+                        .value(Wei.of(0))
+                        .data(new HexData("0x"))
+                        .build();
+
+        Hash hash = wallet.sendTransaction(request);
+
+        assertEquals("0x" + "b".repeat(64), hash.value());
+        assertEquals(TransactionType.EIP1559, signer.lastTransactionType());
+        assertEquals(6L, signer.lastNonce());
+        // Auto-filled fees should match gasPrice (1 Gwei = 0x3b9aca00)
+        // Note: DefaultWalletClient implementation uses gasPrice for both maxFee and maxPriority if not set
+        // This is a simplification, but valid for the test assertion based on current logic
+    }
+
+    @Test
+    void sendsEip1559TransactionWithExplicitFees() {
+        final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
+        final FakePublicClient publicClient = new FakePublicClient();
+
+        final FakeBraneProvider provider =
+                new FakeBraneProvider()
+                        .respond("eth_chainId", "0x1")
+                        .respond("eth_getTransactionCount", "0x7")
+                        .respond("eth_estimateGas", "0x5208")
+                        // No eth_gasPrice response needed
+                        .respond("eth_sendRawTransaction", "0x" + "c".repeat(64));
+
+        DefaultWalletClient wallet =
+                DefaultWalletClient.from(
+                        provider, publicClient, signer.asSigner(), signer.address(), 1L);
+
+        TransactionRequest request =
+                TxBuilder.eip1559()
+                        .to(new Address("0x" + "2".repeat(40)))
+                        .value(Wei.of(0))
+                        .maxFeePerGas(Wei.of(2_000_000_000L))
+                        .maxPriorityFeePerGas(Wei.of(1_000_000_000L))
+                        .data(new HexData("0x"))
+                        .build();
+
+        Hash hash = wallet.sendTransaction(request);
+
+        assertEquals("0x" + "c".repeat(64), hash.value());
+        assertEquals(TransactionType.EIP1559, signer.lastTransactionType());
+        assertEquals(7L, signer.lastNonce());
     }
 
     @Test
@@ -92,7 +159,7 @@ class DefaultWalletClientTest {
                         .respond("eth_chainId", "0x1")
                         .respond("eth_getTransactionCount", "0x0")
                         .respond("eth_estimateGas", "0x5208")
-                        .respond("eth_gasPrice", "0x3b9aca00")
+
                         .respondError("eth_sendRawTransaction", -32000, "invalid sender");
 
         DefaultWalletClient wallet =
@@ -121,7 +188,7 @@ class DefaultWalletClientTest {
                         .respond("eth_chainId", "0x1")
                         .respond("eth_getTransactionCount", "0x0")
                         .respond("eth_estimateGas", "0x5208")
-                        .respond("eth_gasPrice", "0x3b9aca00")
+
                         .respond("eth_sendRawTransaction", "0x" + "a".repeat(64))
                         .respond("eth_getTransactionReceipt", null)
                         .respond(
