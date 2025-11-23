@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.brane.core.builder.TxBuilder;
 import io.brane.core.error.ChainMismatchException;
 import io.brane.core.error.InvalidSenderException;
 import io.brane.core.error.RpcException;
@@ -18,7 +19,6 @@ import io.brane.internal.web3j.crypto.transaction.type.TransactionType;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.LinkedHashMap;
-import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class DefaultWalletClientTest {
@@ -41,16 +41,13 @@ class DefaultWalletClientTest {
                         provider, publicClient, signer.asSigner(), signer.address(), 1L);
 
         TransactionRequest request =
-                new TransactionRequest(
-                        signer.address(),
-                        Optional.of(new Address("0x" + "2".repeat(40))),
-                        Optional.of(Wei.of(0)),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        new HexData("0x"));
+                TxBuilder.legacy()
+                        .from(signer.address())
+                        .to(new Address("0x" + "2".repeat(40)))
+                        .value(Wei.of(0))
+                        .gasPrice(Wei.of(1_000_000_000L))
+                        .data(new HexData("0x"))
+                        .build();
 
         Hash hash = wallet.sendTransaction(request);
 
@@ -74,16 +71,13 @@ class DefaultWalletClientTest {
                         provider, publicClient, signer.asSigner(), signer.address(), 1L);
 
         TransactionRequest request =
-                new TransactionRequest(
-                        signer.address(),
-                        Optional.of(new Address("0x" + "2".repeat(40))),
-                        Optional.of(Wei.of(0)),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        new HexData("0x"));
+                TxBuilder.legacy()
+                        .from(signer.address())
+                        .to(new Address("0x" + "2".repeat(40)))
+                        .value(Wei.of(0))
+                        .gasPrice(Wei.of(1_000_000_000L))
+                        .data(new HexData("0x"))
+                        .build();
 
         assertThrows(ChainMismatchException.class, () -> wallet.sendTransaction(request));
     }
@@ -106,16 +100,13 @@ class DefaultWalletClientTest {
                         provider, publicClient, signer.asSigner(), signer.address(), 1L);
 
         TransactionRequest request =
-                new TransactionRequest(
-                        signer.address(),
-                        Optional.of(new Address("0x" + "2".repeat(40))),
-                        Optional.of(Wei.of(0)),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        new HexData("0x"));
+                TxBuilder.legacy()
+                        .from(signer.address())
+                        .to(new Address("0x" + "2".repeat(40)))
+                        .value(Wei.of(0))
+                        .gasPrice(Wei.of(1_000_000_000L))
+                        .data(new HexData("0x"))
+                        .build();
 
         assertThrows(InvalidSenderException.class, () -> wallet.sendTransaction(request));
     }
@@ -151,16 +142,13 @@ class DefaultWalletClientTest {
                         provider, publicClient, signer.asSigner(), signer.address(), 1L);
 
         TransactionRequest request =
-                new TransactionRequest(
-                        signer.address(),
-                        Optional.of(new Address("0x" + "2".repeat(40))),
-                        Optional.of(Wei.of(0)),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        new HexData("0x"));
+                TxBuilder.legacy()
+                        .from(signer.address())
+                        .to(new Address("0x" + "2".repeat(40)))
+                        .value(Wei.of(0))
+                        .gasPrice(Wei.of(1_000_000_000L))
+                        .data(new HexData("0x"))
+                        .build();
 
         TransactionReceipt receipt = wallet.sendTransactionAndWait(request, 2000, 10);
 
