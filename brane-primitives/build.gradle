@@ -1,3 +1,6 @@
 dependencies {
-    // No external dependencies - pure JDK
+    // No runtime dependencies - pure JDK
+    
+    // Test-only dependency on brane-core for compatibility testing against web3j RLP
+    testImplementation project(':brane-core')
 }
