@@ -121,12 +121,17 @@ The minimal multi-module layout:
 
 ```
 brane/
-  brane-primitives/  // Core primitive helpers (hex utilities)
-  brane-core/        // Core types, Error model
+  brane-primitives/  // Core primitive utilities (hex encoding/decoding, zero dependencies)
+  brane-core/        // Core types, error model, chain profiles
   brane-rpc/         // Synchronous JSON-RPC client
-  brane-contract/    // ABI and Contract wrappers
-  brane-examples/    // (Optional) Usage examples
+  brane-contract/    // ABI and contract wrappers
+  brane-examples/    // (Optional) usage examples
 ```
+
+**Recent improvements:**
+- ✅ **Java 21 native** - Leverages records, pattern matching, virtual threads, and text blocks
+- ✅ **Web3j independence (Phase 1)** - Custom hex utilities with zero external dependencies
+- ✅ **Comprehensive test suite** - Integration tests covering all examples with real testnet validation
 
 Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-alpha`, etc.
 
