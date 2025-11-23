@@ -50,7 +50,7 @@ public record RlpString(byte[] bytes) implements RlpItem {
         if (value < 0) {
             throw new IllegalArgumentException("RLP numeric values must be non-negative");
         }
-        return new RlpString(toMinimalBytes(BigInteger.valueOf(value)));
+        return new RlpString(longToMinimalBytes(value));
     }
 
     /**
@@ -89,11 +89,31 @@ public record RlpString(byte[] bytes) implements RlpItem {
         return Arrays.hashCode(bytes);
     }
 
-    private static byte[] toMinimalBytes(final BigInteger value) {
-        if (value.equals(BigInteger.ZERO)) {
-            return new byte[] {0};
+    /**
+     * Convert a long to its minimal RLP byte representation.
+     */
+    private static byte[] longToMinimalBytes(final long value) {
+        if (value == 0) {
+            return new byte[0];
         }
+        int bits = 64 - Long.numberOfLeadingZeros(value);
+        int size = (bits + 7) >>> 3;
+        byte[] result = new byte[size];
+        long tmp = value;
+        for (int i = size - 1; i >= 0; i--) {
+            result[i] = (byte) tmp;
+            tmp >>>= 8;
+        }
+        return result;
+    }
 
+    /**
+     * Convert a {@link BigInteger} to its minimal byte array per RLP spec.
+     */
+    private static byte[] toMinimalBytes(final BigInteger value) {
+        if (value.signum() == 0) {
+            return new byte[0];
+        }
         final byte[] raw = value.toByteArray();
         if (raw[0] == 0) {
             return Arrays.copyOfRange(raw, 1, raw.length);

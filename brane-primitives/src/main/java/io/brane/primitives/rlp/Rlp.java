@@ -7,6 +7,7 @@ import java.util.Objects;
 
 /**
  * Utility methods for encoding and decoding Recursive Length Prefix (RLP) data.
+ * Optimized for Java 21 with aggressive performance enhancements.
  */
 public final class Rlp {
     private Rlp() {
@@ -26,6 +27,7 @@ public final class Rlp {
 
     /**
      * Encodes the provided byte string into RLP format.
+     * OPTIMIZED: Pre-calculates final size and writes directly to avoid intermediate allocations.
      *
      * @param bytes the raw bytes to encode
      * @return encoded bytes
@@ -33,41 +35,81 @@ public final class Rlp {
     public static byte[] encodeString(final byte[] bytes) {
         Objects.requireNonNull(bytes, "bytes cannot be null");
 
-        if (bytes.length == 1 && (bytes[0] & 0xFF) <= 0x7F) {
-            // Single byte [0x00, 0x7f]
-            return Arrays.copyOf(bytes, bytes.length);
+        final int length = bytes.length;
+        
+        // Single byte [0x00, 0x7f] - fast path
+        if (length == 1 && (bytes[0] & 0xFF) <= 0x7F) {
+            return new byte[] {bytes[0]};  // Avoid array copy
         }
 
-        if (bytes.length <= 55) {
-            return concat((byte) (0x80 + bytes.length), bytes);
+        // Short string (0-55 bytes) - optimized single allocation
+        if (length <= 55) {
+            final byte[] result = new byte[1 + length];
+            result[0] = (byte) (0x80 + length);
+            System.arraycopy(bytes, 0, result, 1, length);
+            return result;
         }
 
-        final byte[] lengthBytes = toMinimalBytes(bytes.length);
-        return concat((byte) (0xB7 + lengthBytes.length), lengthBytes, bytes);
+        // Long string (56+ bytes) - pre-calculate size
+        final int lengthSize = lengthSize(length);
+        final byte[] result = new byte[1 + lengthSize + length];
+        result[0] = (byte) (0xB7 + lengthSize);
+        writeLength(result, 1, length, lengthSize);
+        System.arraycopy(bytes, 0, result, 1 + lengthSize, length);
+        return result;
     }
 
     /**
      * Encodes the provided list of RLP items.
+     * OPTIMIZED: Eliminates stream overhead, pre-calculates total size.
      *
      * @param items the items to encode
      * @return encoded bytes
      */
     public static byte[] encodeList(final List<RlpItem> items) {
         Objects.requireNonNull(items, "items cannot be null");
-        for (final RlpItem item : items) {
+        
+        final int itemCount = items.size();
+        
+        // Empty list - fast path
+        if (itemCount == 0) {
+            return new byte[] {(byte) 0xC0};
+        }
+        
+        // Encode all items and calculate total payload size
+        final byte[][] encodedItems = new byte[itemCount][];
+        int payloadSize = 0;
+        for (int i = 0; i < itemCount; i++) {
+            final RlpItem item = items.get(i);
             Objects.requireNonNull(item, "items cannot contain null values");
-        }
-        final byte[][] encodedItems = items.stream()
-                .map(RlpItem::encode)
-                .toArray(byte[][]::new);
-        final byte[] concatenated = concat(encodedItems);
-
-        if (concatenated.length <= 55) {
-            return concat((byte) (0xC0 + concatenated.length), concatenated);
+            final byte[] encoded = item.encode();
+            encodedItems[i] = encoded;
+            payloadSize += encoded.length;
         }
 
-        final byte[] lengthBytes = toMinimalBytes(concatenated.length);
-        return concat((byte) (0xF7 + lengthBytes.length), lengthBytes, concatenated);
+        // Short list (0-55 bytes) - single allocation
+        if (payloadSize <= 55) {
+            final byte[] result = new byte[1 + payloadSize];
+            result[0] = (byte) (0xC0 + payloadSize);
+            int offset = 1;
+            for (final byte[] encoded : encodedItems) {
+                System.arraycopy(encoded, 0, result, offset, encoded.length);
+                offset += encoded.length;
+            }
+            return result;
+        }
+
+        // Long list (56+ bytes) - pre-calculate total size
+        final int lengthSize = lengthSize(payloadSize);
+        final byte[] result = new byte[1 + lengthSize + payloadSize];
+        result[0] = (byte) (0xF7 + lengthSize);
+        writeLength(result, 1, payloadSize, lengthSize);
+        int offset = 1 + lengthSize;
+        for (final byte[] encoded : encodedItems) {
+            System.arraycopy(encoded, 0, result, offset, encoded.length);
+            offset += encoded.length;
+        }
+        return result;
     }
 
     /**
@@ -214,49 +256,28 @@ public final class Rlp {
         return length;
     }
 
-    private static byte[] toMinimalBytes(final int value) {
+    /**
+     * Calculate how many bytes needed to represent a length value.
+     * OPTIMIZED: Uses bit shifts for fast calculation.
+     */
+    private static int lengthSize(final int value) {
         if (value < 0) {
             throw new IllegalArgumentException("Length cannot be negative");
         }
-        if (value == 0) {
-            return new byte[] {0};
-        }
+        if (value < 0x100) return 1;           // 256
+        if (value < 0x10000) return 2;         // 65536
+        if (value < 0x1000000) return 3;       // 16777216
+        return 4;                               // Max int is ~2.1B
+    }
 
-        int temp = value;
-        int size = 0;
-        while (temp > 0) {
-            size++;
-            temp >>>= 8;
-        }
-
-        final byte[] result = new byte[size];
+    /**
+     * Write a length value into a buffer at the specified offset.
+     * OPTIMIZED: Direct buffer writes, no intermediate allocation.
+     */
+    private static void writeLength(final byte[] buffer, final int offset, final int value, final int size) {
         for (int i = size - 1; i >= 0; i--) {
-            result[i] = (byte) (value >>> (8 * (size - 1 - i)));
+            buffer[offset + i] = (byte) (value >>> (8 * (size - 1 - i)));
         }
-        return result;
-    }
-
-    private static byte[] concat(final byte[]... arrays) {
-        int total = 0;
-        for (final byte[] array : arrays) {
-            total += array.length;
-        }
-
-        final byte[] result = new byte[total];
-        int offset = 0;
-        for (final byte[] array : arrays) {
-            System.arraycopy(array, 0, result, offset, array.length);
-            offset += array.length;
-        }
-        return result;
-    }
-
-    private static byte[] concat(final byte first, final byte[]... arrays) {
-        final byte[] firstArray = new byte[] {first};
-        final byte[][] all = new byte[arrays.length + 1][];
-        all[0] = firstArray;
-        System.arraycopy(arrays, 0, all, 1, arrays.length);
-        return concat(all);
     }
 
     private record DecodeResult(RlpItem item, int consumed) {}
