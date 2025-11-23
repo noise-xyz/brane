@@ -45,7 +45,9 @@ class HttpBraneProviderDebugTest {
                 exchange -> respond(
                         exchange,
                         200,
-                        "{""jsonrpc"":""2.0"",""result"":""0x1"",""id"":""1""}"));
+                        """
+                        {"jsonrpc":"2.0","result":"0x1","id":"1"}
+                        """));
 
         BraneDebug.setEnabled(true);
         final ListAppender<ILoggingEvent> appender = new ListAppender<>();

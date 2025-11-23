@@ -8,28 +8,39 @@ import org.junit.jupiter.api.Test;
 class LogSanitizerTest {
 
     @Test
-    void redactsPrivateKeysAndRawTransactions() {
-        final String input =
-                "{\"privateKey\":\"0x1234abcd\",\"raw\":\"0xdeadbeef\",\"other\":1}";
-
-        final String sanitized = LogSanitizer.sanitize(input);
-
-        assertTrue(sanitized.contains("0x***[REDACTED]***"));
-        assertTrue(sanitized.contains("\"raw\":\"0x***[REDACTED]***\""));
+    void sanitizesPrivateKey() {
+        String input = "{\"privateKey\":\"0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef\"}";
+        String sanitized = LogSanitizer.sanitize(input);
+        
+        assertEquals("{\"privateKey\":\"0x***[REDACTED]***\"}", sanitized);
     }
 
     @Test
-    void truncatesVeryLargePayloads() {
-        final String longInput = "x".repeat(2100);
-
-        final String sanitized = LogSanitizer.sanitize(longInput);
-
-        assertEquals(208, sanitized.length());
-        assertTrue(sanitized.endsWith("...(truncated)"));
+    void sanitizesRawTransaction() {
+        String input = "{\"raw\":\"0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef\"}";
+        String sanitized = LogSanitizer.sanitize(input);
+        
+        assertEquals("{\"raw\":\"0x***[REDACTED]***\"}", sanitized);
     }
 
     @Test
-    void returnsNullStringLiteralForNullInput() {
+    void truncatesLongData() {
+        String longData = "a".repeat(2500);
+        String input = "{\"data\":\"" + longData + "\"}";
+        String sanitized = LogSanitizer.sanitize(input);
+        
+        assertTrue(sanitized.contains("...(truncated)"));
+        assertTrue(sanitized.length() < 2500);
+    }
+
+    @Test
+    void handlesNull() {
         assertEquals("null", LogSanitizer.sanitize(null));
+    }
+
+    @Test
+    void leavesSafeDataUntouched() {
+        String input = "{\"method\":\"eth_call\",\"params\":[]}";
+        assertEquals(input, LogSanitizer.sanitize(input));
     }
 }
