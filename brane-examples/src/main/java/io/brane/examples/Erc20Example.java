@@ -65,10 +65,13 @@ public final class Erc20Example {
         final String holderAddress = System.getProperty("brane.examples.erc20.holder");
 
         if (isBlank(rpcUrl) || isBlank(tokenAddress) || isBlank(holderAddress)) {
-            System.out.println("Please set the following system properties:");
-            System.out.println("  -Dbrane.examples.erc20.rpc=<RPC URL>");
-            System.out.println("  -Dbrane.examples.erc20.contract=<ERC-20 contract address>");
-            System.out.println("  -Dbrane.examples.erc20.holder=<holder address>");
+            System.out.println(
+                    """
+                    Please set the following system properties:
+                      -Dbrane.examples.erc20.rpc=<RPC URL>
+                      -Dbrane.examples.erc20.contract=<ERC-20 contract address>
+                      -Dbrane.examples.erc20.holder=<holder address>
+                    """);
             return;
         }
 

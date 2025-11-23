@@ -17,7 +17,7 @@ class BranePublicClientBuilderTest {
                 BranePublicClient.forChain(ChainProfiles.ANVIL_LOCAL).build();
 
         assertNotNull(client);
-        assertEquals(ChainProfiles.ANVIL_LOCAL.chainId, client.profile().chainId);
+        assertEquals(ChainProfiles.ANVIL_LOCAL.chainId(), client.profile().chainId());
     }
 
     @Test
@@ -38,6 +38,6 @@ class BranePublicClientBuilderTest {
                         .build();
 
         assertNotNull(client);
-        assertEquals(ChainProfiles.ETH_SEPOLIA.chainId, client.profile().chainId);
+        assertEquals(ChainProfiles.ETH_SEPOLIA.chainId(), client.profile().chainId());
     }
 }

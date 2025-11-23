@@ -26,6 +26,7 @@ public final class HttpBraneProvider implements BraneProvider {
         this.config = config;
         this.httpClient =
                 java.net.http.HttpClient.newBuilder()
+                        .executor(java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor())
                         .connectTimeout(config.connectTimeout())
                         .build();
     }

@@ -591,36 +591,35 @@ final class InternalAbi implements Abi {
         private static Object mapAddress(
                 final io.brane.internal.web3j.abi.datatypes.Address addr, final Class<?> targetType) {
             final Address value = new Address(addr.getValue());
-            if (targetType == Address.class || targetType == Object.class) {
-                return value;
-            }
-            throw new AbiDecodingException("Cannot map address to " + targetType.getName());
+            return switch (targetType) {
+                case Class<?> c when c == Address.class || c == Object.class -> value;
+                default -> throw new AbiDecodingException("Cannot map address to " + targetType.getName());
+            };
         }
 
         private static Object mapBoolean(final Bool bool, final Class<?> targetType) {
             final Boolean value = bool.getValue();
-            if (targetType == Boolean.class || targetType == boolean.class || targetType == Object.class) {
-                return value;
-            }
-            throw new AbiDecodingException("Cannot map bool to " + targetType.getName());
+            return switch (targetType) {
+                case Class<?> c when c == Boolean.class || c == boolean.class || c == Object.class -> value;
+                default -> throw new AbiDecodingException("Cannot map bool to " + targetType.getName());
+            };
         }
 
         private static Object mapUtf8(final Utf8String utf8, final Class<?> targetType) {
             final String value = utf8.getValue();
-            if (targetType == String.class || targetType == Object.class) {
-                return value;
-            }
-            throw new AbiDecodingException("Cannot map string to " + targetType.getName());
+            return switch (targetType) {
+                case Class<?> c when c == String.class || c == Object.class -> value;
+                default -> throw new AbiDecodingException("Cannot map string to " + targetType.getName());
+            };
         }
 
         private static Object mapBytes(final byte[] bytes, final Class<?> targetType) {
-            if (targetType == HexData.class || targetType == Object.class) {
-                return new HexData("0x" + Numeric.toHexStringNoPrefix(bytes));
-            }
-            if (targetType == byte[].class) {
-                return bytes;
-            }
-            throw new AbiDecodingException("Cannot map bytes to " + targetType.getName());
+            return switch (targetType) {
+                case Class<?> c when c == HexData.class || c == Object.class ->
+                        new HexData("0x" + Numeric.toHexStringNoPrefix(bytes));
+                case Class<?> c when c == byte[].class -> bytes;
+                default -> throw new AbiDecodingException("Cannot map bytes to " + targetType.getName());
+            };
         }
 
         private static Object mapArray(final Array<?> array, final Class<?> targetType) {
@@ -630,13 +629,11 @@ final class InternalAbi implements Abi {
             for (Type element : values) {
                 mapped.add(mapValue(element, Object.class));
             }
-            if (targetType == List.class || List.class.isAssignableFrom(targetType) || targetType == Object.class) {
-                return mapped;
-            }
-            if (targetType == Object[].class) {
-                return mapped.toArray();
-            }
-            throw new AbiDecodingException("Cannot map array to " + targetType.getName());
+            return switch (targetType) {
+                case Class<?> c when c == List.class || List.class.isAssignableFrom(c) || c == Object.class -> mapped;
+                case Class<?> c when c == Object[].class -> mapped.toArray();
+                default -> throw new AbiDecodingException("Cannot map array to " + targetType.getName());
+            };
         }
 
         private static Object mapUnknown(final Type type, final Class<?> targetType) {
@@ -653,16 +650,12 @@ final class InternalAbi implements Abi {
         }
 
         private static Object coerceNumber(final BigInteger value, final Class<?> targetType) {
-            if (targetType == BigInteger.class || targetType == Object.class) {
-                return value;
-            }
-            if (targetType == Long.class || targetType == long.class) {
-                return value.longValueExact();
-            }
-            if (targetType == Integer.class || targetType == int.class) {
-                return value.intValueExact();
-            }
-            throw new AbiDecodingException("Cannot map numeric value to " + targetType.getName());
+            return switch (targetType) {
+                case Class<?> c when c == BigInteger.class || c == Object.class -> value;
+                case Class<?> c when c == Long.class || c == long.class -> value.longValueExact();
+                case Class<?> c when c == Integer.class || c == int.class -> value.intValueExact();
+                default -> throw new AbiDecodingException("Cannot map numeric value to " + targetType.getName());
+            };
         }
     }
 
