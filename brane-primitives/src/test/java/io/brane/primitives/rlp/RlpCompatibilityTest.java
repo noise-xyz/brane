@@ -255,6 +255,37 @@ class RlpCompatibilityTest {
         assertArrayEquals(originalData, decodedString.bytes(), 
             "Decoded data should match original data");
     }
+    
+    @Test
+    void zeroLongEncoding_matchesWeb3j() {
+        byte[] ourEncoding = RlpString.of(0L).encode();
+
+        io.brane.internal.web3j.rlp.RlpString web3jString =
+            io.brane.internal.web3j.rlp.RlpString.create(new byte[0]);
+        byte[] web3jEncoding = io.brane.internal.web3j.rlp.RlpEncoder.encode(web3jString);
+
+        assertArrayEquals(web3jEncoding, ourEncoding,
+            "Long 0 should be encoded as empty byte array (0x80)");
+    }
+
+    @Test
+    void roundTripDecoding_longString_matchesWeb3j() {
+        byte[] data = new byte[60];
+        for (int i = 0; i < data.length; i++) {
+            data[i] = (byte) (i & 0xFF);
+        }
+
+        io.brane.internal.web3j.rlp.RlpString web3jString =
+            io.brane.internal.web3j.rlp.RlpString.create(data);
+        byte[] web3jEncoded = io.brane.internal.web3j.rlp.RlpEncoder.encode(web3jString);
+
+        RlpItem decoded = Rlp.decode(web3jEncoded);
+        assertEquals(RlpString.class, decoded.getClass());
+
+        RlpString decodedString = (RlpString) decoded;
+        assertArrayEquals(data, decodedString.bytes(),
+            "Decoded long string should match original data");
+    }
 
     /**
      * Helper method to convert long to minimal byte array (no leading zeros)
