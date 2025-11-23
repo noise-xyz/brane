@@ -79,6 +79,24 @@ BranePublicClient baseSepolia = BranePublicClient
 System.out.println("Base Sepolia chainId: " + baseSepolia.profile().chainId);
 ```
 
+### 🪛 Debug Mode & RPC Logging
+
+Turn on verbose, sanitized RPC logging across Brane with a single toggle:
+
+```java
+import io.brane.core.BraneDebug;
+
+BraneDebug.setEnabled(true); // Log RPC requests, responses, and transaction lifecycle
+```
+
+Try it out end-to-end via the example app:
+
+```bash
+./gradlew :brane-examples:run \
+  -PmainClass=io.brane.examples.DebugExample \
+  -Dbrane.examples.rpc=http://127.0.0.1:8545
+```
+
 -----
 
 ## 🌟 Why Brane (vs. web3j)?
