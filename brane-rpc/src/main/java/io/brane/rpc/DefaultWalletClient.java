@@ -1,8 +1,10 @@
 package io.brane.rpc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.brane.core.RevertDecoder;
 import io.brane.core.error.ChainMismatchException;
 import io.brane.core.error.InvalidSenderException;
+import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.LogEntry;
 import io.brane.core.model.TransactionReceipt;
@@ -101,6 +103,7 @@ public final class DefaultWalletClient implements WalletClient {
         try {
             txHash = callRpc("eth_sendRawTransaction", List.of(signedHex), String.class, null);
         } catch (RpcException e) {
+            handlePotentialRevert(e);
             if (e.getMessage() != null
                     && e.getMessage().toLowerCase().contains("invalid sender")) {
                 throw new InvalidSenderException(e.getMessage(), e);
@@ -353,4 +356,14 @@ public final class DefaultWalletClient implements WalletClient {
             BigInteger gasPrice,
             BigInteger maxPriorityFeePerGas,
             BigInteger maxFeePerGas) {}
+
+    private static void handlePotentialRevert(final RpcException e) throws RevertException {
+        final String raw = e.data();
+        if (raw != null && raw.startsWith("0x") && raw.length() > 10) {
+            final var decoded = RevertDecoder.decode(raw);
+            // Always throw RevertException for revert data, even if kind is UNKNOWN
+            // (UNKNOWN just means we couldn't decode it, but it's still a revert)
+            throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), e);
+        }
+    }
 }

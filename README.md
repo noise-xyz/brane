@@ -135,6 +135,7 @@ brane/
 - ✅ **Web3j independence (Phase 1 & 2)** - Custom Hex and RLP utilities with zero external dependencies
 - ✅ **Comprehensive test suite** - Integration tests covering all examples with real testnet validation
 - ✅ **Unified Transaction Builder** - Typed, fluent API for creating Legacy and EIP-1559 transactions with auto-fill capabilities
+- ✅ **Minimal Revert Decoding** - Automatic decoding of Error(string), Panic(uint256), and extensible custom error support
 
 Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-alpha`, etc.
 
@@ -156,6 +157,11 @@ Defines the core types and the error hierarchy:
   * `io.brane.core.types` – reusable value objects (`Address`, `Hash`, `HexData`, `Wei`).
   * `io.brane.core.model` – domain DTOs (`Transaction`, `TransactionReceipt`, `LogEntry`, `TransactionRequest`, `ChainProfile`, etc.).
   * `io.brane.core.chain` – typed chain profiles (`ChainProfiles`) capturing chainId, default RPC URL, and EIP-1559 support.
+  * **Revert Decoding**: `RevertDecoder` automatically decodes EVM reverts:
+    * `Error(string)` → human-readable revert message
+    * `Panic(uint256)` → mapped panic reasons (e.g., "division by zero", "arithmetic overflow")
+    * Custom errors → extensible via ABI map (falls back to raw hex)
+    * All reverts surface as typed `RevertException` with `RevertKind` (ERROR_STRING, PANIC, CUSTOM, UNKNOWN)
   * Error diagnostics: `RpcException` helpers for `isBlockRangeTooLarge()`/`isFilterNotFound()`; `TxnException` helpers for `isInvalidSender()`/`isChainIdMismatch()`.
 
 ### `brane-rpc`
