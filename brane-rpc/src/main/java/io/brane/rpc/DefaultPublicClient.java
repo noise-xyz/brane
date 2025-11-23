@@ -8,10 +8,11 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import java.lang.reflect.Array;
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.ArrayList;
 
 final class DefaultPublicClient implements PublicClient {
 
@@ -118,19 +119,39 @@ final class DefaultPublicClient implements PublicClient {
     }
 
     private String extractErrorData(final Object dataValue) {
-        if (dataValue == null) {
-            return null;
-        }
-        if (dataValue instanceof String s) {
-            return s;
-        }
-        if (dataValue instanceof Map<?, ?> map) {
-            final Object nested = map.get("data");
-            if (nested instanceof String s) {
-                return s;
+        return switch (dataValue) {
+            case null -> null;
+            case String s -> s;
+            case Map<?, ?> map -> map.values().stream()
+                    .map(this::extractErrorData)
+                    .filter(java.util.Objects::nonNull)
+                    .findFirst()
+                    .orElseGet(dataValue::toString);
+            case Object array when dataValue.getClass().isArray() -> extractFromArray(array, dataValue);
+            case Iterable<?> iterable -> extractFromIterable(iterable, dataValue);
+            default -> dataValue.toString();
+        };
+    }
+
+    private String extractFromIterable(final Iterable<?> iterable, final Object fallback) {
+        for (Object value : iterable) {
+            final String nested = extractErrorData(value);
+            if (nested != null) {
+                return nested;
             }
         }
-        return dataValue.toString();
+        return fallback.toString();
+    }
+
+    private String extractFromArray(final Object array, final Object fallback) {
+        final int length = Array.getLength(array);
+        for (int i = 0; i < length; i++) {
+            final String nested = extractErrorData(Array.get(array, i));
+            if (nested != null) {
+                return nested;
+            }
+        }
+        return fallback.toString();
     }
 
     private String toHexBlock(final Long block) {

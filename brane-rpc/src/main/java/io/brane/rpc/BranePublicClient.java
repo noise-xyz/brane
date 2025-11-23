@@ -66,12 +66,12 @@ public final class BranePublicClient implements PublicClient {
 
         public BranePublicClient build() {
             final String rpcUrl =
-                    rpcUrlOverride != null ? rpcUrlOverride : profile.defaultRpcUrl;
+                    rpcUrlOverride != null ? rpcUrlOverride : profile.defaultRpcUrl();
 
             if (rpcUrl == null || rpcUrl.isBlank()) {
                 throw new IllegalStateException(
                         "No RPC URL configured for chainId="
-                                + profile.chainId
+                                + profile.chainId()
                                 + ". Either set a defaultRpcUrl in ChainProfile or call withRpcUrl(...).");
             }
 

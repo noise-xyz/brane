@@ -3,6 +3,7 @@ package io.brane.rpc;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.brane.core.error.RpcException;
+import java.lang.reflect.Array;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -25,6 +26,7 @@ public final class HttpBraneProvider implements BraneProvider {
         this.config = config;
         this.httpClient =
                 java.net.http.HttpClient.newBuilder()
+                        .executor(java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor())
                         .connectTimeout(config.connectTimeout())
                         .build();
     }
@@ -103,37 +105,35 @@ public final class HttpBraneProvider implements BraneProvider {
     }
 
     private String extractErrorData(final Object dataValue) {
-        if (dataValue == null) {
-            return null;
-        }
-        if (dataValue instanceof String s && s.trim().startsWith("0x")) {
-            return s;
-        }
-        if (dataValue instanceof Map<?, ?> map) {
-            for (Object value : map.values()) {
-                final String nested = extractErrorData(value);
-                if (nested != null) {
-                    return nested;
-                }
-            }
-        } else if (dataValue instanceof Iterable<?> iterable) {
-            for (Object value : iterable) {
-                final String nested = extractErrorData(value);
-                if (nested != null) {
-                    return nested;
-                }
-            }
-        } else if (dataValue.getClass().isArray()) {
-            final int length = java.lang.reflect.Array.getLength(dataValue);
-            for (int i = 0; i < length; i++) {
-                final Object nestedValue = java.lang.reflect.Array.get(dataValue, i);
-                final String nested = extractErrorData(nestedValue);
-                if (nested != null) {
-                    return nested;
-                }
+        return switch (dataValue) {
+            case null -> null;
+            case String s when s.trim().startsWith("0x") -> s;
+            case Map<?, ?> map -> extractFromIterable(map.values(), dataValue);
+            case Iterable<?> iterable -> extractFromIterable(iterable, dataValue);
+            case Object array when dataValue.getClass().isArray() -> extractFromArray(array, dataValue);
+            default -> dataValue.toString();
+        };
+    }
+
+    private String extractFromIterable(final Iterable<?> iterable, final Object fallback) {
+        for (Object value : iterable) {
+            final String nested = extractErrorData(value);
+            if (nested != null) {
+                return nested;
             }
         }
-        return dataValue.toString();
+        return fallback.toString();
+    }
+
+    private String extractFromArray(final Object array, final Object fallback) {
+        final int length = Array.getLength(array);
+        for (int i = 0; i < length; i++) {
+            final String nested = extractErrorData(Array.get(array, i));
+            if (nested != null) {
+                return nested;
+            }
+        }
+        return fallback.toString();
     }
 
     public static final class Builder {

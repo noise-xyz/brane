@@ -62,12 +62,15 @@ public final class Erc20TransferExample {
                 || isBlank(tokenAddress)
                 || isBlank(recipientAddress)
                 || isBlank(privateKey)) {
-            System.out.println("Please set the following system properties:");
-            System.out.println("  -Dbrane.examples.erc20.rpc=<RPC URL>");
-            System.out.println("  -Dbrane.examples.erc20.contract=<ERC-20 contract address>");
-            System.out.println("  -Dbrane.examples.erc20.recipient=<recipient address>");
-            System.out.println("  -Dbrane.examples.erc20.pk=<private key hex>");
-            System.out.println("Optional: -Dbrane.examples.erc20.amount=<amount in token units>");
+            System.out.println(
+                    """
+                    Please set the following system properties:
+                      -Dbrane.examples.erc20.rpc=<RPC URL>
+                      -Dbrane.examples.erc20.contract=<ERC-20 contract address>
+                      -Dbrane.examples.erc20.recipient=<recipient address>
+                      -Dbrane.examples.erc20.pk=<private key hex>
+                    Optional: -Dbrane.examples.erc20.amount=<amount in token units>
+                    """);
             return;
         }
 

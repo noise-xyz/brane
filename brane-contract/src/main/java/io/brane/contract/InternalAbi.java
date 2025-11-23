@@ -142,24 +142,18 @@ final class InternalAbi implements Abi {
         return switch (normalizedType) {
             case "uint256" -> toBigInteger(value, false);
             case "int256" -> toBigInteger(value, true);
-            case "address" -> {
-                if (value instanceof Address address) {
-                    yield address.value();
-                }
-                throw new AbiEncodingException("Expected Address for type 'address'");
-            }
-            case "bool" -> {
-                if (value instanceof Boolean) {
-                    yield value;
-                }
-                throw new AbiEncodingException("Expected Boolean for type 'bool'");
-            }
-            case "string" -> {
-                if (value instanceof String) {
-                    yield value;
-                }
-                throw new AbiEncodingException("Expected String for type 'string'");
-            }
+            case "address" -> switch (value) {
+                case Address address -> address.value();
+                default -> throw new AbiEncodingException("Expected Address for type 'address'");
+            };
+            case "bool" -> switch (value) {
+                case Boolean ignored -> value;
+                default -> throw new AbiEncodingException("Expected Boolean for type 'bool'");
+            };
+            case "string" -> switch (value) {
+                case String ignored -> value;
+                default -> throw new AbiEncodingException("Expected String for type 'string'");
+            };
             default -> {
                 if (normalizedType.equals("bytes") || normalizedType.startsWith("bytes")) {
                     yield normalizeBytes(value, normalizedType);
@@ -170,16 +164,19 @@ final class InternalAbi implements Abi {
     }
 
     private static Object normalizeBytes(final Object value, final String solidityType) {
-        if (value instanceof byte[] bytes) {
-            validateBytesLength(bytes, solidityType);
-            return bytes;
-        }
-        if (value instanceof HexData hex) {
-            final byte[] bytes = Numeric.hexStringToByteArray(hex.value());
-            validateBytesLength(bytes, solidityType);
-            return bytes;
-        }
-        throw new AbiEncodingException("Unsupported bytes value for type '" + solidityType + "'");
+        return switch (value) {
+            case byte[] bytes -> {
+                validateBytesLength(bytes, solidityType);
+                yield bytes;
+            }
+            case HexData hex -> {
+                final byte[] bytes = Numeric.hexStringToByteArray(hex.value());
+                validateBytesLength(bytes, solidityType);
+                yield bytes;
+            }
+            default -> throw new AbiEncodingException(
+                    "Unsupported bytes value for type '" + solidityType + "'");
+        };
     }
 
     private static void validateBytesLength(final byte[] bytes, final String solidityType) {
@@ -198,24 +195,28 @@ final class InternalAbi implements Abi {
     }
 
     private static BigInteger toBigInteger(final Object value, final boolean signed) {
-        if (value instanceof BigInteger bi) {
-            if (!signed && bi.signum() < 0) {
-                throw new AbiEncodingException("uint256 cannot be negative");
-            }
-            return bi;
+        return switch (value) {
+            case BigInteger bi -> ensureSign(bi, signed);
+            case Number number -> ensureSign(BigInteger.valueOf(number.longValue()), signed);
+            case null ->
+                    throw new AbiEncodingException(
+                            "Expected numeric value for "
+                                    + (signed ? "int256" : "uint256")
+                                    + " but got null");
+            default ->
+                    throw new AbiEncodingException(
+                            "Expected numeric value for "
+                                    + (signed ? "int256" : "uint256")
+                                    + " but got "
+                                    + value.getClass().getSimpleName());
+        };
+    }
+
+    private static BigInteger ensureSign(final BigInteger value, final boolean signed) {
+        if (!signed && value.signum() < 0) {
+            throw new AbiEncodingException("uint256 cannot be negative");
         }
-        if (value instanceof Integer || value instanceof Long) {
-            final BigInteger bi = BigInteger.valueOf(((Number) value).longValue());
-            if (!signed && bi.signum() < 0) {
-                throw new AbiEncodingException("uint256 cannot be negative");
-            }
-            return bi;
-        }
-        throw new AbiEncodingException(
-                "Expected numeric value for "
-                        + (signed ? "int256" : "uint256")
-                        + " but got "
-                        + value.getClass().getSimpleName());
+        return value;
     }
 
     private static List<?> asList(final Object value) {
@@ -446,32 +447,23 @@ final class InternalAbi implements Abi {
     }
 
     private static Object toJavaValue(final Type type) {
-        if (type instanceof io.brane.internal.web3j.abi.datatypes.Address addr) {
-            return new Address(addr.getValue());
-        }
-        if (type instanceof Bool b) {
-            return b.getValue();
-        }
-        if (type instanceof Utf8String s) {
-            return s.getValue();
-        }
-        if (type instanceof DynamicBytes dyn) {
-            return new HexData("0x" + Numeric.toHexStringNoPrefix(dyn.getValue()));
-        }
-        if (type instanceof io.brane.internal.web3j.abi.datatypes.Bytes bytes) {
-            return new HexData("0x" + Numeric.toHexStringNoPrefix(bytes.getValue()));
-        }
-        if (type instanceof Array<?> array) {
-            final List<Object> list = new ArrayList<>();
-            for (Type t : array.getValue()) {
-                list.add(toJavaValue(t));
+        return switch (type) {
+            case io.brane.internal.web3j.abi.datatypes.Address addr -> new Address(addr.getValue());
+            case Bool b -> b.getValue();
+            case Utf8String s -> s.getValue();
+            case DynamicBytes dyn -> new HexData("0x" + Numeric.toHexStringNoPrefix(dyn.getValue()));
+            case io.brane.internal.web3j.abi.datatypes.Bytes bytes ->
+                    new HexData("0x" + Numeric.toHexStringNoPrefix(bytes.getValue()));
+            case Array<?> array -> {
+                final List<Object> list = new ArrayList<>();
+                for (Type t : array.getValue()) {
+                    list.add(toJavaValue(t));
+                }
+                yield list;
             }
-            return list;
-        }
-        if (type.getValue() instanceof BigInteger bi) {
-            return bi;
-        }
-        return type.getValue();
+            case Type t when t.getValue() instanceof BigInteger bi -> bi;
+            case Type t -> t.getValue();
+        };
     }
 
     private static final class Call implements Abi.FunctionCall {
@@ -572,97 +564,85 @@ final class InternalAbi implements Abi {
         }
 
         private static boolean isPrimitiveWrapper(final Class<?> expected, final Object value) {
-            if (expected == int.class && value instanceof Integer) {
-                return true;
-            }
-            if (expected == long.class && value instanceof Long) {
-                return true;
-            }
-            if (expected == boolean.class && value instanceof Boolean) {
-                return true;
-            }
-            if (expected == byte[].class && value instanceof byte[]) {
-                return true;
-            }
-            return false;
+            return switch (expected) {
+                case Class<?> clazz when clazz == int.class -> value instanceof Integer;
+                case Class<?> clazz when clazz == long.class -> value instanceof Long;
+                case Class<?> clazz when clazz == boolean.class -> value instanceof Boolean;
+                case Class<?> clazz when clazz == byte[].class -> value instanceof byte[];
+                default -> false;
+            };
         }
 
         private static Object mapValue(final Type type, final Class<?> targetType) {
-            if (type instanceof io.brane.internal.web3j.abi.datatypes.Address addr) {
-                final Address value = new Address(addr.getValue());
-                if (targetType == Address.class || targetType == Object.class) {
-                    return value;
-                }
-                throw new AbiDecodingException("Cannot map address to " + targetType.getName());
-            }
+            return switch (type) {
+                case io.brane.internal.web3j.abi.datatypes.Address addr -> mapAddress(addr, targetType);
+                case Bool bool -> mapBoolean(bool, targetType);
+                case Utf8String utf8 -> mapUtf8(utf8, targetType);
+                case DynamicBytes dynBytes -> mapBytes(dynBytes.getValue(), targetType);
+                case io.brane.internal.web3j.abi.datatypes.Bytes bytesType ->
+                        mapBytes(bytesType.getValue(), targetType);
+                case Array<?> array -> mapArray(array, targetType);
+                case Uint256 uint -> coerceNumber((BigInteger) uint.getValue(), targetType);
+                case Int256 sint -> coerceNumber((BigInteger) sint.getValue(), targetType);
+                default -> mapUnknown(type, targetType);
+            };
+        }
 
-            if (type instanceof Bool bool) {
-                final Boolean value = bool.getValue();
-                if (targetType == Boolean.class || targetType == boolean.class || targetType == Object.class) {
-                    return value;
-                }
-                throw new AbiDecodingException("Cannot map bool to " + targetType.getName());
-            }
+        private static Object mapAddress(
+                final io.brane.internal.web3j.abi.datatypes.Address addr, final Class<?> targetType) {
+            final Address value = new Address(addr.getValue());
+            return switch (targetType) {
+                case Class<?> c when c == Address.class || c == Object.class -> value;
+                default -> throw new AbiDecodingException("Cannot map address to " + targetType.getName());
+            };
+        }
 
-            if (type instanceof Utf8String utf8) {
-                final String value = utf8.getValue();
-                if (targetType == String.class || targetType == Object.class) {
-                    return value;
-                }
-                throw new AbiDecodingException("Cannot map string to " + targetType.getName());
-            }
+        private static Object mapBoolean(final Bool bool, final Class<?> targetType) {
+            final Boolean value = bool.getValue();
+            return switch (targetType) {
+                case Class<?> c when c == Boolean.class || c == boolean.class || c == Object.class -> value;
+                default -> throw new AbiDecodingException("Cannot map bool to " + targetType.getName());
+            };
+        }
 
-            if (type instanceof DynamicBytes dynBytes) {
-                final byte[] bytes = dynBytes.getValue();
-                if (targetType == HexData.class || targetType == Object.class) {
-                    return new HexData("0x" + Numeric.toHexStringNoPrefix(bytes));
-                }
-                if (targetType == byte[].class) {
-                    return bytes;
-                }
-                throw new AbiDecodingException("Cannot map bytes to " + targetType.getName());
-            }
+        private static Object mapUtf8(final Utf8String utf8, final Class<?> targetType) {
+            final String value = utf8.getValue();
+            return switch (targetType) {
+                case Class<?> c when c == String.class || c == Object.class -> value;
+                default -> throw new AbiDecodingException("Cannot map string to " + targetType.getName());
+            };
+        }
 
-            if (type instanceof io.brane.internal.web3j.abi.datatypes.Bytes bytesType) {
-                final byte[] bytes = bytesType.getValue();
-                if (targetType == HexData.class || targetType == Object.class) {
-                    return new HexData("0x" + Numeric.toHexStringNoPrefix(bytes));
-                }
-                if (targetType == byte[].class) {
-                    return bytes;
-                }
-                throw new AbiDecodingException("Cannot map bytes to " + targetType.getName());
-            }
+        private static Object mapBytes(final byte[] bytes, final Class<?> targetType) {
+            return switch (targetType) {
+                case Class<?> c when c == HexData.class || c == Object.class ->
+                        new HexData("0x" + Numeric.toHexStringNoPrefix(bytes));
+                case Class<?> c when c == byte[].class -> bytes;
+                default -> throw new AbiDecodingException("Cannot map bytes to " + targetType.getName());
+            };
+        }
 
-            if (type instanceof Array<?> array) {
-                @SuppressWarnings("unchecked")
-                final List<Type> values = (List<Type>) (List<?>) array.getValue();
-                final List<Object> mapped = new ArrayList<>(values.size());
-                for (Type element : values) {
-                    mapped.add(mapValue(element, Object.class));
-                }
-                if (targetType == List.class
-                        || List.class.isAssignableFrom(targetType)
-                        || targetType == Object.class) {
-                    return mapped;
-                }
-                if (targetType == Object[].class) {
-                    return mapped.toArray();
-                }
-                throw new AbiDecodingException("Cannot map array to " + targetType.getName());
+        private static Object mapArray(final Array<?> array, final Class<?> targetType) {
+            @SuppressWarnings("unchecked")
+            final List<Type> values = (List<Type>) (List<?>) array.getValue();
+            final List<Object> mapped = new ArrayList<>(values.size());
+            for (Type element : values) {
+                mapped.add(mapValue(element, Object.class));
             }
+            return switch (targetType) {
+                case Class<?> c when c == List.class || List.class.isAssignableFrom(c) || c == Object.class -> mapped;
+                case Class<?> c when c == Object[].class -> mapped.toArray();
+                default -> throw new AbiDecodingException("Cannot map array to " + targetType.getName());
+            };
+        }
 
-            if (type instanceof Uint256 || type instanceof Int256) {
-                final BigInteger bi = (BigInteger) type.getValue();
+        private static Object mapUnknown(final Type type, final Class<?> targetType) {
+            final Object value = type.getValue();
+            if (value instanceof BigInteger bi) {
                 return coerceNumber(bi, targetType);
             }
-
-            if (type.getValue() instanceof BigInteger bi) {
-                return coerceNumber(bi, targetType);
-            }
-
-            if (type.getValue() != null && targetType.isInstance(type.getValue())) {
-                return type.getValue();
+            if (value != null && targetType.isInstance(value)) {
+                return value;
             }
 
             throw new AbiDecodingException(
@@ -670,16 +650,12 @@ final class InternalAbi implements Abi {
         }
 
         private static Object coerceNumber(final BigInteger value, final Class<?> targetType) {
-            if (targetType == BigInteger.class || targetType == Object.class) {
-                return value;
-            }
-            if (targetType == Long.class || targetType == long.class) {
-                return value.longValueExact();
-            }
-            if (targetType == Integer.class || targetType == int.class) {
-                return value.intValueExact();
-            }
-            throw new AbiDecodingException("Cannot map numeric value to " + targetType.getName());
+            return switch (targetType) {
+                case Class<?> c when c == BigInteger.class || c == Object.class -> value;
+                case Class<?> c when c == Long.class || c == long.class -> value.longValueExact();
+                case Class<?> c when c == Integer.class || c == int.class -> value.intValueExact();
+                default -> throw new AbiDecodingException("Cannot map numeric value to " + targetType.getName());
+            };
         }
     }
 
