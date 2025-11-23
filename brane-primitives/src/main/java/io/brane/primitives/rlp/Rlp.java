@@ -12,6 +12,8 @@ import java.util.Objects;
  *  - Medium strings (16–55 bytes): avoid unnecessary bounds checks and copies on decode.
  *  - Complex structures (lists): reduce temporary allocations and growable collections.
  *  - Large integers (length >= 65535): efficient length-prefix encoding/decoding.
+ *
+ * @see <a href="https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/">Ethereum RLP Specification</a>
  */
 public final class Rlp {
 

@@ -121,7 +121,7 @@ The minimal multi-module layout:
 
 ```
 brane/
-  brane-primitives/  // Core primitive utilities (hex encoding/decoding, zero dependencies)
+  brane-primitives/  // Core primitive utilities (Hex, RLP) with zero dependencies
   brane-core/        // Core types, error model, chain profiles
   brane-rpc/         // Synchronous JSON-RPC client
   brane-contract/    // ABI and contract wrappers
@@ -130,7 +130,7 @@ brane/
 
 **Recent improvements:**
 - ✅ **Java 21 native** - Leverages records, pattern matching, virtual threads, and text blocks
-- ✅ **Web3j independence (Phase 1)** - Custom hex utilities with zero external dependencies
+- ✅ **Web3j independence (Phase 1 & 2)** - Custom Hex and RLP utilities with zero external dependencies
 - ✅ **Comprehensive test suite** - Integration tests covering all examples with real testnet validation
 
 Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-alpha`, etc.
@@ -141,7 +141,9 @@ Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-
 
 ### `brane-primitives`
 
-Zero-dependency foundational utilities such as hex encoding/decoding helpers that other modules build upon.
+Zero-dependency foundational utilities that other modules build upon:
+  * **Hex**: Fast, table-based hex encoding/decoding.
+  * **RLP**: High-performance Recursive Length Prefix encoding/decoding (strings, lists, integers).
 
 ### `brane-core`
 
