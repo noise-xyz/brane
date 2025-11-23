@@ -121,6 +121,7 @@ The minimal multi-module layout:
 
 ```
 brane/
+  brane-primitives/  // Core primitive helpers (hex utilities)
   brane-core/        // Core types, Error model
   brane-rpc/         // Synchronous JSON-RPC client
   brane-contract/    // ABI and Contract wrappers
@@ -132,6 +133,10 @@ Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-
 -----
 
 ## 📦 Key Component Details
+
+### `brane-primitives`
+
+Zero-dependency foundational utilities such as hex encoding/decoding helpers that other modules build upon.
 
 ### `brane-core`
 

@@ -1,6 +1,6 @@
 package io.brane.core.types;
 
-import io.brane.internal.web3j.utils.Numeric;
+import io.brane.primitives.Hex;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
@@ -20,13 +20,13 @@ public record Hash(String value) {
     }
 
     public byte[] toBytes() {
-        return Numeric.hexStringToByteArray(value);
+        return Hex.decode(value);
     }
 
     public static Hash fromBytes(final byte[] bytes) {
         if (bytes == null || bytes.length != 32) {
             throw new IllegalArgumentException("Hash must be exactly 32 bytes");
         }
-        return new Hash("0x" + Numeric.toHexStringNoPrefix(bytes));
+        return new Hash("0x" + Hex.encodeNoPrefix(bytes));
     }
 }
