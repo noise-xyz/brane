@@ -2,6 +2,7 @@ package io.brane.rpc;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.brane.core.DebugLogger;
 import io.brane.core.error.RpcException;
 import java.lang.reflect.Array;
 import java.io.IOException;
@@ -9,7 +10,6 @@ import java.net.URI;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,8 +44,14 @@ public final class HttpBraneProvider implements BraneProvider {
         final String payload = serialize(request);
         final HttpRequest httpRequest = buildRequest(payload);
 
+        final long start = System.nanoTime();
         final HttpResponse<String> response = execute(httpRequest);
+        final long durationMicros = (System.nanoTime() - start) / 1_000L;
+
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            DebugLogger.log(
+                    "[RPC-ERROR] method=%s status=%s durationMicros=%s body=%s",
+                    method, response.statusCode(), durationMicros, response.body());
             throw new RpcException(
                     -32001,
                     "HTTP error for method " + method + ": " + response.statusCode(),
@@ -53,11 +59,19 @@ public final class HttpBraneProvider implements BraneProvider {
                     null);
         }
 
-        final JsonRpcResponse rpcResponse = parseResponse(method, response.body());
+        final String responseBody = response.body();
+        final JsonRpcResponse rpcResponse = parseResponse(method, responseBody);
         if (rpcResponse.hasError()) {
             final JsonRpcError err = rpcResponse.error();
+            DebugLogger.log(
+                    "[RPC-ERROR] method=%s code=%s message=%s data=%s durationMicros=%s",
+                    method, err.code(), err.message(), err.data(), durationMicros);
             throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), null);
         }
+
+        DebugLogger.log(
+                "[RPC] method=%s durationMicros=%s request=%s response=%s",
+                method, durationMicros, payload, responseBody);
         return rpcResponse;
     }
 

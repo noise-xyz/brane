@@ -12,7 +12,9 @@ ANVIL_PID=$!
 # Function to cleanup anvil on exit
 cleanup() {
     echo "Stopping Anvil..."
-    kill $ANVIL_PID
+    if [ -n "$ANVIL_PID" ]; then
+        kill $ANVIL_PID > /dev/null 2>&1 || true
+    fi
 }
 trap cleanup EXIT
 
@@ -143,12 +145,24 @@ OUT=$(./gradlew :brane-examples:run --no-daemon \
 echo "$OUT"
 if ! echo "$OUT" | grep -q "TxBuilder Integration Tests Passed!"; then echo "FAILED: TxBuilderIntegrationTest"; exit 1; fi
 
-echo "Running RevertIntegrationTest..."
-OUT=$(./gradlew :brane-examples:run --no-daemon \
-  -PmainClass=io.brane.examples.RevertIntegrationTest \
-  -Dbrane.examples.rpc=$RPC_URL \
-  -Dbrane.examples.contract=$REVERT_ADDR)
-echo "$OUT"
-if ! echo "$OUT" | grep -q "Revert Integration Tests Passed!"; then echo "FAILED: RevertIntegrationTest"; exit 1; fi
+echo "Running Revert Integration Tests..."
+./gradlew :brane-examples:run --no-daemon -PmainClass=io.brane.examples.RevertIntegrationTest \
+  -Dbrane.examples.rpc="$RPC_URL" \
+  -Dbrane.examples.contract="$REVERT_ADDR"
+if [ $? -ne 0 ]; then
+    echo "Revert Integration Tests Failed!"
+    exit 1
+fi
+echo "Revert Integration Tests Passed!"
+
+echo "Running Debug Integration Tests..."
+./gradlew :brane-examples:run --no-daemon -PmainClass=io.brane.examples.DebugIntegrationTest \
+  -Dbrane.examples.rpc="$RPC_URL" \
+  -Dorg.slf4j.simpleLogger.defaultLogLevel=debug
+if [ $? -ne 0 ]; then
+    echo "Debug Integration Tests Failed!"
+    exit 1
+fi
+echo "Debug Integration Tests Passed!"
 
 echo "All Tests and Examples Completed Successfully."

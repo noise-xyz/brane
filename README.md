@@ -79,6 +79,24 @@ BranePublicClient baseSepolia = BranePublicClient
 System.out.println("Base Sepolia chainId: " + baseSepolia.profile().chainId);
 ```
 
+### 🪛 Debug Mode & RPC Logging
+
+Turn on verbose, sanitized RPC logging across Brane with a single toggle:
+
+```java
+import io.brane.core.BraneDebug;
+
+BraneDebug.setEnabled(true); // Log RPC requests, responses, and transaction lifecycle
+```
+
+Try it out end-to-end via the example app:
+
+```bash
+./gradlew :brane-examples:run \
+  -PmainClass=io.brane.examples.DebugExample \
+  -Dbrane.examples.rpc=http://127.0.0.1:8545
+```
+
 -----
 
 ## 🌟 Why Brane (vs. web3j)?
@@ -136,6 +154,7 @@ brane/
 - ✅ **Comprehensive test suite** - Integration tests covering all examples with real testnet validation
 - ✅ **Unified Transaction Builder** - Typed, fluent API for creating Legacy and EIP-1559 transactions with auto-fill capabilities
 - ✅ **Minimal Revert Decoding** - Automatic decoding of Error(string), Panic(uint256), and extensible custom error support
+- ✅ **Debug Mode & RPC Logging** - Global toggle for sanitized, structured logging of RPC calls and transaction lifecycles
 
 Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-alpha`, etc.
 
@@ -154,6 +173,7 @@ Zero-dependency foundational utilities that other modules build upon:
 Defines the core types and the error hierarchy:
 
   * `io.brane.core.error` – `BraneException`, `RpcException`, `RevertException`, `RevertDecoder`.
+  * `io.brane.core` – `BraneDebug` (global toggle), `LogSanitizer` (redaction), `DebugLogger`.
   * `io.brane.core.types` – reusable value objects (`Address`, `Hash`, `HexData`, `Wei`).
   * `io.brane.core.model` – domain DTOs (`Transaction`, `TransactionReceipt`, `LogEntry`, `TransactionRequest`, `ChainProfile`, etc.).
   * `io.brane.core.chain` – typed chain profiles (`ChainProfiles`) capturing chainId, default RPC URL, and EIP-1559 support.
@@ -169,7 +189,7 @@ Defines the core types and the error hierarchy:
 Provides the JSON-RPC transport and public client API:
 
   * `Client` + `HttpClient`: typed wrapper over the transport for contract ABI calls.
-  * `BraneProvider` + `HttpBraneProvider`: low-level JSON-RPC 2.0 transport abstraction that handles request/response serialization.
+  * `BraneProvider` + `HttpBraneProvider`: low-level JSON-RPC 2.0 transport abstraction that handles request/response serialization and **debug logging**.
   * `PublicClient`: high-level read-only client for chain data (`getBlockByNumber`, `getTransactionByHash`, `eth_call`, etc.) that maps node JSON into Brane’s value types (`BlockHeader`, `Transaction`, `Hash`, `Address`, `Wei`, ...).
   * `BranePublicClient`: builder/wrapper that constructs a `PublicClient` from a `ChainProfile` with optional RPC URL override (keeps `PublicClient.from(BraneProvider)` intact).
   * Provider errors are wrapped in `RpcException` with method context; wallet send errors surface `TxnException` subclasses such as `InvalidSenderException`.

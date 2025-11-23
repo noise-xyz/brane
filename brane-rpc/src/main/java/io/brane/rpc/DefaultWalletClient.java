@@ -1,6 +1,7 @@
 package io.brane.rpc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.brane.core.DebugLogger;
 import io.brane.core.RevertDecoder;
 import io.brane.core.error.ChainMismatchException;
 import io.brane.core.error.InvalidSenderException;
@@ -98,18 +99,29 @@ public final class DefaultWalletClient implements WalletClient {
                                 valueParts.value,
                                 valueParts.data);
 
+        DebugLogger.log(
+                "[TX-SEND] from=%s to=%s nonce=%s gasLimit=%s value=%s",
+                from,
+                valueParts.to,
+                nonce,
+                gasLimit,
+                valueParts.value);
+
         final String signedHex = signer.sign(rawTx);
         final String txHash;
+        final long start = System.nanoTime();
         try {
             txHash = callRpc("eth_sendRawTransaction", List.of(signedHex), String.class, null);
         } catch (RpcException e) {
-            handlePotentialRevert(e);
+            handlePotentialRevert(e, null);
             if (e.getMessage() != null
                     && e.getMessage().toLowerCase().contains("invalid sender")) {
                 throw new InvalidSenderException(e.getMessage(), e);
             }
             throw e;
         }
+        final long durationMicros = (System.nanoTime() - start) / 1_000L;
+        DebugLogger.log("[TX-HASH] hash=%s durationMicros=%s", txHash, durationMicros);
         return new Hash(txHash);
     }
 
@@ -117,11 +129,17 @@ public final class DefaultWalletClient implements WalletClient {
     public TransactionReceipt sendTransactionAndWait(
             final TransactionRequest request, final long timeoutMillis, final long pollIntervalMillis) {
         final Hash txHash = sendTransaction(request);
+        DebugLogger.log("[TX-WAIT] hash=%s timeoutMillis=%s", txHash.value(), timeoutMillis);
         final Instant deadline = Instant.now().plus(Duration.ofMillis(timeoutMillis));
 
         while (Instant.now().isBefore(deadline)) {
             final TransactionReceipt receipt = fetchReceipt(txHash);
             if (receipt != null) {
+                DebugLogger.log(
+                        "[TX-RECEIPT] hash=%s block=%s status=%s",
+                        txHash.value(),
+                        receipt.blockNumber(),
+                        receipt.status());
                 return receipt;
             }
             try {
@@ -253,8 +271,17 @@ public final class DefaultWalletClient implements WalletClient {
         if (request.data() != null) {
             tx.put("data", request.data().value());
         }
-        final String estimate =
-                callRpc("eth_estimateGas", List.of(tx), String.class, null);
+        DebugLogger.log("[ESTIMATE-GAS] from=%s to=%s data=%s", from, tx.get("to"), tx.get("data"));
+        final long start = System.nanoTime();
+        final String estimate;
+        try {
+            estimate = callRpc("eth_estimateGas", List.of(tx), String.class, null);
+        } catch (RpcException e) {
+            handlePotentialRevert(e, null);
+            throw e;
+        }
+        final long durationMicros = (System.nanoTime() - start) / 1_000L;
+        DebugLogger.log("[ESTIMATE-GAS-RESULT] durationMicros=%s gas=%s", durationMicros, estimate);
         return Numeric.decodeQuantity(estimate);
     }
 
@@ -273,16 +300,21 @@ public final class DefaultWalletClient implements WalletClient {
 
     private <T> T callRpc(
             final String method, final List<?> params, final Class<T> responseType, final T defaultValue) {
-        final JsonRpcResponse response = provider.send(method, params);
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), null);
+        try {
+            final JsonRpcResponse response = provider.send(method, params);
+            if (response.hasError()) {
+                final JsonRpcError err = response.error();
+                throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), null);
+            }
+            final Object result = response.result();
+            if (result == null) {
+                return defaultValue;
+            }
+            return mapper.convertValue(result, responseType);
+        } catch (RpcException e) {
+            handlePotentialRevert(e, null);
+            throw e;
         }
-        final Object result = response.result();
-        if (result == null) {
-            return defaultValue;
-        }
-        return mapper.convertValue(result, responseType);
     }
 
     private String extractErrorData(final Object dataValue) {
@@ -357,12 +389,15 @@ public final class DefaultWalletClient implements WalletClient {
             BigInteger maxPriorityFeePerGas,
             BigInteger maxFeePerGas) {}
 
-    private static void handlePotentialRevert(final RpcException e) throws RevertException {
+    private static void handlePotentialRevert(final RpcException e, final Hash hash)
+            throws RevertException {
         final String raw = e.data();
         if (raw != null && raw.startsWith("0x") && raw.length() > 10) {
             final var decoded = RevertDecoder.decode(raw);
             // Always throw RevertException for revert data, even if kind is UNKNOWN
             // (UNKNOWN just means we couldn't decode it, but it's still a revert)
+            DebugLogger.log(
+                    "[TX-REVERT] hash=%s kind=%s reason=%s", hash != null ? hash.value() : "unknown", decoded.kind(), decoded.reason());
             throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), e);
         }
     }
