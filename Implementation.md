@@ -1,318 +1,266 @@
-````markdown
-## 8. Robust error handling & diagnostics (#8)
+# Brane Web3j Independence - Phase 1: Hex Utils Replacement
 
-**Goal**
+## Goal
 
-Make Brane’s error model consistent and debuggable:
+Replace the web3j `Numeric` class with custom hex encoding/decoding utilities to achieve:
+- First step toward web3j independence
+- Zero external dependencies for basic hex operations
+- Foundation for future replacements (RLP, crypto)
+- Maintain 100% API compatibility (internal change only)
 
-- Every *public* API either:
-  - returns a domain type (or `null` for “not found”), **or**
-  - throws a typed Brane error (subclass of `BraneException` / `RpcException` / `TxnException`),
-- No random `RuntimeException`, `IOException`, or `NullPointerException` escapes from public-facing APIs,
-- Provide small helper methods on error types for common failure modes (`block range too large`, `filter not found`, `invalid sender`, `chainId mismatch`).
+## Current Dependencies
 
-We will **reuse existing error types** where possible (e.g. current `RpcException`, `AbiDecodingException`) instead of inventing a parallel hierarchy.
+The `io.brane.internal.web3j.utils.Numeric` class is used in:
+- `brane-core/src/main/java/io/brane/core/types/Address.java`
+- `brane-core/src/main/java/io/brane/core/types/Hash.java`
+- `brane-core/src/main/java/io/brane/core/types/HexData.java`
 
----
-
-### 8.1 Confirm / refine core error types
-
-**Files**
-
-- `brane-core/src/main/java/io/brane/core/error/...` (or equivalent package)
-
-**Tasks**
-
-1. **Inventory existing core errors**:
-   - Find `BraneException` / `RpcException` / `AbiDecodingException` / `TxnException` etc. and confirm their current role.
-   - If there is no single base type yet, introduce:
-
-     ```java
-     public class BraneException extends RuntimeException { ... }
-     ```
-
-2. **Align hierarchy** (minimal disruption):
-   - Ensure there is a clear RPC-level exception type, e.g.:
-
-     ```java
-     public class RpcException extends BraneException {
-         private final int code;
-         private final String data;
-         // optional: String method, String endpoint
-     }
-     ```
-
-     (If `RpcException` already exists, extend `BraneException` instead of `RuntimeException`.)
-
-   - Ensure there is a transaction-level type, e.g.:
-
-     ```java
-     public class TxnException extends BraneException {
-         // optionals: Hash txHash, String revertData
-     }
-     ```
-
-   - Keep `AbiDecodingException` (or equivalent) as a `BraneException` subclass for ABI/contract decoding issues.
-
-3. **Add domain-specific subclasses only if they are already referenced in the design**:
-   - `InvalidSenderException extends TxnException`
-   - `ChainIdMismatchException extends TxnException`
-
-   Keep them lightweight and focused on message / fields.
+**Used methods:**
+- `hexStringToByteArray(String hexString)` - Converts 0x-prefixed hex to bytes
+- `toHexStringNoPrefix(byte[] bytes)` - Converts bytes to hex without 0x prefix
+- `cleanHexPrefix(String hexString)` - Removes 0x prefix if present
 
 ---
 
-### 8.2 Provider-level error wrapping (`BraneProvider` / HTTP)
+## Implementation Plan
 
-**Files**
+### Step 1: Create `brane-primitives` module
 
-- `brane-rpc/src/main/java/io/brane/rpc/BraneProvider.java`
-- `brane-rpc/src/main/java/io/brane/rpc/HttpBraneProvider.java`
-- Any other `BraneProvider` implementation
+**Files to create:**
+- `brane-primitives/build.gradle`
+- `brane-primitives/src/main/java/io/brane/primitives/Hex.java`
+- `brane-primitives/src/test/java/io/brane/primitives/HexTest.java`
 
-**Tasks**
+**Tasks:**
 
-1. Audit `BraneProvider.send(...)` implementations:
-   - Wrap **all** I/O (HTTP, timeouts, JSON mapping) failures into `RpcException` (or your chosen RPC error type).
-   - Include as much useful context as possible:
-     - RPC method name
-     - Endpoint URL
-     - Possibly truncated params string
-
-2. When a `JsonRpcResponse` has `error`:
-   - Always throw `RpcException` with:
-     - `code` from `error.code`
-     - `message` from `error.message`
-     - `data` extracted from `error.data` (stringified / hex if needed)
-   - Do **not** silently return `null` or an empty list in these cases.
-
-3. Ensure `BraneProvider.send(...)` **never leaks** checked exceptions (`IOException`, etc.) or generic runtime wrappers; they should always be transformed into `RpcException` (subclass of `BraneException`).
-
----
-
-### 8.3 PublicClient error behaviour (`DefaultPublicClient`)
-
-**Files**
-
-- `brane-rpc/src/main/java/io/brane/rpc/DefaultPublicClient.java`
-
-**Tasks**
-
-1. Audit each public method:
-
-   - `getLatestBlock`
-   - `getBlockByNumber`
-   - `getTransactionByHash`
-   - `call`
-   - `getLogs`
-
-   For each:
-
-   - RPC errors → surface as `RpcException` (already thrown by provider).
-   - Mapping/decoding bugs → throw `BraneException` (or `AbiDecodingException` where ABI is involved), not arbitrary `RuntimeException`.
-
-2. **Special case: `getTransactionByHash`**:
-   - Returning `null` for “not found” is acceptable (keep that contract).
-   - Ensure errors are still `RpcException`.
-
-3. **Special case: `getLogs`**:
-   - For error responses like “block range too large” or “filter not found”, keep them as `RpcException` but wire in helper methods (see 8.6).
-   - Do not return `List.of()` if there is a JSON-RPC error; only return empty list on genuine success + empty result.
-
----
-
-### 8.4 Contract / ABI errors (`brane-contract`)
-
-**Files**
-
-- `brane-contract/src/main/java/io/brane/contract/Abi.java`
-- `brane-contract/src/main/java/io/brane/contract/InternalAbi.java`
-- `brane-contract/src/main/java/io/brane/contract/ReadOnlyContract.java`
-- `brane-contract/src/main/java/io/brane/contract/ReadWriteContract.java` (or equivalent)
-
-**Tasks**
-
-1. **ABI decoding**:
-   - Ensure ABI decode failures throw a dedicated exception (`AbiDecodingException` extending `BraneException`), not generic `RuntimeException`.
-   - Error messages should mention:
-     - Function/event name
-     - Expected vs actual type count / type mismatch details.
-
-2. **Read-only contract calls**:
-   - `ReadOnlyContract.call(...)`:
-     - Underlying RPC issues → `RpcException`.
-     - ABI decode problems → `AbiDecodingException`.
-
-3. **Read-write contract sends**:
-   - `ReadWriteContract.send(...)` (or equivalent send API):
-     - For tx failures / reverts, convert raw error info into:
-       - `TxnException` or subclasses (`InvalidSenderException`, `ChainIdMismatchException`) when applicable.
-   - Ensure callers can distinguish:
-     - RPC/network error (`RpcException`)
-     - EVM revert / invalid sender (`TxnException` subclass)
-
----
-
-### 8.5 Wallet / signer error mapping
-
-**Files**
-
-- `brane-rpc` or wallet module:
-  - `DefaultWalletClient`
-  - `BraneSigner` / `TransactionSigner`
-  - Any sendTransaction / sendRawTransaction wrappers
-
-**Tasks**
-
-1. Where chain IDs are checked before signing/sending:
-   - On mismatch, throw `ChainIdMismatchException` with:
-     - Expected chainId
-     - Actual chainId
-     - Optional network/profile info (e.g. `ChainProfile`).
-
-2. When sender / from address is invalid:
-   - Throw `InvalidSenderException` (or similar) with:
-     - `from` address
-     - Explanation (“sender is null”, “sender not unlocked”, etc.).
-
-3. Ensure tx send flows do **not** throw random `RuntimeException` for these domain conditions.
-
----
-
-### 8.6 Add diagnostic helpers on exceptions
-
-**Files**
-
-- Core error classes (e.g. `io.brane.core.error.RpcException`, `TxnException`)
-
-**Tasks**
-
-1. On the RPC error type (`RpcException`):
-
-   ```java
-   public boolean isBlockRangeTooLarge() {
-       // e.g. inspect code and message/data for known patterns from getLogs
+1. Create new Gradle module `brane-primitives`:
+   ```groovy
+   // brane-primitives/build.gradle
+   dependencies {
+       // No external dependencies - pure JDK
    }
+   ```
 
-   public boolean isFilterNotFound() {
-       // e.g. "filter not found" in message or data
+2. Add to root `settings.gradle`:
+   ```groovy
+   include 'brane-primitives'
+   ```
+
+3. Create `io.brane.primitives.Hex` utility class with methods:
+   ```java
+   public final class Hex {
+       // Convert 0x-prefixed hex string to byte array
+       public static byte[] decode(String hexString)
+       
+       // Convert byte array to hex string (with 0x prefix)
+       public static String encode(byte[] bytes)
+       
+       // Convert byte array to hex string (without 0x prefix)
+       public static String encodeNoPrefix(byte[] bytes)
+       
+       // Remove 0x prefix if present
+       public static String cleanPrefix(String hexString)
+       
+       // Check if string has 0x prefix
+       public static boolean hasPrefix(String hexString)
    }
-````
-
-These should be **best-effort** helpers:
-
-* Implement via simple `contains(...)` checks or known error codes (`-32000`, etc.).
-* Document that they’re node-dependent.
-
-2. On the transaction error type (`TxnException`):
-
-   ```java
-   public boolean isInvalidSender() { ... }
-
-   public boolean isChainIdMismatch() { ... }
    ```
 
-   Implement using message / code / stored fields; don’t over-engineer.
+4. Implementation details:
+   - Use lookup tables for performance (char to nibble mapping)
+   - Handle edge cases: null, empty, odd-length strings
+   - Case-insensitive decoding
+   - Lowercase encoding by default
+   - Throw `IllegalArgumentException` for invalid hex
 
 ---
 
-### 8.7 Audit public APIs for “no random exceptions”
+### Step 2: Comprehensive test coverage
 
-**Tasks**
+**File:** `brane-primitives/src/test/java/io/brane/primitives/HexTest.java`
 
-1. For public types in:
+**Test cases:**
 
-   * `io.brane.rpc.*`
-   * `io.brane.contract.*`
-   * `io.brane.core.types.*`
-   * Wallet / signer public classes
+1. **Encoding tests:**
+   - Empty array → `"0x"`
+   - Single byte → `"0x00"`, `"0xff"`
+   - Multiple bytes → proper encoding
+   - No prefix variant works correctly
 
-   confirm:
+2. **Decoding tests:**
+   - `"0x"` → empty array
+   - `"0x00"` → `[0]`
+   - `"0xff"` → `[-1]`
+   - Uppercase hex → decodes correctly
+   - Lowercase hex → decodes correctly
+   - Mixed case → decodes correctly
 
-   * Failure modes are either:
+3. **Edge cases:**
+   - Null input → `IllegalArgumentException`
+   - Odd-length hex (e.g., `"0x1"`) → `IllegalArgumentException` or pad with leading zero
+   - Invalid characters → `IllegalArgumentException`
+   - Missing prefix → handle gracefully or reject
 
-     * Documented `BraneException` subclasses, or
-     * Documented `IllegalArgumentException` for obvious misuse.
+4. **Prefix handling:**
+   - `cleanPrefix("0x1234")` → `"1234"`
+   - `cleanPrefix("1234")` → `"1234"`
+   - `hasPrefix("0x...")` → `true`
+   - `hasPrefix("...")` → `false`
 
-2. Replace patterns like:
-
-   ```java
-   throw new RuntimeException("rpc failed: " + e.getMessage(), e);
-   ```
-
-   with:
-
-   ```java
-   throw new BraneException("rpc failed: ...", e);
-   ```
-
-   or more specific types where appropriate.
-
-3. Avoid leaking `NullPointerException` from public APIs due to unchecked assumptions; validate arguments where cheap and helpful.
-
----
-
-### 8.8 Tests for error behaviour
-
-**Files**
-
-* `brane-core/src/test/java/io/brane/core/error/RpcExceptionTest.java`
-* `brane-core/src/test/java/io/brane/core/error/TxnExceptionTest.java`
-* `brane-rpc/src/test/java/io/brane/rpc/DefaultPublicClientErrorTest.java`
-* `brane-contract/src/test/java/io/brane/contract/ContractErrorTest.java`
-
-**Tasks**
-
-1. **Exception helper tests:**
-
-   * `RpcExceptionTest`:
-
-     * Construct errors with messages like “block range is too large” / “filter not found”.
-     * Assert:
-
-       * `isBlockRangeTooLarge()` → `true` for block range message.
-       * `isFilterNotFound()` → `true` for filter error.
-
-   * `TxnExceptionTest`:
-
-     * Create instances that should satisfy `isInvalidSender()` / `isChainIdMismatch()` and assert they do.
-
-2. **PublicClient error tests:**
-
-   * Use a fake `BraneProvider` that returns `JsonRpcResponse` with `error` fields:
-
-     * For `getLogs(...)`, simulate:
-
-       * “block range too large” → assert `RpcException` thrown and `isBlockRangeTooLarge()` is `true`.
-       * “filter not found” → assert `isFilterNotFound()` is `true`.
-
-3. **Contract error tests:**
-
-   * For `ReadOnlyContract`:
-
-     * Feed malformed ABI outputs → assert `AbiDecodingException`.
-   * For tx send:
-
-     * Fake a client that returns chain mismatch / invalid sender signals → assert appropriate `TxnException` subclasses are thrown.
+5. **Round-trip tests:**
+   - `decode(encode(bytes)) == bytes`
+   - For various byte arrays
 
 ---
 
-### 8.9 Sanity commands
+### Step 3: Update `brane-core` to use `Hex`
 
-After implementing Step 8, run:
+**Files to modify:**
+- `brane-core/build.gradle`
+- `brane-core/src/main/java/io/brane/core/types/Address.java`
+- `brane-core/src/main/java/io/brane/core/types/Hash.java`
+- `brane-core/src/main/java/io/brane/core/types/HexData.java`
 
-```bash
-./gradlew :brane-core:test --no-daemon
-./gradlew :brane-rpc:test --no-daemon
-./gradlew :brane-contract:test --no-daemon
-./gradlew clean check --no-daemon
-```
+**Tasks:**
 
-All should pass. Then re-run:
+1. Add dependency in `brane-core/build.gradle`:
+   ```groovy
+   dependencies {
+       implementation project(':brane-primitives')
+       // ... existing dependencies
+   }
+   ```
 
-* `Erc20TransferLogExample` (logs still decode correctly).
-* `MultiChainLatestBlockExample` (multichain builder still works).
+2. Update `Address.java`:
+   ```java
+   // Replace:
+   import io.brane.internal.web3j.utils.Numeric;
+   
+   // With:
+   import io.brane.primitives.Hex;
+   
+   // Replace method calls:
+   Numeric.hexStringToByteArray(value) → Hex.decode(value)
+   Numeric.toHexStringNoPrefix(bytes) → Hex.encodeNoPrefix(bytes)
+   ```
 
-This ensures the stricter error model didn’t break the happy paths from Steps 6–7.
+3. Update `Hash.java` (same pattern as Address)
 
-````
+4. Update `HexData.java` (same pattern as Address)
+
+---
+
+### Step 4: Remove web3j `Numeric` usage from other modules
+
+**Search for remaining usages:**
+
+1. Audit all imports:
+   ```bash
+   grep -r "import io.brane.internal.web3j.utils.Numeric" brane-*/src
+   ```
+
+2. For each usage found:
+   - If in public API → replace with `Hex` from `brane-primitives`
+   - If in `internal.web3j` package → leave for now (internal only)
+
+3. Update dependencies where needed (add `brane-primitives` dependency)
+
+---
+
+### Step 5: Integration testing
+
+**Tasks:**
+
+1. Run existing test suite:
+   ```bash
+   ./gradlew :brane-primitives:test --no-daemon
+   ./gradlew :brane-core:test --no-daemon
+   ./gradlew clean test --no-daemon
+   ```
+
+2. Run integration tests:
+   ```bash
+   ./run_integration_tests.sh
+   ```
+
+3. Verify all examples still work:
+   - `Main.java` (Echo example)
+   - `Erc20Example.java`
+   - `Erc20TransferExample.java`
+   - All others in integration suite
+
+4. Performance validation (optional):
+   - Benchmark encoding/decoding vs web3j `Numeric`
+   - Should be comparable or faster (lookup tables)
+
+---
+
+### Step 6: Documentation & cleanup
+
+**Tasks:**
+
+1. Add module README:
+   ```markdown
+   # brane-primitives
+   
+   Core primitive utilities with zero external dependencies.
+   
+   ## Features
+   - Hex encoding/decoding
+   - Future: RLP encoding, byte utilities
+   ```
+
+2. Add JavaDoc to `Hex` class:
+   - Document each method
+   - Include examples
+   - Specify exception behavior
+
+3. Update main README to reflect new module structure
+
+4. Consider adding module-info.java (Java 9+ module):
+   ```java
+   module io.brane.primitives {
+       exports io.brane.primitives;
+   }
+   ```
+
+---
+
+## Success Criteria
+
+✅ **All tests pass** - No regressions  
+✅ **Zero `Numeric` usage** in public-facing code (`brane-core`, `brane-rpc`, `brane-contract`)  
+✅ **Integration tests pass** - All examples work  
+✅ **No new dependencies** - `brane-primitives` is pure JDK  
+✅ **Performance maintained** - No noticeable slowdown  
+
+---
+
+## Rollback Plan
+
+If issues arise:
+1. Keep both implementations temporarily
+2. Gate with feature flag if needed
+3. Gradual migration per module
+4. Web3j `Numeric` remains available in `internal` package as fallback
+
+---
+
+## Future Work (Phase 1 continuation)
+
+After hex utils:
+1. **RLP Encoding** - Transaction serialization independence
+2. **Crypto/Signing** - Use BouncyCastle directly
+3. **ABI Codec** - Largest but most isolated component
+
+Each phase builds on the previous, reducing web3j dependency surface area incrementally.
+
+---
+
+## Time Estimate
+
+- Step 1-2 (Module + Tests): 2-3 hours
+- Step 3-4 (Integration): 1-2 hours  
+- Step 5-6 (Testing + Docs): 1-2 hours
+
+**Total: 4-7 hours** for complete hex utils independence.
