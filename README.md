@@ -1,7 +1,9 @@
 
-# Brane 0.1.0-alpha: Minimal JVM Ethereum Client
+# Brane 0.1.0-alpha: A Modern JVM EVM SDK
 
-Brane is a modern, minimal, and production-usable Ethereum client for the JVM, built by forking and refining **web3j**.
+Brane is a lightweight, modern, and production-grade **SDK** for interacting with Ethereum and EVM-compatible blockchains on the JVM.
+
+Built by forking and refining the established **web3j** library, Brane acts as the connector between your application and Ethereum nodes (such as **Besu** or **Geth**). It streamlines the developer experience by stripping away bloat and focusing on reliability.
 
 The **0.1.0-alpha** release focuses on:
 * **Table-stakes web3j functionality** (JSON-RPC, ABI encoding/decoding, simple transaction sending).
@@ -96,7 +98,7 @@ Brane aims to provide a cleaner, more predictable API for production use cases.
 
 ### 1\. High-Level Goals for 0.1.0-alpha
 
-A minimal, production-usable JVM Ethereum client that covers:
+A minimal, production-usable JVM EVM SDK that covers:
 
   * Connect to a node via HTTP.
   * Make JSON-RPC calls (`eth_call`, `eth_sendRawTransaction`, etc.).
