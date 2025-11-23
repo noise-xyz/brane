@@ -70,10 +70,10 @@ public final class DefaultWalletClient implements WalletClient {
 
         final Address from = request.from() != null ? request.from() : senderAddress;
         final BigInteger nonce =
-                request.nonce().map(BigInteger::valueOf).orElseGet(() -> fetchNonce(from));
+                request.nonceOpt().map(BigInteger::valueOf).orElseGet(() -> fetchNonce(from));
 
         final BigInteger gasLimit =
-                request.gasLimit().map(BigInteger::valueOf).orElseGet(() -> estimateGas(request, from));
+                request.gasLimitOpt().map(BigInteger::valueOf).orElseGet(() -> estimateGas(request, from));
 
         final ValueParts valueParts = buildValueParts(request, from);
 
@@ -209,29 +209,25 @@ public final class DefaultWalletClient implements WalletClient {
     }
 
     private ValueParts buildValueParts(final TransactionRequest request, final Address from) {
-        final String to = request.to().map(Address::value).orElse(null);
-        final BigInteger value =
-                request.value().map(Wei::value).orElse(BigInteger.ZERO);
+        final String to = request.to() != null ? request.to().value() : null;
+        final BigInteger value = request.value() != null ? request.value().value() : BigInteger.ZERO;
         final String data = request.data() != null ? request.data().value() : "0x";
 
-        final boolean has1559 =
-                request.maxFeePerGas().isPresent() || request.maxPriorityFeePerGas().isPresent();
+        final boolean has1559 = request.isEip1559();
 
         if (has1559) {
             final BigInteger maxFee =
-                    request.maxFeePerGas()
-                            .map(Wei::value)
-                            .orElseGet(this::fetchGasPrice);
+                    request.maxFeePerGas() != null ? request.maxFeePerGas().value() : fetchGasPrice();
             final BigInteger maxPriority =
-                    request.maxPriorityFeePerGas()
-                            .map(Wei::value)
-                            .orElse(maxFee);
+                    request.maxPriorityFeePerGas() != null
+                            ? request.maxPriorityFeePerGas().value()
+                            : maxFee;
             return new ValueParts(
                     to, value, data, true, null, maxPriority, maxFee);
         }
 
         final BigInteger gasPrice =
-                request.gasPrice().map(Wei::value).orElseGet(this::fetchGasPrice);
+                request.gasPrice() != null ? request.gasPrice().value() : fetchGasPrice();
         return new ValueParts(to, value, data, false, gasPrice, null, null);
     }
 
@@ -249,8 +245,8 @@ public final class DefaultWalletClient implements WalletClient {
     private BigInteger estimateGas(final TransactionRequest request, final Address from) {
         final Map<String, Object> tx = new LinkedHashMap<>();
         tx.put("from", from.value());
-        request.to().ifPresent(address -> tx.put("to", address.value()));
-        request.value().ifPresent(v -> tx.put("value", toQuantityHex(v.value())));
+        request.toOpt().ifPresent(address -> tx.put("to", address.value()));
+        request.valueOpt().ifPresent(v -> tx.put("value", toQuantityHex(v.value())));
         if (request.data() != null) {
             tx.put("data", request.data().value());
         }

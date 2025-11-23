@@ -1,5 +1,6 @@
 package io.brane.contract;
 
+import io.brane.core.builder.TxBuilder;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
@@ -8,7 +9,6 @@ import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
-import java.util.Optional;
 
 public final class ReadWriteContract extends ReadOnlyContract {
 
@@ -34,16 +34,12 @@ public final class ReadWriteContract extends ReadOnlyContract {
     public Hash send(final String functionName, final Object... args) {
         final Abi.FunctionCall fnCall = abi().encodeFunction(functionName, args);
         final TransactionRequest request =
-                new TransactionRequest(
-                        null,
-                        Optional.of(address()),
-                        Optional.of(Wei.of(0)),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        new HexData(fnCall.data()));
+                TxBuilder.legacy()
+                        .to(address())
+                        .value(Wei.of(0))
+
+                        .data(new HexData(fnCall.data()))
+                        .build();
         return walletClient.sendTransaction(request);
     }
 
@@ -54,16 +50,12 @@ public final class ReadWriteContract extends ReadOnlyContract {
             final Object... args) {
         final Abi.FunctionCall fnCall = abi().encodeFunction(functionName, args);
         final TransactionRequest request =
-                new TransactionRequest(
-                        null,
-                        Optional.of(address()),
-                        Optional.of(Wei.of(0)),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        Optional.empty(),
-                        new HexData(fnCall.data()));
+                TxBuilder.legacy()
+                        .to(address())
+                        .value(Wei.of(0))
+
+                        .data(new HexData(fnCall.data()))
+                        .build();
         return walletClient.sendTransactionAndWait(request, timeoutMillis, pollIntervalMillis);
     }
 }

@@ -53,7 +53,7 @@ TransactionRequest legacy = TxBuilder.legacy()
 - **`Eip1559Builder`**:
     - Implements `TxBuilder<Eip1559Builder>`.
     - Adds `maxFeePerGas(Wei)`, `maxPriorityFeePerGas(Wei)`.
-    - **Validation**: `maxFeePerGas` and `maxPriorityFeePerGas` MUST be non-null.
+    - **Validation**: `maxFeePerGas` and `maxPriorityFeePerGas` are optional (auto-filled by WalletClient if null).
     - **Isolation**: Does NOT expose `gasPrice`.
     ```java
     public final class Eip1559Builder implements TxBuilder<Eip1559Builder> {
@@ -86,7 +86,7 @@ TransactionRequest legacy = TxBuilder.legacy()
 - **`LegacyBuilder`**:
     - Implements `TxBuilder<LegacyBuilder>`.
     - Adds `gasPrice(Wei)`.
-    - **Validation**: `gasPrice` MUST be non-null (unless explicitly deferring to defaults).
+    - **Validation**: `gasPrice` is optional (auto-filled by WalletClient if null).
     - **Isolation**: Does NOT expose `maxFee`/`maxPriorityFee`.
     ```java
     public final class LegacyBuilder implements TxBuilder<LegacyBuilder> {

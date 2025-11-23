@@ -43,8 +43,8 @@ class ReadWriteContractTest {
         contract.send("transfer", recipient, BigInteger.valueOf(10));
 
         TransactionRequest captured = walletClient.lastRequest;
-        assertEquals("0x" + "1".repeat(40), captured.to().orElseThrow().value());
-        assertEquals(BigInteger.ZERO, captured.value().orElseThrow().value());
+        assertEquals("0x" + "1".repeat(40), captured.to().value());
+        assertEquals(BigInteger.ZERO, captured.value().value());
         // Confirm selector present
         assertEquals("0xa9059cbb", captured.data().value().substring(0, 10));
     }

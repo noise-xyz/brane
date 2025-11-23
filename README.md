@@ -132,6 +132,7 @@ brane/
 - ✅ **Java 21 native** - Leverages records, pattern matching, virtual threads, and text blocks
 - ✅ **Web3j independence (Phase 1 & 2)** - Custom Hex and RLP utilities with zero external dependencies
 - ✅ **Comprehensive test suite** - Integration tests covering all examples with real testnet validation
+- ✅ **Unified Transaction Builder** - Typed, fluent API for creating Legacy and EIP-1559 transactions with auto-fill capabilities
 
 Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-alpha`, etc.
 
@@ -165,6 +166,22 @@ Provides the JSON-RPC transport and public client API:
   * `BranePublicClient`: builder/wrapper that constructs a `PublicClient` from a `ChainProfile` with optional RPC URL override (keeps `PublicClient.from(BraneProvider)` intact).
   * Provider errors are wrapped in `RpcException` with method context; wallet send errors surface `TxnException` subclasses such as `InvalidSenderException`.
   * `WalletClient` + `DefaultWalletClient`: fills nonce/gas/fees, enforces chainId, signs raw transactions via a provided signer (see `PrivateKeyTransactionSigner`), sends via `eth_sendRawTransaction`, and can poll for receipts.
+  * **Unified Transaction Builder**: Typed, fluent API for creating Legacy and EIP-1559 transactions.
+    * *Note*: If you omit gas fields, Brane will auto-fill sane defaults via `DefaultWalletClient`. If you specify them, they are respected verbatim.
+    ```java
+    // EIP-1559 (auto-filled fees)
+    TransactionRequest tx = TxBuilder.eip1559()
+        .to(recipient)
+        .value(Wei.of("1.0"))
+        .build();
+
+    // Legacy (explicit gas price)
+    TransactionRequest legacy = TxBuilder.legacy()
+        .to(recipient)
+        .gasPrice(Wei.gwei(20))
+        .build();
+    ```
+
   * `getLogs(LogFilter)`: fetch historical logs (e.g., ERC-20 `Transfer` events) with block/topic filters.
 
 ### `brane-contract`
@@ -227,12 +244,12 @@ Runnable demos that exercise `Contract.read`/`write` against a running node.
       -PmainClass=io.brane.examples.ErrorDiagnosticsExample \
       -Pbrane.examples.mode=rpc-error
     ```
-  * `io.brane.examples.MultiChainLatestBlockExample` – shows how to build clients from `ChainProfiles`. Always queries Anvil; optionally queries Base Sepolia when an RPC URL is provided:
-
+  * `io.brane.examples.TxBuilderIntegrationTest` – verifies EIP-1559 and contract deployment via the builder:
     ```bash
     ./gradlew :brane-examples:run --no-daemon \
-      -PmainClass=io.brane.examples.MultiChainLatestBlockExample \
-      -Dbrane.examples.rpc.base-sepolia=https://sepolia.base.org
+      -PmainClass=io.brane.examples.TxBuilderIntegrationTest \
+      -Dbrane.examples.rpc=http://127.0.0.1:8545 \
+      -Dbrane.examples.pk=0xYourPrivateKey
     ```
 
 -----
