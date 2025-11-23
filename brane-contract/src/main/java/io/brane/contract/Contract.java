@@ -82,7 +82,9 @@ public final class Contract {
         final String raw = e.data();
         if (raw != null && raw.startsWith("0x") && raw.length() > 10) {
             final var decoded = RevertDecoder.decode(raw);
-            throw new RevertException(decoded.reason(), decoded.rawDataHex(), e);
+            // Always throw RevertException for revert data, even if kind is UNKNOWN
+            // (UNKNOWN just means we couldn't decode it, but it's still a revert)
+            throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), e);
         }
     }
 }

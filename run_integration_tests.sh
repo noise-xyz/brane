@@ -143,4 +143,12 @@ OUT=$(./gradlew :brane-examples:run --no-daemon \
 echo "$OUT"
 if ! echo "$OUT" | grep -q "TxBuilder Integration Tests Passed!"; then echo "FAILED: TxBuilderIntegrationTest"; exit 1; fi
 
+echo "Running RevertIntegrationTest..."
+OUT=$(./gradlew :brane-examples:run --no-daemon \
+  -PmainClass=io.brane.examples.RevertIntegrationTest \
+  -Dbrane.examples.rpc=$RPC_URL \
+  -Dbrane.examples.contract=$REVERT_ADDR)
+echo "$OUT"
+if ! echo "$OUT" | grep -q "Revert Integration Tests Passed!"; then echo "FAILED: RevertIntegrationTest"; exit 1; fi
+
 echo "All Tests and Examples Completed Successfully."
