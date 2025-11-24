@@ -3,6 +3,7 @@ package io.brane.contract;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
+import io.brane.contract.Abi.FunctionMetadata;
 import io.brane.core.error.AbiDecodingException;
 import io.brane.core.error.AbiEncodingException;
 import io.brane.core.types.Address;
@@ -30,13 +31,14 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 final class InternalAbi implements Abi {
 
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
-    private final Map<String, List<AbiFunction>> functionsByName;
+    private final Map<String, AbiFunction> functionsByName;
     private final Map<String, AbiFunction> functionsBySignature;
     private final Map<String, AbiEvent> eventsBySignature;
 
@@ -66,35 +68,34 @@ final class InternalAbi implements Abi {
         return new Call(fn, function, data, outputTypes);
     }
 
+    @Override
+    public Optional<FunctionMetadata> getFunction(final String name) {
+        return Optional.ofNullable(functionsByName.get(name)).map(AbiFunction::metadata);
+    }
+
     private AbiFunction resolveFunction(final String nameOrSignature, final int argCount) {
         final AbiFunction bySignature = functionsBySignature.get(nameOrSignature);
         if (bySignature != null) {
             return bySignature;
         }
 
-        final List<AbiFunction> candidates = functionsByName.get(nameOrSignature);
-        if (candidates == null || candidates.isEmpty()) {
+        final AbiFunction function = functionsByName.get(nameOrSignature);
+        if (function == null) {
             throw new AbiEncodingException("Unknown function '" + nameOrSignature + "'");
         }
 
-        AbiFunction fallback = null;
-        for (AbiFunction fn : candidates) {
-            if (fn.inputs().size() == argCount) {
-                return fn;
-            }
-            fallback = fn;
+        if (function.inputs().size() != argCount) {
+            throw new AbiEncodingException(
+                    "Function "
+                            + nameOrSignature
+                            + " expects "
+                            + function.inputs().size()
+                            + " arguments but "
+                            + argCount
+                            + " were supplied");
         }
 
-        final String expected =
-                fallback != null ? String.valueOf(fallback.inputs().size()) : "unknown";
-        throw new AbiEncodingException(
-                "Function "
-                        + nameOrSignature
-                        + " expects "
-                        + expected
-                        + " arguments but "
-                        + argCount
-                        + " were supplied");
+        return function;
     }
 
     private static List<TypeReference<?>> buildOutputs(final List<AbiParameter> outputs) {
@@ -250,7 +251,7 @@ final class InternalAbi implements Abi {
             throw new AbiEncodingException("ABI json must be an array");
         }
 
-        final Map<String, List<AbiFunction>> functionsByName = new HashMap<>();
+        final Map<String, AbiFunction> functionsByName = new HashMap<>();
         final Map<String, AbiFunction> functionsBySignature = new HashMap<>();
         final Map<String, AbiEvent> eventsBySignature = new HashMap<>();
         final Iterator<JsonNode> iterator = root.elements();
@@ -259,7 +260,11 @@ final class InternalAbi implements Abi {
             final String type = node.path("type").asText("").toLowerCase(Locale.ROOT);
             if ("function".equals(type)) {
                 final AbiFunction fn = parseFunction(node);
-                functionsByName.computeIfAbsent(fn.name(), k -> new ArrayList<>()).add(fn);
+                final AbiFunction existing = functionsByName.putIfAbsent(fn.name(), fn);
+                if (existing != null) {
+                    throw new AbiEncodingException(
+                            "Overloaded functions are not supported; duplicate name '" + fn.name() + "'");
+                }
                 functionsBySignature.put(fn.signature(), fn);
             } else if ("event".equals(type)) {
                 final AbiEvent event = parseEvent(node);
@@ -274,7 +279,17 @@ final class InternalAbi implements Abi {
         final String name = requireText(node, "name", "function");
         final List<AbiParameter> inputs = parseParameters(arrayField(node, "inputs"));
         final List<AbiParameter> outputs = parseParameters(arrayField(node, "outputs"));
-        return new AbiFunction(name, inputs, outputs);
+        final String stateMutability = parseStateMutability(node);
+        return new AbiFunction(name, stateMutability, inputs, outputs);
+    }
+
+    private static String parseStateMutability(final JsonNode node) {
+        String stateMutability = node.path("stateMutability").asText("");
+        if (stateMutability == null || stateMutability.isBlank()) {
+            final boolean constant = node.path("constant").asBoolean(false);
+            stateMutability = constant ? "view" : "nonpayable";
+        }
+        return stateMutability.toLowerCase(Locale.ROOT);
     }
 
     private static AbiEvent parseEvent(final JsonNode node) {
@@ -320,11 +335,18 @@ final class InternalAbi implements Abi {
 
     private record AbiParameter(String name, String type, boolean indexed) {}
 
-    private record AbiFunction(String name, List<AbiParameter> inputs, List<AbiParameter> outputs) {
+    private record AbiFunction(
+            String name, String stateMutability, List<AbiParameter> inputs, List<AbiParameter> outputs) {
         String signature() {
             final String joined =
                     inputs.stream().map(AbiParameter::type).collect(Collectors.joining(","));
             return name + "(" + joined + ")";
+        }
+
+        FunctionMetadata metadata() {
+            final List<String> inputTypes = inputs.stream().map(AbiParameter::type).toList();
+            final List<String> outputTypes = outputs.stream().map(AbiParameter::type).toList();
+            return new FunctionMetadata(name, stateMutability, inputTypes, outputTypes);
         }
     }
 
@@ -337,7 +359,7 @@ final class InternalAbi implements Abi {
     }
 
     private record ParsedAbi(
-            Map<String, List<AbiFunction>> functionsByName,
+            Map<String, AbiFunction> functionsByName,
             Map<String, AbiFunction> functionsBySignature,
             Map<String, AbiEvent> eventsBySignature) {}
 
