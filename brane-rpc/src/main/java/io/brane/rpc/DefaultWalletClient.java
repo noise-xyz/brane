@@ -35,6 +35,7 @@ public final class DefaultWalletClient implements WalletClient {
     private final Address senderAddress;
     private final long expectedChainId;
     private final ChainProfile chainProfile;
+    private final SmartGasStrategy gasStrategy;
     private final ObjectMapper mapper = new ObjectMapper();
     private Long cachedChainId;
 
@@ -44,13 +45,15 @@ public final class DefaultWalletClient implements WalletClient {
             final TransactionSigner signer,
             final Address senderAddress,
             final long expectedChainId,
-            final ChainProfile chainProfile) {
+            final ChainProfile chainProfile,
+            final SmartGasStrategy gasStrategy) {
         this.provider = Objects.requireNonNull(provider, "provider");
         this.publicClient = Objects.requireNonNull(publicClient, "publicClient");
         this.signer = Objects.requireNonNull(signer, "signer");
         this.senderAddress = Objects.requireNonNull(senderAddress, "senderAddress");
         this.expectedChainId = expectedChainId;
         this.chainProfile = Objects.requireNonNull(chainProfile, "chainProfile");
+        this.gasStrategy = Objects.requireNonNull(gasStrategy, "gasStrategy");
     }
 
     public static DefaultWalletClient from(
@@ -60,8 +63,32 @@ public final class DefaultWalletClient implements WalletClient {
             final Address senderAddress,
             final long expectedChainId,
             final ChainProfile chainProfile) {
+        final SmartGasStrategy gasStrategy =
+                new SmartGasStrategy(publicClient, provider, chainProfile);
         return new DefaultWalletClient(
-                provider, publicClient, signer, senderAddress, expectedChainId, chainProfile);
+                provider, publicClient, signer, senderAddress, expectedChainId, chainProfile, gasStrategy);
+    }
+
+    public static DefaultWalletClient from(
+            final BraneProvider provider,
+            final PublicClient publicClient,
+            final TransactionSigner signer,
+            final Address senderAddress,
+            final long expectedChainId,
+            final ChainProfile chainProfile,
+            final BigInteger gasLimitBufferNumerator,
+            final BigInteger gasLimitBufferDenominator) {
+        final SmartGasStrategy gasStrategy =
+                new SmartGasStrategy(
+                        publicClient, provider, chainProfile, gasLimitBufferNumerator, gasLimitBufferDenominator);
+        return new DefaultWalletClient(
+                provider,
+                publicClient,
+                signer,
+                senderAddress,
+                expectedChainId,
+                chainProfile,
+                gasStrategy);
     }
 
     public static DefaultWalletClient from(
@@ -81,8 +108,10 @@ public final class DefaultWalletClient implements WalletClient {
             final TransactionSigner signer,
             final Address senderAddress,
             final ChainProfile chainProfile) {
+        final SmartGasStrategy gasStrategy =
+                new SmartGasStrategy(publicClient, provider, chainProfile);
         return new DefaultWalletClient(
-                provider, publicClient, signer, senderAddress, 0L, chainProfile);
+                provider, publicClient, signer, senderAddress, 0L, chainProfile, gasStrategy);
     }
 
     public static DefaultWalletClient create(
@@ -93,12 +122,30 @@ public final class DefaultWalletClient implements WalletClient {
         return from(provider, publicClient, signer, senderAddress, 0L);
     }
 
+    public static DefaultWalletClient create(
+            final BraneProvider provider,
+            final PublicClient publicClient,
+            final TransactionSigner signer,
+            final Address senderAddress,
+            final ChainProfile chainProfile,
+            final BigInteger gasLimitBufferNumerator,
+            final BigInteger gasLimitBufferDenominator) {
+        return from(
+                provider,
+                publicClient,
+                signer,
+                senderAddress,
+                0L,
+                chainProfile,
+                gasLimitBufferNumerator,
+                gasLimitBufferDenominator);
+    }
+
     @Override
     public Hash sendTransaction(final TransactionRequest request) {
         final long chainId = enforceChainId();
 
         final Address from = request.from() != null ? request.from() : senderAddress;
-        final SmartGasStrategy gasStrategy = new SmartGasStrategy(publicClient, provider, chainProfile);
         final TransactionRequest withDefaults = gasStrategy.applyDefaults(request, from);
 
         final BigInteger nonce =

@@ -3,6 +3,7 @@ package io.brane.rpc;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.chain.ChainProfile;
@@ -147,6 +148,53 @@ class SmartGasStrategyTest {
         final TransactionRequest result = strategy.applyDefaults(tx, new Address("0x" + "1".repeat(40)));
 
         assertEquals(500_000L, result.gasLimit());
+        assertEquals(0, provider.callCounts.getOrDefault("eth_estimateGas", 0).intValue());
+    }
+
+    @Test
+    void usesDefaultBufferConstants() {
+        final FakePublicClient publicClient = new FakePublicClient();
+        publicClient.latestBlock = new BlockHeader(null, 1L, null, 0L, Wei.of(10_000_000_000L));
+
+        final FakeBraneProvider provider = new FakeBraneProvider();
+        provider.responses.put("eth_estimateGas", "0x186a0"); // 100_000
+
+        final ChainProfile profile = ChainProfile.of(1L, "http://localhost", true, Wei.of(2_000_000_000L));
+        final SmartGasStrategy strategy = new SmartGasStrategy(publicClient, provider, profile);
+
+        final TransactionRequest tx = TxBuilder.eip1559()
+                .to(new Address("0x" + "0".repeat(40)))
+                .build();
+
+        final TransactionRequest result = strategy.applyDefaults(tx, new Address("0x" + "1".repeat(40)));
+
+        assertEquals(120_000L, result.gasLimit());
+        assertEquals(BigInteger.valueOf(120), SmartGasStrategy.DEFAULT_GAS_LIMIT_BUFFER_NUMERATOR);
+        assertEquals(BigInteger.valueOf(100), SmartGasStrategy.DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR);
+        assertEquals(BigInteger.valueOf(2), SmartGasStrategy.BASE_FEE_MULTIPLIER);
+        assertEquals(1, provider.callCounts.get("eth_estimateGas").intValue());
+    }
+
+    @Test
+    void supportsCustomGasLimitBuffer() {
+        final FakePublicClient publicClient = new FakePublicClient();
+        publicClient.latestBlock = new BlockHeader(null, 1L, null, 0L, Wei.of(10_000_000_000L));
+
+        final FakeBraneProvider provider = new FakeBraneProvider();
+        provider.responses.put("eth_estimateGas", "0x186a0"); // 100_000
+
+        final ChainProfile profile = ChainProfile.of(1L, "http://localhost", true, Wei.of(2_000_000_000L));
+        final SmartGasStrategy strategy = new SmartGasStrategy(
+                publicClient, provider, profile, BigInteger.valueOf(150), BigInteger.valueOf(100));
+
+        final TransactionRequest tx = TxBuilder.eip1559()
+                .to(new Address("0x" + "0".repeat(40)))
+                .build();
+
+        final TransactionRequest result = strategy.applyDefaults(tx, new Address("0x" + "1".repeat(40)));
+
+        assertEquals(150_000L, result.gasLimit());
+        assertTrue(provider.callCounts.getOrDefault("eth_estimateGas", 0) >= 1);
     }
 
     // Fakes
@@ -181,9 +229,11 @@ class SmartGasStrategyTest {
 
     static class FakeBraneProvider implements BraneProvider {
         final Map<String, String> responses = new HashMap<>();
+        final Map<String, Integer> callCounts = new HashMap<>();
 
         @Override
         public JsonRpcResponse send(String method, List<?> params) {
+            callCounts.merge(method, 1, Integer::sum);
             String result = responses.get(method);
             if (result == null) {
                 return new JsonRpcResponse("2.0", null, null, "1");
