@@ -1,341 +1,420 @@
-# Phase 3.0: Configurable Gas Estimation (P0.13)
+
+# Phase 3.1: Access List Support (EIP-2930) (P0.14)
 
 ## Goal
 
-Make Brane's **SmartGasStrategy** more transparent and configurable by:
+Add **access list** support (EIP-2930-style) so Brane can:
 
-* **Documenting** the existing intelligent gas estimation behavior
-* **Extracting magic numbers** into named constants for clarity
-* **Exposing a configuration path** for the gas limit buffer multiplier
-* **(Optional)** Adding targeted retry logic for gas underestimation errors
+* Attach an `accessList` to outbound transactions.
+* Pass access lists through to JSON-RPC (`eth_estimateGas`, `eth_sendRawTransaction`, etc.).
+* Include access lists when signing typed transactions (EIP-1559 with access list).
 
-This provides users with clear visibility into gas estimation while maintaining the "just works" default experience.
+Scope for this phase:
 
----
-
-## Current State
-
-From `SmartGasStrategy.java` (Phase 2.8 implementation):
-
-**Gas Limit** (line 40-55):
-```java
-private TransactionRequest ensureGasLimit(final TransactionRequest request) {
-    if (request.gasLimit() != null) {
-        return request; // ✅ Respects user value
-    }
-    // Calls eth_estimateGas
-    final BigInteger estimate = Numeric.decodeQuantity(estimateHex);
-    final BigInteger buffered = estimate.multiply(BigInteger.valueOf(120))
-                                       .divide(BigInteger.valueOf(100)); // Hardcoded 1.2x
-    return copyWithGasFields(request, buffered.longValueExact(), ...);
-}
-```
-
-**EIP-1559 Fees** (line 74-98):
-```java
-private TransactionRequest ensureEip1559Fees(final TransactionRequest request) {
-    if (request.maxFeePerGas() != null && request.maxPriorityFeePerGas() != null) {
-        return request; // ✅ Respects user values
-    }
-    // Derives fees from baseFeePerGas * 2 + priorityFee
-    final Wei maxFee = new Wei(baseFee.value().multiply(BigInteger.valueOf(2))
-                                      .add(priority.value())); // Hardcoded 2x
-    ...
-}
-```
-
-**What's Good:**
-- ✅ Only fills `null` fields (never overwrites user values)
-- ✅ Uses `RpcRetry` for `eth_estimateGas` and `eth_gasPrice`
-- ✅ Falls back to legacy fees when `baseFeePerGas` is unavailable
-
-**What Needs Improvement:**
-- ❌ Magic numbers: `120/100` for gas limit buffer, `BigInteger.valueOf(2)` for base fee multiplier
-- ❌ No way to configure the buffer multiplier
-- ❌ No Javadoc explaining the heuristics
+* **Model + builder + wiring** only.
+* Support **EIP-1559 transactions with access lists** in the write path.
+* Access list + pure legacy (gasPrice-only EIP-2930 type-0x01) can be added later.
 
 ---
 
 ## Implementation Details
 
-### 1. Extract Magic Numbers into Named Constants
+### 1. Core Model: Access List Types
 
-**Current** (line 53):
+**Location:** `brane-core/src/main/java/io/brane/core/model/AccessListEntry.java`
+
+Add a simple value type:
+
 ```java
-final BigInteger buffered = estimate.multiply(BigInteger.valueOf(120))
-                                   .divide(BigInteger.valueOf(100));
+package io.brane.core.model;
+
+import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
+import java.util.List;
+import java.util.Objects;
+
+public final class AccessListEntry {
+
+    private final Address address;
+    private final List<Hash> storageKeys;
+
+    public AccessListEntry(final Address address, final List<Hash> storageKeys) {
+        this.address = Objects.requireNonNull(address, "address");
+        this.storageKeys = List.copyOf(Objects.requireNonNull(storageKeys, "storageKeys"));
+    }
+
+    public Address address() {
+        return address;
+    }
+
+    public List<Hash> storageKeys() {
+        return storageKeys;
+    }
+
+    @Override
+    public String toString() {
+        return "AccessListEntry{" + "address=" + address + ", storageKeys=" + storageKeys + '}';
+    }
+}
 ```
 
-**New**:
-```java
-// At class level
-private static final BigInteger DEFAULT_GAS_LIMIT_BUFFER_NUMERATOR = BigInteger.valueOf(120);
-private static final BigInteger DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR = BigInteger.valueOf(100);
-
-// In method - use instance fields, not constants directly
-final BigInteger buffered = estimate.multiply(gasLimitBufferNumerator)
-                                   .divide(gasLimitBufferDenominator);
-```
-
-**Similarly** for base fee multiplier (line 89):
-```java
-private static final BigInteger BASE_FEE_MULTIPLIER = BigInteger.valueOf(2);
-
-// In method
-final Wei maxFee = new Wei(baseFee.value().multiply(BASE_FEE_MULTIPLIER)
-                                  .add(priority.value()));
-```
-
-**Benefits:**
-- Makes the 20% buffer and 2x multiplier explicit
-- Easier to understand at a glance
-- Sets up for future configurability
+We use `Hash` (32-byte) for `storageKeys` to match EIP-2930’s 32-byte storage key semantics.
 
 ---
 
-### 2. Add Configurable Gas Limit Buffer
+### 2. Extend TransactionRequest
 
-Add a field and overloaded constructor:
+**Location:** `brane-core/src/main/java/io/brane/core/model/TransactionRequest.java`
+
+Add an `accessList` field:
 
 ```java
-final class SmartGasStrategy {
+public record TransactionRequest(
+    Address to,
+    HexData data,
+    Long nonce,
+    Long gasLimit,
+    Wei gasPrice,
+    Wei maxFeePerGas,
+    Wei maxPriorityFeePerGas,
+    List<AccessListEntry> accessList // NEW
+) {
 
-    private static final BigInteger DEFAULT_GAS_LIMIT_BUFFER_NUMERATOR = BigInteger.valueOf(120);
-    private static final BigInteger DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR = BigInteger.valueOf(100);
-    
-    private final PublicClient publicClient;
-    private final BraneProvider provider;
-    private final ChainProfile profile;
-    private final BigInteger gasLimitBufferNumerator;
-    private final BigInteger gasLimitBufferDenominator;
+    public Optional<Long> nonceOpt() { ... }
+    public Optional<Long> gasLimitOpt() { ... }
+    public Optional<Wei> gasPriceOpt() { ... }
+    public Optional<Wei> maxFeePerGasOpt() { ... }
+    public Optional<Wei> maxPriorityFeePerGasOpt() { ... }
 
-    // Existing constructor (default buffer)
-    SmartGasStrategy(PublicClient publicClient, BraneProvider provider, ChainProfile profile) {
-        this(publicClient, provider, profile, 
-             DEFAULT_GAS_LIMIT_BUFFER_NUMERATOR, DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR);
-    }
-
-    // New constructor (custom buffer)
-    SmartGasStrategy(PublicClient publicClient, BraneProvider provider, ChainProfile profile,
-                     BigInteger gasLimitBufferNumerator, BigInteger gasLimitBufferDenominator) {
-        this.publicClient = Objects.requireNonNull(publicClient);
-        this.provider = Objects.requireNonNull(provider);
-        this.profile = Objects.requireNonNull(profile);
-        this.gasLimitBufferNumerator = gasLimitBufferNumerator;
-        this.gasLimitBufferDenominator = gasLimitBufferDenominator;
+    public List<AccessListEntry> accessListOrEmpty() {
+        return accessList == null ? List.of() : accessList;
     }
 }
 ```
 
-**Usage in `ensureGasLimit`**:
-```java
-final BigInteger buffered = estimate.multiply(gasLimitBufferNumerator)
-                                   .divide(gasLimitBufferDenominator);
-```
+**Notes:**
 
-**Migration:**
-- All existing code uses the 3-arg constructor (default buffer)
-- Advanced users can use the 5-arg constructor to customize
-- Future: Could expose via `WalletClientBuilder` or similar
+* Keep `accessList` nullable:
+
+  * `null` → “no access list”.
+  * Non-null but empty list → “explicitly no accesses” (still valid).
+* If you already added helper constructors, update them to set `accessList` to `null` (or `List.of()` consistently).
+
+Update all call sites where `TransactionRequest` is constructed to pass `null` for `accessList` for now, unless explicitly set via TxBuilder (below).
 
 ---
 
-### 3. Add Comprehensive Javadoc
+### 3. Extend TxBuilder (EIP-1559 only for now)
 
-Add class-level and method-level documentation:
+**Location:** `brane-core/src/main/java/io/brane/core/builder/Eip1559Builder.java`
+
+Add state + fluent setter:
 
 ```java
-/**
- * Automatically fills missing gas fields in transaction requests using intelligent defaults.
- *
- * <h3>Gas Limit</h3>
- * If {@code gasLimit} is null:
- * <ul>
- *   <li>Calls {@code eth_estimateGas} to get the estimated gas usage</li>
- *   <li>Applies a safety buffer (default: 20% → estimate * 120/100)</li>
- *   <li>Returns the buffered value as {@code gasLimit}</li>
- * </ul>
- * If {@code gasLimit} is already set, it is never modified.
- *
- * <h3>EIP-1559 Fees</h3>
- * For EIP-1559 chains, if {@code maxFeePerGas} or {@code maxPriorityFeePerGas} are null:
- * <ul>
- *   <li>Fetches the latest {@code baseFeePerGas} from the chain</li>
- *   <li>Derives {@code maxFeePerGas = baseFeePerGas * 2 + priorityFee}</li>
- *   <li>Uses {@code ChainProfile.defaultPriorityFeePerGas} when the user has not provided {@code maxPriorityFeePerGas}</li>
- * </ul>
- * Explicit user values are never overwritten.
- *
- * <h3>Legacy Fees</h3>
- * For non-EIP-1559 chains or when {@code baseFeePerGas} is unavailable:
- * <ul>
- *   <li>Calls {@code eth_gasPrice} if {@code gasPrice} is null</li>
- *   <li>Returns the network's suggested gas price</li>
- * </ul>
- *
- * @see RpcRetry for retry behavior on transient errors
- */
-final class SmartGasStrategy {
-    // ...
+public final class Eip1559Builder implements TxBuilder<Eip1559Builder> {
+
+    private Address to;
+    private Wei value;
+    private HexData data;
+    private Long nonce;
+    private Long gasLimit;
+    private Wei maxFeePerGas;
+    private Wei maxPriorityFeePerGas;
+    private List<AccessListEntry> accessList; // NEW
+
+    // existing methods...
+
+    public Eip1559Builder accessList(final List<AccessListEntry> accessList) {
+        this.accessList = accessList == null ? null : List.copyOf(accessList);
+        return this;
+    }
+
+    @Override
+    public TransactionRequest build() {
+        // existing validation...
+        return new TransactionRequest(
+            to,
+            data,
+            nonce,
+            gasLimit,
+            null,                // gasPrice unused for EIP-1559
+            maxFeePerGas,
+            maxPriorityFeePerGas,
+            accessList           // NEW
+        );
+    }
 }
 ```
+
+**P0 scope decision:**
+
+* Add `accessList(...)` **only** to `Eip1559Builder` for now.
+* Leave `LegacyBuilder` unchanged (pure EIP-2930 type 0x01 support can come later).
+
+Update `TxBuilder` Javadoc to mention that `accessList` is visible via `Eip1559Builder`.
 
 ---
 
-### 4. Optional: Gas Underestimation Retry
+### 4. SmartGasStrategy & JSON-RPC Mapping
 
-**Current behavior**: If `eth_estimateGas` fails, `RpcRetry` retries transient network errors but not gas estimation errors.
+#### 4.1. SmartGasStrategy (no semantic change, just propagation)
 
-**Proposed**: Add a targeted retry for clear underestimation errors in `ensureGasLimit`:
+**Location:** `brane-rpc/src/main/java/io/brane/rpc/SmartGasStrategy.java`
 
-If `eth_estimateGas` fails with a clearly underestimation-style error (e.g., message contains "intrinsic gas too low", "gas too low", "out of gas"), we can optionally:
+Where we build JSON tx maps for `eth_estimateGas` / `eth_call`, **include accessList if present**:
 
-* Log `[ESTIMATE-GAS-RETRY] reason=... oldBuffer=120/100 newBuffer=150/100`
-* Retry once with a higher buffer (e.g., 150/100) when computing `gasLimit` from the estimate
-* Never retry on reverts, insufficient funds, or nonce errors
-
-**High-level approach**:
 ```java
-private TransactionRequest ensureGasLimit(final TransactionRequest request) {
-    if (request.gasLimit() != null) {
-        return request;
+private Map<String, Object> toTxObject(TransactionRequest request) {
+    Map<String, Object> tx = new LinkedHashMap<>();
+
+    // existing fields: from, to, value, data, gas, gasPrice / maxFee / maxPriority...
+
+    if (request.accessList() != null && !request.accessList().isEmpty()) {
+        tx.put("accessList", toJsonAccessList(request.accessList()));
     }
-    
-    try {
-        // First attempt with default buffer
-        final String estimateHex = RpcRetry.run(() -> callEstimateGas(tx), 3);
-        final BigInteger estimate = Numeric.decodeQuantity(estimateHex);
-        final BigInteger buffered = estimate.multiply(gasLimitBufferNumerator)
-                                           .divide(gasLimitBufferDenominator);
-        return copyWithGasFields(request, buffered.longValueExact(), ...);
-    } catch (RpcException e) {
-        if (isGasUnderestimationError(e)) {
-            DebugLogger.log("[ESTIMATE-GAS-RETRY] reason=%s oldBuffer=%s/%s newBuffer=150/100"
-                .formatted(e.getMessage(), gasLimitBufferNumerator, gasLimitBufferDenominator));
-            
-            // Retry with higher buffer (150/100 = 50%)
-            final String estimateHex = RpcRetry.run(() -> callEstimateGas(tx), 3);
-            final BigInteger estimate = Numeric.decodeQuantity(estimateHex);
-            final BigInteger buffered = estimate.multiply(BigInteger.valueOf(150))
-                                               .divide(BigInteger.valueOf(100));
-            return copyWithGasFields(request, buffered.longValueExact(), ...);
-        }
-        throw e; // Non-underestimation errors propagate immediately
-    }
+
+    return tx;
 }
 
-private boolean isGasUnderestimationError(RpcException e) {
-    final String msg = e.getMessage().toLowerCase();
-    return msg.contains("intrinsic gas too low") 
-        || msg.contains("out of gas")
-        || msg.contains("gas too low");
+private List<Map<String, Object>> toJsonAccessList(List<AccessListEntry> entries) {
+    return entries.stream()
+        .map(entry -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("address", entry.address().value());
+            m.put("storageKeys",
+                entry.storageKeys().stream().map(Hash::value).toList());
+            return m;
+        })
+        .toList();
 }
 ```
 
-**Note**: The buffer is applied **client-side** after receiving the estimate from `eth_estimateGas`. We never "pass a buffer" to the RPC call itself. This is **optional** and can be added in a follow-up if needed.
+This ensures:
+
+* Estimation behaves as the node expects when you pass an access list.
+* No behavior change if `accessList` is null or empty.
+
+---
+
+### 5. Signing & Encoding (PrivateKeyTransactionSigner)
+
+**Location:** `brane-rpc/src/main/java/io/brane/rpc/PrivateKeyTransactionSigner.java`
+(and/or wherever the raw transaction is built / encoded).
+
+**Behavior rules:**
+
+1. If `accessList == null` or `accessList.isEmpty()`:
+
+   * Keep **current behavior** (legacy or EIP-1559 typed tx as you already do).
+
+2. If `accessList` is non-empty **and** EIP-1559 fields are present:
+
+   * Encode the tx as an EIP-1559 typed transaction **with access list**.
+   * This may be implemented by:
+
+     * Using the vendored encoder’s “EIP-1559 with access list” path, or
+     * Extending your RLP encoding to include the access list fields in the right position for type 0x02.
+
+3. Pure EIP-2930 (type 0x01, gasPrice + accessList, no maxFee fields) is **out of scope** for this phase:
+
+   * If a user sets `accessList` on a legacy-style request, you may:
+
+     * Currently ignore it (documented), or
+     * Throw a `BraneTxBuilderException` later if we want to be strict.
+   * For P0, we only promise: “Access lists are supported on EIP-1559 tx via `Eip1559Builder`.”
+
+**Minimal implementation detail for Codex:**
+
+* When building the internal “raw transaction” object to sign:
+
+  * Map `List<AccessListEntry>` to `List<io.brane.internal.web3j.crypto.AccessListObject>`.
+  * Use `RawTransaction.createTransaction(...)` overload that accepts `accessList`.
+  * Ensure `AccessListObject` is populated with 0x-prefixed hex strings (from `Address.value()` and `Hash.value()`).
+
+---
+
+### 6. Public API & Docs
+
+Update README / Javadoc to show usage:
+
+```java
+List<AccessListEntry> access = List.of(
+    new AccessListEntry(
+        someContract,
+        List.of(new Hash("0x...storage-key-1"), new Hash("0x...storage-key-2"))
+    )
+);
+
+TransactionRequest tx = TxBuilder.eip1559()
+    .to(someContract)
+    .value(Wei.of(0))
+    .accessList(access)
+    .build();
+
+wallet.sendTransactionAndWait(tx, 10_000, 500);
+```
 
 ---
 
 ## Steps
 
-1. [ ] Extract magic numbers into named constants:
-   - `DEFAULT_GAS_LIMIT_BUFFER_NUMERATOR = 120`
-   - `DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR = 100`
-   - `BASE_FEE_MULTIPLIER = 2`
+1. [ ] Add `AccessListEntry` model type.
+2. [ ] Extend `TransactionRequest` with `List<AccessListEntry> accessList`.
+3. [ ] Update all `TransactionRequest` constructors / call sites to pass `null` for `accessList` by default.
+4. [ ] Extend `Eip1559Builder` with:
 
-2. [ ] Add configurable buffer fields and 5-arg constructor to `SmartGasStrategy`
+   * `List<AccessListEntry> accessList` field.
+   * `accessList(...)` setter.
+   * `build()` to pass the access list into `TransactionRequest`.
+5. [ ] Update `SmartGasStrategy` (and any other RPC tx-building code) to:
 
-3. [ ] Update `ensureGasLimit` to use the configurable buffer fields
+   * Map `accessList` into JSON-RPC shape for `eth_estimateGas` and `eth_call`.
+6. [ ] Update `PrivateKeyTransactionSigner` (or equivalent signing path) to:
 
-4. [ ] Add comprehensive Javadoc to `SmartGasStrategy` class and key methods
-
-5. [ ] (Optional) Implement targeted retry for gas underestimation errors
-
-6. [ ] Update `DefaultWalletClient` if needed to expose configuration
-
-7. [ ] Update existing tests to use the new constants
+   * Map public `AccessListEntry` to internal `AccessListObject`.
+   * Use `RawTransaction.createTransaction` with `accessList` for EIP-1559.
+   * Keep existing behavior when access list is absent.
+7. [ ] Update README / Javadoc to mention access list support.
+8. [ ] Add tests (unit, integration, sanity) as below.
 
 ---
 
 ## Testing
 
-### A. Unit Tests (SmartGasStrategy)
+### A. Unit Tests
 
-**Extend**: `brane-rpc/src/test/java/io/brane/rpc/SmartGasStrategyTest.java`
+#### 1. AccessListEntry
 
-1. **Default buffer constant verification**
-   - Verify the default buffer results in `estimate * 120 / 100` (20% buffer)
-   - Given `estimate = 100_000`, assert resulting `gasLimit = 120_000`
-   - Ensure `BASE_FEE_MULTIPLIER` equals `2`
+**File:** `brane-core/src/test/java/io/brane/core/model/AccessListEntryTest.java`
 
-2. **Custom buffer multiplier**
-   - Create `SmartGasStrategy` with custom buffer (e.g., 150/100 for 50%)
-   - Mock `eth_estimateGas` to return `100_000`
-   - Assert resulting `gasLimit` equals `150_000` (not `120_000`)
+* `constructorCopiesList`:
 
-3. **Explicit gasLimit bypasses estimation**
-   - Create `TransactionRequest` with explicit `gasLimit = 90_000`
-   - Assert `eth_estimateGas` is never called
-   - Assert `gasLimit` remains `90_000`
+  * Create with a mutable list.
+  * Mutate original.
+  * Assert `entry.storageKeys()` is unchanged.
+* `nullChecks`:
 
-4. **Optional: underestimation retry**
-   - Mock first `eth_estimateGas` to throw "intrinsic gas too low"
-   - Mock second call to succeed
-   - Assert `eth_estimateGas` called twice
-   - Assert `[ESTIMATE-GAS-RETRY]` log exists
-   - **Non-underestimation errors**: mock error with "insufficient funds for gas * price + value"
-     - Assert **no retry** occurs and error is propagated immediately
+  * Assert NPE when `address` is null.
+  * Assert NPE when `storageKeys` is null.
+
+#### 2. TransactionRequest + Access List
+
+**File:** extend `TransactionRequestTest` (if present)
+
+* `accessListPropagates`:
+
+  * Build a `TransactionRequest` with a non-empty access list.
+  * Assert `accessList()` returns same content.
+  * Assert `accessListOrEmpty()` returns that list.
+* `accessListOrEmptyNullSafe`:
+
+  * Build `TransactionRequest` with `accessList == null`.
+  * Assert `accessListOrEmpty()` returns an empty list (not null).
+
+#### 3. TxBuilder (Eip1559)
+
+**File:** extend `TxBuilderTest`
+
+* `eip1559BuilderAccessList`:
+
+  * Call `.accessList(List.of(entry))` on `Eip1559Builder`.
+  * `build()` → `TransactionRequest`.
+  * Assert `request.accessList()` contains the given entries.
+* `accessListFluentChaining`:
+
+  * Ensure `accessList(...)` returns `Eip1559Builder` so `.build()` can chain correctly.
+* (Optional) `legacyBuilderNoAccessListMethod`:
+
+  * Compile-time guarantee that `LegacyBuilder` has no `accessList(...)` method.
+
+#### 4. SmartGasStrategy Mapping
+
+**File:** `brane-rpc/src/test/java/io/brane/rpc/SmartGasStrategyTest.java`
+
+* `txObjectIncludesAccessListWhenPresent`:
+
+  * Build `TransactionRequest` with non-empty access list.
+  * Call internal `toTxObject` (or via a test hook).
+  * Assert resulting map has `accessList` key with expected JSON structure:
+
+    * `address` == `.value()` of Address.
+    * `storageKeys` array equals list of Hash `.value()` strings.
+* `txObjectOmitsAccessListWhenNullOrEmpty`:
+
+  * With `accessList == null` or empty list.
+  * Assert map does **not** contain `accessList`.
 
 ---
 
 ### B. Integration Tests
 
-**Extend**: `brane-rpc/src/test/java/io/brane_rpc/DefaultWalletClientTest.java`
+**File:** extend `brane-examples` / `DefaultWalletClientTest`
 
-1. **End-to-end with custom buffer**
-   - Create `DefaultWalletClient` with custom `SmartGasStrategy` (or similar fake provider)
-   - Send transaction without `gasLimit`
-   - Verify final `gasLimit` uses custom buffer
+#### 1. EIP-1559 + Access List Happy Path
 
-2. **Existing tests still pass**
-   - Run all existing `SmartGasStrategyTest` tests
-   - Verify they pass with the new constant-based implementation
+* Use a local dev node (Anvil / Hardhat) that accepts access lists.
+* Deploy a simple contract.
+* Build a tx with:
 
----
+  * `TxBuilder.eip1559()`
+  * `.to(contractAddress)`
+  * `.accessList(List.of(new AccessListEntry(contractAddress, List.of(...some key...))))`
+* Send via `WalletClient.sendTransactionAndWait`.
+* Assert:
 
-### C. Documentation / Examples
+  * Tx is mined.
+  * Receipt status is success.
+* If possible, inspect the node’s trace / debug logs to confirm the access list was attached (optional but nice).
 
-1. **Update README** with gas estimation configuration:
-   ```java
-   // Default 20% buffer
-   WalletClient wallet = DefaultWalletClient.create(provider, publicClient, signer, address);
-   
-   // Custom 50% buffer (if/when exposed via builder/config)
-   SmartGasStrategy strategy = new SmartGasStrategy(
-       publicClient, provider, profile,
-       BigInteger.valueOf(150), BigInteger.valueOf(100)
-   );
-   // Wire this into a custom WalletClient factory, or keep as internal wiring for now.
-   ```
+#### 2. Estimation with Access List
 
-2. **Add example to `brane-examples`**:
-   - `GasEstimationDemo.java` that shows default vs custom buffers
-   - Prints estimated vs actual gas used
+* Call `WalletClient` / `PublicClient` path that internally uses `SmartGasStrategy` for `eth_estimateGas`.
+* Provide a `TransactionRequest` with an access list.
+* Ensure:
+
+  * The JSON-RPC request body (captured via fake provider / mock HTTP) includes `accessList`.
+  * The estimation succeeds.
 
 ---
 
-## Out of Scope (Future Work)
+### C. Sanity / Example
 
-- Configurable base fee multiplier (currently hardcoded to `2x`)
-- Dynamic buffer adjustment based on contract complexity
-- `GasStrategy` interface abstraction (not needed yet)
-- Per-transaction buffer override (can be added later via builder)
+**File:** `brane-examples/src/main/java/io/brane/examples/AccessListExample.java`
+
+* Simple example that:
+
+  * Reads `-Dbrane.examples.rpc` and `-Dbrane.examples.pk`.
+  * Deploys a minimal contract or uses a pre-deployed address.
+  * Builds an EIP-1559 tx with a small access list.
+  * Sends it and prints:
+
+    * Tx hash.
+    * Whether `accessList` was set in the request.
+
+Run:
+
+```bash
+./gradlew :brane-examples:run \
+  -PmainClass=io.brane.examples.AccessListExample \
+  -Dbrane.examples.rpc=http://127.0.0.1:8545 \
+  -Dbrane.examples.pk=0x...
+```
+
+Verify it completes successfully and logs are sensible.
 
 ---
 
 ## Files to Modify
 
-- `brane-rpc/src/main/java/io/brane/rpc/SmartGasStrategy.java` - Add constants, fields, constructor, Javadoc
-- `brane-rpc/src/test/java/io/brane/rpc/SmartGasStrategyTest.java` - Add tests for custom buffer
-- (Optional) `brane-rpc/src/main/java/io/brane/rpc/DefaultWalletClient.java` - Expose configuration
-- `README.md` - Document gas estimation behavior
+* `brane-core/src/main/java/io/brane/core/model/AccessListEntry.java` (new)
+* `brane-core/src/main/java/io/brane/core/model/TransactionRequest.java`
+* `brane-core/src/main/java/io/brane/core/builder/Eip1559Builder.java`
+* `brane-core/src/test/java/io/brane/core/model/AccessListEntryTest.java` (new)
+* `brane-core/src/test/java/io/brane/core/model/TransactionRequestTest.java` (extend)
+* `brane-core/src/test/java/io/brane/core/builder/TxBuilderTest.java` (extend)
+* `brane-rpc/src/main/java/io/brane/rpc/SmartGasStrategy.java`
+* `brane-rpc/src/test/java/io/brane/rpc/SmartGasStrategyTest.java`
+* `brane-rpc/src/main/java/io/brane/rpc/PrivateKeyTransactionSigner.java` (or equivalent)
+* `brane-rpc/src/test/java/io/brane/rpc/DefaultWalletClientTest.java` (extend)
+* `brane-examples/src/main/java/io/brane/examples/AccessListExample.java` (new)
+* `README.md` (add short section on access list support)
