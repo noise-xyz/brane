@@ -100,8 +100,9 @@ public final class DebugIntegrationTest {
         if (!logs.contains("[TX-SEND]")) {
             throw new RuntimeException("Missing [TX-SEND] log");
         }
-        if (!logs.contains("[ESTIMATE-GAS]")) {
-            throw new RuntimeException("Missing [ESTIMATE-GAS] log");
+        // With Smart Gas, estimation is done via RPC
+        if (!logs.contains("[RPC] method=eth_estimateGas")) {
+            throw new RuntimeException("Missing [RPC] log for eth_estimateGas");
         }
 
         // 3. Verify Redaction

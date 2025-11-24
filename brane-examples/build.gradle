@@ -6,6 +6,7 @@ dependencies {
     implementation project(':brane-core')
     implementation project(':brane-rpc')
     implementation project(':brane-contract')
+    implementation project(':brane-primitives')
     implementation "org.slf4j:slf4j-simple:2.0.12"
 }
 

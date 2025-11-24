@@ -155,6 +155,7 @@ brane/
 - ✅ **Unified Transaction Builder** - Typed, fluent API for creating Legacy and EIP-1559 transactions with auto-fill capabilities
 - ✅ **Minimal Revert Decoding** - Automatic decoding of Error(string), Panic(uint256), and extensible custom error support
 - ✅ **Debug Mode & RPC Logging** - Global toggle for sanitized, structured logging of RPC calls and transaction lifecycles
+- ✅ **Smart Gas Defaults + Retry** - Automatic gas estimation and EIP-1559 fee calculation with transient error retry logic
 
 Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-alpha`, etc.
 
@@ -194,16 +195,21 @@ Provides the JSON-RPC transport and public client API:
   * `BranePublicClient`: builder/wrapper that constructs a `PublicClient` from a `ChainProfile` with optional RPC URL override (keeps `PublicClient.from(BraneProvider)` intact).
   * Provider errors are wrapped in `RpcException` with method context; wallet send errors surface `TxnException` subclasses such as `InvalidSenderException`.
   * `WalletClient` + `DefaultWalletClient`: fills nonce/gas/fees, enforces chainId, signs raw transactions via a provided signer (see `PrivateKeyTransactionSigner`), sends via `eth_sendRawTransaction`, and can poll for receipts.
+  * **Smart Gas Defaults**: Automatically fills missing gas fields with intelligent defaults:
+    * Gas limit via `eth_estimateGas` + 20% buffer
+    * EIP-1559 fees calculated from `baseFeePerGas * 2 + defaultPriorityFee`
+    * Falls back to `eth_gasPrice` when EIP-1559 is not supported
+    * User-provided values are never overwritten
+  * **RPC Retry Logic**: Automatically retries transient network errors (timeouts, "header not found") with exponential backoff while failing fast on permanent errors (reverts, invalid sender)
   * **Unified Transaction Builder**: Typed, fluent API for creating Legacy and EIP-1559 transactions.
-    * *Note*: If you omit gas fields, Brane will auto-fill sane defaults via `DefaultWalletClient`. If you specify them, they are respected verbatim.
     ```java
-    // EIP-1559 (auto-filled fees)
+    // EIP-1559 (auto-filled fees and gas limit)
     TransactionRequest tx = TxBuilder.eip1559()
         .to(recipient)
         .value(Wei.of("1.0"))
-        .build();
+        .build();  // gas limit, maxFeePerGas, maxPriorityFeePerGas auto-filled
 
-    // Legacy (explicit gas price)
+    // Legacy (explicit gas price, auto-filled gas limit)
     TransactionRequest legacy = TxBuilder.legacy()
         .to(recipient)
         .gasPrice(Wei.gwei(20))

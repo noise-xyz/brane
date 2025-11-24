@@ -59,7 +59,12 @@ class DefaultWalletClientDebugTest {
 
         DefaultWalletClient wallet =
                 DefaultWalletClient.from(
-                        provider, publicClient, signer.asSigner(), signer.address(), 1L);
+                        provider,
+                        publicClient,
+                        signer.asSigner(),
+                        signer.address(),
+                        1L,
+                        io.brane.core.chain.ChainProfiles.ANVIL_LOCAL);
 
         TransactionRequest request =
                 TxBuilder.legacy()
@@ -106,7 +111,12 @@ class DefaultWalletClientDebugTest {
 
         DefaultWalletClient wallet =
                 DefaultWalletClient.from(
-                        provider, publicClient, signer.asSigner(), signer.address(), 1L);
+                        provider,
+                        publicClient,
+                        signer.asSigner(),
+                        signer.address(),
+                        1L,
+                        io.brane.core.chain.ChainProfiles.ANVIL_LOCAL);
 
         TransactionRequest request =
                 TxBuilder.legacy()

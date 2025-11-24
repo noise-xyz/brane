@@ -3,6 +3,7 @@ package io.brane.rpc;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.brane.core.DebugLogger;
 import io.brane.core.RevertDecoder;
+import io.brane.core.chain.ChainProfile;
 import io.brane.core.error.ChainMismatchException;
 import io.brane.core.error.InvalidSenderException;
 import io.brane.core.error.RevertException;
@@ -33,6 +34,7 @@ public final class DefaultWalletClient implements WalletClient {
     private final TransactionSigner signer;
     private final Address senderAddress;
     private final long expectedChainId;
+    private final ChainProfile chainProfile;
     private final ObjectMapper mapper = new ObjectMapper();
     private Long cachedChainId;
 
@@ -41,12 +43,25 @@ public final class DefaultWalletClient implements WalletClient {
             final PublicClient publicClient,
             final TransactionSigner signer,
             final Address senderAddress,
-            final long expectedChainId) {
+            final long expectedChainId,
+            final ChainProfile chainProfile) {
         this.provider = Objects.requireNonNull(provider, "provider");
         this.publicClient = Objects.requireNonNull(publicClient, "publicClient");
         this.signer = Objects.requireNonNull(signer, "signer");
         this.senderAddress = Objects.requireNonNull(senderAddress, "senderAddress");
         this.expectedChainId = expectedChainId;
+        this.chainProfile = Objects.requireNonNull(chainProfile, "chainProfile");
+    }
+
+    public static DefaultWalletClient from(
+            final BraneProvider provider,
+            final PublicClient publicClient,
+            final TransactionSigner signer,
+            final Address senderAddress,
+            final long expectedChainId,
+            final ChainProfile chainProfile) {
+        return new DefaultWalletClient(
+                provider, publicClient, signer, senderAddress, expectedChainId, chainProfile);
     }
 
     public static DefaultWalletClient from(
@@ -55,8 +70,19 @@ public final class DefaultWalletClient implements WalletClient {
             final TransactionSigner signer,
             final Address senderAddress,
             final long expectedChainId) {
+        final ChainProfile profile =
+                ChainProfile.of(expectedChainId, null, true, Wei.of(1_000_000_000L));
+        return from(provider, publicClient, signer, senderAddress, expectedChainId, profile);
+    }
+
+    public static DefaultWalletClient create(
+            final BraneProvider provider,
+            final PublicClient publicClient,
+            final TransactionSigner signer,
+            final Address senderAddress,
+            final ChainProfile chainProfile) {
         return new DefaultWalletClient(
-                provider, publicClient, signer, senderAddress, expectedChainId);
+                provider, publicClient, signer, senderAddress, 0L, chainProfile);
     }
 
     public static DefaultWalletClient create(
@@ -64,7 +90,7 @@ public final class DefaultWalletClient implements WalletClient {
             final PublicClient publicClient,
             final TransactionSigner signer,
             final Address senderAddress) {
-        return new DefaultWalletClient(provider, publicClient, signer, senderAddress, 0L);
+        return from(provider, publicClient, signer, senderAddress, 0L);
     }
 
     @Override
@@ -72,13 +98,19 @@ public final class DefaultWalletClient implements WalletClient {
         final long chainId = enforceChainId();
 
         final Address from = request.from() != null ? request.from() : senderAddress;
+        final SmartGasStrategy gasStrategy = new SmartGasStrategy(publicClient, provider, chainProfile);
+        final TransactionRequest withDefaults = gasStrategy.applyDefaults(request, from);
+
         final BigInteger nonce =
-                request.nonceOpt().map(BigInteger::valueOf).orElseGet(() -> fetchNonce(from));
+                withDefaults.nonceOpt().map(BigInteger::valueOf).orElseGet(() -> fetchNonce(from));
 
         final BigInteger gasLimit =
-                request.gasLimitOpt().map(BigInteger::valueOf).orElseGet(() -> estimateGas(request, from));
+                withDefaults
+                        .gasLimitOpt()
+                        .map(BigInteger::valueOf)
+                        .orElseGet(() -> estimateGas(withDefaults, from));
 
-        final ValueParts valueParts = buildValueParts(request, from);
+        final ValueParts valueParts = buildValueParts(withDefaults, from);
 
         final RawTransaction rawTx =
                 valueParts.isEip1559
@@ -301,11 +333,22 @@ public final class DefaultWalletClient implements WalletClient {
     private <T> T callRpc(
             final String method, final List<?> params, final Class<T> responseType, final T defaultValue) {
         try {
-            final JsonRpcResponse response = provider.send(method, params);
-            if (response.hasError()) {
-                final JsonRpcError err = response.error();
-                throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), null);
-            }
+            final JsonRpcResponse response =
+                    RpcRetry.run(
+                            () -> {
+                                final JsonRpcResponse res = provider.send(method, params);
+                                if (res.hasError()) {
+                                    final JsonRpcError err = res.error();
+                                    throw new RpcException(
+                                            err.code(),
+                                            err.message(),
+                                            extractErrorData(err.data()),
+                                            null);
+                                }
+                                return res;
+                            },
+                            3);
+
             final Object result = response.result();
             if (result == null) {
                 return defaultValue;
