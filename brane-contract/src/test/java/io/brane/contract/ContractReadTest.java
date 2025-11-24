@@ -72,7 +72,7 @@ class ContractReadTest {
         List<Type> inputs = List.of((Type) new Utf8String("simple reason"));
         String rawData = FunctionEncoder.encode(new Function("Error", inputs, List.of()));
 
-        RpcException rpcEx = new RpcException(3, "execution reverted", rawData, null);
+        RpcException rpcEx = new RpcException(3, "execution reverted", rawData, null, null);
 
         Client client = new FakeClient(null, rpcEx);
         Abi abi = Abi.fromJson(ECHO_ABI);

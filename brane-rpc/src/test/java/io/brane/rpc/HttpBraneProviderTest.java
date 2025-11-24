@@ -2,14 +2,17 @@ package io.brane.rpc;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpHandler;
 import com.sun.net.httpserver.HttpServer;
 import io.brane.core.error.RpcException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +22,7 @@ class HttpBraneProviderTest {
 
     private HttpServer server;
     private URI baseUri;
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
     @BeforeEach
     void setUp() throws IOException {
@@ -69,6 +73,32 @@ class HttpBraneProviderTest {
     }
 
     @Test
+    void assignsMonotonicRequestIds() {
+        final List<String> capturedBodies = new ArrayList<>();
+        server.createContext(
+                "/",
+                exchange -> {
+                    final String requestBody = new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+                    capturedBodies.add(requestBody);
+                    final JsonNode bodyJson = MAPPER.readTree(requestBody);
+                    respond(
+                            exchange,
+                            200,
+                            """
+                            {"jsonrpc":"2.0","result":"0x1","id":"%s"}
+                            """.formatted(bodyJson.get("id").asText()));
+                });
+
+        BraneProvider provider = HttpBraneProvider.builder(baseUri.toString()).build();
+        provider.send("eth_blockNumber", List.of());
+        provider.send("eth_chainId", List.of());
+
+        assertEquals(2, capturedBodies.size());
+        assertTrue(capturedBodies.get(0).contains("\"id\":\"1\""));
+        assertTrue(capturedBodies.get(1).contains("\"id\":\"2\""));
+    }
+
+    @Test
     void jsonRpcErrorThrows() {
         server.createContext(
                 "/",
@@ -88,6 +118,7 @@ class HttpBraneProviderTest {
                         () -> provider.send("eth_blockNumber", List.of()));
         assertEquals(-32000, ex.code());
         assertEquals("0xdead", ex.data());
+        assertEquals(1L, ex.requestId());
     }
 
     @Test
@@ -114,6 +145,7 @@ class HttpBraneProviderTest {
                         () -> provider.send("eth_blockNumber", List.of()));
         assertEquals(-32000, ex.code());
         assertTrue(ex.getMessage().contains("oops"));
+        assertEquals(1L, ex.requestId());
     }
 
     @Test
@@ -146,6 +178,7 @@ class HttpBraneProviderTest {
                         RpcException.class,
                         () -> provider.send("eth_blockNumber", List.of()));
         assertEquals(-32001, ex.code());
+        assertEquals(1L, ex.requestId());
     }
 
     private void respond(final HttpExchange exchange, final int statusCode, final String body)

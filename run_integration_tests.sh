@@ -173,4 +173,12 @@ if [ $? -ne 0 ]; then
 fi
 echo "Smart Gas Sanity Check Passed!"
 
+echo "Running Request ID Sanity Check..."
+./gradlew :brane-examples:run --no-daemon -PmainClass=io.brane.examples.RequestIdSanityCheck
+if [ $? -ne 0 ]; then
+    echo "Request ID Sanity Check Failed!"
+    exit 1
+fi
+echo "Request ID Sanity Check Passed!"
+
 echo "All Tests and Examples Completed Successfully."

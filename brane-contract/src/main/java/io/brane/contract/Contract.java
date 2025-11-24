@@ -41,7 +41,7 @@ public final class Contract {
                         -32002,
                         "eth_call returned null result for function '" + fn + "'",
                         null,
-                        null);
+                        (Long) null);
             }
             return call.decode(result, returnType);
         } catch (RpcException e) {

@@ -85,7 +85,7 @@ final class DefaultPublicClient implements PublicClient {
         if (response.hasError()) {
             final JsonRpcError err = response.error();
             throw new io.brane.core.error.RpcException(
-                    err.code(), err.message(), extractErrorData(err.data()), null);
+                    err.code(), err.message(), extractErrorData(err.data()), (Long) null);
         }
         final Object result = response.result();
         if (result == null) {

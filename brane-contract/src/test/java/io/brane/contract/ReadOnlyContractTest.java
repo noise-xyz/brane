@@ -59,7 +59,7 @@ class ReadOnlyContractTest {
         List<Type> inputs = List.of((Type) new Utf8String("simple reason"));
         String rawData = FunctionEncoder.encode(new Function("Error", inputs, List.of()));
 
-        RpcException rpcEx = new RpcException(3, "execution reverted", rawData, null);
+        RpcException rpcEx = new RpcException(3, "execution reverted", rawData, null, null);
         PublicClient client =
                 new FakePublicClient(null, rpcEx, null, null, null);
 

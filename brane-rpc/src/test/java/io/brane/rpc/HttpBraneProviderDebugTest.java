@@ -1,6 +1,7 @@
 package io.brane.rpc;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import ch.qos.logback.classic.Logger;
@@ -8,6 +9,7 @@ import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
 import com.sun.net.httpserver.HttpServer;
 import io.brane.core.BraneDebug;
+import io.brane.core.error.RpcException;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.net.InetSocketAddress;
@@ -60,7 +62,27 @@ class HttpBraneProviderDebugTest {
         assertFalse(appender.list.isEmpty());
         final String message = appender.list.getFirst().getFormattedMessage();
         assertTrue(message.contains("[RPC]"));
+        assertTrue(message.contains("id=1"));
         assertTrue(message.contains("0x***[REDACTED]***"));
+    }
+
+    @Test
+    void logsRpcErrorsWithRequestId() {
+        server.createContext("/", exchange -> respond(exchange, 500, "oops"));
+
+        BraneDebug.setEnabled(true);
+        final ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        debugLogger.addAppender(appender);
+
+        BraneProvider provider = HttpBraneProvider.builder(baseUri.toString()).build();
+        assertThrows(RpcException.class, () -> provider.send("eth_blockNumber", List.of()));
+
+        assertFalse(appender.list.isEmpty());
+        final String message = appender.list.getFirst().getFormattedMessage();
+        assertTrue(message.contains("[RPC-ERROR]"));
+        assertTrue(message.contains("id=1"));
+        assertTrue(message.contains("method=eth_blockNumber"));
     }
 
     private void respond(final com.sun.net.httpserver.HttpExchange exchange, final int statusCode, final String body)

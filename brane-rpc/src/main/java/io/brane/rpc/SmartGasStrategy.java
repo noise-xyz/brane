@@ -58,7 +58,8 @@ final class SmartGasStrategy {
         final JsonRpcResponse response = provider.send("eth_estimateGas", List.of(tx));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), err.data() != null ? err.data().toString() : null, null);
+            throw new RpcException(
+                    err.code(), err.message(), err.data() != null ? err.data().toString() : null, null, null);
         }
         return response.result().toString();
     }
@@ -115,7 +116,8 @@ final class SmartGasStrategy {
         final JsonRpcResponse response = provider.send("eth_gasPrice", List.of());
         if (response.hasError()) {
             final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), err.data() != null ? err.data().toString() : null, null);
+            throw new RpcException(
+                    err.code(), err.message(), err.data() != null ? err.data().toString() : null, null, null);
         }
         return response.result().toString();
     }

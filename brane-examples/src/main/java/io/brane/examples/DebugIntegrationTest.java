@@ -88,9 +88,12 @@ public final class DebugIntegrationTest {
     }
 
     private static void verifyLogs(String logs) {
-        // 1. Verify RPC Logging
-        if (!logs.contains("[RPC] method=eth_getBlockByNumber")) {
-            throw new RuntimeException("Missing [RPC] log for eth_getBlockByNumber");
+        // 1. Verify RPC Logging with Request IDs
+        if (!logs.contains("[RPC]") || !logs.contains(" id=")) {
+            throw new RuntimeException("Missing [RPC] log or request ID");
+        }
+        if (!logs.contains("method=eth_getBlockByNumber")) {
+            throw new RuntimeException("Missing eth_getBlockByNumber in logs");
         }
         if (!logs.contains("durationMicros=")) {
             throw new RuntimeException("Missing durationMicros in logs");
@@ -101,8 +104,8 @@ public final class DebugIntegrationTest {
             throw new RuntimeException("Missing [TX-SEND] log");
         }
         // With Smart Gas, estimation is done via RPC
-        if (!logs.contains("[RPC] method=eth_estimateGas")) {
-            throw new RuntimeException("Missing [RPC] log for eth_estimateGas");
+        if (!logs.contains("method=eth_estimateGas")) {
+            throw new RuntimeException("Missing eth_estimateGas in logs");
         }
 
         // 3. Verify Redaction

@@ -186,6 +186,7 @@ public final class DefaultWalletClient implements WalletClient {
                 -32000,
                 "Timed out waiting for transaction receipt for " + txHash.value(),
                 null,
+                null,
                 null);
     }
 
@@ -194,7 +195,7 @@ public final class DefaultWalletClient implements WalletClient {
                 provider.send("eth_getTransactionReceipt", List.of(hash.value()));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), null);
+            throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), null, null);
         }
         final Object result = response.result();
         if (result == null) {
@@ -339,11 +340,12 @@ public final class DefaultWalletClient implements WalletClient {
                                 final JsonRpcResponse res = provider.send(method, params);
                                 if (res.hasError()) {
                                     final JsonRpcError err = res.error();
-                                    throw new RpcException(
-                                            err.code(),
-                                            err.message(),
-                                            extractErrorData(err.data()),
-                                            null);
+                throw new RpcException(
+                        err.code(),
+                        err.message(),
+                        extractErrorData(err.data()),
+                        null,
+                        null);
                                 }
                                 return res;
                             },

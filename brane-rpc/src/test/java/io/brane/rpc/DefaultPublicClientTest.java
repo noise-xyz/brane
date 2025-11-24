@@ -111,14 +111,14 @@ class DefaultPublicClientTest {
                 throws RpcException {
             final JsonRpcResponse resp = responses.get(method);
             if (resp == null) {
-                throw new RpcException(-32601, "Method not mocked: " + method, null, null);
+                throw new RpcException(-32601, "Method not mocked: " + method, null, null, null);
             }
             if (resp.error() != null) {
                 throw new RpcException(
                         resp.error().code(),
                         resp.error().message(),
                         resp.error().data() != null ? resp.error().data().toString() : null,
-                        null);
+                        (Long) null);
             }
             return resp;
         }
