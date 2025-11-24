@@ -38,49 +38,55 @@ public final class HttpBraneProvider implements BraneProvider {
     @Override
     public JsonRpcResponse send(final String method, final List<?> params) throws RpcException {
         final List<?> safeParams = params == null ? List.of() : params;
+        final long requestId = ids.getAndIncrement();
         final JsonRpcRequest request =
-                new JsonRpcRequest("2.0", method, safeParams, String.valueOf(ids.getAndIncrement()));
+                new JsonRpcRequest("2.0", method, safeParams, String.valueOf(requestId));
 
-        final String payload = serialize(request);
+        final String payload = serialize(request, requestId);
         final HttpRequest httpRequest = buildRequest(payload);
 
         final long start = System.nanoTime();
-        final HttpResponse<String> response = execute(httpRequest);
+        final HttpResponse<String> response = execute(httpRequest, requestId);
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             DebugLogger.log(
-                    "[RPC-ERROR] method=%s status=%s durationMicros=%s body=%s",
-                    method, response.statusCode(), durationMicros, response.body());
+                    "[RPC-ERROR] id=%d method=%s status=%s durationMicros=%s body=%s",
+                    requestId, method, response.statusCode(), durationMicros, response.body());
             throw new RpcException(
                     -32001,
                     "HTTP error for method " + method + ": " + response.statusCode(),
                     response.body(),
+                    requestId,
                     null);
         }
 
         final String responseBody = response.body();
-        final JsonRpcResponse rpcResponse = parseResponse(method, responseBody);
+        final JsonRpcResponse rpcResponse = parseResponse(method, responseBody, requestId);
         if (rpcResponse.hasError()) {
             final JsonRpcError err = rpcResponse.error();
             DebugLogger.log(
-                    "[RPC-ERROR] method=%s code=%s message=%s data=%s durationMicros=%s",
-                    method, err.code(), err.message(), err.data(), durationMicros);
-            throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), null);
+                    "[RPC-ERROR] id=%d method=%s code=%s message=%s data=%s durationMicros=%s",
+                    requestId, method, err.code(), err.message(), err.data(), durationMicros);
+            throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), requestId);
         }
 
         DebugLogger.log(
-                "[RPC] method=%s durationMicros=%s request=%s response=%s",
-                method, durationMicros, payload, responseBody);
+                "[RPC] id=%d method=%s durationMicros=%s request=%s response=%s",
+                requestId, method, durationMicros, payload, responseBody);
         return rpcResponse;
     }
 
-    private String serialize(final JsonRpcRequest request) throws RpcException {
+    private String serialize(final JsonRpcRequest request, final long requestId) throws RpcException {
         try {
             return mapper.writeValueAsString(request);
         } catch (JsonProcessingException e) {
             throw new RpcException(
-                    -32700, "Unable to serialize JSON-RPC request for " + request.method(), null, e);
+                    -32700,
+                    "Unable to serialize JSON-RPC request for " + request.method(),
+                    null,
+                    requestId,
+                    e);
         }
     }
 
@@ -98,23 +104,30 @@ public final class HttpBraneProvider implements BraneProvider {
         return builder.build();
     }
 
-    private HttpResponse<String> execute(final HttpRequest request) throws RpcException {
+    private HttpResponse<String> execute(final HttpRequest request, final long requestId)
+            throws RpcException {
         try {
             return httpClient.send(request, HttpResponse.BodyHandlers.ofString());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
-            throw new RpcException(-32000, "Network error during JSON-RPC call", null, e);
+            throw new RpcException(
+                    -32000, "Network error during JSON-RPC call", null, requestId, e);
         } catch (IOException e) {
-            throw new RpcException(-32000, "Network error during JSON-RPC call", null, e);
+            throw new RpcException(-32000, "Network error during JSON-RPC call", null, requestId, e);
         }
     }
 
-    private JsonRpcResponse parseResponse(final String method, final String body) throws RpcException {
+    private JsonRpcResponse parseResponse(final String method, final String body, final long requestId)
+            throws RpcException {
         try {
             return mapper.readValue(body, JsonRpcResponse.class);
         } catch (JsonProcessingException e) {
             throw new RpcException(
-                    -32700, "Unable to parse JSON-RPC response for method " + method, body, e);
+                    -32700,
+                    "Unable to parse JSON-RPC response for method " + method,
+                    body,
+                    requestId,
+                    e);
         }
     }
 

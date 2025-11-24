@@ -204,7 +204,8 @@ class DefaultWalletClientDebugTest {
         @Override
         public JsonRpcResponse send(final String method, final List<?> params) {
             if (responses.isEmpty()) {
-                throw new io.brane.core.error.RpcException(-1, "No response queued for " + method, null, null);
+                throw new io.brane.core.error.RpcException(
+                        -1, "No response queued for " + method, null, null, null);
             }
             return responses.remove(0);
         }

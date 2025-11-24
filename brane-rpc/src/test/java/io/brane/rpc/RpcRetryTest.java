@@ -17,7 +17,7 @@ class RpcRetryTest {
                 RpcRetry.run(
                         () -> {
                             if (calls.getAndIncrement() == 0) {
-                                throw new RpcException(-32000, "header not found", null, null);
+                                throw new RpcException(-32000, "header not found", null, null, null);
                             }
                             return "ok";
                         },
@@ -88,7 +88,7 @@ class RpcRetryTest {
                         RpcRetry.run(
                                 () -> {
                                     calls.incrementAndGet();
-                                    throw new RpcException(-32000, "header not found", null, null);
+                                    throw new RpcException(-32000, "header not found", null, null, null);
                                 },
                                 3));
         assertEquals(3, calls.get());

@@ -7,12 +7,26 @@ public final class RpcException extends BraneException {
 
     private final int code;
     private final String data;
+    private final Long requestId;
 
     public RpcException(
-            final int code, final String message, final String data, final Throwable cause) {
-        super(message, cause);
+            final int code,
+            final String message,
+            final String data,
+            final Long requestId,
+            final Throwable cause) {
+        super(augmentMessage(message, requestId), cause);
         this.code = code;
         this.data = data;
+        this.requestId = requestId;
+    }
+
+    public RpcException(final int code, final String message, final String data, final Long requestId) {
+        this(code, message, data, requestId, null);
+    }
+
+    public RpcException(final int code, final String message, final String data, final Throwable cause) {
+        this(code, message, data, null, cause);
     }
 
     public int code() {
@@ -21,6 +35,10 @@ public final class RpcException extends BraneException {
 
     public String data() {
         return data;
+    }
+
+    public Long requestId() {
+        return requestId;
     }
 
     public boolean isBlockRangeTooLarge() {
@@ -39,6 +57,23 @@ public final class RpcException extends BraneException {
 
     @Override
     public String toString() {
-        return "RpcException{code=" + code + ", message=" + getMessage() + ", data=" + data + "}";
+        return "RpcException{"
+                + "code="
+                + code
+                + ", message="
+                + getMessage()
+                + ", data="
+                + data
+                + ", requestId="
+                + requestId
+                + "}";
+    }
+
+    private static String augmentMessage(final String message, final Long requestId) {
+        if (requestId == null || message == null || message.isBlank()) {
+            return message;
+        }
+
+        return "[requestId=" + requestId + "] " + message;
     }
 }

@@ -30,7 +30,7 @@ class HttpClientTest {
 
     @Test
     void propagatesRpcException() {
-        RpcException failure = new RpcException(-32000, "boom", null, null);
+        RpcException failure = new RpcException(-32000, "boom", null, null, null);
         BraneProvider provider = (method, params) -> {
             throw failure;
         };

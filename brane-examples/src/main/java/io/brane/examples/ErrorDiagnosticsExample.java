@@ -72,6 +72,7 @@ public final class ErrorDiagnosticsExample {
                 -32000,
                 "block range is too large: from 0x0 to 0xfffff",
                 null,
+                null,
                 null);
         System.out.println("[RpcException/blockRange] isBlockRangeTooLarge = "
                 + blockRangeError.isBlockRangeTooLarge());
@@ -82,6 +83,7 @@ public final class ErrorDiagnosticsExample {
         RpcException filterNotFoundError = new RpcException(
                 -32000,
                 "filter not found",
+                null,
                 null,
                 null);
         System.out.println("[RpcException/filterNotFound] isBlockRangeTooLarge = "

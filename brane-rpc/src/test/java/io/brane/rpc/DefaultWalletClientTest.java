@@ -483,7 +483,7 @@ class DefaultWalletClientTest {
         public JsonRpcResponse send(final String method, final List<?> params) throws RpcException {
             System.out.println("FakeBraneProvider: " + method);
             if (responses.isEmpty()) {
-                throw new RpcException(-1, "No response queued for " + method, null, null);
+                throw new RpcException(-1, "No response queued for " + method, null, null, null);
             }
             methods.add(method);
             return responses.remove(0);
