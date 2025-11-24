@@ -89,6 +89,18 @@ import io.brane.core.BraneDebug;
 BraneDebug.setEnabled(true); // Log RPC requests, responses, and transaction lifecycle
 ```
 
+Every RPC call gets a unique request ID that appears in logs and exceptions:
+
+```
+[RPC] id=1 method=eth_getBlockByNumber durationMicros=1234 ...
+[RPC-ERROR] id=6 method=eth_sendRawTransaction code=-32003 ...
+```
+
+Exceptions also include the request ID for easy correlation:
+```
+[requestId=1] Network error during JSON-RPC call
+```
+
 Try it out end-to-end via the example app:
 
 ```bash
@@ -156,6 +168,7 @@ brane/
 - ✅ **Minimal Revert Decoding** - Automatic decoding of Error(string), Panic(uint256), and extensible custom error support
 - ✅ **Debug Mode & RPC Logging** - Global toggle for sanitized, structured logging of RPC calls and transaction lifecycles
 - ✅ **Smart Gas Defaults + Retry** - Automatic gas estimation and EIP-1559 fee calculation with transient error retry logic
+- ✅ **Request ID Correlation** - Every RPC call has a unique, monotonic ID that appears in logs and exceptions for easy tracing
 
 Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-alpha`, etc.
 

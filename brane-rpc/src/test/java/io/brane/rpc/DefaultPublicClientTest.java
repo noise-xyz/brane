@@ -118,7 +118,7 @@ class DefaultPublicClientTest {
                         resp.error().code(),
                         resp.error().message(),
                         resp.error().data() != null ? resp.error().data().toString() : null,
-                        null);
+                        (Long) null);
             }
             return resp;
         }

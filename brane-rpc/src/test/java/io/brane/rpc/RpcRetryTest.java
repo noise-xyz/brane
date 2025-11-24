@@ -57,7 +57,7 @@ class RpcRetryTest {
                                             -32000,
                                             "execution reverted",
                                             "0x08c379a0deadbeef",
-                                            null);
+                                            (Long) null);
                                 },
                                 2));
         assertEquals(1, calls.get());
@@ -73,7 +73,7 @@ class RpcRetryTest {
                                 () -> {
                                     calls.incrementAndGet();
                                     throw new RpcException(
-                                            -32000, "insufficient funds for gas * price + value", null, null);
+                                            -32000, "insufficient funds for gas * price + value", null, (Long) null);
                                 },
                                 3));
         assertEquals(1, calls.get());
