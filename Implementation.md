@@ -1,377 +1,407 @@
 
-# Phase 2.7: Debug Mode + RPC Logging (P0.11)
+# Phase 2.8: Smart Gas Defaults + Retry (P0.12)
 
 ## Goal
 
-Introduce a unified **debug mode** for Brane that logs RPC requests, responses, latencies, gas estimates, transaction lifecycle steps, and decoded revert information. Debug mode dramatically improves developer experience, supports enterprise observability, and simplifies troubleshooting.
+Provide a “just works” path for transaction sending by:
+
+* Automatically filling **reasonable gas defaults** when the user doesn’t specify them.
+* Applying a **small, controlled retry policy** for transient RPC/network issues (but never on reverts or user errors).
+
+This should make Brane feel reliable and “smart” out of the box.
 
 ## Motivation
 
-* **Developer Productivity**: Debug logs make RPC interactions transparent (similar to “viem debug mode” and “ethers logger”).
-* **Enterprise Readiness**: Visibility into RPC flow, latency, revert reasons, and gas dynamics is essential for diagnosing production issues.
-* **Consistency**: A centralized logging layer avoids scattered `System.out` calls and ensures Brane emits structured, safe, and uniform logs.
+* **DX**: Most users don’t want to think about gas details on every tx.
+* **Correctness**: Overwriting explicit gas fields is a bug; filling missing fields is a feature.
+* **Resilience**: Some RPC errors are transient and benefit from simple retries; others must fail fast.
 
 ---
 
 ## Implementation Details
 
-### Module Placement
+### 1. Placement
 
-* `BraneDebug` → **brane-core**
-* `LogSanitizer` → **brane-core**
-* `DebugLogger` → **brane-core**
-* RPC instrumentation → **brane-rpc**
-* PublicClient instrumentation → **brane-rpc**
-* WalletClient instrumentation → **brane-rpc**
-* Revert decoding integration → **brane-core** + **brane-rpc**
+* Smart gas defaults → `brane-rpc`, inside `DefaultWalletClient` (or a small helper it uses).
+* Retry logic → `brane-rpc`, shared between `PublicClient` and `DefaultWalletClient`.
 
 ---
 
-### 1. Global Debug Toggle (`BraneDebug`)
+### 2. Core Model Updates
 
-A lightweight global flag for enabling/disabling debug logging.
+#### 2.1. Chain Profile Extensions (`ChainProfile`)
+
+Extend to include EIP-1559 support and default priority fee:
 
 ```java
-package io.brane.core;
-
-public final class BraneDebug {
-
-    private static volatile boolean enabled = false;
-
-    private BraneDebug() {}
-
-    public static boolean isEnabled() {
-        return enabled;
-    }
-
-    public static void setEnabled(boolean enabled) {
-        BraneDebug.enabled = enabled;
-    }
+public record ChainProfile(
+    long chainId,
+    String defaultRpcUrl,
+    boolean supportsEip1559,
+    Wei defaultPriorityFeePerGas
+) {
+    // ...
 }
 ```
 
-**Usage:**
+Notes:
+
+* For EIP-1559 chains, `defaultPriorityFeePerGas` SHOULD be non-null. If it is null, SmartGasStrategy may either:
+
+  * Throw a configuration exception, or
+  * Fall back to a small hardcoded default (e.g. 1 gwei).
+
+#### 2.2. Block Header Extensions (`BlockHeader`)
+
+Add `baseFeePerGas` to support EIP-1559 calculations:
 
 ```java
-BraneDebug.setEnabled(true); // Enable verbose RPC + TX debug logging
+public record BlockHeader(
+    Hash hash,
+    Long number,
+    Hash parentHash,
+    Long timestamp,
+    Wei baseFeePerGas // [NEW]
+) {}
 ```
 
-> Note: Simple global toggle for P0.11; may become per-client configuration later.
+* Update `DefaultPublicClient.getBlockByTag` / `getLatestBlock` to parse `baseFeePerGas` from RPC responses when present.
 
 ---
 
-### 2. Log Sanitization (`LogSanitizer`)
+### 3. Smart Gas Strategy
 
-A utility ensuring **no sensitive data** appears in debug logs.
+Implement a helper to fill **only missing** gas fields:
 
 ```java
-package io.brane.core;
+final class SmartGasStrategy {
 
-public final class LogSanitizer {
+    private final PublicClient publicClient;
+    private final ChainProfile profile;
 
-    private LogSanitizer() {}
-
-    public static String sanitize(String input) {
-        if (input == null) return "null";
-
-        // Redact private key fields explicitly
-        if (input.contains("\"privateKey\"")) {
-            return input.replaceAll("\"privateKey\"\\s*:\\s*\"0x[^\"]+\"", 
-                                    "\"privateKey\":\"0x***[REDACTED]***\"");
-        }
-
-        // Redact signed raw transactions
-        if (input.contains("\"raw\"")) {
-            return input.replaceAll("\"raw\"\\s*:\\s*\"0x[^\"]+\"", 
-                                    "\"raw\":\"0x***[REDACTED]***\"");
-        }
-
-        // Truncate very large payloads (bytecode, calldata, logs)
-        if (input.length() > 2000) {
-            return input.substring(0, 200) + "...(truncated)";
-        }
-
-        return input;
+    SmartGasStrategy(PublicClient publicClient, ChainProfile profile) {
+        this.publicClient = publicClient;
+        this.profile = profile;
     }
+
+    TransactionRequest applyDefaults(TransactionRequest tx) {
+        // 1) Never overwrite user-provided gas fields.
+        // 2) Fill gasLimit if null.
+        // 3) Fill fee fields based on chain/profile and latest block.
+        TransactionRequest withLimit = ensureGasLimit(tx);
+        return ensureFees(withLimit);
+    }
+
+    // ...
 }
 ```
 
-Sanitization is applied **before** everything is sent to `DebugLogger`.
+**Design rule:**
+
+* SmartGasStrategy MUST:
+
+  * Only fill fields that are `null` on `TransactionRequest`.
+  * Never overwrite user-provided values from `TxBuilder` (`gasLimit`, `gasPrice`, `maxFeePerGas`, `maxPriorityFeePerGas`).
+
+#### 3.1. Gas Limit (`eth_estimateGas`)
+
+If `tx.gasLimit() == null`:
+
+1. Call `eth_estimateGas` (via `PublicClient`) with a tx object containing all user fields (from, to, value, data, etc.) but without any gas fields.
+2. Let `estimated = estimateGas(...)`.
+3. Set `gasLimit = estimated * 120 / 100` (20% buffer).
+4. Return a new `TransactionRequest` with this `gasLimit`.
+
+If `gasLimit` is already set → do not change it.
+
+#### 3.2. EIP-1559 Fees
+
+If `profile.supportsEip1559()` is `true`:
+
+1. If **both** `maxFeePerGas` and `maxPriorityFeePerGas` are non-null:
+
+   * Respect user values, don’t fetch anything.
+2. Else:
+
+   * Fetch latest block via `PublicClient.getLatestBlock()`.
+   * Extract `baseFeePerGas`.
+   * If `baseFeePerGas` is `null`, treat chain as legacy and **fall back to the gasPrice path in 3.3**.
+   * Determine `priority`:
+
+     * If `tx.maxPriorityFeePerGas()` is non-null, use that.
+     * Else use `profile.defaultPriorityFeePerGas()`.
+   * Compute:
+
+     ```java
+     Wei maxFee = baseFeePerGas.multiply(BigInteger.valueOf(2)).add(priority);
+     ```
+   * Fill missing fields:
+
+     * If `maxPriorityFeePerGas` is null → set to `priority`.
+     * If `maxFeePerGas` is null → set to `maxFee`.
+
+SmartGasStrategy must not set `gasPrice` on EIP-1559 paths.
+
+#### 3.3. Legacy Fees (`gasPrice`)
+
+If `profile.supportsEip1559() == false` **or** `baseFeePerGas` was `null`:
+
+1. If `tx.gasPrice()` is non-null → respect that value.
+2. Else:
+
+   * Call `eth_gasPrice` via `PublicClient`.
+   * Set `gasPrice` to the returned value.
+
+SmartGasStrategy must never set both `gasPrice` **and** EIP-1559 fee fields at the same time.
 
 ---
 
-### 3. Central Debug Logger (`DebugLogger`)
+### 4. WalletClient Integration
 
-A uniform logging entry point with built-in sanitization.
+In `DefaultWalletClient`:
+
+* Inject or construct `SmartGasStrategy` using the active `PublicClient` and `ChainProfile`.
+
+* Before signing/sending a transaction:
+
+  ```java
+  TransactionRequest withDefaults = smartGasStrategy.applyDefaults(request);
+  // proceed with withDefaults (signing, sending, receipt polling, etc.)
+  ```
+
+* Ensure explicit user-provided gas fields from `TxBuilder` are never overwritten.
+
+---
+
+### 5. Retry Policy (`RpcRetry`)
+
+Introduce `RpcRetry` helper:
 
 ```java
-package io.brane.core;
+final class RpcRetry {
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-public final class DebugLogger {
-
-    private static final Logger LOG = LoggerFactory.getLogger("io.brane.debug");
-
-    private DebugLogger() {}
-
-    public static void log(String message) {
-        if (BraneDebug.isEnabled()) {
-            LOG.debug(message);
+    static <T> T callWithRetry(Supplier<T> rpcCall, int maxAttempts, Duration baseDelay) {
+        int attempt = 0;
+        while (true) {
+            try {
+                return rpcCall.get();
+            } catch (RpcException e) {
+                attempt++;
+                if (!isRetryableRpcError(e) || attempt >= maxAttempts) {
+                    throw e;
+                }
+                sleep(backoffMillis(attempt, baseDelay));
+            } catch (IOException | RuntimeException e) {
+                attempt++;
+                if (!isRetryableNetworkError(e) || attempt >= maxAttempts) {
+                    throw e;
+                }
+                sleep(backoffMillis(attempt, baseDelay));
+            }
         }
     }
 
-    public static void log(String message, Throwable t) {
-        if (BraneDebug.isEnabled()) {
-            LOG.debug(message, t);
-        }
-    }
-
-    public static String safe(Object o) {
-        return LogSanitizer.sanitize(String.valueOf(o));
-    }
+    // backoffMillis, isRetryableRpcError, isRetryableNetworkError, sleep...
 }
 ```
 
-#### Log Format Guidelines
+#### 5.1. Classification
 
-All debug logs must follow:
+**Retryable:**
 
-```
-[PREFIX] key=value key=value ...
-```
+* `IOException`-like network issues:
 
-Valid prefixes:
+  * Connection reset
+  * Timeouts
+  * Temporary DNS/connection failures
+* Certain `RpcException` cases with clearly transient messages, e.g.:
 
-* `[RPC]`, `[RPC-ERROR]`
-* `[CALL]`, `[CALL-RESULT]`
-* `[ESTIMATE-GAS]`, `[ESTIMATE-GAS-RESULT]`
-* `[TX-SEND]`, `[TX-HASH]`, `[TX-WAIT]`, `[TX-REVERT]`
+  * Message contains `"header not found"`.
+  * Other node/transient conditions if explicitly allowlisted.
 
----
+**Important:** do **not** treat all `-32000` server errors as retryable; only those whose messages match a small, explicit allowlist of transient conditions.
 
-### 4. RPC-Level Logging (`HttpBraneProvider`)
+**Non-Retryable:**
 
-Instrument RPC request/response + latency.
+* Reverts (error data present, used by `RevertDecoder` / `RevertException`).
+* User errors such as:
 
-```java
-long start = System.nanoTime();
-try {
-    var result = doHttpCall(requestJson);
-    long durMicros = (System.nanoTime() - start) / 1_000;
+  * `"insufficient funds for gas * price + value"`.
+  * `"nonce too low"` / `"nonce too high"`.
+* Invalid params / JSON-RPC `-32602` and similar.
 
-    DebugLogger.log("""
-        [RPC] method=%s id=%s durationMicros=%d
-          request=%s
-          response=%s
-    """.formatted(
-        method,
-        id,
-        durMicros,
-        DebugLogger.safe(requestJson),
-        DebugLogger.safe(result)
-    ));
+#### 5.2. Usage
 
-    return result;
+* **PublicClient**:
 
-} catch (Exception e) {
-    long durMicros = (System.nanoTime() - start) / 1_000;
+  * `eth_call`
+  * `eth_estimateGas`
+  * `getLatestBlock` / `eth_getBlockByNumber`
+  * `eth_gasPrice`
+* **DefaultWalletClient**:
 
-    DebugLogger.log("""
-        [RPC-ERROR] method=%s durationMicros=%d error=%s
-    """.formatted(method, durMicros, e.getMessage()), e);
+  * `eth_sendRawTransaction` / `eth_sendTransaction`
+  * `eth_getTransactionCount` (nonce fetching, if desired)
+  * (Optionally) receipt polling via `eth_getTransactionReceipt`
 
-    throw e;
-}
-```
+Use conservative defaults, e.g.:
 
-Ensures:
-
-* No raw private keys logged
-* No full bytecode/signed tx
-* Latency is visible
-
----
-
-### 5. PublicClient Logging (eth_call, estimateGas)
-
-Instrument:
-
-* `eth_call(...)`
-* `eth_estimateGas(...)`
-* Other read-only operations
-
-Examples:
-
-```java
-DebugLogger.log("[CALL] method=eth_call to=" + to);
-DebugLogger.log("[CALL-RESULT] len=" + result.length());
-```
-
-```java
-DebugLogger.log("[ESTIMATE-GAS] tx=" + DebugLogger.safe(tx));
-DebugLogger.log("[ESTIMATE-GAS-RESULT] gas=" + gas);
-```
-
-All logged values must be sanitized.
-
----
-
-### 6. WalletClient Logging (Send, Hash, Polling, Revert)
-
-Instrument:
-
-* **Before send:**
-
-  ```
-  [TX-SEND] type=EIP-1559 to=0xabc nonce=auto value=100 wei
-  ```
-
-* **After obtaining tx hash:**
-
-  ```
-  [TX-HASH] 0x123...
-  ```
-
-* **Polling for receipt:**
-
-  ```
-  [TX-WAIT] hash=0x123 attempt=3
-  ```
-
-* **On revert:**
-
-  ```
-  [TX-REVERT] hash=0x123 kind=PANIC reason="division or modulo by zero"
-  ```
-
-Never log:
-
-* private keys
-* full raw signed transactions
-
----
-
-### 7. Revert Decoding Integration (From P0.10)
-
-When revert data is present:
-
-1. Call `RevertDecoder.decode(rawData)`
-2. If `kind != UNKNOWN` → throw `RevertException(kind, reason, raw, cause)`
-3. Emit:
-
-```java
-DebugLogger.log("[TX-REVERT] hash=%s kind=%s reason=%s"
-    .formatted(hash, decoded.kind(), decoded.reason()));
-```
-
-Ensures revert diagnostics appear clearly during debugging.
+* `maxAttempts = 3`
+* `baseDelay = 200ms` with a simple linear or exponential backoff.
 
 ---
 
 ## Steps
 
-1. [ ] Add `BraneDebug` global toggle
-2. [ ] Add `LogSanitizer`
-3. [ ] Add `DebugLogger` (SLF4J-backed, applies sanitization)
-4. [ ] Instrument `HttpBraneProvider` with detailed RPC logs
-5. [ ] Instrument `PublicClient` (`eth_call`, `estimateGas`)
-6. [ ] Instrument `DefaultWalletClient` (send/hash/wait/revert)
-7. [ ] Ensure **all logs** use sanitization utilities
-8. [ ] Add documentation + small README example
+1. [ ] Update `ChainProfile` (add `supportsEip1559` and `defaultPriorityFeePerGas`).
+2. [ ] Update `BlockHeader` (add `baseFeePerGas`) and `DefaultPublicClient` (parse it).
+3. [ ] Implement `SmartGasStrategy` in `brane-rpc`:
+
+   * Fill `gasLimit` via `eth_estimateGas` + 20% margin.
+   * For EIP-1559: use `baseFee * 2 + priority` heuristic.
+   * For legacy: use `eth_gasPrice`.
+   * Never overwrite user-specified gas fields.
+4. [ ] Wire `SmartGasStrategy` into `DefaultWalletClient` before signing/sending.
+5. [ ] Implement `RpcRetry` helper with:
+
+   * Retryable vs non-retryable classification.
+   * Bounded retry loop with backoff.
+6. [ ] Use `RpcRetry` in `PublicClient` and `DefaultWalletClient` RPC paths.
+7. [ ] Ensure explicit user-provided gas fields are never overwritten (add tests).
 
 ---
 
 ## Testing
 
-### 1. Debug Toggle Tests
+### A. Smart Gas Defaults (Unit)
 
-* Default: `BraneDebug.isEnabled() == false`
-* Debug off → no logs emitted
-* Debug on → logs emitted to SLF4J `ListAppender`
+Add tests (either for `SmartGasStrategy` directly or via `DefaultWalletClientTest` with mocks):
 
----
+1. **EIP-1559, all gas fields null**
 
-### 2. Provider Logging Tests
+   * `ChainProfile`: `supportsEip1559 = true`, `defaultPriorityFeePerGas = 2 gwei`.
+   * Mock `eth_getBlockByNumber` / `getLatestBlock` → `baseFeePerGas = 20 gwei`.
+   * Mock `eth_estimateGas` → `100_000`.
+   * After `applyDefaults`:
 
-Using mock/fake HTTP transport:
+     * `gasLimit > 100_000` (e.g., 120_000).
+     * `maxPriorityFeePerGas = 2 gwei`.
+     * `maxFeePerGas = 42 gwei` (2 * 20 + 2).
 
-* Debug off → **no `[RPC]` logs**
-* Debug on → verify:
+2. **EIP-1559, user-provided priority**
 
-  * `[RPC] method=eth_blockNumber`
-  * `durationMicros=...`
-  * Sanitized request/response
-* Error case → `[RPC-ERROR]`
+   * Same setup, but `maxPriorityFeePerGas = 5 gwei`, `maxFeePerGas == null`.
+   * After defaults:
 
----
+     * `maxPriorityFeePerGas = 5 gwei` (unchanged).
+     * `maxFeePerGas = baseFee * 2 + 5 gwei`.
 
-### 3. PublicClient Logging Tests
+3. **EIP-1559, fully user-specified fees**
 
-Mock RPC provider:
+   * Both `maxFeePerGas` and `maxPriorityFeePerGas` non-null.
+   * Ensure no call to `getLatestBlock` / `eth_getBlockByNumber` and values unchanged.
 
-* Debug on → verify:
+4. **Legacy chain, no gasPrice**
 
-  * `[CALL]`
-  * `[CALL-RESULT]`
-  * `[ESTIMATE-GAS]`
-  * `[ESTIMATE-GAS-RESULT]`
+   * `ChainProfile`: `supportsEip1559 = false`.
+   * Mock `eth_gasPrice = 30 gwei`.
+   * tx: `gasPrice == null`.
+   * After defaults: `gasPrice = 30 gwei`.
 
----
+5. **Legacy chain, user gasPrice**
 
-### 4. WalletClient Logging Tests
+   * tx: `gasPrice = 40 gwei`.
+   * Ensure no `eth_gasPrice` call and `gasPrice` unchanged.
 
-Fake provider:
+6. **GasLimit via estimateGas**
 
-* Success path:
+   * Mock `eth_estimateGas = 80_000`.
+   * tx: `gasLimit == null`.
+   * After defaults: `gasLimit > 80_000`.
 
-  * `[TX-SEND]`
-  * `[TX-HASH]`
-  * `[TX-WAIT]`
-* Revert path:
+7. **EIP-1559 profile but baseFee missing**
 
-  * `[TX-REVERT] kind=ERROR_STRING`
-  * `[TX-REVERT] kind=PANIC`
-
----
-
-### 5. Sensitive Data Tests (`LogSanitizerTest`)
-
-Unit tests:
-
-* Private key fields → redacted
-* `"raw": "0x..."` → redacted
-* Large data → truncated
-* Normal strings → unchanged
-
-Integration:
-
-* Send a tx with known private key
-* Capture logs
-* Assert:
-
-  * Logs do **not** contain the private key
-  * Logs do **not** contain raw signed transaction hex
+   * `supportsEip1559 = true`, but `baseFeePerGas = null` from latest block.
+   * SmartGasStrategy should fall back to `eth_gasPrice` path and set `gasPrice` if missing.
 
 ---
 
-### 6. Optional Integration Example
+### B. Retry Policy (Unit)
 
-Add `DebugExample` in `brane-examples`:
+Add tests for `RpcRetry`:
 
-```java
-BraneDebug.setEnabled(true);
-var provider = HttpBraneProvider.builder(rpc).build();
-...
-```
+1. **Retry on “header not found”**
 
-Run:
+   * First call: throw `RpcException("header not found")`.
+   * Second call: return `"ok"`.
+   * `maxAttempts = 3`.
+   * Assert:
 
-```
-./gradlew :brane-examples:run \
-  -PmainClass=io.brane.examples.DebugExample \
-  -Dbrane.examples.rpc=http://127.0.0.1:8545
-```
+     * Result = `"ok"`.
+     * Supplier called exactly 2 times.
 
-Check logs manually for readability & safety.
+2. **Retry on transient network error**
+
+   * First call: throw `IOException("connection reset")`.
+   * Second call: success.
+   * Assert 2 invocations, success returned.
+
+3. **No retry on revert error**
+
+   * First call: `RpcException` that clearly represents an EVM revert (e.g., has `data` with revert payload).
+   * `isRetryableRpcError` → false.
+   * Assert:
+
+     * Exception thrown on first attempt.
+     * Supplier called exactly once.
+
+4. **No retry on user error**
+
+   * First call: `RpcException("insufficient funds for gas * price + value")`.
+   * Assert no retry, only one invocation.
+
+5. **Exhaust retries**
+
+   * All attempts throw a retryable error (e.g. `IOException` or `"header not found"`).
+   * With `maxAttempts = 3`, assert:
+
+     * Supplier called 3 times.
+     * Exception propagated on final attempt.
+
+---
+
+### C. WalletClient Integration
+
+In `DefaultWalletClientTest`:
+
+1. **End-to-end smart defaults**
+
+   * Build tx with missing gas fields.
+   * Mock RPC:
+
+     * `eth_estimateGas`, `eth_getBlockByNumber` / `getLatestBlock`, `eth_gasPrice`.
+   * Send via `WalletClient`.
+   * Assert that the final `eth_sendRawTransaction` uses:
+
+     * A non-null `gasLimit`.
+     * Correct `gasPrice` or EIP-1559 `maxFeePerGas` / `maxPriorityFeePerGas` per heuristic.
+   * Assert that explicit user-specified gas fields remain unchanged.
+
+2. **Retry on send**
+
+   * Fake provider:
+
+     * First `eth_sendRawTransaction` call → `RpcException("header not found")`.
+     * Second call → success.
+   * Assert:
+
+     * 2 calls made.
+     * No unhandled error.
+
+3. **No retry on revert**
+
+   * Fake provider returns revert error with data on first send.
+   * Assert:
+
+     * `RevertException` thrown.
+     * Send called exactly once.
