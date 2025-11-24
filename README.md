@@ -170,6 +170,7 @@ brane/
 - ✅ **Smart Gas Defaults + Retry** - Automatic gas estimation and EIP-1559 fee calculation with transient error retry logic
 - ✅ **Request ID Correlation** - Every RPC call has a unique, monotonic ID that appears in logs and exceptions for easy tracing
 - ✅ **Access List Support (EIP-2930)** - Specify accessed addresses and storage keys to reduce gas costs in EIP-1559 transactions
+- ✅ **Runtime ABI Wrapper Binding** - Bind Java interfaces directly to smart contracts without code generation via `BraneContract.bind()`
 
 Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-alpha`, etc.
 
@@ -256,6 +257,35 @@ Provides high-level contract interaction:
   * `ReadOnlyContract`: a lightweight façade over `Abi` + `PublicClient.call` for read-only calls (no signing), with revert decoding.
   * `ReadWriteContract`: extends `ReadOnlyContract` and wires in a `WalletClient` for sending transactions (builds `TransactionRequest` with ABI-encoded input).
   * `Signer` interface / `PrivateKeySigner`: Wrap private keys via our value types (no web3j types leak out).
+  * **Runtime ABI Wrapper Binding** via `BraneContract.bind()`: dynamically bind Java interfaces to smart contracts without code generation:
+
+    ```java
+    // Define interface matching contract ABI
+    interface Erc20Contract {
+        BigInteger balanceOf(Address owner);               // view function
+        TransactionReceipt transfer(Address to, BigInteger amount);  // write function
+    }
+
+    // Bind interface to deployed contract
+    Erc20Contract token = BraneContract.bind(
+        contractAddress,
+        abiJson,
+        publicClient,
+        walletClient,
+        Erc20Contract.class
+    );
+
+    // Call methods directly - type-safe, no encoding/decoding
+    BigInteger balance = token.balanceOf(owner);          // eth_call
+    TransactionReceipt receipt = token.transfer(to, amount);  // signed transaction
+    ```
+
+    Features:
+    - Zero code generation required
+    - Type-safe method calls with compile-time checking
+    - Automatic routing: view methods → `PublicClient`, write methods → `WalletClient`
+    - Bind-time validation ensures interface matches ABI
+    - Supports `void`, `BigInteger`, `Address`, `boolean`/`Boolean` returns for view; `void` or `TransactionReceipt` for write
 
 ### `brane-examples`
 

@@ -217,4 +217,25 @@ if [ $? -ne 0 ]; then
 fi
 echo "Access List Integration Tests Passed!"
 
+echo "Running AbiWrapperExample..."
+./gradlew :brane-examples:run --no-daemon -PmainClass=io.brane.examples.AbiWrapperExample \
+  -Dbrane.examples.rpc="$RPC_URL" \
+  -Dbrane.examples.pk="$PRIVATE_KEY" \
+  -Dbrane.examples.contract="$TOKEN_ADDR"
+if [ $? -ne 0 ]; then
+    echo "AbiWrapperExample Failed!"
+    exit 1
+fi
+echo "AbiWrapperExample Passed!"
+
+echo "Running AbiWrapperIntegrationTest..."
+./gradlew :brane-contract:test --tests "io.brane.contract.AbiWrapperIntegrationTest" --no-daemon \
+  -Dbrane.integration.tests=true \
+  -Dbrane.examples.rpc="$RPC_URL"
+if [ $? -ne 0 ]; then
+    echo "AbiWrapperIntegrationTest Failed!"
+    exit 1
+fi
+echo "AbiWrapperIntegrationTest Passed!"
+
 echo "All Tests and Examples Completed Successfully."
