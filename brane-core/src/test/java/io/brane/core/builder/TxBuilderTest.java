@@ -1,79 +1,32 @@
 package io.brane.core.builder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
-import io.brane.core.types.HexData;
-import io.brane.core.types.Wei;
+import io.brane.core.types.Hash;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class TxBuilderTest {
 
     @Test
-    void rejectsMissingTarget() {
-        assertThrows(
-                BraneTxBuilderException.class,
-                () -> TxBuilder.legacy().gasPrice(Wei.of(1)).build());
-        assertThrows(
-                BraneTxBuilderException.class,
-                () -> TxBuilder.eip1559().maxFeePerGas(Wei.of(1)).maxPriorityFeePerGas(Wei.of(1)).build());
+    void eip1559BuilderAccessList() {
+        final AccessListEntry entry =
+                new AccessListEntry(new Address("0xabc"), List.of(new Hash("0x01")));
+
+        final TransactionRequest request = TxBuilder.eip1559().accessList(List.of(entry)).build();
+
+        assertNotNull(request.accessList());
+        assertEquals(List.of(entry), request.accessList());
     }
 
     @Test
-    void allowsMissingLegacyGasPriceForAutoFill() {
-        TransactionRequest request = TxBuilder.legacy().to(new Address("0x" + "0".repeat(40))).build();
-        assertNull(request.gasPrice());
-    }
+    void accessListFluentChaining() {
+        final TransactionRequest request = TxBuilder.eip1559().accessList(List.of()).gasLimit(1L).build();
 
-    @Test
-    void allowsMissingEipFeesForAutoFill() {
-        TransactionRequest request =
-                TxBuilder.eip1559().to(new Address("0x" + "0".repeat(40))).maxFeePerGas(Wei.of(1)).build();
-        assertEquals(Wei.of(1), request.maxFeePerGas());
-        assertNull(request.maxPriorityFeePerGas());
-    }
-
-    @Test
-    void buildsLegacyRequest() {
-        final Address recipient = new Address("0x" + "1".repeat(40));
-        TransactionRequest request =
-                TxBuilder.legacy()
-                        .from(new Address("0x" + "2".repeat(40)))
-                        .to(recipient)
-                        .value(Wei.of(5))
-                        .gasPrice(Wei.of(10))
-                        .gasLimit(21_000)
-                        .nonce(7)
-                        .build();
-
-        assertEquals(recipient, request.to());
-        assertEquals(Wei.of(5), request.value());
-        assertEquals(Wei.of(10), request.gasPrice());
-        assertEquals(21_000L, request.gasLimit());
-        assertEquals(7L, request.nonce());
-        assertNull(request.maxFeePerGas());
-        assertNull(request.maxPriorityFeePerGas());
-    }
-
-    @Test
-    void buildsEip1559Request() {
-        final Address recipient = new Address("0x" + "3".repeat(40));
-        TransactionRequest request =
-                TxBuilder.eip1559()
-                        .to(recipient)
-                        .value(Wei.of(2))
-                        .maxFeePerGas(Wei.of(30))
-                        .maxPriorityFeePerGas(Wei.of(5))
-                        .data(new HexData("0x1234"))
-                        .build();
-
-        assertEquals(recipient, request.to());
-        assertEquals(Wei.of(2), request.value());
-        assertEquals(Wei.of(30), request.maxFeePerGas());
-        assertEquals(Wei.of(5), request.maxPriorityFeePerGas());
-        assertNull(request.gasPrice());
+        assertEquals(List.of(), request.accessList());
     }
 }

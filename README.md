@@ -229,6 +229,19 @@ Provides the JSON-RPC transport and public client API:
         .build();
     ```
 
+    Access list support is available on the EIP-1559 builder:
+
+    ```java
+    List<AccessListEntry> access = List.of(
+        new AccessListEntry(recipient, List.of(new Hash("0x...storageKey")))
+    );
+
+    TransactionRequest accessListTx = TxBuilder.eip1559()
+        .to(recipient)
+        .accessList(access)
+        .build();
+    ```
+
   * `getLogs(LogFilter)`: fetch historical logs (e.g., ERC-20 `Transfer` events) with block/topic filters.
 
 ### `brane-contract`

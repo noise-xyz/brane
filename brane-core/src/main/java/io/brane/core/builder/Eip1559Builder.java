@@ -1,9 +1,11 @@
 package io.brane.core.builder;
 
+import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import java.util.List;
 
 public final class Eip1559Builder implements TxBuilder<Eip1559Builder> {
     private Address from;
@@ -14,6 +16,7 @@ public final class Eip1559Builder implements TxBuilder<Eip1559Builder> {
     private Wei maxFeePerGas;
     private Wei maxPriorityFeePerGas;
     private HexData data;
+    private List<AccessListEntry> accessList;
 
     @Override
     public Eip1559Builder from(final Address address) {
@@ -61,12 +64,27 @@ public final class Eip1559Builder implements TxBuilder<Eip1559Builder> {
         return this;
     }
 
+    public Eip1559Builder accessList(final List<AccessListEntry> accessList) {
+        this.accessList = accessList == null ? null : List.copyOf(accessList);
+        return this;
+    }
+
     @Override
     public TransactionRequest build() {
         validateTarget();
 
         return new TransactionRequest(
-                from, to, value, gasLimit, null, maxPriorityFeePerGas, maxFeePerGas, nonce, data, true);
+                from,
+                to,
+                value,
+                gasLimit,
+                null,
+                maxPriorityFeePerGas,
+                maxFeePerGas,
+                nonce,
+                data,
+                true,
+                accessList);
     }
 
     private void validateTarget() {

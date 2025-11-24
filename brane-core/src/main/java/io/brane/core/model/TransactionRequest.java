@@ -3,6 +3,7 @@ package io.brane.core.model;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import java.util.List;
 import java.util.Optional;
 
 public record TransactionRequest(
@@ -15,7 +16,8 @@ public record TransactionRequest(
         Wei maxFeePerGas,
         Long nonce,
         HexData data,
-        boolean isEip1559) {
+        boolean isEip1559,
+        List<AccessListEntry> accessList) {
 
     public Optional<Address> toOpt() {
         return Optional.ofNullable(to);
@@ -43,5 +45,9 @@ public record TransactionRequest(
 
     public Optional<Long> nonceOpt() {
         return Optional.ofNullable(nonce);
+    }
+
+    public List<AccessListEntry> accessListOrEmpty() {
+        return accessList == null ? List.of() : accessList;
     }
 }

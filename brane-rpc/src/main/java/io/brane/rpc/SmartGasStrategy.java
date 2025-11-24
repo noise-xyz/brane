@@ -2,8 +2,10 @@ package io.brane.rpc;
 
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.error.RpcException;
+import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
 import io.brane.core.types.Wei;
 import io.brane.internal.web3j.utils.Numeric;
 import java.math.BigInteger;
@@ -77,13 +79,7 @@ final class SmartGasStrategy {
         if (request.gasLimit() != null) {
             return request;
         }
-        final Map<String, Object> tx = new LinkedHashMap<>();
-        tx.put("from", request.from().value());
-        request.toOpt().ifPresent(address -> tx.put("to", address.value()));
-        request.valueOpt().ifPresent(v -> tx.put("value", toQuantityHex(v.value())));
-        if (request.data() != null) {
-            tx.put("data", request.data().value());
-        }
+        final Map<String, Object> tx = toTxObject(request);
         final String estimateHex = RpcRetry.run(() -> callEstimateGas(tx), 3);
         final BigInteger estimate = Numeric.decodeQuantity(estimateHex);
         final BigInteger buffered = estimate.multiply(gasLimitBufferNumerator).divide(gasLimitBufferDenominator);
@@ -180,7 +176,8 @@ final class SmartGasStrategy {
                 request.maxFeePerGas(),
                 request.nonce(),
                 request.data(),
-                request.isEip1559());
+                request.isEip1559(),
+                request.accessList());
     }
 
     private TransactionRequest copyWithGasFields(
@@ -200,7 +197,36 @@ final class SmartGasStrategy {
                 maxFeePerGas,
                 request.nonce(),
                 request.data(),
-                isEip1559);
+                isEip1559,
+                request.accessList());
+    }
+
+    Map<String, Object> toTxObject(final TransactionRequest request) {
+        final Map<String, Object> tx = new LinkedHashMap<>();
+        tx.put("from", request.from().value());
+        request.toOpt().ifPresent(address -> tx.put("to", address.value()));
+        request.valueOpt().ifPresent(v -> tx.put("value", toQuantityHex(v.value())));
+        if (request.data() != null) {
+            tx.put("data", request.data().value());
+        }
+        if (request.accessList() != null && !request.accessList().isEmpty()) {
+            tx.put("accessList", toJsonAccessList(request.accessList()));
+        }
+        return tx;
+    }
+
+    private List<Map<String, Object>> toJsonAccessList(final List<AccessListEntry> entries) {
+        return entries.stream()
+                .map(
+                        entry -> {
+                            final Map<String, Object> map = new LinkedHashMap<>();
+                            map.put("address", entry.address().value());
+                            map.put(
+                                    "storageKeys",
+                                    entry.storageKeys().stream().map(Hash::value).toList());
+                            return map;
+                        })
+                .toList();
     }
 
     private String toQuantityHex(final BigInteger value) {
