@@ -169,6 +169,7 @@ brane/
 - ✅ **Debug Mode & RPC Logging** - Global toggle for sanitized, structured logging of RPC calls and transaction lifecycles
 - ✅ **Smart Gas Defaults + Retry** - Automatic gas estimation and EIP-1559 fee calculation with transient error retry logic
 - ✅ **Request ID Correlation** - Every RPC call has a unique, monotonic ID that appears in logs and exceptions for easy tracing
+- ✅ **Configurable Gas Estimation** - Customizable gas limit buffer (default 20%) via `SmartGasStrategy` and `DefaultWalletClient`
 
 Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-alpha`, etc.
 
@@ -209,7 +210,7 @@ Provides the JSON-RPC transport and public client API:
   * Provider errors are wrapped in `RpcException` with method context; wallet send errors surface `TxnException` subclasses such as `InvalidSenderException`.
   * `WalletClient` + `DefaultWalletClient`: fills nonce/gas/fees, enforces chainId, signs raw transactions via a provided signer (see `PrivateKeyTransactionSigner`), sends via `eth_sendRawTransaction`, and can poll for receipts.
   * **Smart Gas Defaults**: Automatically fills missing gas fields with intelligent defaults:
-    * Gas limit via `eth_estimateGas` + 20% buffer
+    * Gas limit via `eth_estimateGas` + configurable buffer (default 20%)
     * EIP-1559 fees calculated from `baseFeePerGas * 2 + defaultPriorityFee`
     * Falls back to `eth_gasPrice` when EIP-1559 is not supported
     * User-provided values are never overwritten
@@ -297,6 +298,12 @@ Runnable demos that exercise `Contract.read`/`write` against a running node.
       -PmainClass=io.brane.examples.TxBuilderIntegrationTest \
       -Dbrane.examples.rpc=http://127.0.0.1:8545 \
       -Dbrane.examples.pk=0xYourPrivateKey
+    ```
+  * `io.brane.examples.GasEstimationDemo` – demonstrates default vs custom gas buffers:
+    ```bash
+    ./gradlew :brane-examples:run --no-daemon \
+      -PmainClass=io.brane.examples.GasEstimationDemo \
+      -Dbrane.examples.rpc=http://127.0.0.1:8545
     ```
 
 -----

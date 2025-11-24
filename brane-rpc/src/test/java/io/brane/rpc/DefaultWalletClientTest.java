@@ -67,6 +67,43 @@ class DefaultWalletClientTest {
     }
 
     @Test
+    void sendsTransactionWithCustomGasBuffer() {
+        final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
+        final FakePublicClient publicClient = new FakePublicClient()
+                .withLatestBlock(new BlockHeader(null, 1L, null, 0L, Wei.of(10_000_000_000L)));
+
+        final FakeBraneProvider provider =
+                new FakeBraneProvider()
+                        .respond("eth_chainId", "0x1")
+                        .respond("eth_estimateGas", "0x186a0") // 100_000
+                        .respond("eth_getTransactionCount", "0x0")
+                        .respond("eth_sendRawTransaction", "0x" + "a".repeat(64));
+
+        // Create wallet with custom 50% buffer (150/100)
+        final ChainProfile profile = ChainProfile.of(1L, "http://localhost", true, Wei.of(1_000_000_000L));
+        DefaultWalletClient wallet =
+                DefaultWalletClient.create(
+                        provider,
+                        publicClient,
+                        signer.asSigner(),
+                        signer.address(),
+                        profile,
+                        BigInteger.valueOf(150),
+                        BigInteger.valueOf(100));
+
+        final TransactionRequest tx =
+                TxBuilder.eip1559().to(new Address("0x" + "2".repeat(40))).value(Wei.of(100)).build();
+
+        wallet.sendTransaction(tx);
+
+        // Verify eth_sendRawTransaction was called
+        assertTrue(provider.methods.contains("eth_sendRawTransaction"));
+
+        // Verify gas limit: 100_000 * 150 / 100 = 150_000
+        assertEquals(150_000L, signer.lastGasLimit());
+    }
+
+    @Test
     void sendsEip1559TransactionWithAutoFields() {
         final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
         final FakePublicClient publicClient =
