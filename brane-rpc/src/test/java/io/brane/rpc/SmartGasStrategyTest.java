@@ -25,8 +25,8 @@ class SmartGasStrategyTest {
     void txObjectIncludesAccessListWhenPresent() {
         final TransactionRequest request =
                 new TransactionRequest(
-                        new Address("0xfrom"),
-                        new Address("0xto"),
+                        new Address("0x" + "f".repeat(40)),
+                        new Address("0x" + "e".repeat(40)),
                         null,
                         null,
                         null,
@@ -35,24 +35,24 @@ class SmartGasStrategyTest {
                         1L,
                         null,
                         true,
-                        List.of(new AccessListEntry(new Address("0xabc"), List.of(new Hash("0x01")))));
+                        List.of(new AccessListEntry(new Address("0x" + "a".repeat(40)), List.of(new Hash("0x" + "1".repeat(64))))));
 
         final Map<String, Object> tx = strategy.toTxObject(request);
 
         assertTrue(tx.containsKey("accessList"));
         @SuppressWarnings("unchecked")
         final List<Map<String, Object>> accessList = (List<Map<String, Object>>) tx.get("accessList");
-        assertEquals("0xabc", accessList.getFirst().get("address"));
-        assertEquals(List.of("0x01"), accessList.getFirst().get("storageKeys"));
+        assertEquals("0x" + "a".repeat(40), accessList.getFirst().get("address"));
+        assertEquals(List.of("0x" + "1".repeat(64)), accessList.getFirst().get("storageKeys"));
     }
 
     @Test
     void txObjectOmitsAccessListWhenNullOrEmpty() {
         final TransactionRequest nullAccessList =
-                new TransactionRequest(new Address("0xfrom"), null, null, null, null, null, null, null, null, true, null);
+                new TransactionRequest(new Address("0x" + "f".repeat(40)), null, null, null, null, null, null, null, null, true, null);
         final TransactionRequest emptyAccessList =
                 new TransactionRequest(
-                        new Address("0xfrom"), null, null, null, null, null, null, null, null, true, List.of());
+                        new Address("0x" + "f".repeat(40)), null, null, null, null, null, null, null, null, true, List.of());
 
         assertFalse(strategy.toTxObject(nullAccessList).containsKey("accessList"));
         assertFalse(strategy.toTxObject(emptyAccessList).containsKey("accessList"));

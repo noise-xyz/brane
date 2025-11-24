@@ -13,7 +13,7 @@ class TransactionRequestTest {
     @Test
     void accessListPropagates() {
         final List<AccessListEntry> entries =
-                List.of(new AccessListEntry(new Address("0xabc"), List.of(new Hash("0x01"))));
+                List.of(new AccessListEntry(new Address("0x" + "a".repeat(40)), List.of(new Hash("0x" + "1".repeat(64)))));
 
         final TransactionRequest request =
                 new TransactionRequest(null, null, null, null, null, null, null, null, null, true, entries);
