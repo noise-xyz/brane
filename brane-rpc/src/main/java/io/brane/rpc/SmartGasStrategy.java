@@ -16,19 +16,52 @@ import io.brane.rpc.JsonRpcError;
 import io.brane.rpc.JsonRpcResponse;
 
 
+/**
+ * Provides sensible defaults for gas limit and fee fields while respecting any user-specified values.
+ *
+ * <p>The strategy performs {@code eth_estimateGas} and applies a buffer (default 20%) to reduce the
+ * chance of underestimation. For EIP-1559 transactions, it derives {@code maxFeePerGas} using the
+ * latest {@code baseFeePerGas} with a 2x multiplier plus a configurable priority fee.</p>
+ */
 final class SmartGasStrategy {
+
+    static final BigInteger DEFAULT_GAS_LIMIT_BUFFER_NUMERATOR = BigInteger.valueOf(120);
+    static final BigInteger DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR = BigInteger.valueOf(100);
+    static final BigInteger BASE_FEE_MULTIPLIER = BigInteger.valueOf(2);
 
     private final PublicClient publicClient;
     private final BraneProvider provider;
     private final ChainProfile profile;
+    private final BigInteger gasLimitBufferNumerator;
+    private final BigInteger gasLimitBufferDenominator;
 
     SmartGasStrategy(
             final PublicClient publicClient, final BraneProvider provider, final ChainProfile profile) {
+        this(
+                publicClient,
+                provider,
+                profile,
+                DEFAULT_GAS_LIMIT_BUFFER_NUMERATOR,
+                DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR);
+    }
+
+    SmartGasStrategy(
+            final PublicClient publicClient,
+            final BraneProvider provider,
+            final ChainProfile profile,
+            final BigInteger gasLimitBufferNumerator,
+            final BigInteger gasLimitBufferDenominator) {
         this.publicClient = Objects.requireNonNull(publicClient, "publicClient");
         this.provider = Objects.requireNonNull(provider, "provider");
         this.profile = Objects.requireNonNull(profile, "profile");
+        this.gasLimitBufferNumerator = requirePositive(gasLimitBufferNumerator, "gasLimitBufferNumerator");
+        this.gasLimitBufferDenominator = requirePositive(gasLimitBufferDenominator, "gasLimitBufferDenominator");
     }
 
+    /**
+     * Fills in missing transaction fields (from, gas limit, and fees) while keeping any user-supplied
+     * values intact.
+     */
     TransactionRequest applyDefaults(final TransactionRequest request, final Address defaultFrom) {
         Objects.requireNonNull(defaultFrom, "defaultFrom");
 
@@ -37,6 +70,9 @@ final class SmartGasStrategy {
         return ensureFees(withLimit);
     }
 
+    /**
+     * Ensures a gas limit is present by estimating and applying the configured buffer multiplier.
+     */
     private TransactionRequest ensureGasLimit(final TransactionRequest request) {
         if (request.gasLimit() != null) {
             return request;
@@ -50,7 +86,7 @@ final class SmartGasStrategy {
         }
         final String estimateHex = RpcRetry.run(() -> callEstimateGas(tx), 3);
         final BigInteger estimate = Numeric.decodeQuantity(estimateHex);
-        final BigInteger buffered = estimate.multiply(BigInteger.valueOf(120)).divide(BigInteger.valueOf(100));
+        final BigInteger buffered = estimate.multiply(gasLimitBufferNumerator).divide(gasLimitBufferDenominator);
         return copyWithGasFields(request, buffered.longValueExact(), request.gasPrice(), request.maxPriorityFeePerGas(), request.maxFeePerGas(), request.isEip1559());
     }
 
@@ -71,6 +107,10 @@ final class SmartGasStrategy {
         return ensureLegacyFees(request);
     }
 
+    /**
+     * Derives {@code maxFeePerGas} and {@code maxPriorityFeePerGas} for EIP-1559 transactions using the
+     * latest {@code baseFeePerGas}. Falls back to legacy fee estimation when base fee data is unavailable.
+     */
     private TransactionRequest ensureEip1559Fees(final TransactionRequest request) {
         if (request.maxFeePerGas() != null && request.maxPriorityFeePerGas() != null) {
             return request;
@@ -86,7 +126,7 @@ final class SmartGasStrategy {
             final Wei maxFee =
                     request.maxFeePerGas() != null
                             ? request.maxFeePerGas()
-                            : new Wei(baseFee.value().multiply(BigInteger.valueOf(2)).add(priority.value()));
+                            : new Wei(baseFee.value().multiply(BASE_FEE_MULTIPLIER).add(priority.value()));
 
             return copyWithGasFields(
                     request,
@@ -165,5 +205,13 @@ final class SmartGasStrategy {
 
     private String toQuantityHex(final BigInteger value) {
         return "0x" + value.toString(16);
+    }
+
+    private BigInteger requirePositive(final BigInteger value, final String name) {
+        final BigInteger checked = Objects.requireNonNull(value, name);
+        if (checked.signum() <= 0) {
+            throw new IllegalArgumentException(name + " must be positive");
+        }
+        return checked;
     }
 }

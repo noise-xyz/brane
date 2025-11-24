@@ -27,6 +27,23 @@ RPC_URL="http://127.0.0.1:8545"
 
 echo "Running Sanity Check (All Tests)..."
 ./gradlew test --no-daemon
+if [ $? -ne 0 ]; then
+    echo "Tests Failed!"
+    exit 1
+fi
+
+# Explicitly verify the new custom buffer test
+echo "Verifying Custom Gas Buffer Test..."
+./gradlew :brane-rpc:test --tests "io.brane.rpc.DefaultWalletClientTest.sendsTransactionWithCustomGasBuffer" --no-daemon
+if [ $? -ne 0 ]; then
+    echo "Custom Gas Buffer Test Failed!"
+    exit 1
+fi
+
+echo "Integration Test - Added sendsTransactionWithCustomGasBuffer() to DefaultWalletClientTest"
+echo "Tests custom 50% gas buffer (150/100)"
+echo "Verifies end-to-end behavior with custom configuration"
+echo "Passes successfully ✅"
 
 echo "Running Pure Unit Tests..."
 ./gradlew :brane-core:test
