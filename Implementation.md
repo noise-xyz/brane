@@ -1,420 +1,201 @@
-
-# Phase 3.1: Access List Support (EIP-2930) (P0.14)
+# Phase 3.2: Runtime ABI Wrapper Binding (P0.15)
 
 ## Goal
 
-Add **access list** support (EIP-2930-style) so Brane can:
+Introduce a **runtime ABI wrapper** API that lets users bind a Java interface to a contract ABI without codegen:
 
-* Attach an `accessList` to outbound transactions.
-* Pass access lists through to JSON-RPC (`eth_estimateGas`, `eth_sendRawTransaction`, etc.).
-* Include access lists when signing typed transactions (EIP-1559 with access list).
+```java
+MyErc20 token = BraneContract.bind(
+    new Address("0x..."),
+    ERC20_ABI_JSON,
+    publicClient,
+    walletClient,
+    MyErc20.class
+);
+
+BigInteger balance = token.balanceOf(user);
+TransactionReceipt receipt = token.transfer(user, BigInteger.TEN);
+```
 
 Scope for this phase:
 
-* **Model + builder + wiring** only.
-* Support **EIP-1559 transactions with access lists** in the write path.
-* Access list + pure legacy (gasPrice-only EIP-2930 type-0x01) can be added later.
+* **Runtime binding only** (no compile-time codegen).
+* Support **functions** (view + write) via reflection.
+* No events, no struct/tuple mapping yet.
+* Minimal, predictable semantics.
 
 ---
 
-## Implementation Details
+## Design Overview
 
-### 1. Core Model: Access List Types
+1. **Enhance `Abi` Interface**: Update `Abi` and `InternalAbi` to expose function metadata (specifically `stateMutability`) so we can distinguish view vs. write functions without re-parsing JSON.
+2. **`BraneContract.bind(...)`**: Entrypoint that creates a JDK dynamic proxy.
+3. **`ContractInvocationHandler`**: Intercepts method calls, resolves them to ABI functions, encodes arguments, routes to the appropriate client (`PublicClient` or `WalletClient`), and decodes results.
 
-**Location:** `brane-core/src/main/java/io/brane/core/model/AccessListEntry.java`
+---
 
-Add a simple value type:
+## 1. Public API Shape
+
+### 1.1. Binding API
+
+**Location:** `brane-contract/src/main/java/io/brane/contract/BraneContract.java`
 
 ```java
-package io.brane.core.model;
-
-import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
-import java.util.List;
-import java.util.Objects;
-
-public final class AccessListEntry {
-
-    private final Address address;
-    private final List<Hash> storageKeys;
-
-    public AccessListEntry(final Address address, final List<Hash> storageKeys) {
-        this.address = Objects.requireNonNull(address, "address");
-        this.storageKeys = List.copyOf(Objects.requireNonNull(storageKeys, "storageKeys"));
-    }
-
-    public Address address() {
-        return address;
-    }
-
-    public List<Hash> storageKeys() {
-        return storageKeys;
-    }
-
-    @Override
-    public String toString() {
-        return "AccessListEntry{" + "address=" + address + ", storageKeys=" + storageKeys + '}';
+public final class BraneContract {
+    public static <T> T bind(
+            Address address,
+            String abiJson,
+            PublicClient publicClient,
+            WalletClient walletClient,
+            Class<T> contractInterface
+    ) {
+        // Validates interface
+        // Parses ABI
+        // Returns Proxy
     }
 }
 ```
 
-We use `Hash` (32-byte) for `storageKeys` to match EIP-2930’s 32-byte storage key semantics.
-
 ---
 
-### 2. Extend TransactionRequest
+## 2. ABI Binding Internals
 
-**Location:** `brane-core/src/main/java/io/brane/core/model/TransactionRequest.java`
+### 2.1. ABI Metadata Enhancements
 
-Add an `accessList` field:
+**Location:** `brane-contract/src/main/java/io/brane/contract/Abi.java` & `InternalAbi.java`
 
-```java
-public record TransactionRequest(
-    Address to,
-    HexData data,
-    Long nonce,
-    Long gasLimit,
-    Wei gasPrice,
-    Wei maxFeePerGas,
-    Wei maxPriorityFeePerGas,
-    List<AccessListEntry> accessList // NEW
-) {
-
-    public Optional<Long> nonceOpt() { ... }
-    public Optional<Long> gasLimitOpt() { ... }
-    public Optional<Wei> gasPriceOpt() { ... }
-    public Optional<Wei> maxFeePerGasOpt() { ... }
-    public Optional<Wei> maxPriorityFeePerGasOpt() { ... }
-
-    public List<AccessListEntry> accessListOrEmpty() {
-        return accessList == null ? List.of() : accessList;
+*   **Modify `Abi` interface**:
+    ```java
+    Optional<FunctionMetadata> getFunction(String name);
+    
+    record FunctionMetadata(String name, String stateMutability, List<String> inputs, List<String> outputs) {
+        boolean isView() { return "view".equals(stateMutability) || "pure".equals(stateMutability); }
     }
-}
-```
+    ```
+*   **Update `InternalAbi`**:
+    *   Parse `stateMutability` from JSON.
+    *   **Fallback**: If `stateMutability` is missing (older ABIs), treat `constant: true` as `"view"`, otherwise `"nonpayable"`.
+    *   **P0 Rule**: Throw `AbiEncodingException` at parse time if the ABI contains overloaded functions (multiple functions with the same name). This simplifies `getFunction` to return `Optional<FunctionMetadata>`.
 
-**Notes:**
+### 2.2. ABI Binding Helper
 
-* Keep `accessList` nullable:
+**Location:** `brane-contract/src/main/java/io/brane/contract/AbiBinding.java`
 
-  * `null` → “no access list”.
-  * Non-null but empty list → “explicitly no accesses” (still valid).
-* If you already added helper constructors, update them to set `accessList` to `null` (or `List.of()` consistently).
+Helper to resolve Java `Method` -> `Abi.FunctionMetadata`.
 
-Update all call sites where `TransactionRequest` is constructed to pass `null` for `accessList` for now, unless explicitly set via TxBuilder (below).
+*   **Responsibility**:
+    *   Wraps an `Abi` instance.
+    *   Caches a `Map<Method, FunctionMetadata>` during construction/binding to avoid repeated lookups.
+    *   `FunctionMetadata resolve(Method method)`:
+        *   Look up in cache.
+        *   If not found (should be caught at bind time), throw.
 
----
+### 2.3. Invocation Handler
 
-### 3. Extend TxBuilder (EIP-1559 only for now)
+**Location:** `brane-contract/src/main/java/io/brane/contract/ContractInvocationHandler.java`
 
-**Location:** `brane-core/src/main/java/io/brane/core/builder/Eip1559Builder.java`
+Implements `InvocationHandler`.
 
-Add state + fluent setter:
-
-```java
-public final class Eip1559Builder implements TxBuilder<Eip1559Builder> {
-
-    private Address to;
-    private Wei value;
-    private HexData data;
-    private Long nonce;
-    private Long gasLimit;
-    private Wei maxFeePerGas;
-    private Wei maxPriorityFeePerGas;
-    private List<AccessListEntry> accessList; // NEW
-
-    // existing methods...
-
-    public Eip1559Builder accessList(final List<AccessListEntry> accessList) {
-        this.accessList = accessList == null ? null : List.copyOf(accessList);
-        return this;
-    }
-
-    @Override
-    public TransactionRequest build() {
-        // existing validation...
-        return new TransactionRequest(
-            to,
-            data,
-            nonce,
-            gasLimit,
-            null,                // gasPrice unused for EIP-1559
-            maxFeePerGas,
-            maxPriorityFeePerGas,
-            accessList           // NEW
-        );
-    }
-}
-```
-
-**P0 scope decision:**
-
-* Add `accessList(...)` **only** to `Eip1559Builder` for now.
-* Leave `LegacyBuilder` unchanged (pure EIP-2930 type 0x01 support can come later).
-
-Update `TxBuilder` Javadoc to mention that `accessList` is visible via `Eip1559Builder`.
+*   **`invoke` logic**:
+    1.  Handle `Object` methods (`toString`, `equals`, `hashCode`).
+    2.  Resolve `FunctionMetadata` via `AbiBinding`.
+    3.  Encode arguments using existing primitives (`FunctionEncoder`, etc.).
+    4.  **Dispatch**:
+        *   If `metadata.isView()`:
+            *   Call `PublicClient.call(...)`.
+            *   Decode result using `FunctionReturnDecoder`.
+        *   Else (Write):
+            *   Build `TransactionRequest` (EIP-1559).
+            *   Call `WalletClient.sendTransactionAndWait(...)`.
+            *   Return `TransactionReceipt` (or `void`).
 
 ---
 
-### 4. SmartGasStrategy & JSON-RPC Mapping
+## 3. Rules & Semantics (P0)
 
-#### 4.1. SmartGasStrategy (no semantic change, just propagation)
+### 3.1. Return Type Rules
 
-**Location:** `brane-rpc/src/main/java/io/brane/rpc/SmartGasStrategy.java`
+**View/Pure Functions**:
+*   **`void`**: Allowed only if ABI has **0 outputs**.
+*   **`BigInteger`**: Allowed only if ABI has exactly **1 output** of type `uint*` / `int*`.
+*   **`Address`**: Allowed only if ABI has exactly **1 output** of type `address`.
+*   **`Boolean` / `boolean`**: Allowed only if ABI has exactly **1 output** of type `bool`.
 
-Where we build JSON tx maps for `eth_estimateGas` / `eth_call`, **include accessList if present**:
+**Write Functions (Non-view)**:
+*   **`TransactionReceipt`**: Wrapper calls `WalletClient.sendTransactionAndWait` and returns the receipt.
+*   **`void`**: Wrapper calls `WalletClient.sendTransactionAndWait` and ignores the receipt.
+*   **Any other type**: **Not supported** in P0. Bind-time error.
 
-```java
-private Map<String, Object> toTxObject(TransactionRequest request) {
-    Map<String, Object> tx = new LinkedHashMap<>();
+### 3.2. Value / Payable
 
-    // existing fields: from, to, value, data, gas, gasPrice / maxFee / maxPriority...
+*   **Value is always 0**: P0 does not support sending ETH value.
+*   **Payable functions**: Can be called, but `value` will be 0.
+*   (Optional strictness): `bind` MAY reject methods mapped to `payable` functions for P0.
 
-    if (request.accessList() != null && !request.accessList().isEmpty()) {
-        tx.put("accessList", toJsonAccessList(request.accessList()));
-    }
+### 3.3. Write Call Defaults
 
-    return tx;
-}
-
-private List<Map<String, Object>> toJsonAccessList(List<AccessListEntry> entries) {
-    return entries.stream()
-        .map(entry -> {
-            Map<String, Object> m = new LinkedHashMap<>();
-            m.put("address", entry.address().value());
-            m.put("storageKeys",
-                entry.storageKeys().stream().map(Hash::value).toList());
-            return m;
-        })
-        .toList();
-}
-```
-
-This ensures:
-
-* Estimation behaves as the node expects when you pass an access list.
-* No behavior change if `accessList` is null or empty.
+When invoking a non-view function:
+*   Use `TxBuilder.eip1559()`:
+    *   `to = contractAddress`
+    *   `data = encodedFunctionCall`
+    *   `value = 0`
+    *   Gas fields left null (handled by `SmartGasStrategy`).
+*   Call `walletClient.sendTransactionAndWait(request, 10_000, 500)`.
+    *   Default timeout: **10 seconds**.
+    *   Default poll interval: **500 ms**.
 
 ---
 
-### 5. Signing & Encoding (PrivateKeyTransactionSigner)
+## 4. Bind-Time Validation
 
-**Location:** `brane-rpc/src/main/java/io/brane/rpc/PrivateKeyTransactionSigner.java`
-(and/or wherever the raw transaction is built / encoded).
+`BraneContract.bind(...)` MUST fail fast if:
 
-**Behavior rules:**
+1.  `contractInterface` is not an interface.
+2.  For each method in `contractInterface` (excluding `Object` methods):
+    *   **Resolution**: No ABI function found with matching name.
+    *   **Overloads**: (Handled by `InternalAbi` parsing, but verify no ambiguity).
+    *   **Arguments**: Parameter count does not match ABI inputs.
+    *   **Types**: Java parameter types are not supported.
+    *   **Return Type**: Java return type violates rules in §3.1.
 
-1. If `accessList == null` or `accessList.isEmpty()`:
-
-   * Keep **current behavior** (legacy or EIP-1559 typed tx as you already do).
-
-2. If `accessList` is non-empty **and** EIP-1559 fields are present:
-
-   * Encode the tx as an EIP-1559 typed transaction **with access list**.
-   * This may be implemented by:
-
-     * Using the vendored encoder’s “EIP-1559 with access list” path, or
-     * Extending your RLP encoding to include the access list fields in the right position for type 0x02.
-
-3. Pure EIP-2930 (type 0x01, gasPrice + accessList, no maxFee fields) is **out of scope** for this phase:
-
-   * If a user sets `accessList` on a legacy-style request, you may:
-
-     * Currently ignore it (documented), or
-     * Throw a `BraneTxBuilderException` later if we want to be strict.
-   * For P0, we only promise: “Access lists are supported on EIP-1559 tx via `Eip1559Builder`.”
-
-**Minimal implementation detail for Codex:**
-
-* When building the internal “raw transaction” object to sign:
-
-  * Map `List<AccessListEntry>` to `List<io.brane.internal.web3j.crypto.AccessListObject>`.
-  * Use `RawTransaction.createTransaction(...)` overload that accepts `accessList`.
-  * Ensure `AccessListObject` is populated with 0x-prefixed hex strings (from `Address.value()` and `Hash.value()`).
+If validation fails, throw `IllegalArgumentException` and **do not create the proxy**.
 
 ---
 
-### 6. Public API & Docs
+## 5. Implementation Steps
 
-Update README / Javadoc to show usage:
-
-```java
-List<AccessListEntry> access = List.of(
-    new AccessListEntry(
-        someContract,
-        List.of(new Hash("0x...storage-key-1"), new Hash("0x...storage-key-2"))
-    )
-);
-
-TransactionRequest tx = TxBuilder.eip1559()
-    .to(someContract)
-    .value(Wei.of(0))
-    .accessList(access)
-    .build();
-
-wallet.sendTransactionAndWait(tx, 10_000, 500);
-```
+1.  [ ] **Update `Abi` / `InternalAbi`**:
+    *   Add `FunctionMetadata`.
+    *   Parse `stateMutability` (with fallback).
+    *   Throw on overloads.
+2.  [ ] **Create `AbiBinding`**:
+    *   Implement resolution and caching.
+3.  [ ] **Create `ContractInvocationHandler`**:
+    *   Implement dispatch logic (View vs Write) with specified defaults.
+4.  [ ] **Implement `BraneContract.bind`**:
+    *   Implement strict bind-time validation.
+5.  [ ] **Tests**:
+    *   `AbiBindingTest`: Resolution rules.
+    *   `ContractInvocationHandlerTest`: Mocked client dispatch assertions.
+    *   `AbiWrapperIntegrationTest`: End-to-end against Anvil.
 
 ---
 
-## Steps
+## 6. Testing Plan
 
-1. [ ] Add `AccessListEntry` model type.
-2. [ ] Extend `TransactionRequest` with `List<AccessListEntry> accessList`.
-3. [ ] Update all `TransactionRequest` constructors / call sites to pass `null` for `accessList` by default.
-4. [ ] Extend `Eip1559Builder` with:
+### Unit Tests
+*   **`AbiTest`**: Verify `stateMutability` parsing and fallback. Verify overload rejection.
+*   **`AbiBindingTest`**: Verify method resolution, caching, and validation errors.
+*   **`ContractInvocationHandlerTest`**:
+    *   `viewMethodUsesPublicClientOnly`: Assert `PublicClient` called, `WalletClient` NOT called.
+    *   `writeMethodUsesWalletClientOnly`: Assert `WalletClient` called, `PublicClient` NOT called.
 
-   * `List<AccessListEntry> accessList` field.
-   * `accessList(...)` setter.
-   * `build()` to pass the access list into `TransactionRequest`.
-5. [ ] Update `SmartGasStrategy` (and any other RPC tx-building code) to:
+### Integration Tests
+*   **`AbiWrapperIntegrationTest`**:
+    *   Deploy ERC20.
+    *   Bind interface.
+    *   Call `balanceOf` (View) -> Verify result.
+    *   Call `transfer` (Write) -> Verify receipt and state change.
 
-   * Map `accessList` into JSON-RPC shape for `eth_estimateGas` and `eth_call`.
-6. [ ] Update `PrivateKeyTransactionSigner` (or equivalent signing path) to:
-
-   * Map public `AccessListEntry` to internal `AccessListObject`.
-   * Use `RawTransaction.createTransaction` with `accessList` for EIP-1559.
-   * Keep existing behavior when access list is absent.
-7. [ ] Update README / Javadoc to mention access list support.
-8. [ ] Add tests (unit, integration, sanity) as below.
-
----
-
-## Testing
-
-### A. Unit Tests
-
-#### 1. AccessListEntry
-
-**File:** `brane-core/src/test/java/io/brane/core/model/AccessListEntryTest.java`
-
-* `constructorCopiesList`:
-
-  * Create with a mutable list.
-  * Mutate original.
-  * Assert `entry.storageKeys()` is unchanged.
-* `nullChecks`:
-
-  * Assert NPE when `address` is null.
-  * Assert NPE when `storageKeys` is null.
-
-#### 2. TransactionRequest + Access List
-
-**File:** extend `TransactionRequestTest` (if present)
-
-* `accessListPropagates`:
-
-  * Build a `TransactionRequest` with a non-empty access list.
-  * Assert `accessList()` returns same content.
-  * Assert `accessListOrEmpty()` returns that list.
-* `accessListOrEmptyNullSafe`:
-
-  * Build `TransactionRequest` with `accessList == null`.
-  * Assert `accessListOrEmpty()` returns an empty list (not null).
-
-#### 3. TxBuilder (Eip1559)
-
-**File:** extend `TxBuilderTest`
-
-* `eip1559BuilderAccessList`:
-
-  * Call `.accessList(List.of(entry))` on `Eip1559Builder`.
-  * `build()` → `TransactionRequest`.
-  * Assert `request.accessList()` contains the given entries.
-* `accessListFluentChaining`:
-
-  * Ensure `accessList(...)` returns `Eip1559Builder` so `.build()` can chain correctly.
-* (Optional) `legacyBuilderNoAccessListMethod`:
-
-  * Compile-time guarantee that `LegacyBuilder` has no `accessList(...)` method.
-
-#### 4. SmartGasStrategy Mapping
-
-**File:** `brane-rpc/src/test/java/io/brane/rpc/SmartGasStrategyTest.java`
-
-* `txObjectIncludesAccessListWhenPresent`:
-
-  * Build `TransactionRequest` with non-empty access list.
-  * Call internal `toTxObject` (or via a test hook).
-  * Assert resulting map has `accessList` key with expected JSON structure:
-
-    * `address` == `.value()` of Address.
-    * `storageKeys` array equals list of Hash `.value()` strings.
-* `txObjectOmitsAccessListWhenNullOrEmpty`:
-
-  * With `accessList == null` or empty list.
-  * Assert map does **not** contain `accessList`.
-
----
-
-### B. Integration Tests
-
-**File:** extend `brane-examples` / `DefaultWalletClientTest`
-
-#### 1. EIP-1559 + Access List Happy Path
-
-* Use a local dev node (Anvil / Hardhat) that accepts access lists.
-* Deploy a simple contract.
-* Build a tx with:
-
-  * `TxBuilder.eip1559()`
-  * `.to(contractAddress)`
-  * `.accessList(List.of(new AccessListEntry(contractAddress, List.of(...some key...))))`
-* Send via `WalletClient.sendTransactionAndWait`.
-* Assert:
-
-  * Tx is mined.
-  * Receipt status is success.
-* If possible, inspect the node’s trace / debug logs to confirm the access list was attached (optional but nice).
-
-#### 2. Estimation with Access List
-
-* Call `WalletClient` / `PublicClient` path that internally uses `SmartGasStrategy` for `eth_estimateGas`.
-* Provide a `TransactionRequest` with an access list.
-* Ensure:
-
-  * The JSON-RPC request body (captured via fake provider / mock HTTP) includes `accessList`.
-  * The estimation succeeds.
-
----
-
-### C. Sanity / Example
-
-**File:** `brane-examples/src/main/java/io/brane/examples/AccessListExample.java`
-
-* Simple example that:
-
-  * Reads `-Dbrane.examples.rpc` and `-Dbrane.examples.pk`.
-  * Deploys a minimal contract or uses a pre-deployed address.
-  * Builds an EIP-1559 tx with a small access list.
-  * Sends it and prints:
-
-    * Tx hash.
-    * Whether `accessList` was set in the request.
-
-Run:
-
-```bash
-./gradlew :brane-examples:run \
-  -PmainClass=io.brane.examples.AccessListExample \
-  -Dbrane.examples.rpc=http://127.0.0.1:8545 \
-  -Dbrane.examples.pk=0x...
-```
-
-Verify it completes successfully and logs are sensible.
-
----
-
-## Files to Modify
-
-* `brane-core/src/main/java/io/brane/core/model/AccessListEntry.java` (new)
-* `brane-core/src/main/java/io/brane/core/model/TransactionRequest.java`
-* `brane-core/src/main/java/io/brane/core/builder/Eip1559Builder.java`
-* `brane-core/src/test/java/io/brane/core/model/AccessListEntryTest.java` (new)
-* `brane-core/src/test/java/io/brane/core/model/TransactionRequestTest.java` (extend)
-* `brane-core/src/test/java/io/brane/core/builder/TxBuilderTest.java` (extend)
-* `brane-rpc/src/main/java/io/brane/rpc/SmartGasStrategy.java`
-* `brane-rpc/src/test/java/io/brane/rpc/SmartGasStrategyTest.java`
-* `brane-rpc/src/main/java/io/brane/rpc/PrivateKeyTransactionSigner.java` (or equivalent)
-* `brane-rpc/src/test/java/io/brane/rpc/DefaultWalletClientTest.java` (extend)
-* `brane-examples/src/main/java/io/brane/examples/AccessListExample.java` (new)
-* `README.md` (add short section on access list support)
+### Example
+*   **`AbiWrapperExample`**: Runnable demo.
