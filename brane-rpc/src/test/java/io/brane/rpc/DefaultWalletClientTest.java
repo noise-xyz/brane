@@ -5,9 +5,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.brane.core.builder.TxBuilder;
+import io.brane.core.chain.ChainProfiles;
 import io.brane.core.error.ChainMismatchException;
 import io.brane.core.error.InvalidSenderException;
 import io.brane.core.error.RpcException;
+import io.brane.core.model.BlockHeader;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
@@ -16,6 +18,7 @@ import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.internal.web3j.crypto.RawTransaction;
 import io.brane.internal.web3j.crypto.transaction.type.TransactionType;
+import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.LinkedHashMap;
@@ -38,7 +41,12 @@ class DefaultWalletClientTest {
 
         DefaultWalletClient wallet =
                 DefaultWalletClient.from(
-                        provider, publicClient, signer.asSigner(), signer.address(), 1L);
+                        provider,
+                        publicClient,
+                        signer.asSigner(),
+                        signer.address(),
+                        1L,
+                        ChainProfiles.ANVIL_LOCAL);
 
         TransactionRequest request =
                 TxBuilder.legacy()
@@ -72,7 +80,12 @@ class DefaultWalletClientTest {
 
         DefaultWalletClient wallet =
                 DefaultWalletClient.from(
-                        provider, publicClient, signer.asSigner(), signer.address(), 1L);
+                        provider,
+                        publicClient,
+                        signer.asSigner(),
+                        signer.address(),
+                        1L,
+                        ChainProfiles.ANVIL_LOCAL);
 
         TransactionRequest request =
                 TxBuilder.eip1559()
@@ -92,6 +105,86 @@ class DefaultWalletClientTest {
     }
 
     @Test
+    void appliesSmartDefaultsForEip1559() {
+        final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
+        final FakePublicClient publicClient =
+                new FakePublicClient()
+                        .withLatestBlock(
+                                new BlockHeader(
+                                        null,
+                                        1L,
+                                        null,
+                                        0L,
+                                        Wei.of(BigInteger.valueOf(20_000_000_000L))));
+
+        final FakeBraneProvider provider =
+                new FakeBraneProvider()
+                        .respond("eth_chainId", "0x1")
+                        .respond("eth_estimateGas", "0x186a0") // 100_000
+                        .respond("eth_getTransactionCount", "0x1")
+                        .respond("eth_sendRawTransaction", "0x" + "d".repeat(64));
+
+        DefaultWalletClient wallet =
+                DefaultWalletClient.from(
+                        provider,
+                        publicClient,
+                        signer.asSigner(),
+                        signer.address(),
+                        1L,
+                        ChainProfile.of(1L, "http://localhost", true, Wei.of(2_000_000_000L)));
+
+        TransactionRequest request =
+                TxBuilder.eip1559()
+                        .to(new Address("0x" + "2".repeat(40)))
+                        .value(Wei.of(0))
+                        .data(new HexData("0x"))
+                        .build();
+
+        Hash hash = wallet.sendTransaction(request);
+
+        assertEquals("0x" + "d".repeat(64), hash.value());
+        assertTrue(signer.lastGasLimit() > 100_000L);
+        assertEquals(BigInteger.valueOf(2_000_000_000L), signer.lastMaxPriorityFeePerGas());
+        assertEquals(BigInteger.valueOf(42_000_000_000L), signer.lastMaxFeePerGas());
+    }
+
+    @Test
+    void fallsBackToGasPriceWhenBaseFeeMissing() {
+        final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
+        final FakePublicClient publicClient = new FakePublicClient();
+
+        final FakeBraneProvider provider =
+                new FakeBraneProvider()
+                        .respond("eth_chainId", "0x1")
+                        .respond("eth_estimateGas", "0x1388")
+                        .respond("eth_gasPrice", "0x6fc23ac00") // 30 gwei
+                        .respond("eth_getTransactionCount", "0x1")
+                        .respond("eth_sendRawTransaction", "0x" + "e".repeat(64));
+
+        DefaultWalletClient wallet =
+                DefaultWalletClient.from(
+                        provider,
+                        publicClient,
+                        signer.asSigner(),
+                        signer.address(),
+                        1L,
+                        ChainProfiles.ANVIL_LOCAL);
+
+        TransactionRequest request =
+                TxBuilder.eip1559()
+                        .to(new Address("0x" + "2".repeat(40)))
+                        .value(Wei.of(0))
+                        .data(new HexData("0x"))
+                        .build();
+
+        Hash hash = wallet.sendTransaction(request);
+
+        assertEquals("0x" + "e".repeat(64), hash.value());
+        assertEquals(TransactionType.LEGACY, signer.lastTransactionType());
+        assertEquals(BigInteger.valueOf(30_000_000_000L), signer.lastGasPrice());
+    }
+
+    @Test
     void sendsEip1559TransactionWithExplicitFees() {
         final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
         final FakePublicClient publicClient = new FakePublicClient();
@@ -106,7 +199,12 @@ class DefaultWalletClientTest {
 
         DefaultWalletClient wallet =
                 DefaultWalletClient.from(
-                        provider, publicClient, signer.asSigner(), signer.address(), 1L);
+                        provider,
+                        publicClient,
+                        signer.asSigner(),
+                        signer.address(),
+                        1L,
+                        ChainProfiles.ANVIL_LOCAL);
 
         TransactionRequest request =
                 TxBuilder.eip1559()
@@ -135,7 +233,12 @@ class DefaultWalletClientTest {
 
         DefaultWalletClient wallet =
                 DefaultWalletClient.from(
-                        provider, publicClient, signer.asSigner(), signer.address(), 1L);
+                        provider,
+                        publicClient,
+                        signer.asSigner(),
+                        signer.address(),
+                        1L,
+                        ChainProfiles.ANVIL_LOCAL);
 
         TransactionRequest request =
                 TxBuilder.legacy()
@@ -164,7 +267,12 @@ class DefaultWalletClientTest {
 
         DefaultWalletClient wallet =
                 DefaultWalletClient.from(
-                        provider, publicClient, signer.asSigner(), signer.address(), 1L);
+                        provider,
+                        publicClient,
+                        signer.asSigner(),
+                        signer.address(),
+                        1L,
+                        ChainProfiles.ANVIL_LOCAL);
 
         TransactionRequest request =
                 TxBuilder.legacy()
@@ -206,7 +314,12 @@ class DefaultWalletClientTest {
 
         DefaultWalletClient wallet =
                 DefaultWalletClient.from(
-                        provider, publicClient, signer.asSigner(), signer.address(), 1L);
+                        provider,
+                        publicClient,
+                        signer.asSigner(),
+                        signer.address(),
+                        1L,
+                        ChainProfiles.ANVIL_LOCAL);
 
         TransactionRequest request =
                 TxBuilder.legacy()
@@ -221,6 +334,43 @@ class DefaultWalletClientTest {
 
         assertEquals("0x" + "a".repeat(64), receipt.transactionHash().value());
         assertTrue(provider.recordedMethods().contains("eth_getTransactionReceipt"));
+    }
+
+    @Test
+    void retriesOnSendTransientError() {
+        final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
+        final FakePublicClient publicClient = new FakePublicClient();
+
+        final FakeBraneProvider provider =
+                new FakeBraneProvider()
+                        .respond("eth_chainId", "0x1")
+                        .respond("eth_getTransactionCount", "0x0")
+                        .respond("eth_estimateGas", "0x5208")
+                        .respondError("eth_sendRawTransaction", -32000, "header not found")
+                        .respond("eth_sendRawTransaction", "0x" + "f".repeat(64));
+
+        DefaultWalletClient wallet =
+                DefaultWalletClient.from(
+                        provider,
+                        publicClient,
+                        signer.asSigner(),
+                        signer.address(),
+                        1L,
+                        ChainProfiles.ANVIL_LOCAL);
+
+        TransactionRequest request =
+                TxBuilder.legacy()
+                        .from(signer.address())
+                        .to(new Address("0x" + "2".repeat(40)))
+                        .value(Wei.of(0))
+                        .gasPrice(Wei.of(1_000_000_000L))
+                        .data(new HexData("0x"))
+                        .build();
+
+        Hash hash = wallet.sendTransaction(request);
+
+        assertEquals("0x" + "f".repeat(64), hash.value());
+        assertEquals(2, provider.recordedMethods().stream().filter(m -> m.equals("eth_sendRawTransaction")).count());
     }
 
     private static final class FakeSigner {
@@ -250,20 +400,39 @@ class DefaultWalletClientTest {
             return last.getGasLimit().longValue();
         }
 
+        BigInteger lastMaxPriorityFeePerGas() {
+            return last.getMaxPriorityFeePerGas();
+        }
+
+        BigInteger lastMaxFeePerGas() {
+            return last.getMaxFeePerGas();
+        }
+
+        BigInteger lastGasPrice() {
+            return last.getGasPrice();
+        }
+
         TransactionType lastTransactionType() {
             return last.getType();
         }
     }
 
     private static final class FakePublicClient implements PublicClient {
+        private BlockHeader latest;
+
+        FakePublicClient withLatestBlock(final BlockHeader header) {
+            this.latest = header;
+            return this;
+        }
+
         @Override
         public io.brane.core.model.BlockHeader getLatestBlock() {
-            throw new UnsupportedOperationException();
+            return latest;
         }
 
         @Override
         public io.brane.core.model.BlockHeader getBlockByNumber(long blockNumber) {
-            throw new UnsupportedOperationException();
+            return latest;
         }
 
         @Override
@@ -288,13 +457,11 @@ class DefaultWalletClientTest {
 
         FakeBraneProvider respond(final String method, final Object result) {
             responses.add(new JsonRpcResponse("2.0", result, null, "1"));
-            methods.add(method);
             return this;
         }
 
         FakeBraneProvider respondError(final String method, final int code, final String message) {
             responses.add(new JsonRpcResponse("2.0", null, new JsonRpcError(code, message, null), "1"));
-            methods.add(method);
             return this;
         }
 

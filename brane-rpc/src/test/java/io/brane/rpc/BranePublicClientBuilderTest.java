@@ -22,7 +22,7 @@ class BranePublicClientBuilderTest {
 
     @Test
     void failsWhenNoRpcUrlConfigured() {
-        ChainProfile profileWithoutUrl = ChainProfile.of(1234L, null, true);
+        ChainProfile profileWithoutUrl = ChainProfile.of(1234L, null, true, null);
 
         BranePublicClient.Builder builder = BranePublicClient.forChain(profileWithoutUrl);
 

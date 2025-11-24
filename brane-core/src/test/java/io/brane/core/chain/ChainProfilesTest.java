@@ -34,4 +34,13 @@ class ChainProfilesTest {
         assertNotNull(ChainProfiles.BASE_SEPOLIA.defaultRpcUrl());
         assertNotNull(ChainProfiles.ANVIL_LOCAL.defaultRpcUrl());
     }
+
+    @Test
+    void defaultPriorityFeeIsPresent() {
+        assertNotNull(ChainProfiles.ETH_MAINNET.defaultPriorityFeePerGas());
+        assertNotNull(ChainProfiles.ETH_SEPOLIA.defaultPriorityFeePerGas());
+        assertNotNull(ChainProfiles.BASE.defaultPriorityFeePerGas());
+        assertNotNull(ChainProfiles.BASE_SEPOLIA.defaultPriorityFeePerGas());
+        assertNotNull(ChainProfiles.ANVIL_LOCAL.defaultPriorityFeePerGas());
+    }
 }

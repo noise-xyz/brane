@@ -38,7 +38,7 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public Transaction getTransactionByHash(final Hash hash) {
         final JsonRpcResponse response =
-                provider.send("eth_getTransactionByHash", List.of(hash.value()));
+                sendWithRetry("eth_getTransactionByHash", List.of(hash.value()));
         final Object result = response.result();
         if (result == null) {
             return null;
@@ -69,8 +69,7 @@ final class DefaultPublicClient implements PublicClient {
     public String call(final Map<String, Object> callObject, final String blockTag) {
         final long start = System.nanoTime();
         DebugLogger.log("[CALL] tag=%s request=%s", blockTag, callObject);
-        final JsonRpcResponse response =
-                provider.send("eth_call", List.of(callObject, blockTag));
+        final JsonRpcResponse response = sendWithRetry("eth_call", List.of(callObject, blockTag));
         final Object result = response.result();
         final String output = result != null ? result.toString() : null;
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
@@ -82,7 +81,7 @@ final class DefaultPublicClient implements PublicClient {
     public List<LogEntry> getLogs(final LogFilter filter) {
         final Map<String, Object> req = buildLogParams(filter);
 
-        final JsonRpcResponse response = provider.send("eth_getLogs", List.of(req));
+        final JsonRpcResponse response = sendWithRetry("eth_getLogs", List.of(req));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
             throw new io.brane.core.error.RpcException(
@@ -204,7 +203,7 @@ final class DefaultPublicClient implements PublicClient {
 
     private BlockHeader getBlockByTag(final String tag) {
         final JsonRpcResponse response =
-                provider.send("eth_getBlockByNumber", List.of(tag, Boolean.FALSE));
+                sendWithRetry("eth_getBlockByNumber", List.of(tag, Boolean.FALSE));
         final Object result = response.result();
         if (result == null) {
             return null;
@@ -216,12 +215,14 @@ final class DefaultPublicClient implements PublicClient {
         final String parentHash = stringValue(map.get("parentHash"));
         final Long number = decodeHexLong(map.get("number"));
         final Long timestamp = decodeHexLong(map.get("timestamp"));
+        final String baseFeeHex = stringValue(map.get("baseFeePerGas"));
 
         return new BlockHeader(
                 hash != null ? new Hash(hash) : null,
                 number,
                 parentHash != null ? new Hash(parentHash) : null,
-                timestamp);
+                timestamp,
+                baseFeeHex != null ? new Wei(decodeHexBigInteger(baseFeeHex)) : null);
     }
 
     private Long decodeHexLong(final Object value) {
@@ -249,5 +250,9 @@ final class DefaultPublicClient implements PublicClient {
 
     private String stringValue(final Object value) {
         return value != null ? value.toString() : null;
+    }
+
+    private JsonRpcResponse sendWithRetry(final String method, final List<?> params) {
+        return RpcRetry.run(() -> provider.send(method, params), 3);
     }
 }
