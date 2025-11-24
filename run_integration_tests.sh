@@ -165,4 +165,12 @@ if [ $? -ne 0 ]; then
 fi
 echo "Debug Integration Tests Passed!"
 
+echo "Running Smart Gas Sanity Check..."
+./gradlew :brane-examples:run --no-daemon -PmainClass=io.brane.examples.SmartGasSanityCheck
+if [ $? -ne 0 ]; then
+    echo "Smart Gas Sanity Check Failed!"
+    exit 1
+fi
+echo "Smart Gas Sanity Check Passed!"
+
 echo "All Tests and Examples Completed Successfully."

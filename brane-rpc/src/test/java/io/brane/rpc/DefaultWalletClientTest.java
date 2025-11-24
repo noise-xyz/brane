@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.brane.core.builder.TxBuilder;
+import io.brane.core.chain.ChainProfile;
 import io.brane.core.chain.ChainProfiles;
 import io.brane.core.error.ChainMismatchException;
 import io.brane.core.error.InvalidSenderException;
@@ -34,8 +35,8 @@ class DefaultWalletClientTest {
         final FakeBraneProvider provider =
                 new FakeBraneProvider()
                         .respond("eth_chainId", "0x1")
-                        .respond("eth_getTransactionCount", "0x5")
                         .respond("eth_estimateGas", "0x5208")
+                        .respond("eth_getTransactionCount", "0x5")
 
                         .respond("eth_sendRawTransaction", "0x" + "a".repeat(64));
 
@@ -62,20 +63,27 @@ class DefaultWalletClientTest {
         assertEquals("0x" + "a".repeat(64), hash.value());
         assertEquals(TransactionType.LEGACY, signer.lastTransactionType());
         assertEquals(5L, signer.lastNonce());
-        assertEquals(0x5208L, signer.lastGasLimit());
+        assertEquals(25200L, signer.lastGasLimit());
     }
 
     @Test
     void sendsEip1559TransactionWithAutoFields() {
         final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
-        final FakePublicClient publicClient = new FakePublicClient();
+        final FakePublicClient publicClient =
+                new FakePublicClient()
+                        .withLatestBlock(
+                                new BlockHeader(
+                                        null,
+                                        1L,
+                                        null,
+                                        0L,
+                                        Wei.of(BigInteger.valueOf(10_000_000_000L))));
 
         final FakeBraneProvider provider =
                 new FakeBraneProvider()
                         .respond("eth_chainId", "0x1")
-                        .respond("eth_getTransactionCount", "0x6")
                         .respond("eth_estimateGas", "0x5208")
-                        .respond("eth_gasPrice", "0x3b9aca00") // Used for auto-fill
+                        .respond("eth_getTransactionCount", "0x6")
                         .respond("eth_sendRawTransaction", "0x" + "b".repeat(64));
 
         DefaultWalletClient wallet =
@@ -192,8 +200,8 @@ class DefaultWalletClientTest {
         final FakeBraneProvider provider =
                 new FakeBraneProvider()
                         .respond("eth_chainId", "0x1")
-                        .respond("eth_getTransactionCount", "0x7")
                         .respond("eth_estimateGas", "0x5208")
+                        .respond("eth_getTransactionCount", "0x7")
                         // No eth_gasPrice response needed
                         .respond("eth_sendRawTransaction", "0x" + "c".repeat(64));
 
@@ -260,8 +268,8 @@ class DefaultWalletClientTest {
         final FakeBraneProvider provider =
                 new FakeBraneProvider()
                         .respond("eth_chainId", "0x1")
-                        .respond("eth_getTransactionCount", "0x0")
                         .respond("eth_estimateGas", "0x5208")
+                        .respond("eth_getTransactionCount", "0x0")
 
                         .respondError("eth_sendRawTransaction", -32000, "invalid sender");
 
@@ -294,8 +302,8 @@ class DefaultWalletClientTest {
         final FakeBraneProvider provider =
                 new FakeBraneProvider()
                         .respond("eth_chainId", "0x1")
-                        .respond("eth_getTransactionCount", "0x0")
                         .respond("eth_estimateGas", "0x5208")
+                        .respond("eth_getTransactionCount", "0x0")
 
                         .respond("eth_sendRawTransaction", "0x" + "a".repeat(64))
                         .respond("eth_getTransactionReceipt", null)
@@ -344,8 +352,8 @@ class DefaultWalletClientTest {
         final FakeBraneProvider provider =
                 new FakeBraneProvider()
                         .respond("eth_chainId", "0x1")
-                        .respond("eth_getTransactionCount", "0x0")
                         .respond("eth_estimateGas", "0x5208")
+                        .respond("eth_getTransactionCount", "0x0")
                         .respondError("eth_sendRawTransaction", -32000, "header not found")
                         .respond("eth_sendRawTransaction", "0x" + "f".repeat(64));
 
@@ -401,11 +409,17 @@ class DefaultWalletClientTest {
         }
 
         BigInteger lastMaxPriorityFeePerGas() {
-            return last.getMaxPriorityFeePerGas();
+            if (last.getTransaction() instanceof io.brane.internal.web3j.crypto.transaction.type.Transaction1559 tx) {
+                return tx.getMaxPriorityFeePerGas();
+            }
+            return null;
         }
 
         BigInteger lastMaxFeePerGas() {
-            return last.getMaxFeePerGas();
+            if (last.getTransaction() instanceof io.brane.internal.web3j.crypto.transaction.type.Transaction1559 tx) {
+                return tx.getMaxFeePerGas();
+            }
+            return null;
         }
 
         BigInteger lastGasPrice() {
@@ -467,6 +481,7 @@ class DefaultWalletClientTest {
 
         @Override
         public JsonRpcResponse send(final String method, final List<?> params) throws RpcException {
+            System.out.println("FakeBraneProvider: " + method);
             if (responses.isEmpty()) {
                 throw new RpcException(-1, "No response queued for " + method, null, null);
             }

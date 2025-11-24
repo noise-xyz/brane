@@ -333,11 +333,22 @@ public final class DefaultWalletClient implements WalletClient {
     private <T> T callRpc(
             final String method, final List<?> params, final Class<T> responseType, final T defaultValue) {
         try {
-            final JsonRpcResponse response = RpcRetry.run(() -> provider.send(method, params), 3);
-            if (response.hasError()) {
-                final JsonRpcError err = response.error();
-                throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), null);
-            }
+            final JsonRpcResponse response =
+                    RpcRetry.run(
+                            () -> {
+                                final JsonRpcResponse res = provider.send(method, params);
+                                if (res.hasError()) {
+                                    final JsonRpcError err = res.error();
+                                    throw new RpcException(
+                                            err.code(),
+                                            err.message(),
+                                            extractErrorData(err.data()),
+                                            null);
+                                }
+                                return res;
+                            },
+                            3);
+
             final Object result = response.result();
             if (result == null) {
                 return defaultValue;
