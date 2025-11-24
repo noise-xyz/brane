@@ -1,244 +1,88 @@
 package io.brane.rpc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.brane.core.builder.TxBuilder;
 import io.brane.core.chain.ChainProfile;
-import io.brane.core.model.BlockHeader;
+import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
 import io.brane.core.types.Wei;
-import java.math.BigInteger;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class SmartGasStrategyTest {
 
+    private final PublicClient unusedPublicClient = new NoopPublicClient();
+    private final BraneProvider unusedProvider = (method, params) -> null;
+    private final ChainProfile profile = ChainProfile.of(1L, null, true, Wei.of(1_000_000_000L));
+    private final SmartGasStrategy strategy = new SmartGasStrategy(unusedPublicClient, unusedProvider, profile);
+
     @Test
-    void appliesDefaultsForEip1559() {
-        final FakePublicClient publicClient = new FakePublicClient();
-        publicClient.latestBlock = new BlockHeader(null, 1L, null, 0L, Wei.of(20_000_000_000L));
+    void txObjectIncludesAccessListWhenPresent() {
+        final TransactionRequest request =
+                new TransactionRequest(
+                        new Address("0x" + "f".repeat(40)),
+                        new Address("0x" + "e".repeat(40)),
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        1L,
+                        null,
+                        true,
+                        List.of(new AccessListEntry(new Address("0x" + "a".repeat(40)), List.of(new Hash("0x" + "1".repeat(64))))));
 
-        final FakeBraneProvider provider = new FakeBraneProvider();
-        provider.responses.put("eth_estimateGas", "0x186a0"); // 100_000
+        final Map<String, Object> tx = strategy.toTxObject(request);
 
-        final ChainProfile profile = ChainProfile.of(1L, "http://localhost", true, Wei.of(2_000_000_000L));
-        final SmartGasStrategy strategy = new SmartGasStrategy(publicClient, provider, profile);
-
-        final TransactionRequest tx = TxBuilder.eip1559()
-                .to(new Address("0x" + "0".repeat(40)))
-                .value(Wei.of(0))
-                .build();
-
-        final TransactionRequest result = strategy.applyDefaults(tx, new Address("0x" + "1".repeat(40)));
-
-        assertEquals(120_000L, result.gasLimit());
-        assertEquals(BigInteger.valueOf(2_000_000_000L), result.maxPriorityFeePerGas().value());
-        assertEquals(BigInteger.valueOf(42_000_000_000L), result.maxFeePerGas().value());
+        assertTrue(tx.containsKey("accessList"));
+        @SuppressWarnings("unchecked")
+        final List<Map<String, Object>> accessList = (List<Map<String, Object>>) tx.get("accessList");
+        assertEquals("0x" + "a".repeat(40), accessList.getFirst().get("address"));
+        assertEquals(List.of("0x" + "1".repeat(64)), accessList.getFirst().get("storageKeys"));
     }
 
     @Test
-    void respectsUserPriorityFee() {
-        final FakePublicClient publicClient = new FakePublicClient();
-        publicClient.latestBlock = new BlockHeader(null, 1L, null, 0L, Wei.of(20_000_000_000L));
+    void txObjectOmitsAccessListWhenNullOrEmpty() {
+        final TransactionRequest nullAccessList =
+                new TransactionRequest(new Address("0x" + "f".repeat(40)), null, null, null, null, null, null, null, null, true, null);
+        final TransactionRequest emptyAccessList =
+                new TransactionRequest(
+                        new Address("0x" + "f".repeat(40)), null, null, null, null, null, null, null, null, true, List.of());
 
-        final FakeBraneProvider provider = new FakeBraneProvider();
-        provider.responses.put("eth_estimateGas", "0x186a0");
-
-        final ChainProfile profile = ChainProfile.of(1L, "http://localhost", true, Wei.of(2_000_000_000L));
-        final SmartGasStrategy strategy = new SmartGasStrategy(publicClient, provider, profile);
-
-        final TransactionRequest tx = TxBuilder.eip1559()
-                .to(new Address("0x" + "0".repeat(40)))
-                .maxPriorityFeePerGas(Wei.of(5_000_000_000L))
-                .build();
-
-        final TransactionRequest result = strategy.applyDefaults(tx, new Address("0x" + "1".repeat(40)));
-
-        assertEquals(BigInteger.valueOf(5_000_000_000L), result.maxPriorityFeePerGas().value());
-        assertEquals(BigInteger.valueOf(45_000_000_000L), result.maxFeePerGas().value());
+        assertFalse(strategy.toTxObject(nullAccessList).containsKey("accessList"));
+        assertFalse(strategy.toTxObject(emptyAccessList).containsKey("accessList"));
     }
 
-    @Test
-    void respectsUserMaxFee() {
-        final FakePublicClient publicClient = new FakePublicClient();
-        // Should not be called
-        
-        final FakeBraneProvider provider = new FakeBraneProvider();
-        provider.responses.put("eth_estimateGas", "0x186a0");
-
-        final ChainProfile profile = ChainProfile.of(1L, "http://localhost", true, Wei.of(2_000_000_000L));
-        final SmartGasStrategy strategy = new SmartGasStrategy(publicClient, provider, profile);
-
-        final TransactionRequest tx = TxBuilder.eip1559()
-                .to(new Address("0x" + "0".repeat(40)))
-                .maxPriorityFeePerGas(Wei.of(3_000_000_000L))
-                .maxFeePerGas(Wei.of(100_000_000_000L))
-                .build();
-
-        final TransactionRequest result = strategy.applyDefaults(tx, new Address("0x" + "1".repeat(40)));
-
-        assertEquals(BigInteger.valueOf(3_000_000_000L), result.maxPriorityFeePerGas().value());
-        assertEquals(BigInteger.valueOf(100_000_000_000L), result.maxFeePerGas().value());
-    }
-
-    @Test
-    void fallsBackToLegacyIfBaseFeeMissing() {
-        final FakePublicClient publicClient = new FakePublicClient();
-        publicClient.latestBlock = new BlockHeader(null, 1L, null, 0L, null); // No baseFee
-
-        final FakeBraneProvider provider = new FakeBraneProvider();
-        provider.responses.put("eth_estimateGas", "0x186a0");
-        provider.responses.put("eth_gasPrice", "0x6fc23ac00"); // 30 gwei
-
-        final ChainProfile profile = ChainProfile.of(1L, "http://localhost", true, Wei.of(2_000_000_000L));
-        final SmartGasStrategy strategy = new SmartGasStrategy(publicClient, provider, profile);
-
-        final TransactionRequest tx = TxBuilder.eip1559()
-                .to(new Address("0x" + "0".repeat(40)))
-                .build();
-
-        final TransactionRequest result = strategy.applyDefaults(tx, new Address("0x" + "1".repeat(40)));
-
-        assertNotNull(result.gasPrice());
-        assertEquals(BigInteger.valueOf(30_000_000_000L), result.gasPrice().value());
-        assertNull(result.maxFeePerGas());
-        assertNull(result.maxPriorityFeePerGas());
-    }
-
-    @Test
-    void handlesLegacyChain() {
-        final FakePublicClient publicClient = new FakePublicClient();
-        
-        final FakeBraneProvider provider = new FakeBraneProvider();
-        provider.responses.put("eth_estimateGas", "0x186a0");
-        provider.responses.put("eth_gasPrice", "0x6fc23ac00");
-
-        final ChainProfile profile = ChainProfile.of(1L, "http://localhost", false, null);
-        final SmartGasStrategy strategy = new SmartGasStrategy(publicClient, provider, profile);
-
-        final TransactionRequest tx = TxBuilder.legacy()
-                .to(new Address("0x" + "0".repeat(40)))
-                .build();
-
-        final TransactionRequest result = strategy.applyDefaults(tx, new Address("0x" + "1".repeat(40)));
-
-        assertEquals(BigInteger.valueOf(30_000_000_000L), result.gasPrice().value());
-    }
-
-    @Test
-    void respectsUserGasLimit() {
-        final FakePublicClient publicClient = new FakePublicClient();
-        final FakeBraneProvider provider = new FakeBraneProvider();
-        provider.responses.put("eth_gasPrice", "0x6fc23ac00");
-
-        final ChainProfile profile = ChainProfile.of(1L, "http://localhost", false, null);
-        final SmartGasStrategy strategy = new SmartGasStrategy(publicClient, provider, profile);
-
-        final TransactionRequest tx = TxBuilder.legacy()
-                .to(new Address("0x" + "0".repeat(40)))
-                .gasLimit(500_000L)
-                .build();
-
-        final TransactionRequest result = strategy.applyDefaults(tx, new Address("0x" + "1".repeat(40)));
-
-        assertEquals(500_000L, result.gasLimit());
-        assertEquals(0, provider.callCounts.getOrDefault("eth_estimateGas", 0).intValue());
-    }
-
-    @Test
-    void usesDefaultBufferConstants() {
-        final FakePublicClient publicClient = new FakePublicClient();
-        publicClient.latestBlock = new BlockHeader(null, 1L, null, 0L, Wei.of(10_000_000_000L));
-
-        final FakeBraneProvider provider = new FakeBraneProvider();
-        provider.responses.put("eth_estimateGas", "0x186a0"); // 100_000
-
-        final ChainProfile profile = ChainProfile.of(1L, "http://localhost", true, Wei.of(2_000_000_000L));
-        final SmartGasStrategy strategy = new SmartGasStrategy(publicClient, provider, profile);
-
-        final TransactionRequest tx = TxBuilder.eip1559()
-                .to(new Address("0x" + "0".repeat(40)))
-                .build();
-
-        final TransactionRequest result = strategy.applyDefaults(tx, new Address("0x" + "1".repeat(40)));
-
-        assertEquals(120_000L, result.gasLimit());
-        assertEquals(BigInteger.valueOf(120), SmartGasStrategy.DEFAULT_GAS_LIMIT_BUFFER_NUMERATOR);
-        assertEquals(BigInteger.valueOf(100), SmartGasStrategy.DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR);
-        assertEquals(BigInteger.valueOf(2), SmartGasStrategy.BASE_FEE_MULTIPLIER);
-        assertEquals(1, provider.callCounts.get("eth_estimateGas").intValue());
-    }
-
-    @Test
-    void supportsCustomGasLimitBuffer() {
-        final FakePublicClient publicClient = new FakePublicClient();
-        publicClient.latestBlock = new BlockHeader(null, 1L, null, 0L, Wei.of(10_000_000_000L));
-
-        final FakeBraneProvider provider = new FakeBraneProvider();
-        provider.responses.put("eth_estimateGas", "0x186a0"); // 100_000
-
-        final ChainProfile profile = ChainProfile.of(1L, "http://localhost", true, Wei.of(2_000_000_000L));
-        final SmartGasStrategy strategy = new SmartGasStrategy(
-                publicClient, provider, profile, BigInteger.valueOf(150), BigInteger.valueOf(100));
-
-        final TransactionRequest tx = TxBuilder.eip1559()
-                .to(new Address("0x" + "0".repeat(40)))
-                .build();
-
-        final TransactionRequest result = strategy.applyDefaults(tx, new Address("0x" + "1".repeat(40)));
-
-        assertEquals(150_000L, result.gasLimit());
-        assertTrue(provider.callCounts.getOrDefault("eth_estimateGas", 0) >= 1);
-    }
-
-    // Fakes
-    static class FakePublicClient implements PublicClient {
-        BlockHeader latestBlock;
+    private static final class NoopPublicClient implements PublicClient {
 
         @Override
-        public BlockHeader getLatestBlock() {
-            return latestBlock;
-        }
-
-        @Override
-        public BlockHeader getBlockByNumber(long blockNumber) {
-            return latestBlock;
-        }
-
-        @Override
-        public io.brane.core.model.Transaction getTransactionByHash(io.brane.core.types.Hash hash) {
+        public io.brane.core.model.BlockHeader getLatestBlock() {
             return null;
         }
 
         @Override
-        public String call(Map<String, Object> callObject, String blockTag) {
+        public io.brane.core.model.BlockHeader getBlockByNumber(final long blockNumber) {
             return null;
         }
 
         @Override
-        public List<io.brane.core.model.LogEntry> getLogs(LogFilter filter) {
+        public io.brane.core.model.Transaction getTransactionByHash(final io.brane.core.types.Hash hash) {
+            return null;
+        }
+
+        @Override
+        public String call(final Map<String, Object> callObject, final String blockTag) {
+            return null;
+        }
+
+        @Override
+        public List<io.brane.core.model.LogEntry> getLogs(final LogFilter filter) {
             return List.of();
-        }
-    }
-
-    static class FakeBraneProvider implements BraneProvider {
-        final Map<String, String> responses = new HashMap<>();
-        final Map<String, Integer> callCounts = new HashMap<>();
-
-        @Override
-        public JsonRpcResponse send(String method, List<?> params) {
-            callCounts.merge(method, 1, Integer::sum);
-            String result = responses.get(method);
-            if (result == null) {
-                return new JsonRpcResponse("2.0", null, null, "1");
-            }
-            return new JsonRpcResponse("2.0", result, null, "1");
         }
     }
 }

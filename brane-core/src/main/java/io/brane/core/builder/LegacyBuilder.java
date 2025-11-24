@@ -59,7 +59,18 @@ public final class LegacyBuilder implements TxBuilder<LegacyBuilder> {
     public TransactionRequest build() {
         validateTarget();
 
-        return new TransactionRequest(from, to, value, gasLimit, gasPrice, null, null, nonce, data, false);
+        return new TransactionRequest(
+                from,
+                to,
+                value,
+                gasLimit,
+                gasPrice,
+                null,
+                null,
+                nonce,
+                data,
+                false,
+                null);
     }
 
     private void validateTarget() {

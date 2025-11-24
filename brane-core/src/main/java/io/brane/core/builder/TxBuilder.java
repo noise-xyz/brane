@@ -20,6 +20,10 @@ public sealed interface TxBuilder<T extends TxBuilder<T>> permits LegacyBuilder,
 
     TransactionRequest build();
 
+    /**
+     * Access lists are exposed via {@link Eip1559Builder#accessList(java.util.List)}.
+     */
+
     static Eip1559Builder eip1559() {
         return new Eip1559Builder();
     }

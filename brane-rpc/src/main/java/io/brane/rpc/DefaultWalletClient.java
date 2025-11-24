@@ -15,6 +15,7 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import io.brane.internal.web3j.crypto.AccessListObject;
 import io.brane.internal.web3j.crypto.RawTransaction;
 import io.brane.internal.web3j.utils.Numeric;
 import java.lang.reflect.Array;
@@ -169,7 +170,8 @@ public final class DefaultWalletClient implements WalletClient {
                                 valueParts.value,
                                 valueParts.data,
                                 valueParts.maxPriorityFeePerGas,
-                                valueParts.maxFeePerGas)
+                                valueParts.maxFeePerGas,
+                                toAccessListObjects(withDefaults))
                         : RawTransaction.createTransaction(
                                 nonce,
                                 valueParts.gasPrice,
@@ -351,6 +353,9 @@ public final class DefaultWalletClient implements WalletClient {
         if (request.data() != null) {
             tx.put("data", request.data().value());
         }
+        if (request.accessList() != null && !request.accessList().isEmpty()) {
+            tx.put("accessList", toJsonAccessList(request.accessList()));
+        }
         DebugLogger.log("[ESTIMATE-GAS] from=%s to=%s data=%s", from, tx.get("to"), tx.get("data"));
         final long start = System.nanoTime();
         final String estimate;
@@ -466,6 +471,28 @@ public final class DefaultWalletClient implements WalletClient {
             return BigInteger.ZERO;
         }
         return new BigInteger(normalized, 16);
+    }
+
+    private List<AccessListObject> toAccessListObjects(final TransactionRequest request) {
+        if (request.accessList() == null || request.accessList().isEmpty()) {
+            return List.of();
+        }
+        final List<AccessListObject> objects = new ArrayList<>(request.accessList().size());
+        for (var entry : request.accessList()) {
+            objects.add(new AccessListObject(entry.address().value(), entry.storageKeys().stream().map(Hash::value).toList()));
+        }
+        return objects;
+    }
+
+    private List<Map<String, Object>> toJsonAccessList(final List<io.brane.core.model.AccessListEntry> entries) {
+        final List<Map<String, Object>> list = new ArrayList<>(entries.size());
+        for (var entry : entries) {
+            final Map<String, Object> map = new LinkedHashMap<>();
+            map.put("address", entry.address().value());
+            map.put("storageKeys", entry.storageKeys().stream().map(Hash::value).toList());
+            list.add(map);
+        }
+        return list;
     }
 
     private String toQuantityHex(final BigInteger value) {

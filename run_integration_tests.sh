@@ -198,4 +198,23 @@ if [ $? -ne 0 ]; then
 fi
 echo "Request ID Sanity Check Passed!"
 
+echo "Running Access List Example..."
+./gradlew :brane-examples:run --no-daemon -PmainClass=io.brane.examples.AccessListExample \
+  -Dbrane.examples.rpc="$RPC_URL" \
+  -Dbrane.examples.pk="$PRIVATE_KEY"
+if [ $? -ne 0 ]; then
+    echo "Access List Example Failed!"
+    exit 1
+fi
+echo "Access List Example Passed!"
+
+echo "Verifying Access List Integration Tests..."
+./gradlew :brane-rpc:test --tests "io.brane.rpc.DefaultWalletClientTest.sendsEip1559TransactionWithAccessList" --no-daemon
+./gradlew :brane-rpc:test --tests "io.brane.rpc.DefaultWalletClientTest.includesAccessListInEstimation" --no-daemon
+if [ $? -ne 0 ]; then
+    echo "Access List Integration Tests Failed!"
+    exit 1
+fi
+echo "Access List Integration Tests Passed!"
+
 echo "All Tests and Examples Completed Successfully."
