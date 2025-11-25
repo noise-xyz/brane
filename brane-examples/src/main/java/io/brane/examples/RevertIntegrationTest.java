@@ -7,7 +7,7 @@ import io.brane.core.error.RevertException;
 import io.brane.core.types.Address;
 import io.brane.rpc.Client;
 import io.brane.rpc.HttpClient;
-import java.math.BigInteger;
+
 import java.net.URI;
 
 public final class RevertIntegrationTest {
@@ -21,7 +21,8 @@ public final class RevertIntegrationTest {
             ]
             """;
 
-    private RevertIntegrationTest() {}
+    private RevertIntegrationTest() {
+    }
 
     public static void main(String[] args) {
         final String rpcUrl = System.getProperty("brane.examples.rpc", "http://127.0.0.1:8545");

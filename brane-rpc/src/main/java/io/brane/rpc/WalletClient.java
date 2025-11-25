@@ -1,6 +1,9 @@
 package io.brane.rpc;
 
 import io.brane.core.model.TransactionRequest;
+import io.brane.core.error.RpcException;
+import io.brane.core.error.RevertException;
+import io.brane.core.error.ChainMismatchException;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Hash;
 
@@ -64,7 +67,7 @@ import io.brane.core.types.Hash;
  * 
  * @see TransactionRequest
  * @see TransactionReceipt
- * @see BraneWalletClient
+ * @see DefaultWalletClient
  */
 public interface WalletClient {
 

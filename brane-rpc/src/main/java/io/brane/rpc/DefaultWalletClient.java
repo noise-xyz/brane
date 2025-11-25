@@ -63,29 +63,27 @@ import java.util.concurrent.atomic.AtomicReference;
 public final class DefaultWalletClient implements WalletClient {
 
     private final BraneProvider provider;
-    private final PublicClient publicClient;
+
     private final TransactionSigner signer;
     private final Address senderAddress;
     private final long expectedChainId;
-    private final ChainProfile chainProfile;
+
     private final SmartGasStrategy gasStrategy;
     private final ObjectMapper mapper = new ObjectMapper();
     private final AtomicReference<Long> cachedChainId = new AtomicReference<>();
 
     private DefaultWalletClient(
             final BraneProvider provider,
-            final PublicClient publicClient,
             final TransactionSigner signer,
             final Address senderAddress,
             final long expectedChainId,
-            final ChainProfile chainProfile,
             final SmartGasStrategy gasStrategy) {
         this.provider = Objects.requireNonNull(provider, "provider");
-        this.publicClient = Objects.requireNonNull(publicClient, "publicClient");
+
         this.signer = Objects.requireNonNull(signer, "signer");
         this.senderAddress = Objects.requireNonNull(senderAddress, "senderAddress");
         this.expectedChainId = expectedChainId;
-        this.chainProfile = Objects.requireNonNull(chainProfile, "chainProfile");
+
         this.gasStrategy = Objects.requireNonNull(gasStrategy, "gasStrategy");
     }
 
@@ -98,7 +96,7 @@ public final class DefaultWalletClient implements WalletClient {
             final ChainProfile chainProfile) {
         final SmartGasStrategy gasStrategy = new SmartGasStrategy(publicClient, provider, chainProfile);
         return new DefaultWalletClient(
-                provider, publicClient, signer, senderAddress, expectedChainId, chainProfile, gasStrategy);
+                provider, signer, senderAddress, expectedChainId, gasStrategy);
     }
 
     public static DefaultWalletClient from(
@@ -114,11 +112,9 @@ public final class DefaultWalletClient implements WalletClient {
                 publicClient, provider, chainProfile, gasLimitBufferNumerator, gasLimitBufferDenominator);
         return new DefaultWalletClient(
                 provider,
-                publicClient,
                 signer,
                 senderAddress,
                 expectedChainId,
-                chainProfile,
                 gasStrategy);
     }
 
@@ -140,7 +136,7 @@ public final class DefaultWalletClient implements WalletClient {
             final ChainProfile chainProfile) {
         final SmartGasStrategy gasStrategy = new SmartGasStrategy(publicClient, provider, chainProfile);
         return new DefaultWalletClient(
-                provider, publicClient, signer, senderAddress, 0L, chainProfile, gasStrategy);
+                provider, signer, senderAddress, 0L, gasStrategy);
     }
 
     public static DefaultWalletClient create(

@@ -1,6 +1,5 @@
 package io.brane.rpc;
 
-import io.brane.core.RevertDecoder;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import java.io.IOException;

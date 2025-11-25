@@ -18,15 +18,14 @@ import io.brane.internal.web3j.abi.datatypes.Utf8String;
 import io.brane.internal.web3j.abi.datatypes.generated.Uint256;
 import io.brane.rpc.PublicClient;
 import java.math.BigInteger;
-import java.util.LinkedHashMap;
+
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
 class ReadOnlyContractTest {
 
-    private static final String ECHO_ABI =
-            """
+    private static final String ECHO_ABI = """
             [
               {
                 "inputs": [{ "internalType": "uint256", "name": "x", "type": "uint256" }],
@@ -41,13 +40,11 @@ class ReadOnlyContractTest {
     @Test
     void callReturnsDecodedValue() throws Exception {
         String encoded = "0x" + TypeEncoder.encode(new Uint256(BigInteger.valueOf(42)));
-        PublicClient client =
-                new FakePublicClient(encoded, null, null, null, null);
+        PublicClient client = new FakePublicClient(encoded, null, null, null);
 
         Abi abi = Abi.fromJson(ECHO_ABI);
-        ReadOnlyContract contract =
-                ReadOnlyContract.from(
-                        new Address("0x0000000000000000000000000000000000001234"), abi, client);
+        ReadOnlyContract contract = ReadOnlyContract.from(
+                new Address("0x0000000000000000000000000000000000001234"), abi, client);
 
         BigInteger result = contract.call("echo", BigInteger.class, BigInteger.valueOf(42));
 
@@ -55,23 +52,21 @@ class ReadOnlyContractTest {
     }
 
     @Test
+    @SuppressWarnings("rawtypes")
     void callRevertThrowsRevertException() {
         List<Type> inputs = List.of((Type) new Utf8String("simple reason"));
         String rawData = FunctionEncoder.encode(new Function("Error", inputs, List.of()));
 
         RpcException rpcEx = new RpcException(3, "execution reverted", rawData, null, null);
-        PublicClient client =
-                new FakePublicClient(null, rpcEx, null, null, null);
+        PublicClient client = new FakePublicClient(null, rpcEx, null, null);
 
         Abi abi = Abi.fromJson(ECHO_ABI);
-        ReadOnlyContract contract =
-                ReadOnlyContract.from(
-                        new Address("0x0000000000000000000000000000000000001234"), abi, client);
+        ReadOnlyContract contract = ReadOnlyContract.from(
+                new Address("0x0000000000000000000000000000000000001234"), abi, client);
 
-        RevertException ex =
-                assertThrows(
-                        RevertException.class,
-                        () -> contract.call("echo", BigInteger.class, BigInteger.valueOf(42)));
+        RevertException ex = assertThrows(
+                RevertException.class,
+                () -> contract.call("echo", BigInteger.class, BigInteger.valueOf(42)));
 
         assertEquals("simple reason", ex.revertReason());
         assertEquals(rawData, ex.rawDataHex());
@@ -79,13 +74,11 @@ class ReadOnlyContractTest {
 
     @Test
     void emptyResultThrowsAbiDecodingException() {
-        PublicClient client =
-                new FakePublicClient("0x", null, null, null, null);
+        PublicClient client = new FakePublicClient("0x", null, null, null);
 
         Abi abi = Abi.fromJson(ECHO_ABI);
-        ReadOnlyContract contract =
-                ReadOnlyContract.from(
-                        new Address("0x0000000000000000000000000000000000001234"), abi, client);
+        ReadOnlyContract contract = ReadOnlyContract.from(
+                new Address("0x0000000000000000000000000000000000001234"), abi, client);
 
         assertThrows(
                 AbiDecodingException.class,
@@ -98,19 +91,16 @@ class ReadOnlyContractTest {
         private final RpcException toThrow;
         private final BlockHeader blockHeader;
         private final Transaction transaction;
-        private final String txHash;
 
         private FakePublicClient(
                 final String callResult,
                 final RpcException toThrow,
                 final BlockHeader blockHeader,
-                final Transaction transaction,
-                final String txHash) {
+                final Transaction transaction) {
             this.callResult = callResult;
             this.toThrow = toThrow;
             this.blockHeader = blockHeader;
             this.transaction = transaction;
-            this.txHash = txHash;
         }
 
         @Override

@@ -16,7 +16,7 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
-import io.brane.internal.web3j.crypto.RawTransaction;
+
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
@@ -37,43 +37,40 @@ class DefaultWalletClientDebugTest {
     void emitsLifecycleLogsForSendAndWait() {
         final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
         final FakePublicClient publicClient = new FakePublicClient();
-        final FakeBraneProvider provider =
-                new FakeBraneProvider()
-                        .respond("eth_chainId", "0x1")
-                        .respond("eth_getTransactionCount", "0x0")
-                        .respond("eth_estimateGas", "0x5208")
-                        .respond("eth_sendRawTransaction", "0x" + "a".repeat(64))
-                        .respond("eth_getTransactionReceipt", null)
-                        .respond(
-                                "eth_getTransactionReceipt",
-                                new LinkedHashMapBuilder()
-                                        .put("transactionHash", "0x" + "a".repeat(64))
-                                        .put("blockNumber", "0x1")
-                                        .put("blockHash", "0x" + "3".repeat(64))
-                                        .put("from", signer.address().value())
-                                        .put("to", "0x" + "2".repeat(40))
-                                        .put("status", "0x1")
-                                        .put("cumulativeGasUsed", "0x5208")
-                                        .put("logs", List.of())
-                                        .build());
+        final FakeBraneProvider provider = new FakeBraneProvider()
+                .respond("eth_chainId", "0x1")
+                .respond("eth_getTransactionCount", "0x0")
+                .respond("eth_estimateGas", "0x5208")
+                .respond("eth_sendRawTransaction", "0x" + "a".repeat(64))
+                .respond("eth_getTransactionReceipt", null)
+                .respond(
+                        "eth_getTransactionReceipt",
+                        new LinkedHashMapBuilder()
+                                .put("transactionHash", "0x" + "a".repeat(64))
+                                .put("blockNumber", "0x1")
+                                .put("blockHash", "0x" + "3".repeat(64))
+                                .put("from", signer.address().value())
+                                .put("to", "0x" + "2".repeat(40))
+                                .put("status", "0x1")
+                                .put("cumulativeGasUsed", "0x5208")
+                                .put("logs", List.of())
+                                .build());
 
-        DefaultWalletClient wallet =
-                DefaultWalletClient.from(
-                        provider,
-                        publicClient,
-                        signer.asSigner(),
-                        signer.address(),
-                        1L,
-                        io.brane.core.chain.ChainProfiles.ANVIL_LOCAL);
+        DefaultWalletClient wallet = DefaultWalletClient.from(
+                provider,
+                publicClient,
+                signer.asSigner(),
+                signer.address(),
+                1L,
+                io.brane.core.chain.ChainProfiles.ANVIL_LOCAL);
 
-        TransactionRequest request =
-                TxBuilder.legacy()
-                        .from(signer.address())
-                        .to(new Address("0x" + "2".repeat(40)))
-                        .value(Wei.of(0))
-                        .gasPrice(Wei.of(1_000_000_000L))
-                        .data(new HexData("0x"))
-                        .build();
+        TransactionRequest request = TxBuilder.legacy()
+                .from(signer.address())
+                .to(new Address("0x" + "2".repeat(40)))
+                .value(Wei.of(0))
+                .gasPrice(Wei.of(1_000_000_000L))
+                .data(new HexData("0x"))
+                .build();
 
         BraneDebug.setEnabled(true);
         final ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -96,36 +93,33 @@ class DefaultWalletClientDebugTest {
     void logsDecodedRevert() {
         final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
         final FakePublicClient publicClient = new FakePublicClient();
-        final FakeBraneProvider provider =
-                new FakeBraneProvider()
-                        .respond("eth_chainId", "0x1")
-                        .respond("eth_getTransactionCount", "0x0")
-                        .respond("eth_estimateGas", "0x5208")
-                        .respondError(
-                                "eth_sendRawTransaction",
-                                -32000,
-                                "execution reverted",
-                                "0x08c379a00000000000000000000000000000000000000000000000000000000000000020"
-                                        + "0000000000000000000000000000000000000000000000000000000000000004"
-                                        + "626f6f6d00000000000000000000000000000000000000000000000000000000");
+        final FakeBraneProvider provider = new FakeBraneProvider()
+                .respond("eth_chainId", "0x1")
+                .respond("eth_getTransactionCount", "0x0")
+                .respond("eth_estimateGas", "0x5208")
+                .respondError(
+                        "eth_sendRawTransaction",
+                        -32000,
+                        "execution reverted",
+                        "0x08c379a00000000000000000000000000000000000000000000000000000000000000020"
+                                + "0000000000000000000000000000000000000000000000000000000000000004"
+                                + "626f6f6d00000000000000000000000000000000000000000000000000000000");
 
-        DefaultWalletClient wallet =
-                DefaultWalletClient.from(
-                        provider,
-                        publicClient,
-                        signer.asSigner(),
-                        signer.address(),
-                        1L,
-                        io.brane.core.chain.ChainProfiles.ANVIL_LOCAL);
+        DefaultWalletClient wallet = DefaultWalletClient.from(
+                provider,
+                publicClient,
+                signer.asSigner(),
+                signer.address(),
+                1L,
+                io.brane.core.chain.ChainProfiles.ANVIL_LOCAL);
 
-        TransactionRequest request =
-                TxBuilder.legacy()
-                        .from(signer.address())
-                        .to(new Address("0x" + "2".repeat(40)))
-                        .value(Wei.of(0))
-                        .gasPrice(Wei.of(1_000_000_000L))
-                        .data(new HexData("0x"))
-                        .build();
+        TransactionRequest request = TxBuilder.legacy()
+                .from(signer.address())
+                .to(new Address("0x" + "2".repeat(40)))
+                .value(Wei.of(0))
+                .gasPrice(Wei.of(1_000_000_000L))
+                .data(new HexData("0x"))
+                .build();
 
         BraneDebug.setEnabled(true);
         final ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -143,7 +137,6 @@ class DefaultWalletClientDebugTest {
 
     private static final class FakeSigner {
         private final Address address;
-        private RawTransaction last;
 
         private FakeSigner(final Address address) {
             this.address = address;
@@ -155,7 +148,6 @@ class DefaultWalletClientDebugTest {
 
         TransactionSigner asSigner() {
             return tx -> {
-                this.last = tx;
                 return "0xsigned";
             };
         }

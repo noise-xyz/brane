@@ -8,12 +8,17 @@ import java.util.Objects;
  * Utility methods for encoding and decoding Recursive Length Prefix (RLP) data.
  * Optimized for Java 21 with aggressive performance enhancements.
  *
- * Hotspots & design goals:
- *  - Medium strings (16–55 bytes): avoid unnecessary bounds checks and copies on decode.
- *  - Complex structures (lists): reduce temporary allocations and growable collections.
- *  - Large integers (length >= 65535): efficient length-prefix encoding/decoding.
+ * Hotspots &amp; design goals:
+ * - Medium strings (16–55 bytes): avoid unnecessary bounds checks and copies on
+ * decode.
+ * - Complex structures (lists): reduce temporary allocations and growable
+ * collections.
+ * - Large integers (length >= 65535): efficient length-prefix
+ * encoding/decoding.
  *
- * @see <a href="https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/">Ethereum RLP Specification</a>
+ * @see <a href=
+ *      "https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/">Ethereum
+ *      RLP Specification</a>
  */
 public final class Rlp {
 
@@ -71,7 +76,8 @@ public final class Rlp {
 
     /**
      * Encodes the provided list of RLP items.
-     * Optimized: avoids streams, pre-calculates total payload size, and minimizes copies.
+     * Optimized: avoids streams, pre-calculates total payload size, and minimizes
+     * copies.
      *
      * @param items the items to encode
      * @return encoded bytes
@@ -334,15 +340,15 @@ public final class Rlp {
             throw new IllegalArgumentException("Length cannot be negative");
         }
         if (value < 0x100) {
-            return 1;               // < 256
+            return 1; // < 256
         }
         if (value < 0x10000) {
-            return 2;               // < 65,536
+            return 2; // < 65,536
         }
         if (value < 0x1000000) {
-            return 3;               // < 16,777,216
+            return 3; // < 16,777,216
         }
-        return 4;                   // up to Integer.MAX_VALUE
+        return 4; // up to Integer.MAX_VALUE
     }
 
     /**
@@ -358,16 +364,16 @@ public final class Rlp {
         switch (size) {
             case 1 -> buffer[offset] = (byte) value;
             case 2 -> {
-                buffer[offset]     = (byte) (value >>> 8);
+                buffer[offset] = (byte) (value >>> 8);
                 buffer[offset + 1] = (byte) value;
             }
             case 3 -> {
-                buffer[offset]     = (byte) (value >>> 16);
+                buffer[offset] = (byte) (value >>> 16);
                 buffer[offset + 1] = (byte) (value >>> 8);
                 buffer[offset + 2] = (byte) value;
             }
             case 4 -> {
-                buffer[offset]     = (byte) (value >>> 24);
+                buffer[offset] = (byte) (value >>> 24);
                 buffer[offset + 1] = (byte) (value >>> 16);
                 buffer[offset + 2] = (byte) (value >>> 8);
                 buffer[offset + 3] = (byte) value;
@@ -376,5 +382,6 @@ public final class Rlp {
         }
     }
 
-    private record DecodeResult(RlpItem item, int consumed) { }
+    private record DecodeResult(RlpItem item, int consumed) {
+    }
 }

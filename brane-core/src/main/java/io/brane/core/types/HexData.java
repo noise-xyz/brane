@@ -43,8 +43,11 @@ import java.util.regex.Pattern;
  * }</pre>
  * 
  * @param value the hex-encoded string with "0x" prefix
- * @throws IllegalArgumentException if value is not valid hex data
- * @throws NullPointerException     if value is null
+ *              <p>
+ *              Throws {@link IllegalArgumentException} if value is not valid
+ *              hex data.
+ *              <p>
+ *              Throws {@link NullPointerException} if value is null.
  */
 public record HexData(String value) {
     private static final Pattern HEX = Pattern.compile("^0x([0-9a-fA-F]{2})*$");

@@ -1,5 +1,6 @@
 package io.brane.rpc.internal;
 
+import io.brane.core.error.RpcException;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.util.Map;
