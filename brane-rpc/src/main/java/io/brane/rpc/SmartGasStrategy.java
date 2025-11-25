@@ -16,9 +16,6 @@ import java.util.Objects;
 
 import io.brane.rpc.internal.RpcUtils;
 
-import io.brane.rpc.JsonRpcError;
-import io.brane.rpc.JsonRpcResponse;
-
 /**
  * Automatically fills missing gas parameters (limit, price, fees) for
  * transactions.

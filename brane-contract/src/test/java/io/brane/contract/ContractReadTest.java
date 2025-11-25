@@ -22,8 +22,7 @@ import org.junit.jupiter.api.Test;
 
 class ContractReadTest {
 
-    private static final String ECHO_ABI =
-            """
+    private static final String ECHO_ABI = """
             [
               {
                 "inputs": [{ "internalType": "uint256", "name": "x", "type": "uint256" }],
@@ -68,6 +67,7 @@ class ContractReadTest {
     }
 
     @Test
+    @SuppressWarnings("rawtypes")
     void readRevertThrowsRevertException() {
         List<Type> inputs = List.of((Type) new Utf8String("simple reason"));
         String rawData = FunctionEncoder.encode(new Function("Error", inputs, List.of()));
@@ -78,10 +78,9 @@ class ContractReadTest {
         Abi abi = Abi.fromJson(ECHO_ABI);
         Contract contract = new Contract(new Address("0x0000000000000000000000000000000000001234"), abi, client);
 
-        RevertException ex =
-                assertThrows(
-                        RevertException.class,
-                        () -> contract.read("echo", BigInteger.class, BigInteger.valueOf(42)));
+        RevertException ex = assertThrows(
+                RevertException.class,
+                () -> contract.read("echo", BigInteger.class, BigInteger.valueOf(42)));
 
         assertEquals("simple reason", ex.revertReason());
         assertEquals(rawData, ex.rawDataHex());

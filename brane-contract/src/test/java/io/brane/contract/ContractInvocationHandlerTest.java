@@ -52,7 +52,6 @@ class ContractInvocationHandlerTest {
             }
         };
 
-        Abi abi = Abi.fromJson(json);
         TestContract contract = BraneContract.bind(
                 new Address("0x" + "1".repeat(40)),
                 json,
@@ -119,7 +118,6 @@ class ContractInvocationHandlerTest {
             }
         };
 
-        Abi abi = Abi.fromJson(json);
         TestContract contract = BraneContract.bind(
                 new Address("0x" + "1".repeat(40)),
                 json,
@@ -154,8 +152,10 @@ class ContractInvocationHandlerTest {
             void foo();
         }
 
-        PublicClient fakePublic = new FakePublicClient() {};
-        WalletClient fakeWallet = new FakeWalletClient() {};
+        PublicClient fakePublic = new FakePublicClient() {
+        };
+        WalletClient fakeWallet = new FakeWalletClient() {
+        };
 
         TestContract contract = BraneContract.bind(
                 new Address("0x" + "1".repeat(40)),

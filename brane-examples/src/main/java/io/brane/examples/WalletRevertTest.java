@@ -7,7 +7,7 @@ import io.brane.core.error.RevertException;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
-import io.brane.core.types.Wei;
+
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
@@ -23,10 +23,11 @@ import io.brane.rpc.WalletClient;
  * when the node rejects a transaction with revert data.
  * 
  * Usage:
- * ./gradlew :brane-examples:run -PmainClass=io.brane.examples.WalletRevertTest \
- *   -Dbrane.examples.rpc=http://127.0.0.1:8545 \
- *   -Dbrane.examples.contract=0x... \
- *   -Dbrane.examples.pk=0x...
+ * ./gradlew :brane-examples:run -PmainClass=io.brane.examples.WalletRevertTest
+ * \
+ * -Dbrane.examples.rpc=http://127.0.0.1:8545 \
+ * -Dbrane.examples.contract=0x... \
+ * -Dbrane.examples.pk=0x...
  */
 public final class WalletRevertTest {
 
@@ -37,7 +38,8 @@ public final class WalletRevertTest {
             ]
             """;
 
-    private WalletRevertTest() {}
+    private WalletRevertTest() {
+    }
 
     public static void main(String[] args) {
         final String rpcUrl = System.getProperty("brane.examples.rpc", "http://127.0.0.1:8545");
@@ -61,8 +63,7 @@ public final class WalletRevertTest {
         final PublicClient publicClient = PublicClient.from(provider);
         final PrivateKeyTransactionSigner signer = new PrivateKeyTransactionSigner(privateKey);
         final TransactionSigner txSigner = signer::sign;
-        final WalletClient wallet =
-                DefaultWalletClient.create(provider, publicClient, txSigner, signer.address());
+        final WalletClient wallet = DefaultWalletClient.create(provider, publicClient, txSigner, signer.address());
 
         testWalletRevert(wallet, new Address(contractAddr));
 
@@ -71,11 +72,11 @@ public final class WalletRevertTest {
 
     private static void testWalletRevert(WalletClient wallet, Address contractAddr) {
         System.out.println("[Test] WalletClient sends transaction that will revert...");
-        
+
         // Encode call to alwaysRevert()
         final Abi abi = Abi.fromJson(ABI_JSON);
         final Abi.FunctionCall call = abi.encodeFunction("alwaysRevert");
-        
+
         TransactionRequest request = TxBuilder.eip1559()
                 .to(contractAddr)
                 .data(new HexData(call.data()))

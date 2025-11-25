@@ -18,9 +18,11 @@ import org.junit.jupiter.api.Test;
 class RevertDecoderTest {
 
     @Test
+    @SuppressWarnings("rawtypes")
     void decodesErrorString() {
-        List<Type> inputs = List.of((Type) new Utf8String("simple reason"));
-        Function fn = new Function("Error", inputs, List.of());
+        List<Type<?>> inputs = List.of((Type<?>) new Utf8String("simple reason"));
+        @SuppressWarnings("unchecked")
+        Function fn = new Function("Error", (List<Type>) (List<?>) inputs, List.of());
         String rawData = FunctionEncoder.encode(fn);
 
         RevertDecoder.Decoded decoded = RevertDecoder.decode(rawData);
@@ -31,9 +33,11 @@ class RevertDecoderTest {
     }
 
     @Test
+    @SuppressWarnings("rawtypes")
     void decodesPanic() {
-        List<Type> inputs = List.of((Type) new Uint256(BigInteger.valueOf(0x11)));
-        Function fn = new Function("Panic", inputs, List.of());
+        List<Type<?>> inputs = List.of((Type<?>) new Uint256(BigInteger.valueOf(0x11)));
+        @SuppressWarnings("unchecked")
+        Function fn = new Function("Panic", (List<Type>) (List<?>) inputs, List.of());
         String rawData = FunctionEncoder.encode(fn);
 
         RevertDecoder.Decoded decoded = RevertDecoder.decode(rawData);
@@ -44,17 +48,19 @@ class RevertDecoderTest {
     }
 
     @Test
+    @SuppressWarnings("rawtypes")
     void decodesCustomErrorsWhenProvided() {
-        List<Type> inputs = List.of((Type) new Utf8String("hello"));
-        Function fn = new Function("CustomError", inputs, List.of());
+        List<Type<?>> inputs = List.of((Type<?>) new Utf8String("hello"));
+        @SuppressWarnings("unchecked")
+        Function fn = new Function("CustomError", (List<Type>) (List<?>) inputs, List.of());
         String rawData = FunctionEncoder.encode(fn);
         String selector = rawData.substring(2, 10).toLowerCase(Locale.ROOT);
 
-        Map<String, RevertDecoder.CustomErrorAbi> customErrors =
-                Map.of(
-                        selector,
-                        new RevertDecoder.CustomErrorAbi(
-                                "CustomError", List.of(new io.brane.internal.web3j.abi.TypeReference<Utf8String>() {})));
+        Map<String, RevertDecoder.CustomErrorAbi> customErrors = Map.of(
+                selector,
+                new RevertDecoder.CustomErrorAbi(
+                        "CustomError", List.of(new io.brane.internal.web3j.abi.TypeReference<Utf8String>() {
+                        })));
 
         RevertDecoder.Decoded decoded = RevertDecoder.decode(rawData, customErrors);
 

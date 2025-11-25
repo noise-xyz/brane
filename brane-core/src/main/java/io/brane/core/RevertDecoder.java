@@ -1,5 +1,6 @@
 package io.brane.core;
 
+import io.brane.core.error.RevertException;
 import io.brane.internal.web3j.abi.FunctionReturnDecoder;
 import io.brane.internal.web3j.abi.TypeReference;
 import io.brane.internal.web3j.abi.datatypes.Type;
@@ -85,8 +86,8 @@ public final class RevertDecoder {
     };
     private static final TypeReference<Uint256> UINT256_REF = new TypeReference<>() {
     };
-    private static final List<TypeReference<Type>> ERROR_STRING_OUTPUT = List.of(castType(UTF8_REF));
-    private static final List<TypeReference<Type>> PANIC_OUTPUT = List.of(castType(UINT256_REF));
+    private static final List<TypeReference<Type<?>>> ERROR_STRING_OUTPUT = List.of(castType(UTF8_REF));
+    private static final List<TypeReference<Type<?>>> PANIC_OUTPUT = List.of(castType(UINT256_REF));
 
     public enum RevertKind {
         ERROR_STRING,
@@ -98,7 +99,7 @@ public final class RevertDecoder {
     public record Decoded(RevertKind kind, String reason, String rawDataHex) {
     }
 
-    public record CustomErrorAbi(String name, List<TypeReference<? extends Type>> outputs) {
+    public record CustomErrorAbi(String name, List<TypeReference<? extends Type<?>>> outputs) {
         public CustomErrorAbi {
             Objects.requireNonNull(name, "name must not be null");
             outputs = Objects.requireNonNullElse(outputs, List.of());
@@ -126,6 +127,7 @@ public final class RevertDecoder {
      *                     definitions
      * @return the decoded result
      */
+    @SuppressWarnings("rawtypes")
     public static Decoded decode(
             final String rawDataHex, final Map<String, CustomErrorAbi> customErrors) {
         final Map<String, CustomErrorAbi> errors = customErrors != null ? customErrors : Map.of();
@@ -137,22 +139,26 @@ public final class RevertDecoder {
 
         if (ERROR_STRING_SELECTOR.equals(selector)) {
             final String encoded = "0x" + rawDataHex.substring(10);
-            final var decoded = FunctionReturnDecoder.decode(encoded, ERROR_STRING_OUTPUT);
-            if (decoded.isEmpty()) {
-                return new Decoded(RevertKind.UNKNOWN, null, rawDataHex);
+            @SuppressWarnings("unchecked")
+            final List<Type> results = FunctionReturnDecoder.decode(encoded,
+                    (List<TypeReference<Type>>) (List<?>) ERROR_STRING_OUTPUT);
+            if (!results.isEmpty() && results.get(0) instanceof Utf8String) {
+                return new Decoded(
+                        RevertKind.ERROR_STRING, ((Utf8String) results.get(0)).getValue(), rawDataHex);
             }
-            return new Decoded(
-                    RevertKind.ERROR_STRING, ((Utf8String) decoded.get(0)).getValue(), rawDataHex);
+            return new Decoded(RevertKind.UNKNOWN, null, rawDataHex);
         }
 
         if (PANIC_SELECTOR.equals(selector)) {
             final String encoded = "0x" + rawDataHex.substring(10);
-            final var decoded = FunctionReturnDecoder.decode(encoded, PANIC_OUTPUT);
-            if (decoded.isEmpty()) {
-                return new Decoded(RevertKind.UNKNOWN, null, rawDataHex);
+            @SuppressWarnings("unchecked")
+            final List<Type> results = FunctionReturnDecoder.decode(encoded,
+                    (List<TypeReference<Type>>) (List<?>) PANIC_OUTPUT);
+            if (!results.isEmpty() && results.get(0) instanceof Uint256) {
+                final BigInteger code = ((Uint256) results.get(0)).getValue();
+                return new Decoded(RevertKind.PANIC, mapPanicReason(code), rawDataHex);
             }
-            final BigInteger code = ((Uint256) decoded.get(0)).getValue();
-            return new Decoded(RevertKind.PANIC, mapPanicReason(code), rawDataHex);
+            return new Decoded(RevertKind.UNKNOWN, null, rawDataHex);
         }
 
         CustomErrorAbi custom = errors.get(selector);
@@ -161,8 +167,10 @@ public final class RevertDecoder {
         }
         if (custom != null) {
             final String encoded = "0x" + rawDataHex.substring(10);
-            final var decoded = FunctionReturnDecoder.decode(encoded, castTypes(custom.outputs()));
-            final String reason = formatCustomReason(custom.name(), decoded);
+            @SuppressWarnings("unchecked")
+            final List<Type<?>> results = (List<Type<?>>) (List<?>) FunctionReturnDecoder.decode(encoded,
+                    (List<TypeReference<Type>>) (List<?>) castTypes(custom.outputs()));
+            final String reason = formatCustomReason(custom.name(), results);
             return new Decoded(RevertKind.CUSTOM, reason, rawDataHex);
         }
 
@@ -170,12 +178,13 @@ public final class RevertDecoder {
     }
 
     @SuppressWarnings("unchecked")
-    private static TypeReference<Type> castType(TypeReference<? extends Type> ref) {
-        return (TypeReference<Type>) ref;
+    private static TypeReference<Type<?>> castType(TypeReference<?> ref) {
+        return (TypeReference<Type<?>>) (TypeReference<?>) ref;
     }
 
-    private static List<TypeReference<Type>> castTypes(List<TypeReference<? extends Type>> refs) {
-        return refs.stream().map(RevertDecoder::castType).toList();
+    @SuppressWarnings("unchecked")
+    private static List<TypeReference<Type<?>>> castTypes(List<? extends TypeReference<?>> refs) {
+        return (List<TypeReference<Type<?>>>) (List<?>) refs;
     }
 
     private static String mapPanicReason(final BigInteger code) {
@@ -194,7 +203,7 @@ public final class RevertDecoder {
         };
     }
 
-    private static String formatCustomReason(final String name, final List<Type> decoded) {
+    private static String formatCustomReason(final String name, final List<Type<?>> decoded) {
         if (decoded == null || decoded.isEmpty()) {
             return name;
         }

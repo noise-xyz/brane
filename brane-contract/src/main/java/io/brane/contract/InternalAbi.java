@@ -3,7 +3,7 @@ package io.brane.contract;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
-import io.brane.contract.Abi.FunctionMetadata;
+
 import io.brane.core.error.AbiDecodingException;
 import io.brane.core.error.AbiEncodingException;
 import io.brane.core.types.Address;
@@ -50,6 +50,7 @@ final class InternalAbi implements Abi {
     }
 
     @Override
+    @SuppressWarnings("rawtypes")
     public FunctionCall encodeFunction(final String name, final Object... args) {
         final Object[] providedArgs = args == null ? new Object[0] : args;
         final AbiFunction fn = resolveFunction(name, providedArgs.length);
@@ -64,7 +65,7 @@ final class InternalAbi implements Abi {
         final List<TypeReference<?>> outputTypes = buildOutputs(fn.outputs());
         final Function function = new Function(fn.name(), encodedInputs, new ArrayList<>(outputTypes));
         final String data = FunctionEncoder.encode(function);
-        return new Call(fn, function, data, outputTypes);
+        return new Call(fn, data, outputTypes);
     }
 
     @Override
@@ -112,15 +113,6 @@ final class InternalAbi implements Abi {
             }
         }
         return refs;
-    }
-
-    private static Type instantiate(final String solidityType, final Object value) {
-        try {
-            return TypeDecoder.instantiateType(solidityType, value);
-        } catch (Exception e) {
-            throw new AbiEncodingException(
-                    "Unable to encode argument of type " + solidityType, e);
-        }
     }
 
     private static Object normalizeInput(final String solidityType, final Object value) {
@@ -356,6 +348,15 @@ final class InternalAbi implements Abi {
         }
     }
 
+    private static Type<?> instantiate(final String solidityType, final Object value) {
+        try {
+            return TypeDecoder.instantiateType(solidityType, value);
+        } catch (Exception e) {
+            throw new AbiEncodingException(
+                    "Unable to encode argument of type " + solidityType, e);
+        }
+    }
+
     private record ParsedAbi(
             Map<String, AbiFunction> functionsByName,
             Map<String, AbiFunction> functionsBySignature,
@@ -411,8 +412,9 @@ final class InternalAbi implements Abi {
                 final String topic = log.topics().get(topicIdx).value();
                 try {
                     @SuppressWarnings("unchecked")
-                    final TypeReference<Type> ref = (TypeReference<Type>) TypeReference.makeTypeReference(param.type());
-                    final Type decoded = TypeDecoder.decode(topic, ref.getClassType());
+                    final TypeReference<Type<?>> ref = (TypeReference<Type<?>>) TypeReference
+                            .makeTypeReference(param.type());
+                    final Type<?> decoded = TypeDecoder.decode(topic, ref.getClassType());
                     values.add(toJavaValue(decoded));
                 } catch (Exception e) {
                     throw new AbiDecodingException("Failed to decode indexed param '" + param.name() + "'", e);
@@ -421,7 +423,8 @@ final class InternalAbi implements Abi {
             } else {
                 try {
                     @SuppressWarnings("unchecked")
-                    final TypeReference<Type> ref = (TypeReference<Type>) TypeReference.makeTypeReference(param.type());
+                    final TypeReference<Type<?>> ref = (TypeReference<Type<?>>) TypeReference
+                            .makeTypeReference(param.type());
                     nonIndexed.add(ref);
                 } catch (ClassNotFoundException e) {
                     throw new AbiDecodingException("Unsupported non-indexed type '" + param.type() + "'", e);
@@ -430,8 +433,11 @@ final class InternalAbi implements Abi {
         }
 
         if (!nonIndexed.isEmpty()) {
-            final List<Type> decoded = FunctionReturnDecoder.decode(log.data().value(), castNonIndexed(nonIndexed));
-            for (Type t : decoded) {
+            @SuppressWarnings("unchecked")
+            final List<Type<?>> decoded = (List<Type<?>>) (List<?>) FunctionReturnDecoder.decode(
+                    log.data().value(),
+                    (List<TypeReference<Type>>) (List<?>) castNonIndexed(nonIndexed));
+            for (Type<?> t : decoded) {
                 values.add(toJavaValue(t));
             }
         }
@@ -463,7 +469,7 @@ final class InternalAbi implements Abi {
                 "Cannot map event '" + event.name() + "' to " + eventType.getName());
     }
 
-    private static Object toJavaValue(final Type type) {
+    private static Object toJavaValue(final Type<?> type) {
         return switch (type) {
             case io.brane.internal.web3j.abi.datatypes.Address addr -> new Address(addr.getValue());
             case Bool b -> b.getValue();
@@ -473,29 +479,26 @@ final class InternalAbi implements Abi {
                 new HexData("0x" + Numeric.toHexStringNoPrefix(bytes.getValue()));
             case Array<?> array -> {
                 final List<Object> list = new ArrayList<>();
-                for (Type t : array.getValue()) {
+                for (Type<?> t : array.getValue()) {
                     list.add(toJavaValue(t));
                 }
                 yield list;
             }
-            case Type t when t.getValue() instanceof BigInteger bi -> bi;
-            case Type t -> t.getValue();
+            case Type<?> t when t.getValue() instanceof BigInteger bi -> bi;
+            case Type<?> t -> t.getValue();
         };
     }
 
     private static final class Call implements Abi.FunctionCall {
         private final AbiFunction abiFunction;
-        private final Function function;
         private final String data;
         private final List<TypeReference<?>> outputTypes;
 
         private Call(
                 final AbiFunction abiFunction,
-                final Function function,
                 final String data,
                 final List<TypeReference<?>> outputTypes) {
             this.abiFunction = Objects.requireNonNull(abiFunction, "abiFunction");
-            this.function = Objects.requireNonNull(function, "function");
             this.data = Objects.requireNonNull(data, "data");
             this.outputTypes = Objects.requireNonNull(outputTypes, "outputTypes");
         }
@@ -526,7 +529,7 @@ final class InternalAbi implements Abi {
                 }
 
                 @SuppressWarnings("unchecked")
-                final List<Type> decoded = (List<Type>) (List<?>) FunctionReturnDecoder.decode(
+                final List<Type<?>> decoded = (List<Type<?>>) (List<?>) FunctionReturnDecoder.decode(
                         rawResultHex,
                         (List<TypeReference<Type>>) (List<?>) outputTypes);
                 if (decoded == null || decoded.isEmpty()) {
@@ -585,7 +588,7 @@ final class InternalAbi implements Abi {
             };
         }
 
-        private static Object mapValue(final Type type, final Class<?> targetType) {
+        private static Object mapValue(final Type<?> type, final Class<?> targetType) {
             return switch (type) {
                 case io.brane.internal.web3j.abi.datatypes.Address addr -> mapAddress(addr, targetType);
                 case Bool bool -> mapBoolean(bool, targetType);
@@ -636,9 +639,9 @@ final class InternalAbi implements Abi {
 
         private static Object mapArray(final Array<?> array, final Class<?> targetType) {
             @SuppressWarnings("unchecked")
-            final List<Type> values = (List<Type>) (List<?>) array.getValue();
+            final List<Type<?>> values = (List<Type<?>>) (List<?>) array.getValue();
             final List<Object> mapped = new ArrayList<>(values.size());
-            for (Type element : values) {
+            for (Type<?> element : values) {
                 mapped.add(mapValue(element, Object.class));
             }
             return switch (targetType) {
@@ -648,7 +651,7 @@ final class InternalAbi implements Abi {
             };
         }
 
-        private static Object mapUnknown(final Type type, final Class<?> targetType) {
+        private static Object mapUnknown(final Type<?> type, final Class<?> targetType) {
             final Object value = type.getValue();
             if (value instanceof BigInteger bi) {
                 return coerceNumber(bi, targetType);
@@ -672,10 +675,10 @@ final class InternalAbi implements Abi {
     }
 
     @SuppressWarnings("unchecked")
-    private static List<TypeReference<Type>> castNonIndexed(final List<TypeReference<?>> list) {
-        final List<TypeReference<Type>> result = new ArrayList<>(list.size());
+    private static List<TypeReference<Type<?>>> castNonIndexed(final List<TypeReference<?>> list) {
+        final List<TypeReference<Type<?>>> result = new ArrayList<>(list.size());
         for (TypeReference<?> ref : list) {
-            result.add((TypeReference<Type>) ref);
+            result.add((TypeReference<Type<?>>) (TypeReference<?>) ref);
         }
         return result;
     }
