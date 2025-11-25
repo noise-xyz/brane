@@ -12,15 +12,80 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+/**
+ * Decodes EVM revert reasons from raw transaction revert data.
+ * 
+ * <p>
+ * When a smart contract reverts, the EVM returns hex-encoded revert data.
+ * This class decodes that data into human-readable revert reasons and
+ * categorizes
+ * the revert type.
+ * 
+ * <p>
+ * <strong>Revert Types:</strong>
+ * <ul>
+ * <li><strong>ERROR_STRING:</strong> Standard {@code Error(string)} revert with
+ * message
+ * <ul>
+ * <li>Selector: {@code 0x08c379a0}</li>
+ * <li>Triggered by: {@code revert("reason")},
+ * {@code require(false, "reason")}</li>
+ * <li>Example: "Insufficient balance"</li>
+ * </ul>
+ * </li>
+ * <li><strong>PANIC:</strong> Solidity {@code Panic(uint256)} with error code
+ * <ul>
+ * <li>Selector: {@code 0x4e487b71}</li>
+ * <li>Triggered by: {@code assert(false)}, division by zero, array out of
+ * bounds</li>
+ * <li>Codes: 0x01=assert, 0x11=overflow, 0x12=div by zero, 0x32=array bounds,
+ * etc.</li>
+ * </ul>
+ * </li>
+ * <li><strong>CUSTOM:</strong> Solidity custom errors (defined with
+ * {@code error} keyword)
+ * <ul>
+ * <li>More gas-efficient than string reverts</li>
+ * <li>Can include typed parameters</li>
+ * <li>Example:
+ * {@code error InsufficientBalance(uint256 available, uint256 required);}</li>
+ * </ul>
+ * </li>
+ * <li><strong>UNKNOWN:</strong> Unrecognized revert data format</li>
+ * </ul>
+ * 
+ * <p>
+ * <strong>Usage Example:</strong>
+ * 
+ * <pre>{@code
+ * try {
+ *     client.sendTransactionAndWait(request);
+ * } catch (RevertException e) {
+ *     RevertDecoder.Decoded decoded = RevertDecoder.decode(e.rawDataHex());
+ * 
+ *     switch (decoded.kind()) {
+ *         case ERROR_STRING ->
+ *             System.err.println("Reverted: " + decoded.reason());
+ *         case PANIC ->
+ *             System.err.println("Panic code: " + decoded.reason());
+ *         case CUSTOM ->
+ *             System.err.println("Custom error: " + decoded.reason());
+ *     }
+ * }
+ * }</pre>
+ * 
+ * @see RevertException
+ */
 public final class RevertDecoder {
 
     private static final String ERROR_STRING_SELECTOR = "08c379a0";
     private static final String PANIC_SELECTOR = "4e487b71";
 
-    private static final TypeReference<Utf8String> UTF8_REF = new TypeReference<>() {};
-    private static final TypeReference<Uint256> UINT256_REF = new TypeReference<>() {};
-    private static final List<TypeReference<Type>> ERROR_STRING_OUTPUT =
-            List.of(castType(UTF8_REF));
+    private static final TypeReference<Utf8String> UTF8_REF = new TypeReference<>() {
+    };
+    private static final TypeReference<Uint256> UINT256_REF = new TypeReference<>() {
+    };
+    private static final List<TypeReference<Type>> ERROR_STRING_OUTPUT = List.of(castType(UTF8_REF));
     private static final List<TypeReference<Type>> PANIC_OUTPUT = List.of(castType(UINT256_REF));
 
     public enum RevertKind {
@@ -30,7 +95,8 @@ public final class RevertDecoder {
         UNKNOWN
     }
 
-    public record Decoded(RevertKind kind, String reason, String rawDataHex) {}
+    public record Decoded(RevertKind kind, String reason, String rawDataHex) {
+    }
 
     public record CustomErrorAbi(String name, List<TypeReference<? extends Type>> outputs) {
         public CustomErrorAbi {
@@ -39,12 +105,27 @@ public final class RevertDecoder {
         }
     }
 
-    private RevertDecoder() {}
+    private RevertDecoder() {
+    }
 
+    /**
+     * Decodes a revert reason from raw hex data.
+     *
+     * @param rawDataHex the raw hex string returned by the node (e.g. "0x...")
+     * @return the decoded result, or {@link RevertKind#UNKNOWN} if decoding fails
+     */
     public static Decoded decode(final String rawDataHex) {
         return decode(rawDataHex, Map.of());
     }
 
+    /**
+     * Decodes a revert reason using a set of known custom error ABIs.
+     *
+     * @param rawDataHex   the raw hex string
+     * @param customErrors a map of 4-byte selectors (without "0x") to error
+     *                     definitions
+     * @return the decoded result
+     */
     public static Decoded decode(
             final String rawDataHex, final Map<String, CustomErrorAbi> customErrors) {
         final Map<String, CustomErrorAbi> errors = customErrors != null ? customErrors : Map.of();
@@ -80,8 +161,7 @@ public final class RevertDecoder {
         }
         if (custom != null) {
             final String encoded = "0x" + rawDataHex.substring(10);
-            final var decoded =
-                    FunctionReturnDecoder.decode(encoded, castTypes(custom.outputs()));
+            final var decoded = FunctionReturnDecoder.decode(encoded, castTypes(custom.outputs()));
             final String reason = formatCustomReason(custom.name(), decoded);
             return new Decoded(RevertKind.CUSTOM, reason, rawDataHex);
         }
@@ -95,7 +175,7 @@ public final class RevertDecoder {
     }
 
     private static List<TypeReference<Type>> castTypes(List<TypeReference<? extends Type>> refs) {
-        return refs.stream().map(RevertDecoder::castType).collect(Collectors.toList());
+        return refs.stream().map(RevertDecoder::castType).toList();
     }
 
     private static String mapPanicReason(final BigInteger code) {

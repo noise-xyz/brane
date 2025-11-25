@@ -5,6 +5,7 @@ cache/
 build/
 **/build/
 **/out/
+**/bin/
 
 .DS_Store
 .idea/

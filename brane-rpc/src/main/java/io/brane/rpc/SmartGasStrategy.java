@@ -14,16 +14,57 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import io.brane.rpc.internal.RpcUtils;
+
 import io.brane.rpc.JsonRpcError;
 import io.brane.rpc.JsonRpcResponse;
 
-
 /**
- * Provides sensible defaults for gas limit and fee fields while respecting any user-specified values.
- *
- * <p>The strategy performs {@code eth_estimateGas} and applies a buffer (default 20%) to reduce the
- * chance of underestimation. For EIP-1559 transactions, it derives {@code maxFeePerGas} using the
- * latest {@code baseFeePerGas} with a 2x multiplier plus a configurable priority fee.</p>
+ * Automatically fills missing gas parameters (limit, price, fees) for
+ * transactions.
+ * 
+ * <p>
+ * This strategy implements intelligent defaults for gas-related transaction
+ * fields
+ * while preserving any user-specified values. It handles both legacy and
+ * EIP-1559 transactions.
+ * 
+ * <p>
+ * <strong>Gas Limit Estimation:</strong>
+ * <ul>
+ * <li>Calls {@code eth_estimateGas} to get base estimate</li>
+ * <li>Applies a buffer multiplier (default 20%) to reduce out-of-gas
+ * failures</li>
+ * <li>Formula: {@code gasLimit = estimate × (120/100)}</li>
+ * <li>Rationale: Node estimates can be slightly low; buffer provides safety
+ * margin</li>
+ * </ul>
+ * 
+ * <p>
+ * <strong>EIP-1559 Fee Calculation:</strong>
+ * <ul>
+ * <li>{@code maxPriorityFeePerGas}: Uses chain default (e.g., 2 Gwei for
+ * Ethereum mainnet)</li>
+ * <li>{@code maxFeePerGas}: {@code (baseFee × 2) + maxPriorityFee}</li>
+ * <li>The 2x multiplier protects against base fee spikes over multiple
+ * blocks</li>
+ * <li>If baseFee doubles in next block, transaction still has headroom</li>
+ * </ul>
+ * 
+ * <p>
+ * <strong>Legacy Transaction Gas Price:</strong>
+ * <ul>
+ * <li>Fetches current {@code eth_gasPrice} from node</li>
+ * <li>Returns node's suggested gas price (usually network median)</li>
+ * </ul>
+ * 
+ * <p>
+ * <strong>User Overrides:</strong> If user provides any gas field in the
+ * request,
+ * this strategy will NOT override it. Only fills {@code null} fields.
+ * 
+ * @see TransactionRequest
+ * @see WalletClient
  */
 final class SmartGasStrategy {
 
@@ -61,7 +102,8 @@ final class SmartGasStrategy {
     }
 
     /**
-     * Fills in missing transaction fields (from, gas limit, and fees) while keeping any user-supplied
+     * Fills in missing transaction fields (from, gas limit, and fees) while keeping
+     * any user-supplied
      * values intact.
      */
     TransactionRequest applyDefaults(final TransactionRequest request, final Address defaultFrom) {
@@ -73,17 +115,22 @@ final class SmartGasStrategy {
     }
 
     /**
-     * Ensures a gas limit is present by estimating and applying the configured buffer multiplier.
+     * Ensures a gas limit is present by estimating and applying the configured
+     * buffer multiplier.
      */
     private TransactionRequest ensureGasLimit(final TransactionRequest request) {
         if (request.gasLimit() != null) {
-            return request;
+            return request; // User provided gas limit - don't override
         }
         final Map<String, Object> tx = toTxObject(request);
         final String estimateHex = RpcRetry.run(() -> callEstimateGas(tx), 3);
         final BigInteger estimate = Numeric.decodeQuantity(estimateHex);
+
+        // Apply safety buffer to prevent out-of-gas failures
+        // Default: estimate × (120/100) = 20% buffer
         final BigInteger buffered = estimate.multiply(gasLimitBufferNumerator).divide(gasLimitBufferDenominator);
-        return copyWithGasFields(request, buffered.longValueExact(), request.gasPrice(), request.maxPriorityFeePerGas(), request.maxFeePerGas(), request.isEip1559());
+        return copyWithGasFields(request, buffered.longValueExact(), request.gasPrice(), request.maxPriorityFeePerGas(),
+                request.maxFeePerGas(), request.isEip1559());
     }
 
     private String callEstimateGas(final Map<String, Object> tx) {
@@ -97,6 +144,7 @@ final class SmartGasStrategy {
     }
 
     private TransactionRequest ensureFees(final TransactionRequest request) {
+        // Route to appropriate fee calculation based on transaction type
         if (profile.supportsEip1559() && request.isEip1559()) {
             return ensureEip1559Fees(request);
         }
@@ -104,25 +152,33 @@ final class SmartGasStrategy {
     }
 
     /**
-     * Derives {@code maxFeePerGas} and {@code maxPriorityFeePerGas} for EIP-1559 transactions using the
-     * latest {@code baseFeePerGas}. Falls back to legacy fee estimation when base fee data is unavailable.
+     * Derives {@code maxFeePerGas} and {@code maxPriorityFeePerGas} for EIP-1559
+     * transactions using the
+     * latest {@code baseFeePerGas}. Falls back to legacy fee estimation when base
+     * fee data is unavailable.
      */
     private TransactionRequest ensureEip1559Fees(final TransactionRequest request) {
         if (request.maxFeePerGas() != null && request.maxPriorityFeePerGas() != null) {
-            return request;
+            return request; // User provided both fees - don't override
         }
 
         final var latest = publicClient.getLatestBlock();
         if (latest != null && latest.baseFeePerGas() != null) {
             final Wei baseFee = latest.baseFeePerGas();
-            final Wei priority =
-                    request.maxPriorityFeePerGas() != null
-                            ? request.maxPriorityFeePerGas()
-                            : defaultPriority();
-            final Wei maxFee =
-                    request.maxFeePerGas() != null
-                            ? request.maxFeePerGas()
-                            : new Wei(baseFee.value().multiply(BASE_FEE_MULTIPLIER).add(priority.value()));
+
+            // Priority fee (miner tip): Use user value or chain default
+            final Wei priority = request.maxPriorityFeePerGas() != null
+                    ? request.maxPriorityFeePerGas()
+                    : defaultPriority();
+
+            // Max fee: (baseFee × 2) + priority
+            // The 2x multiplier protects against base fee volatility:
+            // - Base fee can increase up to 12.5% per block (EIP-1559)
+            // - 2x buffer provides headroom for several blocks of increases
+            // - If baseFee spikes, transaction won't fail with "max fee too low"
+            final Wei maxFee = request.maxFeePerGas() != null
+                    ? request.maxFeePerGas()
+                    : new Wei(baseFee.value().multiply(BASE_FEE_MULTIPLIER).add(priority.value()));
 
             return copyWithGasFields(
                     request,
@@ -133,9 +189,10 @@ final class SmartGasStrategy {
                     true);
         }
 
-        // Fallback to legacy path when base fee is missing
-        final TransactionRequest legacy =
-                copyWithGasFields(request, request.gasLimit(), request.gasPrice(), null, null, false);
+        // Fallback: If node doesn't provide baseFee (non-EIP-1559 chain), use legacy
+        // pricing
+        final TransactionRequest legacy = copyWithGasFields(request, request.gasLimit(), request.gasPrice(), null, null,
+                false);
         return ensureLegacyFees(legacy);
     }
 
@@ -205,7 +262,7 @@ final class SmartGasStrategy {
         final Map<String, Object> tx = new LinkedHashMap<>();
         tx.put("from", request.from().value());
         request.toOpt().ifPresent(address -> tx.put("to", address.value()));
-        request.valueOpt().ifPresent(v -> tx.put("value", toQuantityHex(v.value())));
+        request.valueOpt().ifPresent(v -> tx.put("value", RpcUtils.toQuantityHex(v.value())));
         if (request.data() != null) {
             tx.put("data", request.data().value());
         }
@@ -227,10 +284,6 @@ final class SmartGasStrategy {
                             return map;
                         })
                 .toList();
-    }
-
-    private String toQuantityHex(final BigInteger value) {
-        return "0x" + value.toString(16);
     }
 
     private BigInteger requirePositive(final BigInteger value, final String name) {

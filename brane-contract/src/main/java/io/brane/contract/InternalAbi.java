@@ -62,8 +62,7 @@ final class InternalAbi implements Abi {
         }
 
         final List<TypeReference<?>> outputTypes = buildOutputs(fn.outputs());
-        final Function function =
-                new Function(fn.name(), encodedInputs, new ArrayList<>(outputTypes));
+        final Function function = new Function(fn.name(), encodedInputs, new ArrayList<>(outputTypes));
         final String data = FunctionEncoder.encode(function);
         return new Call(fn, function, data, outputTypes);
     }
@@ -200,16 +199,16 @@ final class InternalAbi implements Abi {
             case BigInteger bi -> ensureSign(bi, signed);
             case Number number -> ensureSign(BigInteger.valueOf(number.longValue()), signed);
             case null ->
-                    throw new AbiEncodingException(
-                            "Expected numeric value for "
-                                    + (signed ? "int256" : "uint256")
-                                    + " but got null");
+                throw new AbiEncodingException(
+                        "Expected numeric value for "
+                                + (signed ? "int256" : "uint256")
+                                + " but got null");
             default ->
-                    throw new AbiEncodingException(
-                            "Expected numeric value for "
-                                    + (signed ? "int256" : "uint256")
-                                    + " but got "
-                                    + value.getClass().getSimpleName());
+                throw new AbiEncodingException(
+                        "Expected numeric value for "
+                                + (signed ? "int256" : "uint256")
+                                + " but got "
+                                + value.getClass().getSimpleName());
         };
     }
 
@@ -333,13 +332,13 @@ final class InternalAbi implements Abi {
         return value;
     }
 
-    private record AbiParameter(String name, String type, boolean indexed) {}
+    private record AbiParameter(String name, String type, boolean indexed) {
+    }
 
     private record AbiFunction(
             String name, String stateMutability, List<AbiParameter> inputs, List<AbiParameter> outputs) {
         String signature() {
-            final String joined =
-                    inputs.stream().map(AbiParameter::type).collect(Collectors.joining(","));
+            final String joined = inputs.stream().map(AbiParameter::type).collect(Collectors.joining(","));
             return name + "(" + joined + ")";
         }
 
@@ -352,8 +351,7 @@ final class InternalAbi implements Abi {
 
     private record AbiEvent(String name, List<AbiParameter> inputs) {
         String signature() {
-            final String joined =
-                    inputs.stream().map(AbiParameter::type).collect(Collectors.joining(","));
+            final String joined = inputs.stream().map(AbiParameter::type).collect(Collectors.joining(","));
             return name + "(" + joined + ")";
         }
     }
@@ -361,7 +359,8 @@ final class InternalAbi implements Abi {
     private record ParsedAbi(
             Map<String, AbiFunction> functionsByName,
             Map<String, AbiFunction> functionsBySignature,
-            Map<String, AbiEvent> eventsBySignature) {}
+            Map<String, AbiEvent> eventsBySignature) {
+    }
 
     @Override
     public <T> List<T> decodeEvents(
@@ -370,10 +369,9 @@ final class InternalAbi implements Abi {
             final Class<T> eventType) {
         Objects.requireNonNull(eventName, "eventName");
         Objects.requireNonNull(logs, "logs");
-        final List<AbiEvent> matching =
-                eventsBySignature.values().stream()
-                        .filter(ev -> ev.name().equals(eventName))
-                        .toList();
+        final List<AbiEvent> matching = eventsBySignature.values().stream()
+                .filter(ev -> ev.name().equals(eventName))
+                .toList();
         if (matching.isEmpty()) {
             throw new AbiDecodingException("Unknown event '" + eventName + "'");
         }
@@ -413,8 +411,7 @@ final class InternalAbi implements Abi {
                 final String topic = log.topics().get(topicIdx).value();
                 try {
                     @SuppressWarnings("unchecked")
-                    final TypeReference<Type> ref =
-                            (TypeReference<Type>) TypeReference.makeTypeReference(param.type());
+                    final TypeReference<Type> ref = (TypeReference<Type>) TypeReference.makeTypeReference(param.type());
                     final Type decoded = TypeDecoder.decode(topic, ref.getClassType());
                     values.add(toJavaValue(decoded));
                 } catch (Exception e) {
@@ -424,8 +421,7 @@ final class InternalAbi implements Abi {
             } else {
                 try {
                     @SuppressWarnings("unchecked")
-                    final TypeReference<Type> ref =
-                            (TypeReference<Type>) TypeReference.makeTypeReference(param.type());
+                    final TypeReference<Type> ref = (TypeReference<Type>) TypeReference.makeTypeReference(param.type());
                     nonIndexed.add(ref);
                 } catch (ClassNotFoundException e) {
                     throw new AbiDecodingException("Unsupported non-indexed type '" + param.type() + "'", e);
@@ -434,8 +430,7 @@ final class InternalAbi implements Abi {
         }
 
         if (!nonIndexed.isEmpty()) {
-            final List<Type> decoded =
-                    FunctionReturnDecoder.decode(log.data().value(), castNonIndexed(nonIndexed));
+            final List<Type> decoded = FunctionReturnDecoder.decode(log.data().value(), castNonIndexed(nonIndexed));
             for (Type t : decoded) {
                 values.add(toJavaValue(t));
             }
@@ -475,7 +470,7 @@ final class InternalAbi implements Abi {
             case Utf8String s -> s.getValue();
             case DynamicBytes dyn -> new HexData("0x" + Numeric.toHexStringNoPrefix(dyn.getValue()));
             case io.brane.internal.web3j.abi.datatypes.Bytes bytes ->
-                    new HexData("0x" + Numeric.toHexStringNoPrefix(bytes.getValue()));
+                new HexData("0x" + Numeric.toHexStringNoPrefix(bytes.getValue()));
             case Array<?> array -> {
                 final List<Object> list = new ArrayList<>();
                 for (Type t : array.getValue()) {
@@ -531,22 +526,17 @@ final class InternalAbi implements Abi {
                 }
 
                 @SuppressWarnings("unchecked")
-                final List<Type> decoded =
-                        (List<Type>)
-                                (List<?>)
-                                        FunctionReturnDecoder.decode(
-                                                rawResultHex,
-                                                (List<TypeReference<Type>>)
-                                                        (List<?>) outputTypes);
+                final List<Type> decoded = (List<Type>) (List<?>) FunctionReturnDecoder.decode(
+                        rawResultHex,
+                        (List<TypeReference<Type>>) (List<?>) outputTypes);
                 if (decoded == null || decoded.isEmpty()) {
                     throw new AbiDecodingException("No values decoded for " + abiFunction.name());
                 }
 
                 if (decoded.size() > 1) {
-                    final List<Object> mapped =
-                            decoded.stream()
-                                    .map(value -> mapValue(value, Object.class))
-                                    .collect(Collectors.toList());
+                    final List<Object> mapped = decoded.stream()
+                            .map(value -> mapValue(value, Object.class))
+                            .toList();
                     if (returnType == Object[].class) {
                         @SuppressWarnings("unchecked")
                         final T cast = (T) mapped.toArray();
@@ -602,7 +592,7 @@ final class InternalAbi implements Abi {
                 case Utf8String utf8 -> mapUtf8(utf8, targetType);
                 case DynamicBytes dynBytes -> mapBytes(dynBytes.getValue(), targetType);
                 case io.brane.internal.web3j.abi.datatypes.Bytes bytesType ->
-                        mapBytes(bytesType.getValue(), targetType);
+                    mapBytes(bytesType.getValue(), targetType);
                 case Array<?> array -> mapArray(array, targetType);
                 case Uint256 uint -> coerceNumber((BigInteger) uint.getValue(), targetType);
                 case Int256 sint -> coerceNumber((BigInteger) sint.getValue(), targetType);
@@ -638,7 +628,7 @@ final class InternalAbi implements Abi {
         private static Object mapBytes(final byte[] bytes, final Class<?> targetType) {
             return switch (targetType) {
                 case Class<?> c when c == HexData.class || c == Object.class ->
-                        new HexData("0x" + Numeric.toHexStringNoPrefix(bytes));
+                    new HexData("0x" + Numeric.toHexStringNoPrefix(bytes));
                 case Class<?> c when c == byte[].class -> bytes;
                 default -> throw new AbiDecodingException("Cannot map bytes to " + targetType.getName());
             };

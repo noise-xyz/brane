@@ -18,7 +18,7 @@ import io.brane.core.types.Wei;
 import io.brane.internal.web3j.crypto.AccessListObject;
 import io.brane.internal.web3j.crypto.RawTransaction;
 import io.brane.internal.web3j.utils.Numeric;
-import java.lang.reflect.Array;
+import io.brane.rpc.internal.RpcUtils;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
@@ -27,7 +27,39 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicReference;
 
+/**
+ * Default implementation of {@link WalletClient} with automatic transaction
+ * preparation.
+ * 
+ * <p>
+ * This class implements the complete transaction lifecycle:
+ * <ol>
+ * <li>Fills missing gas parameters via {@link SmartGasStrategy}</li>
+ * <li>Fetches nonce via {@code eth_getTransactionCount} if not provided</li>
+ * <li>Signs the transaction using {@link TransactionSigner}</li>
+ * <li>Broadcasts via {@code eth_sendRawTransaction}</li>
+ * <li>Optionally polls for receipt via {@code eth_getTransactionReceipt}</li>
+ * </ol>
+ * 
+ * <p>
+ * <strong>Chain ID Enforcement:</strong> Validates that the configured chain ID
+ * matches the connected node's chain ID on first transaction. Caches the result
+ * using {@link AtomicReference} for thread-safe lazy initialization.
+ * 
+ * <p>
+ * <strong>Thread Safety:</strong> This class is thread-safe. Multiple threads
+ * can submit transactions concurrently.
+ * 
+ * <p>
+ * <strong>Usage:</strong> Typically created via a builder pattern, not
+ * instantiated directly.
+ * 
+ * @see WalletClient
+ * @see SmartGasStrategy
+ * @see TransactionSigner
+ */
 public final class DefaultWalletClient implements WalletClient {
 
     private final BraneProvider provider;
@@ -38,7 +70,7 @@ public final class DefaultWalletClient implements WalletClient {
     private final ChainProfile chainProfile;
     private final SmartGasStrategy gasStrategy;
     private final ObjectMapper mapper = new ObjectMapper();
-    private Long cachedChainId;
+    private final AtomicReference<Long> cachedChainId = new AtomicReference<>();
 
     private DefaultWalletClient(
             final BraneProvider provider,
@@ -64,8 +96,7 @@ public final class DefaultWalletClient implements WalletClient {
             final Address senderAddress,
             final long expectedChainId,
             final ChainProfile chainProfile) {
-        final SmartGasStrategy gasStrategy =
-                new SmartGasStrategy(publicClient, provider, chainProfile);
+        final SmartGasStrategy gasStrategy = new SmartGasStrategy(publicClient, provider, chainProfile);
         return new DefaultWalletClient(
                 provider, publicClient, signer, senderAddress, expectedChainId, chainProfile, gasStrategy);
     }
@@ -79,9 +110,8 @@ public final class DefaultWalletClient implements WalletClient {
             final ChainProfile chainProfile,
             final BigInteger gasLimitBufferNumerator,
             final BigInteger gasLimitBufferDenominator) {
-        final SmartGasStrategy gasStrategy =
-                new SmartGasStrategy(
-                        publicClient, provider, chainProfile, gasLimitBufferNumerator, gasLimitBufferDenominator);
+        final SmartGasStrategy gasStrategy = new SmartGasStrategy(
+                publicClient, provider, chainProfile, gasLimitBufferNumerator, gasLimitBufferDenominator);
         return new DefaultWalletClient(
                 provider,
                 publicClient,
@@ -98,8 +128,7 @@ public final class DefaultWalletClient implements WalletClient {
             final TransactionSigner signer,
             final Address senderAddress,
             final long expectedChainId) {
-        final ChainProfile profile =
-                ChainProfile.of(expectedChainId, null, true, Wei.of(1_000_000_000L));
+        final ChainProfile profile = ChainProfile.of(expectedChainId, null, true, Wei.of(1_000_000_000L));
         return from(provider, publicClient, signer, senderAddress, expectedChainId, profile);
     }
 
@@ -109,8 +138,7 @@ public final class DefaultWalletClient implements WalletClient {
             final TransactionSigner signer,
             final Address senderAddress,
             final ChainProfile chainProfile) {
-        final SmartGasStrategy gasStrategy =
-                new SmartGasStrategy(publicClient, provider, chainProfile);
+        final SmartGasStrategy gasStrategy = new SmartGasStrategy(publicClient, provider, chainProfile);
         return new DefaultWalletClient(
                 provider, publicClient, signer, senderAddress, 0L, chainProfile, gasStrategy);
     }
@@ -149,36 +177,33 @@ public final class DefaultWalletClient implements WalletClient {
         final Address from = request.from() != null ? request.from() : senderAddress;
         final TransactionRequest withDefaults = gasStrategy.applyDefaults(request, from);
 
-        final BigInteger nonce =
-                withDefaults.nonceOpt().map(BigInteger::valueOf).orElseGet(() -> fetchNonce(from));
+        final BigInteger nonce = withDefaults.nonceOpt().map(BigInteger::valueOf).orElseGet(() -> fetchNonce(from));
 
-        final BigInteger gasLimit =
-                withDefaults
-                        .gasLimitOpt()
-                        .map(BigInteger::valueOf)
-                        .orElseGet(() -> estimateGas(withDefaults, from));
+        final BigInteger gasLimit = withDefaults
+                .gasLimitOpt()
+                .map(BigInteger::valueOf)
+                .orElseGet(() -> estimateGas(withDefaults, from));
 
         final ValueParts valueParts = buildValueParts(withDefaults, from);
 
-        final RawTransaction rawTx =
-                valueParts.isEip1559
-                        ? RawTransaction.createTransaction(
-                                chainId,
-                                nonce,
-                                gasLimit,
-                                valueParts.to,
-                                valueParts.value,
-                                valueParts.data,
-                                valueParts.maxPriorityFeePerGas,
-                                valueParts.maxFeePerGas,
-                                toAccessListObjects(withDefaults))
-                        : RawTransaction.createTransaction(
-                                nonce,
-                                valueParts.gasPrice,
-                                gasLimit,
-                                valueParts.to,
-                                valueParts.value,
-                                valueParts.data);
+        final RawTransaction rawTx = valueParts.isEip1559
+                ? RawTransaction.createTransaction(
+                        chainId,
+                        nonce,
+                        gasLimit,
+                        valueParts.to,
+                        valueParts.value,
+                        valueParts.data,
+                        valueParts.maxPriorityFeePerGas,
+                        valueParts.maxFeePerGas,
+                        toAccessListObjects(withDefaults))
+                : RawTransaction.createTransaction(
+                        nonce,
+                        valueParts.gasPrice,
+                        gasLimit,
+                        valueParts.to,
+                        valueParts.value,
+                        valueParts.data);
 
         DebugLogger.log(
                 "[TX-SEND] from=%s to=%s nonce=%s gasLimit=%s value=%s",
@@ -240,11 +265,10 @@ public final class DefaultWalletClient implements WalletClient {
     }
 
     private TransactionReceipt fetchReceipt(final Hash hash) {
-        final JsonRpcResponse response =
-                provider.send("eth_getTransactionReceipt", List.of(hash.value()));
+        final JsonRpcResponse response = provider.send("eth_getTransactionReceipt", List.of(hash.value()));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), null, null);
+            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), null, null);
         }
         final Object result = response.result();
         if (result == null) {
@@ -253,17 +277,16 @@ public final class DefaultWalletClient implements WalletClient {
 
         @SuppressWarnings("unchecked")
         final Map<String, Object> map = mapper.convertValue(result, Map.class);
-        final String statusHex = stringValue(map.get("status"));
-        final boolean status =
-                statusHex != null && !statusHex.isBlank() && !statusHex.equalsIgnoreCase("0x0");
-        final String txHash = stringValue(map.get("transactionHash"));
-        final String blockHash = stringValue(map.get("blockHash"));
-        final Long blockNumber = decodeHexLong(map.get("blockNumber"));
-        final String fromHex = stringValue(map.get("from"));
-        final String toHex = stringValue(map.get("to"));
-        final String contractAddress = stringValue(map.get("contractAddress"));
+        final String statusHex = RpcUtils.stringValue(map.get("status"));
+        final boolean status = statusHex != null && !statusHex.isBlank() && !statusHex.equalsIgnoreCase("0x0");
+        final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
+        final String blockHash = RpcUtils.stringValue(map.get("blockHash"));
+        final Long blockNumber = RpcUtils.decodeHexLong(map.get("blockNumber"));
+        final String fromHex = RpcUtils.stringValue(map.get("from"));
+        final String toHex = RpcUtils.stringValue(map.get("to"));
+        final String contractAddress = RpcUtils.stringValue(map.get("contractAddress"));
         final List<LogEntry> logs = parseLogs(map.get("logs"));
-        final String cumulativeGasUsed = stringValue(map.get("cumulativeGasUsed"));
+        final String cumulativeGasUsed = RpcUtils.stringValue(map.get("cumulativeGasUsed"));
 
         return new TransactionReceipt(
                 txHash != null ? new Hash(txHash) : null,
@@ -274,7 +297,7 @@ public final class DefaultWalletClient implements WalletClient {
                 contractAddress != null ? new HexData(contractAddress) : HexData.EMPTY,
                 logs,
                 status,
-                cumulativeGasUsed != null ? new Wei(decodeHexBigInteger(cumulativeGasUsed)) : null);
+                cumulativeGasUsed != null ? new Wei(RpcUtils.decodeHexBigInteger(cumulativeGasUsed)) : null);
     }
 
     private List<LogEntry> parseLogs(final Object value) {
@@ -285,11 +308,11 @@ public final class DefaultWalletClient implements WalletClient {
         final List<Map<String, Object>> rawLogs = mapper.convertValue(value, List.class);
         final List<LogEntry> logs = new ArrayList<>(rawLogs.size());
         for (Map<String, Object> log : rawLogs) {
-            final String address = stringValue(log.get("address"));
-            final String data = stringValue(log.get("data"));
-            final String blockHash = stringValue(log.get("blockHash"));
-            final String txHash = stringValue(log.get("transactionHash"));
-            final Long logIndex = decodeHexLong(log.get("logIndex"));
+            final String address = RpcUtils.stringValue(log.get("address"));
+            final String data = RpcUtils.stringValue(log.get("data"));
+            final String blockHash = RpcUtils.stringValue(log.get("blockHash"));
+            final String txHash = RpcUtils.stringValue(log.get("transactionHash"));
+            final Long logIndex = RpcUtils.decodeHexLong(log.get("logIndex"));
             @SuppressWarnings("unchecked")
             final List<String> topicsHex = mapper.convertValue(log.get("topics"), List.class);
             final List<Hash> topics = new ArrayList<>();
@@ -319,18 +342,15 @@ public final class DefaultWalletClient implements WalletClient {
         final boolean has1559 = request.isEip1559();
 
         if (has1559) {
-            final BigInteger maxFee =
-                    request.maxFeePerGas() != null ? request.maxFeePerGas().value() : fetchGasPrice();
-            final BigInteger maxPriority =
-                    request.maxPriorityFeePerGas() != null
-                            ? request.maxPriorityFeePerGas().value()
-                            : maxFee;
+            final BigInteger maxFee = request.maxFeePerGas() != null ? request.maxFeePerGas().value() : fetchGasPrice();
+            final BigInteger maxPriority = request.maxPriorityFeePerGas() != null
+                    ? request.maxPriorityFeePerGas().value()
+                    : maxFee;
             return new ValueParts(
                     to, value, data, true, null, maxPriority, maxFee);
         }
 
-        final BigInteger gasPrice =
-                request.gasPrice() != null ? request.gasPrice().value() : fetchGasPrice();
+        final BigInteger gasPrice = request.gasPrice() != null ? request.gasPrice().value() : fetchGasPrice();
         return new ValueParts(to, value, data, false, gasPrice, null, null);
     }
 
@@ -340,8 +360,7 @@ public final class DefaultWalletClient implements WalletClient {
     }
 
     private BigInteger fetchNonce(final Address from) {
-        final String result =
-                callRpc("eth_getTransactionCount", List.of(from.value(), "pending"), String.class, null);
+        final String result = callRpc("eth_getTransactionCount", List.of(from.value(), "pending"), String.class, null);
         return Numeric.decodeQuantity(result);
     }
 
@@ -349,7 +368,7 @@ public final class DefaultWalletClient implements WalletClient {
         final Map<String, Object> tx = new LinkedHashMap<>();
         tx.put("from", from.value());
         request.toOpt().ifPresent(address -> tx.put("to", address.value()));
-        request.valueOpt().ifPresent(v -> tx.put("value", toQuantityHex(v.value())));
+        request.valueOpt().ifPresent(v -> tx.put("value", RpcUtils.toQuantityHex(v.value())));
         if (request.data() != null) {
             tx.put("data", request.data().value());
         }
@@ -371,12 +390,13 @@ public final class DefaultWalletClient implements WalletClient {
     }
 
     private long enforceChainId() {
-        if (cachedChainId != null) {
-            return cachedChainId;
+        final Long cached = cachedChainId.get();
+        if (cached != null) {
+            return cached;
         }
         final String chainIdHex = callRpc("eth_chainId", List.of(), String.class, null);
         final long actual = Numeric.decodeQuantity(chainIdHex).longValue();
-        cachedChainId = actual;
+        cachedChainId.set(actual);
         if (expectedChainId > 0 && expectedChainId != actual) {
             throw new ChainMismatchException(expectedChainId, actual);
         }
@@ -386,22 +406,21 @@ public final class DefaultWalletClient implements WalletClient {
     private <T> T callRpc(
             final String method, final List<?> params, final Class<T> responseType, final T defaultValue) {
         try {
-            final JsonRpcResponse response =
-                    RpcRetry.run(
-                            () -> {
-                                final JsonRpcResponse res = provider.send(method, params);
-                                if (res.hasError()) {
-                                    final JsonRpcError err = res.error();
-                throw new RpcException(
-                        err.code(),
-                        err.message(),
-                        extractErrorData(err.data()),
-                        null,
-                        null);
-                                }
-                                return res;
-                            },
-                            3);
+            final JsonRpcResponse response = RpcRetry.run(
+                    () -> {
+                        final JsonRpcResponse res = provider.send(method, params);
+                        if (res.hasError()) {
+                            final JsonRpcError err = res.error();
+                            throw new RpcException(
+                                    err.code(),
+                                    err.message(),
+                                    RpcUtils.extractErrorData(err.data()),
+                                    null,
+                                    null);
+                        }
+                        return res;
+                    },
+                    3);
 
             final Object result = response.result();
             if (result == null) {
@@ -414,72 +433,14 @@ public final class DefaultWalletClient implements WalletClient {
         }
     }
 
-    private String extractErrorData(final Object dataValue) {
-        return switch (dataValue) {
-            case null -> null;
-            case String s when s.trim().startsWith("0x") -> s;
-            case Map<?, ?> map -> extractFromIterable(map.values(), dataValue);
-            case Iterable<?> iterable -> extractFromIterable(iterable, dataValue);
-            case Object array when dataValue.getClass().isArray() -> extractFromArray(array, dataValue);
-            default -> dataValue.toString();
-        };
-    }
-
-    private String extractFromIterable(final Iterable<?> iterable, final Object fallback) {
-        for (Object value : iterable) {
-            final String nested = extractErrorData(value);
-            if (nested != null) {
-                return nested;
-            }
-        }
-        return fallback.toString();
-    }
-
-    private String extractFromArray(final Object array, final Object fallback) {
-        final int length = Array.getLength(array);
-        for (int i = 0; i < length; i++) {
-            final String nested = extractErrorData(Array.get(array, i));
-            if (nested != null) {
-                return nested;
-            }
-        }
-        return fallback.toString();
-    }
-
-    private String stringValue(final Object value) {
-        return value != null ? value.toString() : null;
-    }
-
-    private Long decodeHexLong(final Object value) {
-        final String hex = stringValue(value);
-        if (hex == null || hex.isEmpty()) {
-            return null;
-        }
-        final String normalized = hex.startsWith("0x") ? hex.substring(2) : hex;
-        if (normalized.isEmpty()) {
-            return 0L;
-        }
-        return new BigInteger(normalized, 16).longValue();
-    }
-
-    private BigInteger decodeHexBigInteger(final String hex) {
-        if (hex == null || hex.isEmpty()) {
-            return BigInteger.ZERO;
-        }
-        final String normalized = hex.startsWith("0x") ? hex.substring(2) : hex;
-        if (normalized.isEmpty()) {
-            return BigInteger.ZERO;
-        }
-        return new BigInteger(normalized, 16);
-    }
-
     private List<AccessListObject> toAccessListObjects(final TransactionRequest request) {
         if (request.accessList() == null || request.accessList().isEmpty()) {
             return List.of();
         }
         final List<AccessListObject> objects = new ArrayList<>(request.accessList().size());
         for (var entry : request.accessList()) {
-            objects.add(new AccessListObject(entry.address().value(), entry.storageKeys().stream().map(Hash::value).toList()));
+            objects.add(new AccessListObject(entry.address().value(),
+                    entry.storageKeys().stream().map(Hash::value).toList()));
         }
         return objects;
     }
@@ -495,10 +456,6 @@ public final class DefaultWalletClient implements WalletClient {
         return list;
     }
 
-    private String toQuantityHex(final BigInteger value) {
-        return "0x" + value.toString(16);
-    }
-
     private record ValueParts(
             String to,
             BigInteger value,
@@ -506,7 +463,8 @@ public final class DefaultWalletClient implements WalletClient {
             boolean isEip1559,
             BigInteger gasPrice,
             BigInteger maxPriorityFeePerGas,
-            BigInteger maxFeePerGas) {}
+            BigInteger maxFeePerGas) {
+    }
 
     private static void handlePotentialRevert(final RpcException e, final Hash hash)
             throws RevertException {
@@ -516,7 +474,8 @@ public final class DefaultWalletClient implements WalletClient {
             // Always throw RevertException for revert data, even if kind is UNKNOWN
             // (UNKNOWN just means we couldn't decode it, but it's still a revert)
             DebugLogger.log(
-                    "[TX-REVERT] hash=%s kind=%s reason=%s", hash != null ? hash.value() : "unknown", decoded.kind(), decoded.reason());
+                    "[TX-REVERT] hash=%s kind=%s reason=%s", hash != null ? hash.value() : "unknown", decoded.kind(),
+                    decoded.reason());
             throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), e);
         }
     }

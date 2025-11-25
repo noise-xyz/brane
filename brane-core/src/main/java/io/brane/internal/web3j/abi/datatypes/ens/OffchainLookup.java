@@ -15,7 +15,6 @@ package io.brane.internal.web3j.abi.datatypes.ens;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import io.brane.internal.web3j.abi.FunctionReturnDecoder;
 import io.brane.internal.web3j.abi.TypeReference;
@@ -48,11 +47,16 @@ public class OffchainLookup extends DynamicStruct {
     static {
         outputParameters.addAll(
                 Arrays.asList(
-                        new TypeReference<Address>() {},
-                        new TypeReference<DynamicArray<Utf8String>>() {},
-                        new TypeReference<DynamicBytes>() {},
-                        new TypeReference<Bytes4>() {},
-                        new TypeReference<DynamicBytes>() {}));
+                        new TypeReference<Address>() {
+                        },
+                        new TypeReference<DynamicArray<Utf8String>>() {
+                        },
+                        new TypeReference<DynamicBytes>() {
+                        },
+                        new TypeReference<Bytes4>() {
+                        },
+                        new TypeReference<DynamicBytes>() {
+                        }));
     }
 
     public OffchainLookup(
@@ -65,7 +69,7 @@ public class OffchainLookup extends DynamicStruct {
                 new Address(sender),
                 new DynamicArray<>(
                         Utf8String.class,
-                        urls.stream().map(Utf8String::new).collect(Collectors.toList())),
+                        urls.stream().map(Utf8String::new).toList()),
                 new DynamicBytes(callbackFunction),
                 new Bytes4(callData),
                 new DynamicBytes(extraData));
@@ -84,15 +88,14 @@ public class OffchainLookup extends DynamicStruct {
             DynamicBytes extraData) {
         super(sender, urls, callData, callbackFunction, extraData);
         this.sender = sender.getValue();
-        this.urls = urls.getValue().stream().map(Utf8String::getValue).collect(Collectors.toList());
+        this.urls = urls.getValue().stream().map(Utf8String::getValue).toList();
         this.callData = callData.getValue();
         this.callbackFunction = callbackFunction.getValue();
         this.extraData = extraData.getValue();
     }
 
     public static OffchainLookup build(byte[] bytes) {
-        List<Type> resultList =
-                FunctionReturnDecoder.decode(Numeric.toHexString(bytes), outputParameters);
+        List<Type> resultList = FunctionReturnDecoder.decode(Numeric.toHexString(bytes), outputParameters);
 
         return new OffchainLookup(
                 (Address) resultList.get(0),

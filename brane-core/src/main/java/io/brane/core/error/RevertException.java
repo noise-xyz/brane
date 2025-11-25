@@ -1,7 +1,39 @@
 package io.brane.core.error;
 
 /**
- * Exception describing an EVM revert.
+ * Exception thrown when an Ethereum Virtual Machine (EVM) transaction reverts.
+ * 
+ * <p>
+ * A revert occurs when a smart contract explicitly rejects a transaction using
+ * {@code revert()}, {@code require()}, or {@code assert()} in Solidity, or when
+ * the EVM encounters an error condition during execution.
+ * 
+ * <p>
+ * <strong>Revert Types
+ * ({@link io.brane.core.RevertDecoder.RevertKind}):</strong>
+ * <ul>
+ * <li><strong>ERROR</strong>: Standard {@code Error(string)} revert with reason
+ * string</li>
+ * <li><strong>PANIC</strong>: Solidity {@code Panic(uint256)} - assertion
+ * failures, division by zero, etc.</li>
+ * <li><strong>CUSTOM</strong>: Custom error (Solidity custom errors)</li>
+ * <li><strong>UNKNOWN</strong>: Unrecognized revert data format</li>
+ * </ul>
+ * 
+ * <p>
+ * <strong>Usage:</strong>
+ * 
+ * <pre>{@code
+ * try {
+ *     receipt = client.sendTransactionAndWait(request);
+ * } catch (RevertException e) {
+ *     System.err.println("Contract reverted: " + e.revertReason());
+ *     System.err.println("Revert type: " + e.kind());
+ *     System.err.println("Raw data: " + e.rawDataHex());
+ * }
+ * }</pre>
+ * 
+ * @see io.brane.core.RevertDecoder
  */
 public final class RevertException extends BraneException {
 
