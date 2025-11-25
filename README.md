@@ -35,48 +35,46 @@ Add the necessary dependencies to your Maven or Gradle project:
 </dependencies>
 ````
 
-Here's an example of how to interact with a smart contract:
+### 1. High-Level: Type-Safe Contract Binding
+The idiomatic way to interact with contracts. Define a Java interface and bind it:
 
 ```java
-import io.brane.contract.Abi;
-import io.brane.contract.Contract;
-import io.brane.core.error.RevertException;
-import io.brane.core.error.RpcException;
-import io.brane.core.chain.ChainProfiles;
-import io.brane.core.types.Address;
-import io.brane.rpc.Client;
-import io.brane.rpc.BranePublicClient;
-import io.brane.rpc.HttpClient;
-import java.math.BigInteger;
-import java.net.URI;
-
-Client client = new HttpClient(URI.create("http://127.0.0.1:8545"));
-Abi abi = Abi.fromJson(MY_CONTRACT_ABI);
-Contract contract = new Contract(new Address(MY_CONTRACT_ADDRESS), abi, client);
-
-try {
-    BigInteger balance = contract.read("balanceOf", BigInteger.class, userAddress);
-    System.out.println("Balance: " + balance);
-} catch (RevertException e) {
-    // Contract-level execution failure (EVM revert)
-    System.err.println("Reverted: " + e.revertReason()); // Decoded Error(string) reason
-    System.err.println("Raw Data: " + e.rawDataHex());   // Full revert payload
-} catch (RpcException e) {
-    // JSON-RPC / Node-level communication failure
-    System.err.println("RPC error: " + e.code() + " " + e.getMessage());
+// 1. Define interface matching ABI
+public interface Erc20 {
+    BigInteger balanceOf(Address account);
+    TransactionReceipt transfer(Address to, BigInteger value);
 }
 
-// Performing a write call using the default Anvil key:
-Signer signer = new PrivateKeySigner("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
-String txHash = contract.write(signer, "setValue", BigInteger.valueOf(1337));
-System.out.println("sent tx: " + txHash);
+// 2. Bind to deployed contract
+Erc20 token = BraneContract.bind(
+    new Address("0x..."),
+    ERC20_ABI_JSON,
+    publicClient,
+    walletClient,
+    Erc20.class
+);
 
-// Build a read-only client from a typed chain profile
-BranePublicClient baseSepolia = BranePublicClient
-        .forChain(ChainProfiles.BASE_SEPOLIA)
-        .withRpcUrl("https://sepolia.base.org") // override the default if needed
-        .build();
-System.out.println("Base Sepolia chainId: " + baseSepolia.profile().chainId);
+// 3. Call methods (View & Write)
+BigInteger balance = token.balanceOf(myAddress);
+TransactionReceipt receipt = token.transfer(recipient, BigInteger.valueOf(100));
+```
+
+### 2. Low-Level: Raw RPC & Transactions
+For direct control over RPC calls and transaction building:
+
+```java
+// 1. Direct RPC calls
+BlockHeader block = publicClient.getLatestBlock();
+System.out.println("Block: " + block.number());
+
+// 2. Build & Send Transaction (EIP-1559)
+TransactionRequest tx = TxBuilder.eip1559()
+    .to(recipient)
+    .value(Wei.fromEther(new BigDecimal("0.001")))
+    .build(); // Gas & Fees auto-filled
+
+// Send and wait for confirmation
+TransactionReceipt receipt = walletClient.sendTransactionAndWait(tx, 60_000, 1_000);
 ```
 
 ### 🪛 Debug Mode & RPC Logging
