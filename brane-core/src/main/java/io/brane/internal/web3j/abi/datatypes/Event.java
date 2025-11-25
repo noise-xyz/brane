@@ -13,7 +13,6 @@
 package io.brane.internal.web3j.abi.datatypes;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 import io.brane.internal.web3j.abi.TypeReference;
 
@@ -38,10 +37,10 @@ public class Event {
     }
 
     public List<TypeReference<Type>> getIndexedParameters() {
-        return parameters.stream().filter(TypeReference::isIndexed).collect(Collectors.toList());
+        return parameters.stream().filter(TypeReference::isIndexed).toList();
     }
 
     public List<TypeReference<Type>> getNonIndexedParameters() {
-        return parameters.stream().filter(p -> !p.isIndexed()).collect(Collectors.toList());
+        return parameters.stream().filter(p -> !p.isIndexed()).toList();
     }
 }

@@ -9,6 +9,45 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+/**
+ * High-level {@link PublicClient} implementation with built-in chain
+ * configuration.
+ * 
+ * <p>
+ * This is the recommended way to create a {@link PublicClient} for well-known
+ * chains.
+ * It combines:
+ * <ul>
+ * <li>Chain-specific configuration ({@link ChainProfile})</li>
+ * <li>Automatic RPC URL configuration (with override support)</li>
+ * <li>Fluent builder API for easy setup</li>
+ * </ul>
+ * 
+ * <p>
+ * <strong>Thread Safety:</strong> This class is immutable and thread-safe once
+ * built.
+ * 
+ * <p>
+ * <strong>Usage Example:</strong>
+ * 
+ * <pre>{@code
+ * // Use default RPC URL from chain profile
+ * PublicClient client = BranePublicClient.forChain(ChainProfiles.MAINNET)
+ *         .build();
+ * 
+ * // Override RPC URL (e.g., use Infura or Alchemy)
+ * PublicClient client = BranePublicClient.forChain(ChainProfiles.MAINNET)
+ *         .withRpcUrl("https://mainnet.infura.io/v3/YOUR_KEY")
+ *         .build();
+ * 
+ * // Access chain profile
+ * BranePublicClient braneClient = (BranePublicClient) client;
+ * System.out.println("Chain ID: " + braneClient.profile().chainId());
+ * }</pre>
+ * 
+ * @see PublicClient
+ * @see ChainProfile
+ */
 public final class BranePublicClient implements PublicClient {
     private final PublicClient delegate;
     private final ChainProfile profile;
@@ -18,10 +57,21 @@ public final class BranePublicClient implements PublicClient {
         this.profile = profile;
     }
 
+    /**
+     * Returns the chain profile for this client.
+     * 
+     * @return the chain configuration
+     */
     public ChainProfile profile() {
         return profile;
     }
 
+    /**
+     * Creates a new builder for the specified chain.
+     * 
+     * @param profile the chain profile (e.g., {@code ChainProfiles.MAINNET})
+     * @return a new builder instance
+     */
     public static Builder forChain(final ChainProfile profile) {
         return new Builder(profile);
     }
@@ -65,8 +115,7 @@ public final class BranePublicClient implements PublicClient {
         }
 
         public BranePublicClient build() {
-            final String rpcUrl =
-                    rpcUrlOverride != null ? rpcUrlOverride : profile.defaultRpcUrl();
+            final String rpcUrl = rpcUrlOverride != null ? rpcUrlOverride : profile.defaultRpcUrl();
 
             if (rpcUrl == null || rpcUrl.isBlank()) {
                 throw new IllegalStateException(

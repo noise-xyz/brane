@@ -16,7 +16,6 @@ import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import io.brane.internal.web3j.abi.datatypes.Address;
 import io.brane.internal.web3j.abi.datatypes.Array;
@@ -42,12 +41,15 @@ import static io.brane.internal.web3j.abi.datatypes.Type.MAX_BIT_LENGTH;
 import static io.brane.internal.web3j.abi.datatypes.Type.MAX_BYTE_LENGTH;
 
 /**
- * Ethereum Contract Application Binary Interface (ABI) encoding for types. Further details are
- * available <a href="https://github.com/ethereum/wiki/wiki/Ethereum-Contract-ABI">here</a>.
+ * Ethereum Contract Application Binary Interface (ABI) encoding for types.
+ * Further details are
+ * available <a href=
+ * "https://github.com/ethereum/wiki/wiki/Ethereum-Contract-ABI">here</a>.
  */
 public class TypeEncoder {
 
-    private TypeEncoder() {}
+    private TypeEncoder() {
+    }
 
     static boolean isDynamic(Type parameter) {
         return parameter instanceof DynamicBytes
@@ -92,8 +94,10 @@ public class TypeEncoder {
     }
 
     /**
-     * Returns abi.encodePacked hex value for the supported types. First the value is encoded and
-     * after the padding or length, in arrays cases, is removed resulting the packed encode hex
+     * Returns abi.encodePacked hex value for the supported types. First the value
+     * is encoded and
+     * after the padding or length, in arrays cases, is removed resulting the packed
+     * encode hex
      * value
      *
      * @param parameter Value to be encoded
@@ -119,10 +123,11 @@ public class TypeEncoder {
     }
 
     /**
-     * Remove padding from the static types and {@link Utf8String} after the encode was applied
+     * Remove padding from the static types and {@link Utf8String} after the encode
+     * was applied
      *
      * @param encodedValue Encoded value of the parameter
-     * @param parameter Value which was encoded
+     * @param parameter    Value which was encoded
      * @return The encoded value without padding
      */
     static String removePadding(String encodedValue, Type parameter) {
@@ -140,8 +145,7 @@ public class TypeEncoder {
             return encodedValue.substring(0, ((BytesType) parameter).getValue().length * 2);
         }
         if (parameter instanceof Utf8String) {
-            int length =
-                    ((Utf8String) parameter).getValue().getBytes(StandardCharsets.UTF_8).length;
+            int length = ((Utf8String) parameter).getValue().getBytes(StandardCharsets.UTF_8).length;
             return encodedValue.substring(64, 64 + length * 2);
         }
         if (parameter instanceof DynamicBytes) {
@@ -154,9 +158,12 @@ public class TypeEncoder {
     }
 
     /**
-     * Encodes a static array containing a dynamic struct type. In this case, the array items are
-     * decoded as dynamic values and have their offsets at the beginning of the encoding. Example:
-     * For the following static array containing three elements: <code>StaticArray3</code>
+     * Encodes a static array containing a dynamic struct type. In this case, the
+     * array items are
+     * decoded as dynamic values and have their offsets at the beginning of the
+     * encoding. Example:
+     * For the following static array containing three elements:
+     * <code>StaticArray3</code>
      * enc([struct1, struct2, struct2]) = offset(enc(struct1)) offset(enc(struct2))
      * offset(enc(struct3)) enc(struct1) enc(struct2) enc(struct3)
      *
@@ -205,7 +212,8 @@ public class TypeEncoder {
         if (numericType instanceof Ufixed || numericType instanceof Uint) {
             if (value.bitLength() == MAX_BIT_LENGTH) {
                 // As BigInteger is signed, if we have a 256 bit value, the resultant byte array
-                // will contain a sign byte in it's MSB, which we should ignore for this unsigned
+                // will contain a sign byte in it's MSB, which we should ignore for this
+                // unsigned
                 // integer type.
                 byte[] byteArray = new byte[MAX_BYTE_LENGTH];
                 System.arraycopy(value.toByteArray(), 1, byteArray, 0, MAX_BYTE_LENGTH);
@@ -319,40 +327,43 @@ public class TypeEncoder {
     }
 
     /**
-     * Encodes the array values offsets of the to be encrypted dynamic array, which are in our case
+     * Encodes the array values offsets of the to be encrypted dynamic array, which
+     * are in our case
      * the heads of the encryption. Refer to
      *
      * @see <a
-     *     href="https://docs.soliditylang.org/en/v0.5.3/abi-spec.html#formal-specification-of-the-encoding">encoding
-     *     formal specification</a>
-     *     <h2>Dynamic structs array encryption</h2>
-     *     <p>An array of dynamic structs (ie, structs containing dynamic datatypes) is encoded in
-     *     the following way: Considering X = [struct1, struct2] for example enc(X) = head(struct1)
-     *     head(struct2) tail(struct1) tail(struct2) with: - tail(struct1) = enc(struct1) -
-     *     tail(struct2) = enc(struct2) - head(struct1) = enc(len( head(struct1) head(struct2))) =
-     *     enc(64), because the heads are 256bits - head(struct2) = enc(len( head(struct1)
-     *     head(struct2) tail(struct1)))
+     *      href=
+     *      "https://docs.soliditylang.org/en/v0.5.3/abi-spec.html#formal-specification-of-the-encoding">encoding
+     *      formal specification</a>
+     *      <h2>Dynamic structs array encryption</h2>
+     *      <p>
+     *      An array of dynamic structs (ie, structs containing dynamic datatypes)
+     *      is encoded in
+     *      the following way: Considering X = [struct1, struct2] for example enc(X)
+     *      = head(struct1)
+     *      head(struct2) tail(struct1) tail(struct2) with: - tail(struct1) =
+     *      enc(struct1) -
+     *      tail(struct2) = enc(struct2) - head(struct1) = enc(len( head(struct1)
+     *      head(struct2))) =
+     *      enc(64), because the heads are 256bits - head(struct2) = enc(len(
+     *      head(struct1)
+     *      head(struct2) tail(struct1)))
      */
     private static <T extends Type> String encodeArrayValuesOffsets(DynamicArray<T> value) {
         StringBuilder result = new StringBuilder();
-        boolean arrayOfBytes =
-                !value.getValue().isEmpty() && value.getValue().get(0) instanceof DynamicBytes;
-        boolean arrayOfString =
-                !value.getValue().isEmpty() && value.getValue().get(0) instanceof Utf8String;
-        boolean arrayOfDynamicStructs =
-                !value.getValue().isEmpty() && value.getValue().get(0) instanceof DynamicStruct;
-        boolean arrayOfDynamicArrays =
-                !value.getValue().isEmpty() && value.getValue().get(0) instanceof DynamicArray;
+        boolean arrayOfBytes = !value.getValue().isEmpty() && value.getValue().get(0) instanceof DynamicBytes;
+        boolean arrayOfString = !value.getValue().isEmpty() && value.getValue().get(0) instanceof Utf8String;
+        boolean arrayOfDynamicStructs = !value.getValue().isEmpty() && value.getValue().get(0) instanceof DynamicStruct;
+        boolean arrayOfDynamicArrays = !value.getValue().isEmpty() && value.getValue().get(0) instanceof DynamicArray;
         if (arrayOfBytes || arrayOfString) {
             long offset = 0;
             for (int i = 0; i < value.getValue().size(); i++) {
                 if (i == 0) {
                     offset = value.getValue().size() * MAX_BYTE_LENGTH;
                 } else {
-                    int bytesLength =
-                            arrayOfBytes
-                                    ? ((byte[]) value.getValue().get(i - 1).getValue()).length
-                                    : ((String) value.getValue().get(i - 1).getValue()).length();
+                    int bytesLength = arrayOfBytes
+                            ? ((byte[]) value.getValue().get(i - 1).getValue()).length
+                            : ((String) value.getValue().get(i - 1).getValue()).length();
                     int numberOfWords = (bytesLength + MAX_BYTE_LENGTH - 1) / MAX_BYTE_LENGTH;
                     int totalBytesLength = numberOfWords * MAX_BYTE_LENGTH;
                     offset += totalBytesLength + MAX_BYTE_LENGTH;
@@ -369,7 +380,8 @@ public class TypeEncoder {
     }
 
     /**
-     * Encodes arrays of structs or dynamic arrays elements offsets. To be used when encoding a
+     * Encodes arrays of structs or dynamic arrays elements offsets. To be used when
+     * encoding a
      * dynamic arrays or a static array containing dynamic structs,
      *
      * @param value DynamicArray or StaticArray containing dynamic structs
@@ -378,8 +390,7 @@ public class TypeEncoder {
     private static <T extends Type> String encodeDynamicsTypesArraysOffsets(Array<T> value) {
         StringBuilder result = new StringBuilder();
         long offset = value.getValue().size();
-        List<String> tailsEncoding =
-                value.getValue().stream().map(TypeEncoder::encode).collect(Collectors.toList());
+        List<String> tailsEncoding = value.getValue().stream().map(TypeEncoder::encode).toList();
         for (int i = 0; i < value.getValue().size(); i++) {
             if (i == 0) {
                 offset = offset * MAX_BYTE_LENGTH;
@@ -395,11 +406,12 @@ public class TypeEncoder {
     }
 
     /**
-     * Checks if the received array doesn't contain any element that can make the array unsupported
+     * Checks if the received array doesn't contain any element that can make the
+     * array unsupported
      * for abi.encodePacked
      *
      * @param value Array to which the abi.encodePacked should be applied
-     * @param <T> Types of elements from the array
+     * @param <T>   Types of elements from the array
      * @return if the encodePacked is supported for the given array
      */
     private static <T extends Type> boolean isSupportingEncodedPacked(Array<T> value) {

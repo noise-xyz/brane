@@ -2,7 +2,12 @@
 set -e
 
 # Set JAVA_HOME to the local JDK 21
-export JAVA_HOME="/Users/atlantropa/Documents/Noise/brane/.jdk/jdk-21.jdk/Contents/Home"
+# First try local .jdk directory, then fall back to system java_home
+if [ -d ".jdk/jdk-21.jdk/Contents/Home" ]; then
+    export JAVA_HOME="$(pwd)/.jdk/jdk-21.jdk/Contents/Home"
+elif command -v /usr/libexec/java_home &> /dev/null; then
+    export JAVA_HOME=$(/usr/libexec/java_home -v 21)
+fi
 
 # Start anvil in background
 echo "Starting Anvil..."

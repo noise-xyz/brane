@@ -9,8 +9,7 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
-import java.lang.reflect.Array;
-import java.math.BigInteger;
+import io.brane.rpc.internal.RpcUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -37,30 +36,29 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public Transaction getTransactionByHash(final Hash hash) {
-        final JsonRpcResponse response =
-                sendWithRetry("eth_getTransactionByHash", List.of(hash.value()));
+        final var response = sendWithRetry("eth_getTransactionByHash", List.of(hash.value()));
         final Object result = response.result();
         if (result == null) {
             return null;
         }
 
         @SuppressWarnings("unchecked")
-        final Map<String, Object> map = mapper.convertValue(result, Map.class);
+        final var map = (Map<String, Object>) mapper.convertValue(result, Map.class);
 
-        final String hashHex = stringValue(map.get("hash"));
-        final String fromHex = stringValue(map.get("from"));
-        final String toHex = stringValue(map.get("to"));
-        final String inputHex = stringValue(map.get("input"));
-        final String valueHex = stringValue(map.get("value"));
-        final Long nonce = decodeHexLong(map.get("nonce"));
-        final Long blockNumber = decodeHexLong(map.get("blockNumber"));
+        final String hashHex = RpcUtils.stringValue(map.get("hash"));
+        final String fromHex = RpcUtils.stringValue(map.get("from"));
+        final String toHex = RpcUtils.stringValue(map.get("to"));
+        final String inputHex = RpcUtils.stringValue(map.get("input"));
+        final String valueHex = RpcUtils.stringValue(map.get("value"));
+        final Long nonce = RpcUtils.decodeHexLong(map.get("nonce"));
+        final Long blockNumber = RpcUtils.decodeHexLong(map.get("blockNumber"));
 
         return new Transaction(
                 hashHex != null ? new Hash(hashHex) : null,
                 fromHex != null ? new Address(fromHex) : null,
                 toHex != null ? new Address(toHex) : null,
                 inputHex != null ? new HexData(inputHex) : HexData.EMPTY,
-                valueHex != null ? new Wei(decodeHexBigInteger(valueHex)) : null,
+                valueHex != null ? new Wei(RpcUtils.decodeHexBigInteger(valueHex)) : null,
                 nonce,
                 blockNumber);
     }
@@ -79,13 +77,13 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public List<LogEntry> getLogs(final LogFilter filter) {
-        final Map<String, Object> req = buildLogParams(filter);
+        final var req = buildLogParams(filter);
 
-        final JsonRpcResponse response = sendWithRetry("eth_getLogs", List.of(req));
+        final var response = sendWithRetry("eth_getLogs", List.of(req));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
             throw new io.brane.core.error.RpcException(
-                    err.code(), err.message(), extractErrorData(err.data()), (Long) null);
+                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
         }
         final Object result = response.result();
         if (result == null) {
@@ -93,14 +91,14 @@ final class DefaultPublicClient implements PublicClient {
         }
 
         @SuppressWarnings("unchecked")
-        final List<Map<String, Object>> raw = mapper.convertValue(result, List.class);
+        final var raw = (List<Map<String, Object>>) mapper.convertValue(result, List.class);
         final List<LogEntry> logs = new ArrayList<>(raw.size());
         for (Map<String, Object> map : raw) {
-            final String address = stringValue(map.get("address"));
-            final String data = stringValue(map.get("data"));
-            final String blockHash = stringValue(map.get("blockHash"));
-            final String txHash = stringValue(map.get("transactionHash"));
-            final Long logIndex = decodeHexLong(map.get("logIndex"));
+            final String address = RpcUtils.stringValue(map.get("address"));
+            final String data = RpcUtils.stringValue(map.get("data"));
+            final String blockHash = RpcUtils.stringValue(map.get("blockHash"));
+            final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
+            final Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
             @SuppressWarnings("unchecked")
             final List<String> topicsHex = mapper.convertValue(map.get("topics"), List.class);
             final List<Hash> topics = new ArrayList<>();
@@ -123,55 +121,12 @@ final class DefaultPublicClient implements PublicClient {
         return logs;
     }
 
-    private String extractErrorData(final Object dataValue) {
-        return switch (dataValue) {
-            case null -> null;
-            case String s -> s;
-            case Map<?, ?> map -> map.values().stream()
-                    .map(this::extractErrorData)
-                    .filter(java.util.Objects::nonNull)
-                    .findFirst()
-                    .orElseGet(dataValue::toString);
-            case Object array when dataValue.getClass().isArray() -> extractFromArray(array, dataValue);
-            case Iterable<?> iterable -> extractFromIterable(iterable, dataValue);
-            default -> dataValue.toString();
-        };
-    }
-
-    private String extractFromIterable(final Iterable<?> iterable, final Object fallback) {
-        for (Object value : iterable) {
-            final String nested = extractErrorData(value);
-            if (nested != null) {
-                return nested;
-            }
-        }
-        return fallback.toString();
-    }
-
-    private String extractFromArray(final Object array, final Object fallback) {
-        final int length = Array.getLength(array);
-        for (int i = 0; i < length; i++) {
-            final String nested = extractErrorData(Array.get(array, i));
-            if (nested != null) {
-                return nested;
-            }
-        }
-        return fallback.toString();
-    }
-
-    private String toHexBlock(final Long block) {
-        if (block == null) {
-            return null;
-        }
-        return "0x" + Long.toHexString(block).toLowerCase();
-    }
-
     private Map<String, Object> buildLogParams(final LogFilter filter) {
         final Map<String, Object> req = new java.util.LinkedHashMap<>();
         filter.fromBlock()
                 .ifPresent(
                         v -> {
-                            final String hex = toHexBlock(v);
+                            final String hex = RpcUtils.toHexBlock(v);
                             if (hex != null) {
                                 req.put("fromBlock", hex);
                             }
@@ -179,7 +134,7 @@ final class DefaultPublicClient implements PublicClient {
         filter.toBlock()
                 .ifPresent(
                         v -> {
-                            final String hex = toHexBlock(v);
+                            final String hex = RpcUtils.toHexBlock(v);
                             if (hex != null) {
                                 req.put("toBlock", hex);
                             }
@@ -202,54 +157,26 @@ final class DefaultPublicClient implements PublicClient {
     }
 
     private BlockHeader getBlockByTag(final String tag) {
-        final JsonRpcResponse response =
-                sendWithRetry("eth_getBlockByNumber", List.of(tag, Boolean.FALSE));
+        final var response = sendWithRetry("eth_getBlockByNumber", List.of(tag, Boolean.FALSE));
         final Object result = response.result();
         if (result == null) {
             return null;
         }
 
         @SuppressWarnings("unchecked")
-        final Map<String, Object> map = mapper.convertValue(result, Map.class);
-        final String hash = stringValue(map.get("hash"));
-        final String parentHash = stringValue(map.get("parentHash"));
-        final Long number = decodeHexLong(map.get("number"));
-        final Long timestamp = decodeHexLong(map.get("timestamp"));
-        final String baseFeeHex = stringValue(map.get("baseFeePerGas"));
+        final var map = (Map<String, Object>) mapper.convertValue(result, Map.class);
+        final String hash = RpcUtils.stringValue(map.get("hash"));
+        final String parentHash = RpcUtils.stringValue(map.get("parentHash"));
+        final Long number = RpcUtils.decodeHexLong(map.get("number"));
+        final Long timestamp = RpcUtils.decodeHexLong(map.get("timestamp"));
+        final String baseFeeHex = RpcUtils.stringValue(map.get("baseFeePerGas"));
 
         return new BlockHeader(
                 hash != null ? new Hash(hash) : null,
                 number,
                 parentHash != null ? new Hash(parentHash) : null,
                 timestamp,
-                baseFeeHex != null ? new Wei(decodeHexBigInteger(baseFeeHex)) : null);
-    }
-
-    private Long decodeHexLong(final Object value) {
-        final String hex = stringValue(value);
-        if (hex == null || hex.isEmpty()) {
-            return null;
-        }
-        final String normalized = hex.startsWith("0x") ? hex.substring(2) : hex;
-        if (normalized.isEmpty()) {
-            return 0L;
-        }
-        return new BigInteger(normalized, 16).longValueExact();
-    }
-
-    private BigInteger decodeHexBigInteger(final String hex) {
-        if (hex == null || hex.isEmpty()) {
-            return BigInteger.ZERO;
-        }
-        final String normalized = hex.startsWith("0x") ? hex.substring(2) : hex;
-        if (normalized.isEmpty()) {
-            return BigInteger.ZERO;
-        }
-        return new BigInteger(normalized, 16);
-    }
-
-    private String stringValue(final Object value) {
-        return value != null ? value.toString() : null;
+                baseFeeHex != null ? new Wei(RpcUtils.decodeHexBigInteger(baseFeeHex)) : null);
     }
 
     private JsonRpcResponse sendWithRetry(final String method, final List<?> params) {
