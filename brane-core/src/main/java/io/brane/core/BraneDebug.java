@@ -5,15 +5,34 @@ package io.brane.core;
  */
 public final class BraneDebug {
 
-    private static volatile boolean enabled = false;
+    private static volatile boolean rpcLogging = false;
+    private static volatile boolean txLogging = false;
 
-    private BraneDebug() {}
+    private BraneDebug() {
+    }
 
     public static boolean isEnabled() {
-        return enabled;
+        return rpcLogging || txLogging;
     }
 
     public static void setEnabled(final boolean enabled) {
-        BraneDebug.enabled = enabled;
+        rpcLogging = enabled;
+        txLogging = enabled;
+    }
+
+    public static void setRpcLogging(final boolean enabled) {
+        rpcLogging = enabled;
+    }
+
+    public static boolean isRpcLoggingEnabled() {
+        return rpcLogging;
+    }
+
+    public static void setTxLogging(final boolean enabled) {
+        txLogging = enabled;
+    }
+
+    public static boolean isTxLoggingEnabled() {
+        return txLogging;
     }
 }

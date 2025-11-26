@@ -59,22 +59,38 @@ BigInteger balance = token.balanceOf(myAddress);
 TransactionReceipt receipt = token.transfer(recipient, BigInteger.valueOf(100));
 ```
 
-### 2. Low-Level: Raw RPC & Transactions
-For direct control over RPC calls and transaction building:
+### 2. Modern Transactions (EIP-1559 & Access Lists)
+Brane uses **EIP-1559 by default** with intelligent automation.
 
 ```java
-// 1. Direct RPC calls
-BlockHeader block = publicClient.getLatestBlock();
-System.out.println("Block: " + block.number());
-
-// 2. Build & Send Transaction (EIP-1559)
+// 1. Build EIP-1559 Transaction
 TransactionRequest tx = TxBuilder.eip1559()
     .to(recipient)
     .value(Wei.fromEther(new BigDecimal("0.001")))
-    .build(); // Gas & Fees auto-filled
+    .build(); 
+    // ✅ Gas Limit: Auto-estimated + 20% buffer
+    // ✅ Fees: Auto-calculated (2x baseFee + priority)
 
-// Send and wait for confirmation
+// 2. Add Access List (EIP-2930) for gas savings
+List<AccessListEntry> access = List.of(
+    new AccessListEntry(recipient, List.of(new Hash("0x...storageKey")))
+);
+
+TransactionRequest accessTx = TxBuilder.eip1559()
+    .to(recipient)
+    .value(Wei.fromEther(new BigDecimal("0.001")))
+    .accessList(access)
+    .build();
+
+// 3. Send and wait
 TransactionReceipt receipt = walletClient.sendTransactionAndWait(tx, 60_000, 1_000);
+```
+
+Try it out:
+```bash
+./gradlew :brane-examples:run \
+  -PmainClass=io.brane.examples.CanonicalTxExample \
+  -Dbrane.examples.rpc=http://127.0.0.1:8545
 ```
 
 ### 3. Debug Mode & Error Handling
@@ -83,6 +99,9 @@ First-class support for debugging and error diagnostics.
 ```java
 // 1. Enable Debug Mode
 BraneDebug.setEnabled(true);
+// Or granular control:
+// BraneDebug.setTxLogging(true);
+// BraneDebug.setRpcLogging(false);
 
 // 2. Perform actions (logs appear automatically)
 publicClient.getLatestBlock();

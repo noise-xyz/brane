@@ -43,4 +43,13 @@ echo "----------------------------------------------------------------"
   --console=plain -q
 
 echo ""
+echo "----------------------------------------------------------------"
+echo "Running Canonical Modern Tx Example (EIP-1559 & Access Lists)..."
+echo "----------------------------------------------------------------"
+./gradlew :brane-examples:run \
+  -PmainClass=io.brane.examples.CanonicalTxExample \
+  -Dbrane.examples.rpc="$RPC_URL" \
+  --console=plain -q
+
+echo ""
 echo "✅ All examples completed successfully."

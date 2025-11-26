@@ -31,6 +31,12 @@ public record Wei(BigInteger value) {
         return new Wei(ether.multiply(WEI_PER_ETHER).toBigIntegerExact());
     }
 
+    private static final BigInteger GWEI_MULTIPLIER = BigInteger.valueOf(1_000_000_000L);
+
+    public static Wei gwei(final long gwei) {
+        return new Wei(BigInteger.valueOf(gwei).multiply(GWEI_MULTIPLIER));
+    }
+
     public BigDecimal toEther() {
         return new BigDecimal(value).divide(WEI_PER_ETHER, 18, RoundingMode.DOWN);
     }

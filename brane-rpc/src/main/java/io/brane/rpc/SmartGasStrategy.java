@@ -1,6 +1,7 @@
 package io.brane.rpc;
 
 import io.brane.core.chain.ChainProfile;
+import io.brane.core.DebugLogger;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionRequest;
@@ -131,13 +132,18 @@ final class SmartGasStrategy {
     }
 
     private String callEstimateGas(final Map<String, Object> tx) {
+        DebugLogger.logTx("[ESTIMATE-GAS] from=%s to=%s data=%s", tx.get("from"), tx.get("to"), tx.get("data"));
+        final long start = System.nanoTime();
         final JsonRpcResponse response = provider.send("eth_estimateGas", List.of(tx));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
             throw new RpcException(
                     err.code(), err.message(), err.data() != null ? err.data().toString() : null, null, null);
         }
-        return response.result().toString();
+        final String result = response.result().toString();
+        final long durationMicros = (System.nanoTime() - start) / 1_000L;
+        DebugLogger.logTx("[ESTIMATE-GAS-RESULT] durationMicros=%s gas=%s", durationMicros, result);
+        return result;
     }
 
     private TransactionRequest ensureFees(final TransactionRequest request) {

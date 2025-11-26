@@ -201,7 +201,7 @@ public final class DefaultWalletClient implements WalletClient {
                         valueParts.value,
                         valueParts.data);
 
-        DebugLogger.log(
+        DebugLogger.logTx(
                 "[TX-SEND] from=%s to=%s nonce=%s gasLimit=%s value=%s",
                 from,
                 valueParts.to,
@@ -223,7 +223,7 @@ public final class DefaultWalletClient implements WalletClient {
             throw e;
         }
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
-        DebugLogger.log("[TX-HASH] hash=%s durationMicros=%s", txHash, durationMicros);
+        DebugLogger.logTx("[TX-HASH] hash=%s durationMicros=%s", txHash, durationMicros);
         return new Hash(txHash);
     }
 
@@ -231,13 +231,13 @@ public final class DefaultWalletClient implements WalletClient {
     public TransactionReceipt sendTransactionAndWait(
             final TransactionRequest request, final long timeoutMillis, final long pollIntervalMillis) {
         final Hash txHash = sendTransaction(request);
-        DebugLogger.log("[TX-WAIT] hash=%s timeoutMillis=%s", txHash.value(), timeoutMillis);
+        DebugLogger.logTx("[TX-WAIT] hash=%s timeoutMillis=%s", txHash.value(), timeoutMillis);
         final Instant deadline = Instant.now().plus(Duration.ofMillis(timeoutMillis));
 
         while (Instant.now().isBefore(deadline)) {
             final TransactionReceipt receipt = fetchReceipt(txHash);
             if (receipt != null) {
-                DebugLogger.log(
+                DebugLogger.logTx(
                         "[TX-RECEIPT] hash=%s block=%s status=%s",
                         txHash.value(),
                         receipt.blockNumber(),
@@ -371,7 +371,7 @@ public final class DefaultWalletClient implements WalletClient {
         if (request.accessList() != null && !request.accessList().isEmpty()) {
             tx.put("accessList", toJsonAccessList(request.accessList()));
         }
-        DebugLogger.log("[ESTIMATE-GAS] from=%s to=%s data=%s", from, tx.get("to"), tx.get("data"));
+        DebugLogger.logTx("[ESTIMATE-GAS] from=%s to=%s data=%s", from, tx.get("to"), tx.get("data"));
         final long start = System.nanoTime();
         final String estimate;
         try {
@@ -381,7 +381,7 @@ public final class DefaultWalletClient implements WalletClient {
             throw e;
         }
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
-        DebugLogger.log("[ESTIMATE-GAS-RESULT] durationMicros=%s gas=%s", durationMicros, estimate);
+        DebugLogger.logTx("[ESTIMATE-GAS-RESULT] durationMicros=%s gas=%s", durationMicros, estimate);
         return Numeric.decodeQuantity(estimate);
     }
 
@@ -469,7 +469,7 @@ public final class DefaultWalletClient implements WalletClient {
             final var decoded = RevertDecoder.decode(raw);
             // Always throw RevertException for revert data, even if kind is UNKNOWN
             // (UNKNOWN just means we couldn't decode it, but it's still a revert)
-            DebugLogger.log(
+            DebugLogger.logTx(
                     "[TX-REVERT] hash=%s kind=%s reason=%s", hash != null ? hash.value() : "unknown", decoded.kind(),
                     decoded.reason());
             throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), e);

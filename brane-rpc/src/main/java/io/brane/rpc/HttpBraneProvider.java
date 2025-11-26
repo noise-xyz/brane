@@ -24,11 +24,10 @@ public final class HttpBraneProvider implements BraneProvider {
 
     private HttpBraneProvider(final RpcConfig config) {
         this.config = config;
-        this.httpClient =
-                java.net.http.HttpClient.newBuilder()
-                        .executor(java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor())
-                        .connectTimeout(config.connectTimeout())
-                        .build();
+        this.httpClient = java.net.http.HttpClient.newBuilder()
+                .executor(java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor())
+                .connectTimeout(config.connectTimeout())
+                .build();
     }
 
     public static Builder builder(final String url) {
@@ -39,8 +38,7 @@ public final class HttpBraneProvider implements BraneProvider {
     public JsonRpcResponse send(final String method, final List<?> params) throws RpcException {
         final List<?> safeParams = params == null ? List.of() : params;
         final long requestId = ids.getAndIncrement();
-        final JsonRpcRequest request =
-                new JsonRpcRequest("2.0", method, safeParams, String.valueOf(requestId));
+        final JsonRpcRequest request = new JsonRpcRequest("2.0", method, safeParams, String.valueOf(requestId));
 
         final String payload = serialize(request, requestId);
         final HttpRequest httpRequest = buildRequest(payload);
@@ -50,7 +48,7 @@ public final class HttpBraneProvider implements BraneProvider {
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
-            DebugLogger.log(
+            DebugLogger.logRpc(
                     "[RPC-ERROR] id=%d method=%s status=%s durationMicros=%s body=%s",
                     requestId, method, response.statusCode(), durationMicros, response.body());
             throw new RpcException(
@@ -65,13 +63,13 @@ public final class HttpBraneProvider implements BraneProvider {
         final JsonRpcResponse rpcResponse = parseResponse(method, responseBody, requestId);
         if (rpcResponse.hasError()) {
             final JsonRpcError err = rpcResponse.error();
-            DebugLogger.log(
+            DebugLogger.logRpc(
                     "[RPC-ERROR] id=%d method=%s code=%s message=%s data=%s durationMicros=%s",
                     requestId, method, err.code(), err.message(), err.data(), durationMicros);
             throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), requestId);
         }
 
-        DebugLogger.log(
+        DebugLogger.logRpc(
                 "[RPC] id=%d method=%s durationMicros=%s request=%s response=%s",
                 requestId, method, durationMicros, payload, responseBody);
         return rpcResponse;
@@ -91,11 +89,10 @@ public final class HttpBraneProvider implements BraneProvider {
     }
 
     private HttpRequest buildRequest(final String payload) {
-        final HttpRequest.Builder builder =
-                HttpRequest.newBuilder(URI.create(config.url()))
-                        .header("Content-Type", "application/json")
-                        .timeout(config.readTimeout())
-                        .POST(HttpRequest.BodyPublishers.ofString(payload));
+        final HttpRequest.Builder builder = HttpRequest.newBuilder(URI.create(config.url()))
+                .header("Content-Type", "application/json")
+                .timeout(config.readTimeout())
+                .POST(HttpRequest.BodyPublishers.ofString(payload));
 
         for (Map.Entry<String, String> entry : config.headers().entrySet()) {
             builder.header(entry.getKey(), entry.getValue());
@@ -199,8 +196,8 @@ public final class HttpBraneProvider implements BraneProvider {
         }
 
         public HttpBraneProvider build() {
-            final RpcConfig config =
-                    new RpcConfig(url, chainId, connectTimeout, readTimeout, new LinkedHashMap<>(headers));
+            final RpcConfig config = new RpcConfig(url, chainId, connectTimeout, readTimeout,
+                    new LinkedHashMap<>(headers));
             return new HttpBraneProvider(config);
         }
     }
