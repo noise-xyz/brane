@@ -34,4 +34,13 @@ echo "----------------------------------------------------------------"
   --console=plain -q
 
 echo ""
+echo "----------------------------------------------------------------"
+echo "Running Canonical Debug Example (Error Handling & Logs)..."
+echo "----------------------------------------------------------------"
+./gradlew :brane-examples:run \
+  -PmainClass=io.brane.examples.CanonicalDebugExample \
+  -Dbrane.examples.rpc="$RPC_URL" \
+  --console=plain -q
+
+echo ""
 echo "✅ All examples completed successfully."

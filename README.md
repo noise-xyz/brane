@@ -77,33 +77,41 @@ TransactionRequest tx = TxBuilder.eip1559()
 TransactionReceipt receipt = walletClient.sendTransactionAndWait(tx, 60_000, 1_000);
 ```
 
-### 🪛 Debug Mode & RPC Logging
-
-Turn on verbose, sanitized RPC logging across Brane with a single toggle:
+### 3. Debug Mode & Error Handling
+First-class support for debugging and error diagnostics.
 
 ```java
-import io.brane.core.BraneDebug;
+// 1. Enable Debug Mode
+BraneDebug.setEnabled(true);
 
-BraneDebug.setEnabled(true); // Log RPC requests, responses, and transaction lifecycle
+// 2. Perform actions (logs appear automatically)
+publicClient.getLatestBlock();
+
+// 3. Handle typed errors
+try {
+    wallet.sendTransactionAndWait(tx, 10_000, 1_000);
+} catch (RevertException e) {
+    System.out.println("Revert: " + e.revertReason()); // e.g. "Insufficient funds"
+    System.out.println("Kind: " + e.kind());           // ERROR, PANIC, or CUSTOM
+} catch (RpcException e) {
+    System.out.println("RPC Error: " + e.getMessage()); // e.g. "Network error"
+    System.out.println("Request ID: " + e.requestId()); // Correlate with logs
+}
 ```
 
-Every RPC call gets a unique request ID that appears in logs and exceptions:
+Logs are automatically correlated by Request ID:
 
 ```
 [RPC] id=1 method=eth_getBlockByNumber durationMicros=1234 ...
+[TX-SEND] from=0x... to=0x...
 [RPC-ERROR] id=6 method=eth_sendRawTransaction code=-32003 ...
-```
-
-Exceptions also include the request ID for easy correlation:
-```
-[requestId=1] Network error during JSON-RPC call
 ```
 
 Try it out end-to-end via the example app:
 
 ```bash
 ./gradlew :brane-examples:run \
-  -PmainClass=io.brane.examples.DebugExample \
+  -PmainClass=io.brane.examples.CanonicalDebugExample \
   -Dbrane.examples.rpc=http://127.0.0.1:8545
 ```
 
