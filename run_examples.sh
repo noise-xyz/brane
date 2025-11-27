@@ -52,4 +52,14 @@ echo "----------------------------------------------------------------"
   --console=plain -q
 
 echo ""
+echo "----------------------------------------------------------------"
+echo "Running Canonical ABI Example..."
+echo "----------------------------------------------------------------"
+./gradlew :brane-examples:run \
+  -PmainClass=io.brane.examples.CanonicalAbiExample \
+  -Dbrane.examples.rpc="$RPC_URL" \
+  -Dbrane.examples.pk="$PRIVATE_KEY" \
+  --console=plain -q
+
+echo ""
 echo "✅ All examples completed successfully."

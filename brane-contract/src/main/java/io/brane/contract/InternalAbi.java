@@ -41,12 +41,14 @@ final class InternalAbi implements Abi {
     private final Map<String, AbiFunction> functionsByName;
     private final Map<String, AbiFunction> functionsBySignature;
     private final Map<String, AbiEvent> eventsBySignature;
+    private final AbiFunction constructor;
 
     InternalAbi(final String json) {
         final ParsedAbi parsed = parse(json);
         this.functionsByName = parsed.functionsByName;
         this.functionsBySignature = parsed.functionsBySignature;
         this.eventsBySignature = parsed.eventsBySignature;
+        this.constructor = parsed.constructor;
     }
 
     @Override
@@ -66,6 +68,55 @@ final class InternalAbi implements Abi {
         final Function function = new Function(fn.name(), encodedInputs, new ArrayList<>(outputTypes));
         final String data = FunctionEncoder.encode(function);
         return new Call(fn, data, outputTypes);
+    }
+
+    @Override
+    public HexData encodeConstructor(final Object... args) {
+        if (constructor == null) {
+            // If no constructor in ABI, and no args, return empty.
+            // If args provided but no constructor, it's an error?
+            // Solidity defaults to empty constructor if not defined.
+            if (args != null && args.length > 0) {
+                throw new AbiEncodingException("Constructor not defined in ABI, but arguments provided");
+            }
+            return new HexData("0x");
+        }
+
+        final Object[] providedArgs = args == null ? new Object[0] : args;
+        if (constructor.inputs().size() != providedArgs.length) {
+            throw new AbiEncodingException(
+                    "Constructor expects "
+                            + constructor.inputs().size()
+                            + " arguments but "
+                            + providedArgs.length
+                            + " were supplied");
+        }
+
+        final List<Type> encodedInputs = new ArrayList<>(constructor.inputs().size());
+        for (int i = 0; i < constructor.inputs().size(); i++) {
+            final AbiParameter param = constructor.inputs().get(i);
+            final Object normalizedValue = normalizeInput(param.type(), providedArgs[i]);
+            encodedInputs.add(instantiate(param.type(), normalizedValue));
+        }
+
+        // Constructor encoding is just the encoded arguments (no selector)
+        // FunctionEncoder.encodeConstructor(inputs)
+        // But FunctionEncoder.encodeConstructor takes List<Type>.
+        // Let's check FunctionEncoder.
+        // It returns string.
+
+        // We can use FunctionEncoder.encodeConstructor(encodedInputs) if available.
+        // Or just encodeParameters.
+        // FunctionEncoder.encodeConstructor is likely just encodeParameters.
+
+        // I'll use FunctionEncoder.encodeConstructor(encodedInputs) if it exists.
+        // If not, I'll use TypeEncoder.encode(type) loop.
+        // Actually, FunctionEncoder.encodeConstructor(List<Type> parameters) exists in
+        // web3j.
+        // I'll assume it exists in io.brane.internal.web3j.abi.FunctionEncoder.
+
+        final String rawHex = FunctionEncoder.encodeConstructor(encodedInputs);
+        return new HexData(Numeric.prependHexPrefix(rawHex));
     }
 
     @Override
@@ -245,6 +296,7 @@ final class InternalAbi implements Abi {
         final Map<String, AbiFunction> functionsByName = new HashMap<>();
         final Map<String, AbiFunction> functionsBySignature = new HashMap<>();
         final Map<String, AbiEvent> eventsBySignature = new HashMap<>();
+        AbiFunction constructor = null;
         final Iterator<JsonNode> iterator = root.elements();
         while (iterator.hasNext()) {
             final JsonNode node = iterator.next();
@@ -260,10 +312,21 @@ final class InternalAbi implements Abi {
             } else if ("event".equals(type)) {
                 final AbiEvent event = parseEvent(node);
                 eventsBySignature.put(event.signature(), event);
+            } else if ("constructor".equals(type)) {
+                if (constructor != null) {
+                    throw new AbiEncodingException("Multiple constructors found in ABI");
+                }
+                constructor = parseConstructor(node);
             }
         }
 
-        return new ParsedAbi(functionsByName, functionsBySignature, eventsBySignature);
+        return new ParsedAbi(functionsByName, functionsBySignature, eventsBySignature, constructor);
+    }
+
+    private static AbiFunction parseConstructor(final JsonNode node) {
+        final List<AbiParameter> inputs = parseParameters(arrayField(node, "inputs"));
+        final String stateMutability = parseStateMutability(node);
+        return new AbiFunction("constructor", stateMutability, inputs, Collections.emptyList());
     }
 
     private static AbiFunction parseFunction(final JsonNode node) {
@@ -360,7 +423,8 @@ final class InternalAbi implements Abi {
     private record ParsedAbi(
             Map<String, AbiFunction> functionsByName,
             Map<String, AbiFunction> functionsBySignature,
-            Map<String, AbiEvent> eventsBySignature) {
+            Map<String, AbiEvent> eventsBySignature,
+            AbiFunction constructor) {
     }
 
     @Override

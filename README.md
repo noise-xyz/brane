@@ -1,19 +1,11 @@
+# Brane
 
-# Brane 0.1.0-alpha: A Modern JVM EVM SDK
+A modern, type-safe JVM SDK for Ethereum and EVM chains.
+Built on Java 21. Focused on clarity, correctness, and developer experience.
 
-Brane is a lightweight, modern, and production-grade **SDK** for interacting with Ethereum and EVM-compatible blockchains on the JVM.
+## Quickstart
 
-Built by forking and refining the established **web3j** library, Brane acts as the connector between your application and Ethereum nodes (such as **Besu** or **Geth**). It streamlines the developer experience by stripping away bloat and focusing on reliability.
-
-The **0.1.0-alpha** release focuses on:
-* **Table-stakes web3j functionality** (JSON-RPC, ABI encoding/decoding, simple transaction sending).
-* **A clean, predictable error model** with specific exception types for RPC failures and EVM reverts.
-
-
-
-## 🚀 Quickstart
-
-Add the necessary dependencies to your Maven or Gradle project:
+Add dependencies:
 
 ```xml
 <dependencies>
@@ -32,20 +24,26 @@ Add the necessary dependencies to your Maven or Gradle project:
         <artifactId>brane-contract</artifactId>
         <version>0.1.0-alpha</version>
     </dependency>
+    <dependency>
+        <groupId>io.brane</groupId>
+        <artifactId>brane-primitives</artifactId>
+        <version>0.1.0-alpha</version>
+    </dependency>
 </dependencies>
-````
+```
 
-### 1. High-Level: Type-Safe Contract Binding
-The idiomatic way to interact with contracts. Define a Java interface and bind it:
+## Features
+
+### 1. Type-Safe Contract Binding
+Interact with contracts using standard Java interfaces. No code generation required.
 
 ```java
-// 1. Define interface matching ABI
 public interface Erc20 {
     BigInteger balanceOf(Address account);
-    TransactionReceipt transfer(Address to, BigInteger value);
+    TransactionReceipt transfer(Address to, BigInteger amount);
 }
 
-// 2. Bind to deployed contract
+// Bind to deployed contract
 Erc20 token = BraneContract.bind(
     new Address("0x..."),
     ERC20_ABI_JSON,
@@ -54,16 +52,16 @@ Erc20 token = BraneContract.bind(
     Erc20.class
 );
 
-// 3. Call methods (View & Write)
-BigInteger balance = token.balanceOf(myAddress);
-TransactionReceipt receipt = token.transfer(recipient, BigInteger.valueOf(100));
+// Call methods (View & Write)
+BigInteger balance = token.balanceOf(user);
+TransactionReceipt receipt = token.transfer(user, BigInteger.TEN);
 ```
+[See full example](brane-examples/src/main/java/io/brane/examples/CanonicalAbiExample.java)
 
-### 2. Modern Transactions (EIP-1559 & Access Lists)
-Brane uses **EIP-1559 by default** with intelligent automation.
+### 2. Modern Transactions (EIP-1559)
+Fluent builder with smart defaults (auto-estimated gas, EIP-1559 fees).
 
 ```java
-// 1. Build EIP-1559 Transaction
 TransactionRequest tx = TxBuilder.eip1559()
     .to(recipient)
     .value(Wei.fromEther(new BigDecimal("0.001")))
@@ -71,364 +69,75 @@ TransactionRequest tx = TxBuilder.eip1559()
     // ✅ Gas Limit: Auto-estimated + 20% buffer
     // ✅ Fees: Auto-calculated (2x baseFee + priority)
 
-// 2. Add Access List (EIP-2930) for gas savings
-List<AccessListEntry> access = List.of(
-    new AccessListEntry(recipient, List.of(new Hash("0x...storageKey")))
-);
-
-TransactionRequest accessTx = TxBuilder.eip1559()
-    .to(recipient)
-    .value(Wei.fromEther(new BigDecimal("0.001")))
-    .accessList(access)
-    .build();
-
-// 3. Send and wait
+// Send and wait for receipt
 TransactionReceipt receipt = walletClient.sendTransactionAndWait(tx, 60_000, 1_000);
 ```
 
-Try it out:
-```bash
-./gradlew :brane-examples:run \
-  -PmainClass=io.brane.examples.CanonicalTxExample \
-  -Dbrane.examples.rpc=http://127.0.0.1:8545
-```
-
-### 3. Debug Mode & Error Handling
-First-class support for debugging and error diagnostics.
+### 3. Debugging & Error Handling
+Typed exceptions for RPC failures and EVM reverts, plus structured logging.
 
 ```java
-// 1. Enable Debug Mode
-BraneDebug.setEnabled(true);
-// Or granular control:
-// BraneDebug.setTxLogging(true);
-// BraneDebug.setRpcLogging(false);
+BraneDebug.setEnabled(true); // Enable detailed RPC/Tx logs
 
-// 2. Perform actions (logs appear automatically)
-publicClient.getLatestBlock();
-
-// 3. Handle typed errors
 try {
     wallet.sendTransactionAndWait(tx, 10_000, 1_000);
 } catch (RevertException e) {
     System.out.println("Revert: " + e.revertReason()); // e.g. "Insufficient funds"
     System.out.println("Kind: " + e.kind());           // ERROR, PANIC, or CUSTOM
 } catch (RpcException e) {
-    System.out.println("RPC Error: " + e.getMessage()); // e.g. "Network error"
-    System.out.println("Request ID: " + e.requestId()); // Correlate with logs
+    System.out.println("RPC Error: " + e.getMessage());
+    System.out.println("Request ID: " + e.requestId());
 }
 ```
 
-Logs are automatically correlated by Request ID:
+### 4. ABI Utilities
+Helpers for common tasks like constructor encoding.
 
-```
-[RPC] id=1 method=eth_getBlockByNumber durationMicros=1234 ...
-[TX-SEND] from=0x... to=0x...
-[RPC-ERROR] id=6 method=eth_sendRawTransaction code=-32003 ...
+```java
+// Encode constructor arguments for deployment
+Abi abi = Abi.fromJson(abiJson);
+HexData encodedArgs = abi.encodeConstructor(arg1, arg2);
+String deployData = bytecode + encodedArgs.value().substring(2);
 ```
 
-Try it out end-to-end via the example app:
+## Why Brane?
+
+*   **Typed Errors**: Distinct `RevertException` (with automatic decoding) and `RpcException`. No more parsing generic strings.
+*   **Modern Defaults**: EIP-1559 by default. Automatic access lists (EIP-2930). Smart gas estimation.
+*   **Zero-Codegen**: Runtime binding of interfaces (`BraneContract.bind`) speeds up iteration.
+*   **Clean API**: Minimal surface area. Internal dependencies (web3j) are shaded and hidden.
+
+## Project Structure
+
+*   `brane-core`: Core types (`Address`, `Wei`, `HexData`), error model, and chain profiles.
+*   `brane-rpc`: JSON-RPC client, `PublicClient`, `WalletClient`.
+*   `brane-contract`: ABI encoding/decoding, `BraneContract` runtime binding.
+*   `brane-primitives`: Zero-dependency Hex and RLP utilities.
+
+## Local Development
+
+Prerequisites: Java 21, [Foundry](https://getfoundry.sh/) (for Anvil).
+
+**Run Canonical Examples:**
+The best way to explore the SDK is to run the canonical examples against a local Anvil node.
 
 ```bash
-./gradlew :brane-examples:run \
-  -PmainClass=io.brane.examples.CanonicalDebugExample \
-  -Dbrane.examples.rpc=http://127.0.0.1:8545
+./run_examples.sh
+```
+This script checks for Anvil, starts the examples, and verifies:
+*   ERC-20 interactions
+*   Raw RPC calls
+*   Debug logging
+*   Modern Tx features (Access Lists)
+*   ABI wrapper features
+
+**Run Tests:**
+```bash
+./gradlew check
 ```
 
------
-
-## 🌟 Why Brane (vs. web3j)?
-
-Brane aims to provide a cleaner, more predictable API for production use cases.
-
-  * **Typed RevertException** instead of generic exceptions for EVM reverts.
-  * **Revert reason decoding** for `Error(string)` reverts by default within `Contract.read(...)`.
-  * **Clean error model** with clear separation:
-      * `RpcException` for JSON-RPC failures or node errors.
-      * `RevertException` for contract-level EVM reverts.
-  * **Minimal, composable API surface**. Core **web3j** internals are vendored under `io.brane.internal.web3j.*` and are never exposed in public APIs, ensuring better API stability.
-
------
-
-## 🛠️ Project Structure & Architecture
-
-### 1\. High-Level Goals for 0.1.0-alpha
-
-A minimal, production-usable JVM EVM SDK that covers:
-
-  * Connect to a node via HTTP.
-  * Make JSON-RPC calls (`eth_call`, `eth_sendRawTransaction`, etc.).
-  * Encode/decode ABI for contracts.
-  * Load a private key and sign/send a transaction.
-  * **P0:** Clean `RpcException` and `RevertException` model with `Error(string)` decoding.
-  * **P0:** Minimal `Abi.fromJson(...)` and `Contract.read/write(...)` wrappers.
-
-### 2\. Out of Scope for 0.1.0-alpha (Explicitly Ignored)
-
-  * Async / reactive APIs.
-  * WebSockets / subscriptions.
-  * Indexer framework / reorg-safe cursors.
-  * Chain registry / multi-chain config.
-  * Custom error decoding (beyond basic `Error(string)`).
-  * ENS, personal API, Parity/Geth special APIs.
-  * Codegen for Java wrappers.
-
-### 3\. Project Modules
-
-The minimal multi-module layout:
-
+**Generate Javadoc:**
+```bash
+./gradlew allJavadoc
 ```
-brane/
-  brane-primitives/  // Core primitive utilities (Hex, RLP) with zero dependencies
-  brane-core/        // Core types, error model, chain profiles
-  brane-rpc/         // Synchronous JSON-RPC client
-  brane-contract/    // ABI and contract wrappers
-  brane-examples/    // (Optional) usage examples
-```
-
-**Recent improvements:**
-- ✅ **Java 21 native** - Leverages records, pattern matching, virtual threads, and text blocks
-- ✅ **Web3j independence (Phase 1 & 2)** - Custom Hex and RLP utilities with zero external dependencies
-- ✅ **Comprehensive test suite** - Integration tests covering all examples with real testnet validation
-- ✅ **Unified Transaction Builder** - Typed, fluent API for creating Legacy and EIP-1559 transactions with auto-fill capabilities
-- ✅ **Minimal Revert Decoding** - Automatic decoding of Error(string), Panic(uint256), and extensible custom error support
-- ✅ **Debug Mode & RPC Logging** - Global toggle for sanitized, structured logging of RPC calls and transaction lifecycles
-- ✅ **Smart Gas Defaults + Retry** - Automatic gas estimation and EIP-1559 fee calculation with transient error retry logic
-- ✅ **Request ID Correlation** - Every RPC call has a unique, monotonic ID that appears in logs and exceptions for easy tracing
-- ✅ **Access List Support (EIP-2930)** - Specify accessed addresses and storage keys to reduce gas costs in EIP-1559 transactions
-- ✅ **Runtime ABI Wrapper Binding** - Bind Java interfaces directly to smart contracts without code generation via `BraneContract.bind()`
-
-Maven Coordinates: `io.brane:brane-core:0.1.0-alpha`, `io.brane:brane-rpc:0.1.0-alpha`, etc.
-
------
-
-## 📦 Key Component Details
-
-### `brane-primitives`
-
-Zero-dependency foundational utilities that other modules build upon:
-  * **Hex**: Fast, table-based hex encoding/decoding.
-  * **RLP**: High-performance Recursive Length Prefix encoding/decoding (strings, lists, integers).
-
-### `brane-core`
-
-Defines the core types and the error hierarchy:
-
-  * `io.brane.core.error` – `BraneException`, `RpcException`, `RevertException`, `RevertDecoder`.
-  * `io.brane.core` – `BraneDebug` (global toggle), `LogSanitizer` (redaction), `DebugLogger`.
-  * `io.brane.core.types` – reusable value objects (`Address`, `Hash`, `HexData`, `Wei`).
-  * `io.brane.core.model` – domain DTOs (`Transaction`, `TransactionReceipt`, `LogEntry`, `TransactionRequest`, `ChainProfile`, etc.).
-  * `io.brane.core.chain` – typed chain profiles (`ChainProfiles`) capturing chainId, default RPC URL, and EIP-1559 support.
-  * **Revert Decoding**: `RevertDecoder` automatically decodes EVM reverts:
-    * `Error(string)` → human-readable revert message
-    * `Panic(uint256)` → mapped panic reasons (e.g., "division by zero", "arithmetic overflow")
-    * Custom errors → extensible via ABI map (falls back to raw hex)
-    * All reverts surface as typed `RevertException` with `RevertKind` (ERROR_STRING, PANIC, CUSTOM, UNKNOWN)
-  * Error diagnostics: `RpcException` helpers for `isBlockRangeTooLarge()`/`isFilterNotFound()`; `TxnException` helpers for `isInvalidSender()`/`isChainIdMismatch()`.
-
-### `brane-rpc`
-
-Provides the JSON-RPC transport and public client API:
-
-  * `Client` + `HttpClient`: typed wrapper over the transport for contract ABI calls.
-  * `BraneProvider` + `HttpBraneProvider`: low-level JSON-RPC 2.0 transport abstraction that handles request/response serialization and **debug logging**.
-  * `PublicClient`: high-level read-only client for chain data (`getBlockByNumber`, `getTransactionByHash`, `eth_call`, etc.) that maps node JSON into Brane’s value types (`BlockHeader`, `Transaction`, `Hash`, `Address`, `Wei`, ...).
-  * `BranePublicClient`: builder/wrapper that constructs a `PublicClient` from a `ChainProfile` with optional RPC URL override (keeps `PublicClient.from(BraneProvider)` intact).
-  * Provider errors are wrapped in `RpcException` with method context; wallet send errors surface `TxnException` subclasses such as `InvalidSenderException`.
-  * `WalletClient` + `DefaultWalletClient`: fills nonce/gas/fees, enforces chainId, signs raw transactions via a provided signer (see `PrivateKeyTransactionSigner`), sends via `eth_sendRawTransaction`, and can poll for receipts.
-  * **Smart Gas Defaults**: Automatically fills missing gas fields with intelligent defaults:
-    * Gas limit via `eth_estimateGas` + 20% buffer
-    * EIP-1559 fees calculated from `baseFeePerGas * 2 + defaultPriorityFee`
-    * Falls back to `eth_gasPrice` when EIP-1559 is not supported
-    * User-provided values are never overwritten
-  * **RPC Retry Logic**: Automatically retries transient network errors (timeouts, "header not found") with exponential backoff while failing fast on permanent errors (reverts, invalid sender)
-  * **Unified Transaction Builder**: Typed, fluent API for creating Legacy and EIP-1559 transactions.
-    ```java
-    // EIP-1559 (auto-filled fees and gas limit)
-    TransactionRequest tx = TxBuilder.eip1559()
-        .to(recipient)
-        .value(Wei.of("1.0"))
-        .build();  // gas limit, maxFeePerGas, maxPriorityFeePerGas auto-filled
-
-    // Legacy (explicit gas price, auto-filled gas limit)
-    TransactionRequest legacy = TxBuilder.legacy()
-        .to(recipient)
-        .gasPrice(Wei.gwei(20))
-        .build();
-    ```
-
-    Access list support is available on the EIP-1559 builder:
-
-    ```java
-    List<AccessListEntry> access = List.of(
-        new AccessListEntry(recipient, List.of(new Hash("0x...storageKey")))
-    );
-
-    TransactionRequest accessListTx = TxBuilder.eip1559()
-        .to(recipient)
-        .accessList(access)
-        .build();
-    ```
-
-  * `getLogs(LogFilter)`: fetch historical logs (e.g., ERC-20 `Transfer` events) with block/topic filters.
-
-### `brane-contract`
-
-Provides high-level contract interaction:
-
-  * `Abi` interface: parse ABI JSON, encode/decode function calls, and raise `AbiEncodingException` / `AbiDecodingException` on invalid inputs.
-  * `Contract` class:
-      * `read(...)`: Implements `eth_call`, handles ABI encoding/decoding, and specifically catches reverts to throw a decoded `RevertException`.
-      * `write(...)`: Implements the simple raw-transaction signing/sending flow using `Signer`.
-  * `ReadOnlyContract`: a lightweight façade over `Abi` + `PublicClient.call` for read-only calls (no signing), with revert decoding.
-  * `ReadWriteContract`: extends `ReadOnlyContract` and wires in a `WalletClient` for sending transactions (builds `TransactionRequest` with ABI-encoded input).
-  * `Signer` interface / `PrivateKeySigner`: Wrap private keys via our value types (no web3j types leak out).
-  * **Runtime ABI Wrapper Binding** via `BraneContract.bind()`: dynamically bind Java interfaces to smart contracts without code generation:
-
-    ```java
-    // Define interface matching contract ABI
-    interface Erc20Contract {
-        BigInteger balanceOf(Address owner);               // view function
-        TransactionReceipt transfer(Address to, BigInteger amount);  // write function
-    }
-
-    // Bind interface to deployed contract
-    Erc20Contract token = BraneContract.bind(
-        contractAddress,
-        abiJson,
-        publicClient,
-        walletClient,
-        Erc20Contract.class
-    );
-
-    // Call methods directly - type-safe, no encoding/decoding
-    BigInteger balance = token.balanceOf(owner);          // eth_call
-    TransactionReceipt receipt = token.transfer(to, amount);  // signed transaction
-    ```
-
-    Features:
-    - Zero code generation required
-    - Type-safe method calls with compile-time checking
-    - Automatic routing: view methods → `PublicClient`, write methods → `WalletClient`
-    - Bind-time validation ensures interface matches ABI
-    - Supports `void`, `BigInteger`, `Address`, `boolean`/`Boolean` returns for view; `void` or `TransactionReceipt` for write
-
-### `brane-examples`
-
-Runnable demos that exercise `Contract.read`/`write` against a running node.
-
-  * `io.brane.examples.Main` – echo example calling `echo(uint256)`.
-  * `io.brane.examples.Erc20Example` – calls `decimals()` and `balanceOf(address)` (via both `Contract.read` and `PublicClient` + `Abi`). Run with:
-
-    ```bash
-    ./gradlew :brane-examples:run \
-      -PmainClass=io.brane.examples.Erc20Example \
-      -Dbrane.examples.erc20.rpc=http://127.0.0.1:8545 \
-      -Dbrane.examples.erc20.contract=0xYourTokenAddress \
-      -Dbrane.examples.erc20.holder=0xHolderAddress
-    ```
-    Ensure the RPC endpoint is running and the contract/holder addresses are valid.
-  * `io.brane.examples.Erc20TransferExample` – sends an ERC-20 `transfer` using the new wallet client + signer:
-
-    ```bash
-    ./gradlew :brane-examples:run \
-      -PmainClass=io.brane.examples.Erc20TransferExample \
-      -Dbrane.examples.erc20.rpc=http://127.0.0.1:8545 \
-      -Dbrane.examples.erc20.contract=0xYourTokenAddress \
-      -Dbrane.examples.erc20.recipient=0xRecipient \
-      -Dbrane.examples.erc20.pk=0xYourPrivateKey \
-      -Dbrane.examples.erc20.amount=1
-    ```
-    Uses `PrivateKeyTransactionSigner` + `DefaultWalletClient` + `ReadWriteContract`.
-  * `io.brane.examples.MultiChainLatestBlockExample` – shows how to build clients from `ChainProfiles`. Always queries Anvil; optionally queries Base Sepolia when an RPC URL is provided:
-
-    ```bash
-    ./gradlew :brane-examples:run --no-daemon \
-      -PmainClass=io.brane.examples.MultiChainLatestBlockExample \
-      -Dbrane.examples.rpc.base-sepolia=https://sepolia.base.org
-    ```
-  * `io.brane.examples.ErrorDiagnosticsExample` – exercises the error model and diagnostics:
-
-    Helpers only (no network):
-    ```bash
-    ./gradlew :brane-examples:run --no-daemon \
-      -PmainClass=io.brane.examples.ErrorDiagnosticsExample \
-      -Pbrane.examples.mode=helpers
-    ```
-    RPC error demo (uses a bad URL to show `RpcException`):
-    ```bash
-    ./gradlew :brane-examples:run --no-daemon \
-      -PmainClass=io.brane.examples.ErrorDiagnosticsExample \
-      -Pbrane.examples.mode=rpc-error
-    ```
-  * `io.brane.examples.TxBuilderIntegrationTest` – verifies EIP-1559 and contract deployment via the builder:
-    ```bash
-    ./gradlew :brane-examples:run --no-daemon \
-      -PmainClass=io.brane.examples.TxBuilderIntegrationTest \
-      -Dbrane.examples.rpc=http://127.0.0.1:8545 \
-      -Dbrane.examples.pk=0xYourPrivateKey
-    ```
-
------
-
-## 🔬 Testing Setup (P0)
-
-The project uses **Foundry** for a reliable testing environment:
-
-1.  **Solidity Contract:** A simple `RevertExample.sol` is used to test various revert paths (e.g., `revert("simple reason")` for `Error(string)` and `revert CustomError(...)` for custom reverts).
-2.  **Local Node:** Tests run against an `anvil` instance (e.g., at `http://127.0.0.1:8545`).
-3.  **JUnit Tests:** Verify:
-      * Core value types (`Address`, `Hash`, `HexData`, `Wei`) behave as expected.
-      * `Contract.read` correctly decodes values and generates `RevertException` when `error.data` contains revert payloads.
-      * `Contract.write` signs/sends transactions via `Signer`.
-
-<!-- end list -->
-## ✅ Local testing checklist
-
-1. **Pure unit tests**
-
-   ```bash
-   ./gradlew :brane-core:test
-   ./gradlew :brane-contract:test        # without extra props runs only pure tests
-   ```
-
-2. **Anvil-backed integration tests**
-
-   Deploy `RevertExample.sol` + `Storage.sol` (see `foundry/anvil-tests/`), then run:
-
-   ```bash
-   ./gradlew :brane-contract:test \
-     -Dbrane.anvil.rpc=http://127.0.0.1:8545 \
-     -Dbrane.anvil.revertExample.address=0x5FbDB2315678afecb367f032d93F642f64180aa3 \
-     -Dbrane.anvil.storage.address=0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512 \
-     -Dbrane.anvil.signer.privateKey=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
-   ```
-
-3. **Examples**
-
-   ```bash
-   ./gradlew :brane-examples:run \
-     -Dbrane.examples.rpc=http://127.0.0.1:8545 \
-     -Dbrane.examples.contract=0x5FbDB2315678afecb367f032d93F642f64180aa3
-   ```
-
-   *Echo example* (default): runs `io.brane.examples.Main` and calls `echo(uint256)`.
-
-   *ERC-20 example*: calls `decimals()` and `balanceOf(address)` two ways (Contract.read and PublicClient + Abi). If your build allows overriding the main class, run:
-
-   ```bash
-   ./gradlew :brane-examples:run \
-     -PmainClass=io.brane.examples.Erc20Example \
-     -Dbrane.examples.erc20.rpc=http://127.0.0.1:8545 \
-     -Dbrane.examples.erc20.contract=0xYourTokenAddress \
-     -Dbrane.examples.erc20.holder=0xHolderAddress
-   ```
-
-   Make sure the RPC node is running, the contract address points to a deployed ERC-20, and the holder has a balance to see a non-zero result.
-
-4. **Full verification**
-
-   ```bash
-   ./gradlew clean check
-   ```
-
-The guardrails in `Guardrail.md` ensure web3j internals never leak into public APIs; the layout above follows those rules.
+Docs will be in `build/docs/javadoc`.

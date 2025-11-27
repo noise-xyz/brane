@@ -126,6 +126,14 @@ public interface Abi {
      */
     FunctionCall encodeFunction(String name, Object... args);
 
+    /**
+     * Encodes constructor arguments into hex data.
+     * 
+     * @param args the constructor arguments in order
+     * @return the encoded constructor arguments (without bytecode)
+     */
+    HexData encodeConstructor(Object... args);
+
     Optional<FunctionMetadata> getFunction(String name);
 
     <T> java.util.List<T> decodeEvents(String eventName, java.util.List<io.brane.core.model.LogEntry> logs,

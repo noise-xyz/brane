@@ -37,4 +37,29 @@ subprojects {
         testImplementation 'org.mockito:mockito-core:5.11.0'
         testImplementation 'org.mockito:mockito-junit-jupiter:5.11.0'
     }
+
+    tasks.withType(Javadoc).configureEach {
+        exclude 'io/brane/internal/**'
+        options.addStringOption('Xdoclint:none', '-quiet')
+    }
+}
+
+// Aggregated Javadoc
+task allJavadoc(type: Javadoc) {
+    description = 'Generates aggregated Javadoc for all modules'
+    group = 'documentation'
+
+    destinationDir = file("$buildDir/docs/javadoc")
+    title = "Brane SDK ${version} API"
+
+    // Exclude examples from API docs
+    def docProjects = subprojects.findAll { it.name != 'brane-examples' }
+    
+    source docProjects.collect { it.sourceSets.main.allJava }
+    classpath = files(docProjects.collect { it.sourceSets.main.compileClasspath })
+    
+    exclude 'io/brane/internal/**'
+    options.addStringOption('Xdoclint:none', '-quiet')
+    options.memberLevel = JavadocMemberLevel.PROTECTED
+    options.links 'https://docs.oracle.com/en/java/javase/21/docs/api/'
 }
