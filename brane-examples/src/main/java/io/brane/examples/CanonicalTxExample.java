@@ -1,5 +1,6 @@
 package io.brane.examples;
 
+import io.brane.core.AnsiColors;
 import io.brane.core.BraneDebug;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.model.AccessListEntry;
@@ -69,7 +70,7 @@ public final class CanonicalTxExample {
                     .build();
 
             final TransactionReceipt receipt1 = wallet.sendTransactionAndWait(defaultTx, 30_000, 1_000);
-            System.out.println("✓ Tx 1 Success: " + receipt1.transactionHash().value());
+            System.out.println(AnsiColors.success("Tx 1 Success: " + receipt1.transactionHash().value()));
             System.out.println("  Gas Used: " + receipt1.cumulativeGasUsed().value());
 
             // ---------------------------------------------------------
@@ -90,7 +91,7 @@ public final class CanonicalTxExample {
                     .build();
 
             final TransactionReceipt receipt2 = wallet.sendTransactionAndWait(accessListTx, 30_000, 1_000);
-            System.out.println("✓ Tx 2 Success: " + receipt2.transactionHash().value());
+            System.out.println(AnsiColors.success("Tx 2 Success: " + receipt2.transactionHash().value()));
             System.out.println("  Gas Used: " + receipt2.cumulativeGasUsed().value());
 
             // ---------------------------------------------------------
@@ -108,7 +109,7 @@ public final class CanonicalTxExample {
                     .build();
 
             final TransactionReceipt receipt3 = wallet.sendTransactionAndWait(explicitTx, 30_000, 1_000);
-            System.out.println("✓ Tx 3 Success: " + receipt3.transactionHash().value());
+            System.out.println(AnsiColors.success("Tx 3 Success: " + receipt3.transactionHash().value()));
 
         } catch (Exception e) {
             System.err.println("❌ Error: " + e.getMessage());

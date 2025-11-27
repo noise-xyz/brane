@@ -2,6 +2,7 @@ package io.brane.rpc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.brane.core.DebugLogger;
+import io.brane.core.LogFormatter;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.Transaction;
 import io.brane.core.model.LogEntry;
@@ -66,12 +67,12 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public String call(final Map<String, Object> callObject, final String blockTag) {
         final long start = System.nanoTime();
-        DebugLogger.log("[CALL] tag=%s request=%s", blockTag, callObject);
+        DebugLogger.log(LogFormatter.formatCall(blockTag, callObject));
         final JsonRpcResponse response = sendWithRetry("eth_call", List.of(callObject, blockTag));
         final Object result = response.result();
         final String output = result != null ? result.toString() : null;
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
-        DebugLogger.log("[CALL-RESULT] tag=%s durationMicros=%s result=%s", blockTag, durationMicros, output);
+        DebugLogger.log(LogFormatter.formatCallResult(blockTag, durationMicros, output));
         return output;
     }
 

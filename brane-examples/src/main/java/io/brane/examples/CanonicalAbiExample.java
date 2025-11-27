@@ -2,6 +2,7 @@ package io.brane.examples;
 
 import io.brane.contract.Abi;
 import io.brane.contract.BraneContract;
+import io.brane.core.AnsiColors;
 import io.brane.core.BraneDebug;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.model.TransactionReceipt;
@@ -100,7 +101,7 @@ public final class CanonicalAbiExample {
                 System.out.println("[0] Deploying ERC-20 Contract...");
                 final BigInteger initialSupply = BigInteger.valueOf(1_000_000);
                 contractAddr = deployErc20(walletClient, initialSupply);
-                System.out.println("    ✓ Deployed at: " + contractAddr);
+                System.out.println("    " + AnsiColors.success("Deployed at: " + contractAddr));
             }
 
             // ---------------------------------------------------------
@@ -135,8 +136,8 @@ public final class CanonicalAbiExample {
             System.out.println("    Transferring " + amount + " tokens...");
             final TransactionReceipt receipt = token.transfer(recipient, amount);
 
-            System.out.println("    ✓ Tx Hash: " + receipt.transactionHash().value());
-            System.out.println("    ✓ Status: " + (receipt.status() ? "SUCCESS" : "FAILED"));
+            System.out.println("    " + AnsiColors.success("Tx Hash: " + receipt.transactionHash().value()));
+            System.out.println("    " + AnsiColors.success("Status: " + (receipt.status() ? "SUCCESS" : "FAILED")));
 
             // ---------------------------------------------------------
             // Feature 4: Explicit Failure (Validation)
@@ -150,7 +151,7 @@ public final class CanonicalAbiExample {
                         walletClient,
                         InvalidErc20.class);
             } catch (IllegalArgumentException e) {
-                System.out.println("    ✓ Caught expected error: " + e.getMessage());
+                System.out.println("    " + AnsiColors.success("Caught expected error: " + e.getMessage()));
             }
 
             System.out.println("\n✅ Canonical ABI Example Completed Successfully.");

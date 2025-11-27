@@ -1,5 +1,6 @@
 package io.brane.examples;
 
+import io.brane.core.AnsiColors;
 import io.brane.core.BraneDebug;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.error.RevertException;
@@ -39,7 +40,7 @@ public final class CanonicalDebugExample {
         // This enables verbose logging for RPC calls and transaction lifecycle events.
         BraneDebug.setEnabled(true);
         System.out.println("=== Canonical Debug Example ===");
-        System.out.println("✓ Debug Mode Enabled");
+        System.out.println(AnsiColors.success("Debug Mode Enabled"));
 
         final String rpcUrl = System.getProperty("brane.examples.rpc", "http://127.0.0.1:8545");
         // Use a random key for demo (don't use real funds!)
