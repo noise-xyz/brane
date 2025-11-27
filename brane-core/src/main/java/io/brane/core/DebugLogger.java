@@ -42,17 +42,21 @@ public final class DebugLogger {
     }
 
     /**
-     * Direct colored output to console (bypasses SLF4J for colors).
+     * Direct output to stdout for colored logs in TTY environments.
+     * Falls back to SLF4J for non-TTY environments.
+     * CRITICAL: Always sanitizes logs to prevent credential leakage.
      */
     private static void logDirect(final String message, final Object... args) {
         final String formatted = (args == null || args.length == 0) ? message : message.formatted(args);
 
-        // Use colored console output when available
+        // SECURITY: Always sanitize, even for colored output
+        final String sanitized = LogSanitizer.sanitize(formatted);
+
         if (USE_COLORS) {
-            System.out.println(formatted);
+            System.out.println(sanitized);
         } else {
             // Fall back to SLF4J for non-TTY environments
-            LOG.info(LogSanitizer.sanitize(formatted));
+            LOG.info(sanitized);
         }
     }
 }
