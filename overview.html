@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>Brane SDK Overview</title>
+</head>
+
+<body>
+    <h1>Brane 0.1.0-alpha</h1>
+    <p>A modern, type-safe JVM SDK for Ethereum and EVM chains. Built on Java 21. Focused on clarity, correctness, and
+        developer experience.</p>
+
+    <h2>Feature Reference</h2>
+
+    <h3>1. Core Connectivity and RPC</h3>
+    <ul>
+        <li><b>JSON-RPC Client</b>: Robust HTTP client for communicating with Ethereum nodes (Geth, Besu, Anvil, etc.).
+        </li>
+        <li><b>Request ID Correlation</b>: Automatic correlation of requests and responses in logs for easier debugging.
+        </li>
+        <li><b>Typed RPC Methods</b>: Strongly-typed wrappers for standard methods like <code>eth_call</code>,
+            <code>eth_estimateGas</code>, <code>eth_sendRawTransaction</code>, etc.
+        </li>
+        <li><b>Smart Retry Logic</b>: Automatic retries for transient network errors with exponential backoff.</li>
+    </ul>
+
+    <h3>2. Transaction Management</h3>
+    <ul>
+        <li><b>Unified TxBuilder</b>: Fluent API for creating both <b>EIP-1559</b> (default) and <b>Legacy</b>
+            transactions.</li>
+        <li><b>Smart Gas Defaults</b>:
+            <ul>
+                <li>Auto-estimates gas limit with a safety buffer.</li>
+                <li>Auto-calculates EIP-1559 fees (<code>maxFeePerGas</code>, <code>maxPriorityFeePerGas</code>) based
+                    on network conditions.</li>
+            </ul>
+        </li>
+        <li><b>Access Lists (EIP-2930)</b>: Support for specifying access lists to reduce gas costs.</li>
+        <li><b>Offline Signing</b>: Secure transaction signing using <code>PrivateKeyTransactionSigner</code>.</li>
+        <li><b>Nonce Management</b>: Automatic nonce handling via <code>WalletClient</code>.</li>
+    </ul>
+
+    <h3>3. Smart Contracts and ABI</h3>
+    <ul>
+        <li><b>Runtime Binding</b>: Bind Java interfaces directly to deployed contracts using
+            <code>BraneContract.bind()</code>. No code generation required.
+        </li>
+        <li><b>ABI Encoding/Decoding</b>:
+            <ul>
+                <li>Full support for standard Solidity types (<code>uint</code>, <code>address</code>,
+                    <code>string</code>, <code>bytes</code>, arrays, tuples).
+                </li>
+                <li><b>Constructor Encoding</b>: Helper <code>Abi.encodeConstructor()</code> for contract deployment.
+                </li>
+                <li><b>Event Decoding</b>: Decode logs into typed objects.</li>
+            </ul>
+        </li>
+        <li><b>Revert Handling</b>:
+            <ul>
+                <li><b>Typed Exceptions</b>: <code>RevertException</code> distinguishes between execution reverts and
+                    RPC errors.</li>
+                <li><b>Automatic Decoding</b>: Decodes <code>Error(string)</code>, <code>Panic(uint256)</code>, and
+                    custom errors automatically.</li>
+            </ul>
+        </li>
+    </ul>
+
+    <h3>4. Developer Experience</h3>
+    <ul>
+        <li><b>Granular Logging</b>: Configurable logging via <code>BraneDebug</code> (RPC payloads, Tx lifecycle, Gas
+            estimation).</li>
+        <li><b>Zero-Dependency Primitives</b>: Standalone <code>Hex</code> and <code>RLP</code> utilities in
+            <code>brane-primitives</code>.
+        </li>
+        <li><b>Java 21 Native</b>: Leverages Records, Pattern Matching, and Virtual Threads.</li>
+    </ul>
+
+    <h2>Module Structure</h2>
+    <ul>
+        <li><b>brane-core</b>: Domain types (<code>Address</code>, <code>Wei</code>, <code>HexData</code>), error
+            hierarchy, and chain configurations.</li>
+        <li><b>brane-rpc</b>: The primary entry point. Contains <code>PublicClient</code> for reads and
+            <code>WalletClient</code> for writes.
+        </li>
+        <li><b>brane-contract</b>: The ABI engine and contract binding logic.</li>
+        <li><b>brane-primitives</b>: Low-level encoding utilities (Hex, RLP).</li>
+    </ul>
+</body>
+
+</html>

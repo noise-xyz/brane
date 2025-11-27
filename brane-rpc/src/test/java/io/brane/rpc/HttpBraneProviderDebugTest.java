@@ -48,8 +48,8 @@ class HttpBraneProviderDebugTest {
                         exchange,
                         200,
                         """
-                        {"jsonrpc":"2.0","result":"0x1","id":"1"}
-                        """));
+                                {"jsonrpc":"2.0","result":"0x1","id":"1"}
+                                """));
 
         BraneDebug.setEnabled(true);
         final ListAppender<ILoggingEvent> appender = new ListAppender<>();
@@ -62,8 +62,8 @@ class HttpBraneProviderDebugTest {
         assertFalse(appender.list.isEmpty());
         final String message = appender.list.getFirst().getFormattedMessage();
         assertTrue(message.contains("[RPC]"));
-        assertTrue(message.contains("id=1"));
-        assertTrue(message.contains("0x***[REDACTED]***"));
+        assertTrue(message.contains("method=eth_blockNumber"));
+        // New format doesn't include request/response data for cleaner output
     }
 
     @Test
@@ -81,7 +81,6 @@ class HttpBraneProviderDebugTest {
         assertFalse(appender.list.isEmpty());
         final String message = appender.list.getFirst().getFormattedMessage();
         assertTrue(message.contains("[RPC-ERROR]"));
-        assertTrue(message.contains("id=1"));
         assertTrue(message.contains("method=eth_blockNumber"));
     }
 

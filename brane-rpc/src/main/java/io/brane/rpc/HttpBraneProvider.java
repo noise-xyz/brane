@@ -3,6 +3,7 @@ package io.brane.rpc;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.brane.core.DebugLogger;
+import io.brane.core.LogFormatter;
 import io.brane.core.error.RpcException;
 import java.lang.reflect.Array;
 import java.io.IOException;
@@ -49,8 +50,8 @@ public final class HttpBraneProvider implements BraneProvider {
 
         if (response.statusCode() < 200 || response.statusCode() >= 300) {
             DebugLogger.logRpc(
-                    "[RPC-ERROR] id=%d method=%s status=%s durationMicros=%s body=%s",
-                    requestId, method, response.statusCode(), durationMicros, response.body());
+                    LogFormatter.formatRpcError(method, response.statusCode(),
+                            "HTTP " + response.statusCode(), durationMicros));
             throw new RpcException(
                     -32001,
                     "HTTP error for method " + method + ": " + response.statusCode(),
@@ -64,14 +65,11 @@ public final class HttpBraneProvider implements BraneProvider {
         if (rpcResponse.hasError()) {
             final JsonRpcError err = rpcResponse.error();
             DebugLogger.logRpc(
-                    "[RPC-ERROR] id=%d method=%s code=%s message=%s data=%s durationMicros=%s",
-                    requestId, method, err.code(), err.message(), err.data(), durationMicros);
+                    LogFormatter.formatRpcError(method, err.code(), err.message(), durationMicros));
             throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), requestId);
         }
 
-        DebugLogger.logRpc(
-                "[RPC] id=%d method=%s durationMicros=%s request=%s response=%s",
-                requestId, method, durationMicros, payload, responseBody);
+        DebugLogger.logRpc(LogFormatter.formatRpc(method, durationMicros));
         return rpcResponse;
     }
 

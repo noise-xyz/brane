@@ -2,6 +2,7 @@ package io.brane.rpc;
 
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.DebugLogger;
+import io.brane.core.LogFormatter;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionRequest;
@@ -132,7 +133,8 @@ final class SmartGasStrategy {
     }
 
     private String callEstimateGas(final Map<String, Object> tx) {
-        DebugLogger.logTx("[ESTIMATE-GAS] from=%s to=%s data=%s", tx.get("from"), tx.get("to"), tx.get("data"));
+        DebugLogger.logTx(LogFormatter.formatEstimateGas(
+                String.valueOf(tx.get("from")), String.valueOf(tx.get("to")), String.valueOf(tx.get("data"))));
         final long start = System.nanoTime();
         final JsonRpcResponse response = provider.send("eth_estimateGas", List.of(tx));
         if (response.hasError()) {
@@ -142,7 +144,7 @@ final class SmartGasStrategy {
         }
         final String result = response.result().toString();
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
-        DebugLogger.logTx("[ESTIMATE-GAS-RESULT] durationMicros=%s gas=%s", durationMicros, result);
+        DebugLogger.logTx(LogFormatter.formatEstimateGasResult(durationMicros, result));
         return result;
     }
 

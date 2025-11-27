@@ -2,6 +2,7 @@ package io.brane.rpc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.brane.core.DebugLogger;
+import io.brane.core.LogFormatter;
 import io.brane.core.RevertDecoder;
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.error.ChainMismatchException;
@@ -202,12 +203,7 @@ public final class DefaultWalletClient implements WalletClient {
                         valueParts.data);
 
         DebugLogger.logTx(
-                "[TX-SEND] from=%s to=%s nonce=%s gasLimit=%s value=%s",
-                from,
-                valueParts.to,
-                nonce,
-                gasLimit,
-                valueParts.value);
+                LogFormatter.formatTxSend(from.value(), valueParts.to, nonce, gasLimit, valueParts.value));
 
         final String signedHex = signer.sign(rawTx);
         final String txHash;
@@ -223,7 +219,7 @@ public final class DefaultWalletClient implements WalletClient {
             throw e;
         }
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
-        DebugLogger.logTx("[TX-HASH] hash=%s durationMicros=%s", txHash, durationMicros);
+        DebugLogger.logTx(LogFormatter.formatTxHash(txHash, durationMicros));
         return new Hash(txHash);
     }
 
@@ -231,17 +227,14 @@ public final class DefaultWalletClient implements WalletClient {
     public TransactionReceipt sendTransactionAndWait(
             final TransactionRequest request, final long timeoutMillis, final long pollIntervalMillis) {
         final Hash txHash = sendTransaction(request);
-        DebugLogger.logTx("[TX-WAIT] hash=%s timeoutMillis=%s", txHash.value(), timeoutMillis);
+        DebugLogger.logTx(LogFormatter.formatTxWait(txHash.value(), timeoutMillis));
         final Instant deadline = Instant.now().plus(Duration.ofMillis(timeoutMillis));
 
         while (Instant.now().isBefore(deadline)) {
             final TransactionReceipt receipt = fetchReceipt(txHash);
             if (receipt != null) {
                 DebugLogger.logTx(
-                        "[TX-RECEIPT] hash=%s block=%s status=%s",
-                        txHash.value(),
-                        receipt.blockNumber(),
-                        receipt.status());
+                        LogFormatter.formatTxReceipt(txHash.value(), receipt.blockNumber(), receipt.status()));
                 return receipt;
             }
             try {
@@ -371,7 +364,8 @@ public final class DefaultWalletClient implements WalletClient {
         if (request.accessList() != null && !request.accessList().isEmpty()) {
             tx.put("accessList", toJsonAccessList(request.accessList()));
         }
-        DebugLogger.logTx("[ESTIMATE-GAS] from=%s to=%s data=%s", from, tx.get("to"), tx.get("data"));
+        DebugLogger.logTx(LogFormatter.formatEstimateGas(
+                String.valueOf(from), String.valueOf(tx.get("to")), String.valueOf(tx.get("data"))));
         final long start = System.nanoTime();
         final String estimate;
         try {
@@ -381,7 +375,7 @@ public final class DefaultWalletClient implements WalletClient {
             throw e;
         }
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
-        DebugLogger.logTx("[ESTIMATE-GAS-RESULT] durationMicros=%s gas=%s", durationMicros, estimate);
+        DebugLogger.logTx(LogFormatter.formatEstimateGasResult(durationMicros, estimate));
         return Numeric.decodeQuantity(estimate);
     }
 
@@ -470,8 +464,8 @@ public final class DefaultWalletClient implements WalletClient {
             // Always throw RevertException for revert data, even if kind is UNKNOWN
             // (UNKNOWN just means we couldn't decode it, but it's still a revert)
             DebugLogger.logTx(
-                    "[TX-REVERT] hash=%s kind=%s reason=%s", hash != null ? hash.value() : "unknown", decoded.kind(),
-                    decoded.reason());
+                    LogFormatter.formatTxRevert(hash != null ? hash.value() : null, decoded.kind().toString(),
+                            decoded.reason()));
             throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), e);
         }
     }

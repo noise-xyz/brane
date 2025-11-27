@@ -60,6 +60,7 @@ task allJavadoc(type: Javadoc) {
     
     exclude 'io/brane/internal/**'
     options.addStringOption('Xdoclint:none', '-quiet')
+    options.overview = file('overview.html')
     options.memberLevel = JavadocMemberLevel.PROTECTED
     options.links 'https://docs.oracle.com/en/java/javase/21/docs/api/'
 }

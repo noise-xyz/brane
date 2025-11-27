@@ -1,5 +1,6 @@
 package io.brane.examples;
 
+import io.brane.core.AnsiColors;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
@@ -57,7 +58,7 @@ public final class CanonicalRawExample {
             System.out.println("\n[1] Reading Chain State...");
 
             final BigInteger blockNumber = BigInteger.valueOf(publicClient.getLatestBlock().number());
-            System.out.println("✓ Current Block: " + blockNumber);
+            System.out.println(AnsiColors.success("Current Block: " + blockNumber));
 
             // Note: PublicClient is strictly for reading block/tx data.
             // For chainId or balance, one would typically use specific RPC methods
@@ -82,10 +83,10 @@ public final class CanonicalRawExample {
             // We wait up to 60 seconds, polling every 1 second
             final TransactionReceipt receipt = walletClient.sendTransactionAndWait(tx, 60_000, 1_000);
 
-            System.out.println("✓ Tx Hash: " + receipt.transactionHash().value());
-            System.out.println("✓ Status:  " + (receipt.status() ? "SUCCESS" : "FAILED"));
-            System.out.println("✓ Block:   " + receipt.blockNumber());
-            System.out.println("✓ Gas Used:" + receipt.cumulativeGasUsed().value());
+            System.out.println(AnsiColors.success("Tx Hash: " + receipt.transactionHash().value()));
+            System.out.println(AnsiColors.success("Status:  " + (receipt.status() ? "SUCCESS" : "FAILED")));
+            System.out.println(AnsiColors.success("Block:   " + receipt.blockNumber()));
+            System.out.println(AnsiColors.success("Gas Used:" + receipt.cumulativeGasUsed().value()));
 
         } catch (Exception e) {
             System.err.println("❌ Error: " + e.getMessage());

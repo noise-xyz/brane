@@ -24,13 +24,15 @@ import java.io.PrintStream;
  * 3. Sensitive data is redacted (private keys)
  * 
  * Usage:
- * ./gradlew :brane-examples:run -PmainClass=io.brane.examples.DebugIntegrationTest \
- *   -Dbrane.examples.rpc=http://127.0.0.1:8545 \
- *   -Dorg.slf4j.simpleLogger.defaultLogLevel=debug
+ * ./gradlew :brane-examples:run
+ * -PmainClass=io.brane.examples.DebugIntegrationTest \
+ * -Dbrane.examples.rpc=http://127.0.0.1:8545 \
+ * -Dorg.slf4j.simpleLogger.defaultLogLevel=debug
  */
 public final class DebugIntegrationTest {
 
-    private DebugIntegrationTest() {}
+    private DebugIntegrationTest() {
+    }
 
     public static void main(String[] args) {
         System.out.println("Running Debug Integration Tests...");
@@ -47,7 +49,7 @@ public final class DebugIntegrationTest {
         }
 
         final String logs = stderr.toString();
-        
+
         // Print logs for manual inspection if needed
         System.out.println("--- Captured Logs ---");
         System.out.println(logs);
@@ -59,17 +61,16 @@ public final class DebugIntegrationTest {
 
     private static void runTest() {
         BraneDebug.setEnabled(true);
-        
+
         final String rpcUrl = System.getProperty("brane.examples.rpc", "http://127.0.0.1:8545");
         // Use a random key for demo
         final String privateKey = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
-        
+
         final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
         final PublicClient publicClient = PublicClient.from(provider);
         final PrivateKeyTransactionSigner signer = new PrivateKeyTransactionSigner(privateKey);
         final TransactionSigner txSigner = signer::sign;
-        final WalletClient wallet =
-                DefaultWalletClient.create(provider, publicClient, txSigner, signer.address());
+        final WalletClient wallet = DefaultWalletClient.create(provider, publicClient, txSigner, signer.address());
 
         try {
             // Trigger RPC logs
@@ -80,23 +81,24 @@ public final class DebugIntegrationTest {
                     .to(new Address("0x0000000000000000000000000000000000000000"))
                     .value(Wei.of(100))
                     .build();
-            
+
             wallet.sendTransaction(tx);
         } catch (Exception e) {
             // Ignore expected errors (insufficient funds etc)
         }
     }
 
-    private static void verifyLogs(String logs) {
-        // 1. Verify RPC Logging with Request IDs
-        if (!logs.contains("[RPC]") || !logs.contains(" id=")) {
-            throw new RuntimeException("Missing [RPC] log or request ID");
+    private static void verifyLogs(final String logs) {
+        // 1. Verify RPC Logging - new minimalist format without request IDs
+        if (!logs.contains("[RPC]")) {
+            throw new RuntimeException("Missing [RPC] log");
         }
         if (!logs.contains("method=eth_getBlockByNumber")) {
             throw new RuntimeException("Missing eth_getBlockByNumber in logs");
         }
-        if (!logs.contains("durationMicros=")) {
-            throw new RuntimeException("Missing durationMicros in logs");
+        // New format uses "duration=" not "durationMicros="
+        if (!logs.contains("duration=")) {
+            throw new RuntimeException("Missing duration in logs");
         }
 
         // 2. Verify Tx Lifecycle Logging
@@ -112,20 +114,7 @@ public final class DebugIntegrationTest {
         if (logs.contains("0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef")) {
             throw new RuntimeException("Private key leaked in logs!");
         }
-        if (logs.contains("\"privateKey\":\"0x***[REDACTED]***\"")) {
-            // Good - we see the redacted version (if it was logged at all)
-        }
-        
-        // Ensure we don't see raw signed tx
-        // The mock key produces a signature, we want to ensure we don't see the full raw hex if it's logged
-        // (Note: HttpBraneProvider logs request body, so we check if "raw" param is redacted)
-        if (logs.contains("\"raw\":\"0x") && !logs.contains("\"raw\":\"0x***[REDACTED]***\"")) {
-             // If raw is present, it MUST be redacted. 
-             // However, eth_sendRawTransaction params are a list of strings, not a JSON object with "raw" key.
-             // Our LogSanitizer handles "raw": "..." JSON fields. 
-             // For eth_sendRawTransaction params: ["0x..."], LogSanitizer truncates if > 2000 chars.
-             // Since our test tx is small, it might not be truncated. 
-             // But let's check if we see the [RPC-ERROR] which might contain data.
-        }
+        // Note: New format doesn't log full request/response payloads,
+        // so credential redaction verification is not applicable
     }
 }

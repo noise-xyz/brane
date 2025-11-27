@@ -3,6 +3,7 @@ package io.brane.examples;
 import io.brane.contract.Abi;
 import io.brane.contract.BraneContract;
 import io.brane.contract.ReadOnlyContract;
+import io.brane.core.AnsiColors;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
@@ -127,7 +128,7 @@ public final class CanonicalErc20Example {
         System.out.println("\n[0] Deploying ERC-20 Contract...");
         final BigInteger initialSupply = BigInteger.valueOf(1_000_000);
         contractAddr = deployErc20(walletClient, initialSupply);
-        System.out.println("✓ Deployed at: " + contractAddr);
+        System.out.println(AnsiColors.success("Deployed at: " + contractAddr));
       }
 
       final Address tokenAddress = new Address(contractAddr);
@@ -141,12 +142,12 @@ public final class CanonicalErc20Example {
           publicClient,
           walletClient,
           Erc20.class);
-      System.out.println("✓ Bound " + Erc20.class.getSimpleName());
+      System.out.println(AnsiColors.success("Bound " + Erc20.class.getSimpleName()));
 
       // 3. Call View Method (balanceOf)
       System.out.println("\n[2] Reading Balance...");
       final BigInteger balance = token.balanceOf(signer.address());
-      System.out.println("✓ Balance: " + balance);
+      System.out.println(AnsiColors.success("Balance: " + balance));
 
       // 4. Call Write Method (transfer)
       System.out.println("\n[3] Sending Transaction (transfer)...");
@@ -155,9 +156,9 @@ public final class CanonicalErc20Example {
 
       final TransactionReceipt receipt = token.transfer(recipient, amount);
 
-      System.out.println("✓ Tx Hash: " + receipt.transactionHash().value());
-      System.out.println("✓ Status:  " + (receipt.status() ? "SUCCESS" : "FAILED"));
-      System.out.println("✓ Block:   " + receipt.blockNumber());
+      System.out.println(AnsiColors.success("Tx Hash: " + receipt.transactionHash().value()));
+      System.out.println(AnsiColors.success("Status:  " + (receipt.status() ? "SUCCESS" : "FAILED")));
+      System.out.println(AnsiColors.success("Block:   " + receipt.blockNumber()));
 
       // 5. Read and Decode Logs
       System.out.println("\n[4] Decoding Logs...");
@@ -180,8 +181,9 @@ public final class CanonicalErc20Example {
       final List<TransferEvent> events = helper.decodeEvents("Transfer", logs, TransferEvent.class);
 
       for (TransferEvent event : events) {
-        System.out.println("✓ Log: Transfer " + event.value() + " from " + event.from().value() + " to "
-            + event.to().value());
+        System.out
+            .println(AnsiColors.success("Log: Transfer " + event.value() + " from " + event.from().value() + " to "
+                + event.to().value()));
       }
 
     } catch (Exception e) {
