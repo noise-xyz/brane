@@ -24,7 +24,7 @@ cleanup() {
 trap cleanup EXIT
 
 # Wait for anvil to start
-sleep 3
+sleep 5
 
 # Default Anvil Private Key (Account 0)
 PRIVATE_KEY="0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"
@@ -49,6 +49,22 @@ echo "Integration Test - Added sendsTransactionWithCustomGasBuffer() to DefaultW
 echo "Tests custom 50% gas buffer (150/100)"
 echo "Verifies end-to-end behavior with custom configuration"
 echo "Passes successfully ✅"
+
+echo "Running Crypto Primitives Sanity Check (Milestone 1)..."
+./gradlew :brane-examples:run -PmainClass=io.brane.examples.CryptoSanityCheck --quiet --no-daemon
+if [ $? -ne 0 ]; then
+    echo "Crypto Sanity Check Failed!"
+    exit 1
+fi
+echo "Crypto Sanity Check Passed!"
+
+echo "Running Transaction Models Sanity Check (Milestone 2)..."
+./gradlew :brane-examples:run -PmainClass=io.brane.examples.TransactionSanityCheck --quiet --no-daemon
+if [ $? -ne 0 ]; then
+    echo "Transaction Sanity Check Failed!"
+    exit 1
+fi
+echo "Transaction Sanity Check Passed!"
 
 echo "Running Pure Unit Tests..."
 ./gradlew :brane-core:test

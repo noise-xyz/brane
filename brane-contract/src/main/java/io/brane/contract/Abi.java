@@ -2,7 +2,8 @@ package io.brane.contract;
 
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
-import io.brane.internal.web3j.utils.Numeric;
+import io.brane.core.crypto.Keccak256;
+import io.brane.primitives.Hex;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
@@ -92,8 +93,8 @@ public interface Abi {
      */
     static Hash eventTopic(final String eventSignature) {
         final String signature = requireNonEmpty(eventSignature, "eventSignature");
-        final byte[] digest = io.brane.internal.web3j.crypto.Hash.sha3(signature.getBytes(StandardCharsets.UTF_8));
-        return new Hash("0x" + Numeric.toHexStringNoPrefix(digest));
+        final byte[] digest = Keccak256.hash(signature.getBytes(StandardCharsets.UTF_8));
+        return new Hash(Hex.encode(digest));
     }
 
     /**
@@ -111,10 +112,10 @@ public interface Abi {
      */
     static HexData functionSelector(final String functionSignature) {
         final String signature = requireNonEmpty(functionSignature, "functionSignature");
-        final byte[] digest = io.brane.internal.web3j.crypto.Hash.sha3(
+        final byte[] digest = Keccak256.hash(
                 signature.getBytes(StandardCharsets.UTF_8));
-        final String hex = Numeric.toHexStringNoPrefix(digest).substring(0, 8);
-        return new HexData("0x" + hex);
+        final String hex = Hex.encode(digest).substring(0, 10);
+        return new HexData(hex);
     }
 
     /**

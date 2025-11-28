@@ -17,16 +17,16 @@ import java.util.stream.Collectors;
 
 import io.brane.internal.web3j.abi.datatypes.Event;
 import io.brane.internal.web3j.abi.datatypes.Type;
-import io.brane.internal.web3j.crypto.Hash;
-import io.brane.internal.web3j.utils.Numeric;
 
 /**
  * Ethereum filter encoding. Further limited details are available <a
- * href="https://github.com/ethereum/wiki/wiki/Ethereum-Contract-ABI#events">here</a>.
+ * href=
+ * "https://github.com/ethereum/wiki/wiki/Ethereum-Contract-ABI#events">here</a>.
  */
 public class EventEncoder {
 
-    private EventEncoder() {}
+    private EventEncoder() {
+    }
 
     public static String encode(Event event) {
 
@@ -41,8 +41,7 @@ public class EventEncoder {
         StringBuilder result = new StringBuilder();
         result.append(methodName);
         result.append("(");
-        String params =
-                parameters.stream().map(Utils::getTypeName).collect(Collectors.joining(","));
+        String params = parameters.stream().map(Utils::getTypeName).collect(Collectors.joining(","));
         result.append(params);
         result.append(")");
         return result.toString();
@@ -50,7 +49,7 @@ public class EventEncoder {
 
     public static String buildEventSignature(String methodSignature) {
         byte[] input = methodSignature.getBytes();
-        byte[] hash = Hash.sha3(input);
-        return Numeric.toHexString(hash);
+        byte[] hash = io.brane.core.crypto.Keccak256.hash(input);
+        return io.brane.primitives.Hex.encode(hash);
     }
 }

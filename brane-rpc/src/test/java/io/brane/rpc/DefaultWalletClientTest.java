@@ -17,8 +17,7 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
-import io.brane.internal.web3j.crypto.RawTransaction;
-import io.brane.internal.web3j.crypto.transaction.type.TransactionType;
+
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
@@ -58,7 +57,7 @@ class DefaultWalletClientTest {
                 Hash hash = wallet.sendTransaction(request);
 
                 assertEquals("0x" + "a".repeat(64), hash.value());
-                assertEquals(TransactionType.LEGACY, signer.lastTransactionType());
+                assertEquals("LEGACY", signer.lastTransactionType());
                 assertEquals(5L, signer.lastNonce());
                 assertEquals(25200L, signer.lastGasLimit());
         }
@@ -133,7 +132,7 @@ class DefaultWalletClientTest {
                 Hash hash = wallet.sendTransaction(request);
 
                 assertEquals("0x" + "b".repeat(64), hash.value());
-                assertEquals(TransactionType.EIP1559, signer.lastTransactionType());
+                assertEquals("EIP1559", signer.lastTransactionType());
                 assertEquals(6L, signer.lastNonce());
                 // Auto-filled fees should match gasPrice (1 Gwei = 0x3b9aca00)
                 // Note: DefaultWalletClient implementation uses gasPrice for both maxFee and
@@ -211,7 +210,7 @@ class DefaultWalletClientTest {
                 Hash hash = wallet.sendTransaction(request);
 
                 assertEquals("0x" + "e".repeat(64), hash.value());
-                assertEquals(TransactionType.LEGACY, signer.lastTransactionType());
+                assertEquals("LEGACY", signer.lastTransactionType());
                 assertEquals(BigInteger.valueOf(30_000_000_000L), signer.lastGasPrice());
         }
 
@@ -246,7 +245,7 @@ class DefaultWalletClientTest {
                 Hash hash = wallet.sendTransaction(request);
 
                 assertEquals("0x" + "c".repeat(64), hash.value());
-                assertEquals(TransactionType.EIP1559, signer.lastTransactionType());
+                assertEquals("EIP1559", signer.lastTransactionType());
                 assertEquals(7L, signer.lastNonce());
         }
 
@@ -290,7 +289,7 @@ class DefaultWalletClientTest {
                 Hash hash = wallet.sendTransaction(request);
 
                 assertEquals("0x" + "d".repeat(64), hash.value());
-                assertEquals(TransactionType.EIP1559, signer.lastTransactionType());
+                assertEquals("EIP1559", signer.lastTransactionType());
                 // We can't easily verify the access list content in the signer without exposing
                 // it in FakeSigner,
                 // but successful execution implies it didn't crash.
@@ -481,7 +480,8 @@ class DefaultWalletClientTest {
 
         private static final class FakeSigner {
                 private final Address address;
-                private RawTransaction last;
+                private io.brane.core.tx.UnsignedTransaction lastTx;
+                private long lastChainId;
 
                 private FakeSigner(final Address address) {
                         this.address = address;
@@ -492,40 +492,53 @@ class DefaultWalletClientTest {
                 }
 
                 TransactionSigner asSigner() {
-                        return tx -> {
-                                this.last = tx;
+                        return (tx, chainId) -> {
+                                this.lastTx = tx;
+                                this.lastChainId = chainId;
                                 return "0xsigned";
                         };
                 }
 
                 long lastNonce() {
-                        return last.getNonce().longValue();
+                        return switch (lastTx) {
+                                case io.brane.core.tx.LegacyTransaction tx -> tx.nonce();
+                                case io.brane.core.tx.Eip1559Transaction tx -> tx.nonce();
+                        };
                 }
 
                 long lastGasLimit() {
-                        return last.getGasLimit().longValue();
+                        return switch (lastTx) {
+                                case io.brane.core.tx.LegacyTransaction tx -> tx.gasLimit();
+                                case io.brane.core.tx.Eip1559Transaction tx -> tx.gasLimit();
+                        };
                 }
 
                 BigInteger lastMaxPriorityFeePerGas() {
-                        if (last.getTransaction() instanceof io.brane.internal.web3j.crypto.transaction.type.Transaction1559 tx) {
-                                return tx.getMaxPriorityFeePerGas();
+                        if (lastTx instanceof io.brane.core.tx.Eip1559Transaction tx) {
+                                return tx.maxPriorityFeePerGas().value();
                         }
                         return null;
                 }
 
                 BigInteger lastMaxFeePerGas() {
-                        if (last.getTransaction() instanceof io.brane.internal.web3j.crypto.transaction.type.Transaction1559 tx) {
-                                return tx.getMaxFeePerGas();
+                        if (lastTx instanceof io.brane.core.tx.Eip1559Transaction tx) {
+                                return tx.maxFeePerGas().value();
                         }
                         return null;
                 }
 
                 BigInteger lastGasPrice() {
-                        return last.getGasPrice();
+                        if (lastTx instanceof io.brane.core.tx.LegacyTransaction tx) {
+                                return tx.gasPrice().value();
+                        }
+                        return null;
                 }
 
-                TransactionType lastTransactionType() {
-                        return last.getType();
+                String lastTransactionType() {
+                        return switch (lastTx) {
+                                case io.brane.core.tx.LegacyTransaction tx -> "LEGACY";
+                                case io.brane.core.tx.Eip1559Transaction tx -> "EIP1559";
+                        };
                 }
         }
 

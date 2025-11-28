@@ -22,14 +22,13 @@ import java.util.stream.Collectors;
 import io.brane.internal.web3j.abi.datatypes.Function;
 import io.brane.internal.web3j.abi.datatypes.Type;
 import io.brane.internal.web3j.abi.spi.FunctionEncoderProvider;
-import io.brane.internal.web3j.crypto.Hash;
-import io.brane.internal.web3j.utils.Numeric;
 
 import static io.brane.internal.web3j.abi.TypeDecoder.instantiateType;
 import static io.brane.internal.web3j.abi.TypeReference.makeTypeReference;
 
 /**
- * Delegates to {@link DefaultFunctionEncoder} unless a {@link FunctionEncoderProvider} SPI is
+ * Delegates to {@link DefaultFunctionEncoder} unless a
+ * {@link FunctionEncoderProvider} SPI is
  * found, in which case the first implementation found will be used.
  *
  * @see DefaultFunctionEncoder
@@ -40,12 +39,10 @@ public abstract class FunctionEncoder {
     private static final FunctionEncoder FUNCTION_ENCODER;
 
     static {
-        ServiceLoader<FunctionEncoderProvider> loader =
-                ServiceLoader.load(FunctionEncoderProvider.class);
+        ServiceLoader<FunctionEncoderProvider> loader = ServiceLoader.load(FunctionEncoderProvider.class);
         final Iterator<FunctionEncoderProvider> iterator = loader.iterator();
 
-        FUNCTION_ENCODER =
-                iterator.hasNext() ? iterator.next().get() : new DefaultFunctionEncoder();
+        FUNCTION_ENCODER = iterator.hasNext() ? iterator.next().get() : new DefaultFunctionEncoder();
     }
 
     public static String encode(final Function function) {
@@ -71,10 +68,10 @@ public abstract class FunctionEncoder {
             List<Object> arguments,
             List<String> solidityOutputTypes)
             throws ClassNotFoundException,
-                    NoSuchMethodException,
-                    InstantiationException,
-                    IllegalAccessException,
-                    InvocationTargetException {
+            NoSuchMethodException,
+            InstantiationException,
+            IllegalAccessException,
+            InvocationTargetException {
         List<Type> encodedInput = new ArrayList<>();
         Iterator argit = arguments.iterator();
         for (String st : solidityInputTypes) {
@@ -105,8 +102,7 @@ public abstract class FunctionEncoder {
         final StringBuilder result = new StringBuilder();
         result.append(methodName);
         result.append("(");
-        final String params =
-                parameters.stream().map(Type::getTypeAsString).collect(Collectors.joining(","));
+        final String params = parameters.stream().map(Type::getTypeAsString).collect(Collectors.joining(","));
         result.append(params);
         result.append(")");
         return result.toString();
@@ -114,7 +110,7 @@ public abstract class FunctionEncoder {
 
     protected static String buildMethodId(final String methodSignature) {
         final byte[] input = methodSignature.getBytes();
-        final byte[] hash = Hash.sha3(input);
-        return Numeric.toHexString(hash).substring(0, 10);
+        final byte[] hash = io.brane.core.crypto.Keccak256.hash(input);
+        return io.brane.primitives.Hex.encode(hash).substring(0, 10);
     }
 }

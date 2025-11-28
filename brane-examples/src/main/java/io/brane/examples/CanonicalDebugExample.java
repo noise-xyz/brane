@@ -16,7 +16,7 @@ import io.brane.rpc.WalletClient;
 import io.brane.rpc.DefaultWalletClient;
 
 /**
- * Canonical "Debug & Error Handling" Example for Brane 0.1.0-alpha.
+ * Canonical "Debug and Error Handling" Example for Brane 0.1.0-alpha.
  * <p>
  * Demonstrates:
  * 1. Enabling Debug Mode via {@link BraneDebug#setEnabled(boolean)}.

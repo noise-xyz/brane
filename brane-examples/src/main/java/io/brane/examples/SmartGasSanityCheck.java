@@ -8,6 +8,7 @@ import io.brane.core.types.Wei;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.PrivateKeyTransactionSigner;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.TransactionSigner;
 
@@ -19,7 +20,6 @@ public class SmartGasSanityCheck {
 
         // Default Anvil Account 0 Private Key
         private static final String PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
-        private static final Address SENDER = new Address("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
 
         public static void main(String[] args) throws Exception {
                 System.out.println("=== Smart Gas Sanity Check ===");
@@ -28,24 +28,15 @@ public class SmartGasSanityCheck {
                 final BraneProvider provider = HttpBraneProvider.builder("http://127.0.0.1:8545").build();
                 final PublicClient publicClient = PublicClient.from(provider);
 
-                // 2. Setup Signer (using internal web3j for now, as Phase 3 is not yet done)
-                final io.brane.internal.web3j.crypto.Credentials credentials = io.brane.internal.web3j.crypto.Credentials
-                                .create(PRIVATE_KEY);
-
-                final TransactionSigner signer = tx -> {
-                        // Simple signing wrapper using legacy web3j
-                        // In Phase 3 this will be replaced by brane-crypto
-                        io.brane.internal.web3j.crypto.RawTransaction raw = tx;
-                        byte[] signedMessage = io.brane.internal.web3j.crypto.TransactionEncoder.signMessage(
-                                        raw, 31337, credentials);
-                        return io.brane.primitives.Hex.encode(signedMessage);
-                };
+                // 2. Setup Signer using brane-crypto
+                final PrivateKeyTransactionSigner signer = new PrivateKeyTransactionSigner(PRIVATE_KEY);
+                final Address sender = signer.address();
 
                 final DefaultWalletClient wallet = DefaultWalletClient.from(
                                 provider,
                                 publicClient,
                                 signer,
-                                SENDER,
+                                sender,
                                 31337, // Anvil Chain ID
                                 ChainProfiles.ANVIL_LOCAL);
 

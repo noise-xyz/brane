@@ -17,16 +17,16 @@ import java.util.stream.Collectors;
 
 import io.brane.internal.web3j.abi.datatypes.CustomError;
 import io.brane.internal.web3j.abi.datatypes.Type;
-import io.brane.internal.web3j.crypto.Hash;
-import io.brane.internal.web3j.utils.Numeric;
 
 /**
  * Ethereum custom error encoding. Further limited details are available <a
- * href="https://docs.soliditylang.org/en/develop/abi-spec.html#errors">here</a>.
+ * href=
+ * "https://docs.soliditylang.org/en/develop/abi-spec.html#errors">here</a>.
  */
 public class CustomErrorEncoder {
 
-    private CustomErrorEncoder() {}
+    private CustomErrorEncoder() {
+    }
 
     public static String encode(CustomError error) {
         return calculateSignatureHash(buildErrorSignature(error.getName(), error.getParameters()));
@@ -38,8 +38,7 @@ public class CustomErrorEncoder {
         StringBuilder result = new StringBuilder();
         result.append(errorName);
         result.append("(");
-        String params =
-                parameters.stream().map(Utils::getTypeName).collect(Collectors.joining(","));
+        String params = parameters.stream().map(Utils::getTypeName).collect(Collectors.joining(","));
         result.append(params);
         result.append(")");
         return result.toString();
@@ -47,7 +46,7 @@ public class CustomErrorEncoder {
 
     public static String calculateSignatureHash(String errorSignature) {
         byte[] input = errorSignature.getBytes();
-        byte[] hash = Hash.sha3(input);
-        return Numeric.toHexString(hash);
+        byte[] hash = io.brane.core.crypto.Keccak256.hash(input);
+        return io.brane.primitives.Hex.encode(hash);
     }
 }

@@ -20,7 +20,6 @@ import io.brane.internal.web3j.abi.datatypes.Type;
 import io.brane.internal.web3j.abi.datatypes.Utf8String;
 import io.brane.internal.web3j.abi.datatypes.generated.Int256;
 import io.brane.internal.web3j.abi.datatypes.generated.Uint256;
-import io.brane.internal.web3j.utils.Numeric;
 import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -116,7 +115,7 @@ final class InternalAbi implements Abi {
         // I'll assume it exists in io.brane.internal.web3j.abi.FunctionEncoder.
 
         final String rawHex = FunctionEncoder.encodeConstructor(encodedInputs);
-        return new HexData(Numeric.prependHexPrefix(rawHex));
+        return new HexData(io.brane.primitives.Hex.hasPrefix(rawHex) ? rawHex : "0x" + rawHex);
     }
 
     @Override
@@ -213,7 +212,7 @@ final class InternalAbi implements Abi {
                 yield bytes;
             }
             case HexData hex -> {
-                final byte[] bytes = Numeric.hexStringToByteArray(hex.value());
+                final byte[] bytes = io.brane.primitives.Hex.decode(hex.value());
                 validateBytesLength(bytes, solidityType);
                 yield bytes;
             }
@@ -538,9 +537,9 @@ final class InternalAbi implements Abi {
             case io.brane.internal.web3j.abi.datatypes.Address addr -> new Address(addr.getValue());
             case Bool b -> b.getValue();
             case Utf8String s -> s.getValue();
-            case DynamicBytes dyn -> new HexData("0x" + Numeric.toHexStringNoPrefix(dyn.getValue()));
+            case DynamicBytes dyn -> new HexData("0x" + io.brane.primitives.Hex.encodeNoPrefix(dyn.getValue()));
             case io.brane.internal.web3j.abi.datatypes.Bytes bytes ->
-                new HexData("0x" + Numeric.toHexStringNoPrefix(bytes.getValue()));
+                new HexData("0x" + io.brane.primitives.Hex.encodeNoPrefix(bytes.getValue()));
             case Array<?> array -> {
                 final List<Object> list = new ArrayList<>();
                 for (Type<?> t : array.getValue()) {
@@ -581,7 +580,7 @@ final class InternalAbi implements Abi {
                 throw new AbiDecodingException("Raw result is empty");
             }
             // Require at least one full 32-byte word after stripping 0x.
-            final int hexLength = Numeric.cleanHexPrefix(rawResultHex).length();
+            final int hexLength = io.brane.primitives.Hex.cleanPrefix(rawResultHex).length();
             if (hexLength < 64) {
                 throw new AbiDecodingException(
                         "Invalid ABI result length for " + abiFunction.signature());
@@ -695,7 +694,7 @@ final class InternalAbi implements Abi {
         private static Object mapBytes(final byte[] bytes, final Class<?> targetType) {
             return switch (targetType) {
                 case Class<?> c when c == HexData.class || c == Object.class ->
-                    new HexData("0x" + Numeric.toHexStringNoPrefix(bytes));
+                    new HexData("0x" + io.brane.primitives.Hex.encodeNoPrefix(bytes));
                 case Class<?> c when c == byte[].class -> bytes;
                 default -> throw new AbiDecodingException("Cannot map bytes to " + targetType.getName());
             };

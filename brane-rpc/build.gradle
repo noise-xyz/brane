@@ -1,5 +1,6 @@
 dependencies {
     api project(":brane-core")
+    implementation project(":brane-primitives")
     implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
     testImplementation "ch.qos.logback:logback-classic:1.5.6"
 }
