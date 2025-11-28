@@ -187,7 +187,17 @@ public final class PrivateKey {
         final BigInteger s = new BigInteger(1, signature.s());
 
         // Get recovery ID from signature (handles both simple v and EIP-155 v)
-        final int recoveryId = signature.v() <= 1 ? signature.v() : signature.getRecoveryId(1);
+        final int recoveryId;
+        if (signature.v() == 0 || signature.v() == 1) {
+            recoveryId = signature.v();
+        } else if (signature.v() == 27 || signature.v() == 28) {
+            recoveryId = signature.v() - 27;
+        } else {
+            // EIP-155: v = chainId * 2 + 35 + recoveryId
+            // We derive recoveryId (0 or 1) from the parity of (v - 35).
+            // This works even if we don't know the chainId.
+            recoveryId = (signature.v() - 35) & 1;
+        }
 
         try {
             final ECPoint publicKey = recoverPublicKey(r, s, messageHash, recoveryId);
