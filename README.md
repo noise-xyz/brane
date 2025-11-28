@@ -105,7 +105,7 @@ String deployData = bytecode + encodedArgs.value().substring(2);
 *   **Typed Errors**: Distinct `RevertException` (with automatic decoding) and `RpcException`. No more parsing generic strings.
 *   **Modern Defaults**: EIP-1559 by default. Automatic access lists (EIP-2930). Smart gas estimation.
 *   **Zero-Codegen**: Runtime binding of interfaces (`BraneContract.bind`) speeds up iteration.
-*   **Clean API**: Minimal surface area. Internal dependencies (web3j) are shaded and hidden.
+*   **Clean API**: Minimal surface area. Zero dependency on web3j (native crypto & RLP).
 
 ## Project Structure
 
