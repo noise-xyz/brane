@@ -3,10 +3,12 @@ package io.brane.contract;
 import io.brane.core.RevertDecoder;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
+import io.brane.core.tx.LegacyTransaction;
 import io.brane.core.types.Address;
-import io.brane.internal.web3j.crypto.RawTransaction;
-import io.brane.internal.web3j.utils.Numeric;
+import io.brane.core.types.HexData;
+import io.brane.core.types.Wei;
 import io.brane.rpc.Client;
+import io.brane.rpc.internal.RpcUtils;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -56,26 +58,30 @@ public final class Contract {
         final String data = call.data();
 
         final String from = signer.address().value();
-        final BigInteger nonce =
-                decodeQuantity(
-                        client.call("eth_getTransactionCount", String.class, from, "latest"));
-        final BigInteger gasPrice = decodeQuantity(client.call("eth_gasPrice", String.class));
 
-        final RawTransaction tx =
-                RawTransaction.createTransaction(
-                        nonce, gasPrice, DEFAULT_GAS_LIMIT, address.value(), BigInteger.ZERO, data);
+        // Get chainId
+        final String chainIdHex = client.call("eth_chainId", String.class);
+        final long chainId = RpcUtils.decodeHexBigInteger(chainIdHex).longValue();
 
-        final String signedHex = signer.signTransaction(tx);
+        final BigInteger nonce = RpcUtils.decodeHexBigInteger(
+                client.call("eth_getTransactionCount", String.class, from, "latest"));
+        final BigInteger gasPrice = RpcUtils.decodeHexBigInteger(client.call("eth_gasPrice", String.class));
+
+        final LegacyTransaction tx = new LegacyTransaction(
+                nonce.longValue(),
+                Wei.of(gasPrice),
+                DEFAULT_GAS_LIMIT.longValue(),
+                address,
+                Wei.of(0),
+                new HexData(data));
+
+        final String signedHex = signer.signTransaction(tx, chainId);
         try {
             return client.call("eth_sendRawTransaction", String.class, signedHex);
         } catch (RpcException e) {
             handlePotentialRevert(e);
             throw e;
         }
-    }
-
-    private static BigInteger decodeQuantity(final String value) {
-        return Numeric.decodeQuantity(value);
     }
 
     private static void handlePotentialRevert(final RpcException e) throws RevertException {

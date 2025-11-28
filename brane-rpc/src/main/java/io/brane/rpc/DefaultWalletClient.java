@@ -16,9 +16,6 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
-import io.brane.internal.web3j.crypto.AccessListObject;
-import io.brane.internal.web3j.crypto.RawTransaction;
-import io.brane.internal.web3j.utils.Numeric;
 import io.brane.rpc.internal.RpcUtils;
 import java.math.BigInteger;
 import java.time.Duration;
@@ -183,29 +180,36 @@ public final class DefaultWalletClient implements WalletClient {
 
         final ValueParts valueParts = buildValueParts(withDefaults, from);
 
-        final RawTransaction rawTx = valueParts.isEip1559
-                ? RawTransaction.createTransaction(
-                        chainId,
-                        nonce,
-                        gasLimit,
-                        valueParts.to,
-                        valueParts.value,
-                        valueParts.data,
-                        valueParts.maxPriorityFeePerGas,
-                        valueParts.maxFeePerGas,
-                        toAccessListObjects(withDefaults))
-                : RawTransaction.createTransaction(
-                        nonce,
-                        valueParts.gasPrice,
-                        gasLimit,
-                        valueParts.to,
-                        valueParts.value,
-                        valueParts.data);
+        // Build UnsignedTransaction directly with computed nonce and gasLimit
+        final io.brane.core.tx.UnsignedTransaction unsignedTx;
+        final Wei valueOrZero = withDefaults.value() != null ? withDefaults.value() : Wei.of(0);
+        final HexData dataOrEmpty = withDefaults.data() != null ? withDefaults.data() : HexData.EMPTY;
+
+        if (withDefaults.isEip1559()) {
+            unsignedTx = new io.brane.core.tx.Eip1559Transaction(
+                    chainId,
+                    nonce.longValue(),
+                    Wei.of(valueParts.maxPriorityFeePerGas),
+                    Wei.of(valueParts.maxFeePerGas),
+                    gasLimit.longValue(),
+                    withDefaults.to(),
+                    valueOrZero,
+                    dataOrEmpty,
+                    withDefaults.accessListOrEmpty());
+        } else {
+            unsignedTx = new io.brane.core.tx.LegacyTransaction(
+                    nonce.longValue(),
+                    Wei.of(valueParts.gasPrice),
+                    gasLimit.longValue(),
+                    withDefaults.to(),
+                    valueOrZero,
+                    dataOrEmpty);
+        }
 
         DebugLogger.logTx(
                 LogFormatter.formatTxSend(from.value(), valueParts.to, nonce, gasLimit, valueParts.value));
 
-        final String signedHex = signer.sign(rawTx);
+        final String signedHex = signer.sign(unsignedTx, chainId);
         final String txHash;
         final long start = System.nanoTime();
         try {
@@ -345,12 +349,12 @@ public final class DefaultWalletClient implements WalletClient {
 
     private BigInteger fetchGasPrice() {
         final String gasPriceHex = callRpc("eth_gasPrice", List.of(), String.class, null);
-        return Numeric.decodeQuantity(gasPriceHex);
+        return RpcUtils.decodeHexBigInteger(gasPriceHex);
     }
 
     private BigInteger fetchNonce(final Address from) {
         final String result = callRpc("eth_getTransactionCount", List.of(from.value(), "pending"), String.class, null);
-        return Numeric.decodeQuantity(result);
+        return RpcUtils.decodeHexBigInteger(result);
     }
 
     private BigInteger estimateGas(final TransactionRequest request, final Address from) {
@@ -376,7 +380,7 @@ public final class DefaultWalletClient implements WalletClient {
         }
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
         DebugLogger.logTx(LogFormatter.formatEstimateGasResult(durationMicros, estimate));
-        return Numeric.decodeQuantity(estimate);
+        return RpcUtils.decodeHexBigInteger(estimate);
     }
 
     private long enforceChainId() {
@@ -385,7 +389,7 @@ public final class DefaultWalletClient implements WalletClient {
             return cached;
         }
         final String chainIdHex = callRpc("eth_chainId", List.of(), String.class, null);
-        final long actual = Numeric.decodeQuantity(chainIdHex).longValue();
+        final long actual = RpcUtils.decodeHexBigInteger(chainIdHex).longValue();
         cachedChainId.set(actual);
         if (expectedChainId > 0 && expectedChainId != actual) {
             throw new ChainMismatchException(expectedChainId, actual);
@@ -421,18 +425,6 @@ public final class DefaultWalletClient implements WalletClient {
             handlePotentialRevert(e, null);
             throw e;
         }
-    }
-
-    private List<AccessListObject> toAccessListObjects(final TransactionRequest request) {
-        if (request.accessList() == null || request.accessList().isEmpty()) {
-            return List.of();
-        }
-        final List<AccessListObject> objects = new ArrayList<>(request.accessList().size());
-        for (var entry : request.accessList()) {
-            objects.add(new AccessListObject(entry.address().value(),
-                    entry.storageKeys().stream().map(Hash::value).toList()));
-        }
-        return objects;
     }
 
     private List<Map<String, Object>> toJsonAccessList(final List<io.brane.core.model.AccessListEntry> entries) {

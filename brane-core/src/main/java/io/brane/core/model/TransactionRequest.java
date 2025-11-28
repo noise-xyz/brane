@@ -104,4 +104,58 @@ public record TransactionRequest(
     public List<AccessListEntry> accessListOrEmpty() {
         return accessList == null ? List.of() : accessList;
     }
+
+    /**
+     * Converts this request into an unsigned transaction ready for signing.
+     * 
+     * <p>
+     * All fields must be populated (no nulls except {@code to} for contract
+     * creation).
+     * Use {@code WalletClient} to auto-fill missing fields before calling this
+     * method.
+     * 
+     * @param chainId the chain ID for the transaction
+     * @return unsigned transaction (Legacy or EIP-1559 depending on
+     *         {@code isEip1559})
+     * @throws NullPointerException if required fields are null
+     */
+    public io.brane.core.tx.UnsignedTransaction toUnsignedTransaction(final long chainId) {
+        if (nonce == null) {
+            throw new IllegalStateException("nonce must be set");
+        }
+        if (gasLimit == null) {
+            throw new IllegalStateException("gasLimit must be set");
+        }
+
+        final Wei valueOrZero = value != null ? value : Wei.of(0);
+        final HexData dataOrEmpty = data != null ? data : HexData.EMPTY;
+
+        if (isEip1559) {
+            if (maxPriorityFeePerGas == null || maxFeePerGas == null) {
+                throw new IllegalStateException(
+                        "maxPriorityFeePerGas and maxFeePerGas must be set for EIP-1559 transactions");
+            }
+            return new io.brane.core.tx.Eip1559Transaction(
+                    chainId,
+                    nonce,
+                    maxPriorityFeePerGas,
+                    maxFeePerGas,
+                    gasLimit,
+                    to,
+                    valueOrZero,
+                    dataOrEmpty,
+                    accessListOrEmpty());
+        } else {
+            if (gasPrice == null) {
+                throw new IllegalStateException("gasPrice must be set for legacy transactions");
+            }
+            return new io.brane.core.tx.LegacyTransaction(
+                    nonce,
+                    gasPrice,
+                    gasLimit,
+                    to,
+                    valueOrZero,
+                    dataOrEmpty);
+        }
+    }
 }

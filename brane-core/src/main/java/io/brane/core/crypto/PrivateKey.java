@@ -1,0 +1,302 @@
+package io.brane.core.crypto;
+
+import io.brane.core.types.Address;
+import io.brane.primitives.Hex;
+import org.bouncycastle.asn1.x9.X9ECParameters;
+import org.bouncycastle.crypto.ec.CustomNamedCurves;
+import org.bouncycastle.crypto.params.ECDomainParameters;
+import org.bouncycastle.crypto.params.ECPrivateKeyParameters;
+import org.bouncycastle.crypto.signers.ECDSASigner;
+import org.bouncycastle.crypto.signers.HMacDSAKCalculator;
+import org.bouncycastle.math.ec.ECPoint;
+import org.bouncycastle.math.ec.FixedPointCombMultiplier;
+
+import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.Objects;
+
+/**
+ * Ethereum private key with secp256k1 signing capabilities.
+ * 
+ * <p>
+ * This class provides:
+ * <ul>
+ * <li>Private key loading from hex strings</li>
+ * <li>Address derivation from public key</li>
+ * <li>Deterministic ECDSA signing (RFC 6979)</li>
+ * <li>Public key recovery from signatures</li>
+ * <li>Low-s normalization for malleability protection</li>
+ * </ul>
+ * 
+ * <h2>Usage Example</h2>
+ * 
+ * <pre>{@code
+ * PrivateKey key = PrivateKey.fromHex("0x1234...");
+ * Address address = key.toAddress();
+ * 
+ * byte[] messageHash = Keccak256.hash(message);
+ * Signature signature = key.sign(messageHash);
+ * 
+ * Address recovered = PrivateKey.recoverAddress(messageHash, signature);
+ * assert recovered.equals(address);
+ * }</pre>
+ * 
+ * @since 0.2.0
+ */
+public final class PrivateKey {
+
+    private static final X9ECParameters CURVE_PARAMS = CustomNamedCurves.getByName("secp256k1");
+    private static final ECDomainParameters CURVE = new ECDomainParameters(
+            CURVE_PARAMS.getCurve(),
+            CURVE_PARAMS.getG(),
+            CURVE_PARAMS.getN(),
+            CURVE_PARAMS.getH());
+
+    private static final BigInteger HALF_CURVE_ORDER = CURVE_PARAMS.getN().shiftRight(1);
+
+    private final byte[] keyBytes;
+    private final BigInteger privateKeyValue;
+    private final ECPoint publicKey;
+
+    private PrivateKey(final byte[] keyBytes) {
+        if (keyBytes.length != 32) {
+            throw new IllegalArgumentException("Private key must be 32 bytes, got " + keyBytes.length);
+        }
+
+        this.keyBytes = Arrays.copyOf(keyBytes, 32);
+        this.privateKeyValue = new BigInteger(1, keyBytes);
+
+        if (privateKeyValue.compareTo(BigInteger.ZERO) == 0) {
+            throw new IllegalArgumentException("Private key cannot be zero");
+        }
+        if (privateKeyValue.compareTo(CURVE.getN()) >= 0) {
+            throw new IllegalArgumentException("Private key must be less than curve order");
+        }
+
+        // Compute public key: G * privateKey
+        this.publicKey = new FixedPointCombMultiplier().multiply(CURVE.getG(), privateKeyValue);
+    }
+
+    /**
+     * Creates a private key from a hex string.
+     * 
+     * @param hexString hex-encoded private key (with or without 0x prefix)
+     * @return private key instance
+     * @throws IllegalArgumentException if hex string is invalid or key is out of
+     *                                  range
+     */
+    public static PrivateKey fromHex(final String hexString) {
+        Objects.requireNonNull(hexString, "hex string cannot be null");
+        final byte[] keyBytes = Hex.decode(hexString);
+        return new PrivateKey(keyBytes);
+    }
+
+    /**
+     * Creates a private key from raw bytes.
+     * 
+     * @param keyBytes 32-byte private key
+     * @return private key instance
+     * @throws IllegalArgumentException if key bytes are invalid
+     */
+    public static PrivateKey fromBytes(final byte[] keyBytes) {
+        Objects.requireNonNull(keyBytes, "key bytes cannot be null");
+        return new PrivateKey(keyBytes);
+    }
+
+    /**
+     * Derives the Ethereum address from this private key's public key.
+     * 
+     * <p>
+     * Algorithm:
+     * <ol>
+     * <li>Compute uncompressed public key (65 bytes: 0x04 || x || y)</li>
+     * <li>Take Keccak256 hash of the last 64 bytes (skip 0x04 prefix)</li>
+     * <li>Take last 20 bytes of the hash</li>
+     * </ol>
+     * 
+     * @return Ethereum address
+     */
+    public Address toAddress() {
+        final byte[] pubKeyBytes = publicKey.getEncoded(false); // uncompressed: 0x04 || x || y
+
+        // Hash public key (skip first byte 0x04)
+        final byte[] hash = Keccak256.hash(Arrays.copyOfRange(pubKeyBytes, 1, pubKeyBytes.length));
+
+        // Take last 20 bytes
+        final byte[] addressBytes = Arrays.copyOfRange(hash, 12, 32);
+        return Address.fromBytes(addressBytes);
+    }
+
+    /**
+     * Signs a message hash using deterministic ECDSA (RFC 6979).
+     * 
+     * <p>
+     * The signature is automatically normalized to low-s to prevent malleability.
+     * 
+     * @param messageHash 32-byte Keccak256 hash of the message
+     * @return ECDSA signature with v=0 or v=1 (use with EIP-155 encoding for
+     *         transactions)
+     * @throws IllegalArgumentException if message hash is not 32 bytes
+     */
+    public Signature sign(final byte[] messageHash) {
+        Objects.requireNonNull(messageHash, "message hash cannot be null");
+        if (messageHash.length != 32) {
+            throw new IllegalArgumentException("Message hash must be 32 bytes, got " + messageHash.length);
+        }
+
+        final ECDSASigner signer = new ECDSASigner(
+                new HMacDSAKCalculator(new org.bouncycastle.crypto.digests.SHA256Digest()));
+        final ECPrivateKeyParameters privateKeyParams = new ECPrivateKeyParameters(privateKeyValue, CURVE);
+        signer.init(true, privateKeyParams);
+
+        final BigInteger[] components = signer.generateSignature(messageHash);
+        BigInteger r = components[0];
+        BigInteger s = components[1];
+
+        // Normalize s to low-s (prevent signature malleability)
+        if (s.compareTo(HALF_CURVE_ORDER) > 0) {
+            s = CURVE.getN().subtract(s);
+        }
+
+        // Determine recovery ID (yParity)
+        final int recId = calculateRecoveryId(r, s, messageHash);
+
+        return new Signature(
+                toBytes32(r),
+                toBytes32(s),
+                recId);
+    }
+
+    /**
+     * Recovers the Ethereum address from a signature and message hash.
+     * 
+     * @param messageHash 32-byte hash that was signed
+     * @param signature   the signature
+     * @return recovered Ethereum address
+     * @throws IllegalArgumentException if recovery fails
+     */
+    public static Address recoverAddress(final byte[] messageHash, final Signature signature) {
+        Objects.requireNonNull(messageHash, "message hash cannot be null");
+        Objects.requireNonNull(signature, "signature cannot be null");
+
+        if (messageHash.length != 32) {
+            throw new IllegalArgumentException("Message hash must be 32 bytes");
+        }
+
+        final BigInteger r = new BigInteger(1, signature.r());
+        final BigInteger s = new BigInteger(1, signature.s());
+
+        // Get recovery ID from signature (handles both simple v and EIP-155 v)
+        final int recoveryId = signature.v() <= 1 ? signature.v() : signature.getRecoveryId(1);
+
+        try {
+            final ECPoint publicKey = recoverPublicKey(r, s, messageHash, recoveryId);
+            if (publicKey != null) {
+                final byte[] pubKeyBytes = publicKey.getEncoded(false);
+                final byte[] hash = Keccak256.hash(Arrays.copyOfRange(pubKeyBytes, 1, pubKeyBytes.length));
+                final byte[] addressBytes = Arrays.copyOfRange(hash, 12, 32);
+                return Address.fromBytes(addressBytes);
+            }
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to recover public key from signature", e);
+        }
+
+        throw new IllegalArgumentException("Failed to recover public key from signature");
+    }
+
+    /**
+     * Calculates the recovery ID for a signature.
+     */
+    private int calculateRecoveryId(final BigInteger r, final BigInteger s, final byte[] messageHash) {
+        for (int i = 0; i < 2; i++) {
+            try {
+                final ECPoint recovered = recoverPublicKey(r, s, messageHash, i);
+                if (recovered != null && recovered.equals(publicKey)) {
+                    return i;
+                }
+            } catch (Exception ignored) {
+                // Continue trying
+            }
+        }
+        throw new IllegalStateException("Failed to calculate recovery ID");
+    }
+
+    /**
+     * Recovers public key from signature components.
+     */
+    private static ECPoint recoverPublicKey(
+            final BigInteger r,
+            final BigInteger s,
+            final byte[] messageHash,
+            final int recoveryId) {
+
+        if (r.signum() <= 0 || s.signum() <= 0) {
+            return null;
+        }
+        if (r.compareTo(CURVE.getN()) >= 0 || s.compareTo(CURVE.getN()) >= 0) {
+            return null;
+        }
+
+        // R = (r, y) where y's parity matches recoveryId
+        final BigInteger x = r;
+        final ECPoint R = decompressKey(x, (recoveryId & 1) == 1);
+        if (R == null || !R.multiply(CURVE.getN()).isInfinity()) {
+            return null;
+        }
+
+        // e = messageHash as BigInteger
+        final BigInteger e = new BigInteger(1, messageHash);
+
+        // Q = r^-1 * (s*R - e*G)
+        final BigInteger rInv = r.modInverse(CURVE.getN());
+        final BigInteger srInv = rInv.multiply(s).mod(CURVE.getN());
+        final BigInteger eInv = rInv.multiply(e).mod(CURVE.getN());
+
+        final ECPoint q = R.multiply(srInv).subtract(CURVE.getG().multiply(eInv));
+        return q.normalize();
+    }
+
+    /**
+     * Decompresses an EC point from x coordinate and y parity.
+     */
+    private static ECPoint decompressKey(final BigInteger x, final boolean yBit) {
+        final ECPoint point = CURVE.getCurve().decodePoint(encodeCompressed(x, yBit));
+        return point.isValid() ? point : null;
+    }
+
+    /**
+     * Encodes x coordinate and y parity into compressed point format.
+     */
+    private static byte[] encodeCompressed(final BigInteger x, final boolean yBit) {
+        final byte[] encoded = new byte[33];
+        encoded[0] = (byte) (yBit ? 0x03 : 0x02);
+        final byte[] xBytes = x.toByteArray();
+        final int off = xBytes.length > 32 ? 1 : 0;
+        System.arraycopy(xBytes, off, encoded, 33 - (xBytes.length - off), xBytes.length - off);
+        return encoded;
+    }
+
+    /**
+     * Converts BigInteger to fixed 32-byte array (big-endian).
+     */
+    private static byte[] toBytes32(final BigInteger value) {
+        final byte[] bytes = value.toByteArray();
+        final byte[] result = new byte[32];
+
+        if (bytes.length == 32) {
+            return bytes;
+        } else if (bytes.length < 32) {
+            System.arraycopy(bytes, 0, result, 32 - bytes.length, bytes.length);
+        } else {
+            // Skip leading zero byte from BigInteger sign bit
+            System.arraycopy(bytes, bytes.length - 32, result, 0, 32);
+        }
+
+        return result;
+    }
+
+    @Override
+    public String toString() {
+        return "PrivateKey[address=" + toAddress() + "]";
+    }
+}

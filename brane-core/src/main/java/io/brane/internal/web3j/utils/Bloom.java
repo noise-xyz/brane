@@ -16,10 +16,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.Arrays;
 
-import io.brane.internal.web3j.crypto.Hash;
-
 /**
- * Ethereum Bloom filter. can be used to create a filter or test an item (topic) for a given filter.
+ * Ethereum Bloom filter. can be used to create a filter or test an item (topic)
+ * for a given filter.
  *
  * @author Mehrdad Salehi
  */
@@ -32,10 +31,11 @@ public class Bloom {
      * test topics against a bloom filter.
      *
      * @param bloomBytes the filter bytes.
-     * @param topics topics to be tested
+     * @param topics     topics to be tested
      * @return true if all topics is present in filter, otherwise returns false
-     * @throws IllegalArgumentException if bloomBytes length is not 256, or it is null, or topics is
-     *     null.
+     * @throws IllegalArgumentException if bloomBytes length is not 256, or it is
+     *                                  null, or topics is
+     *                                  null.
      */
     public static boolean test(byte[] bloomBytes, byte[]... topics) {
         Bloom bloom = new Bloom(bloomBytes);
@@ -54,10 +54,11 @@ public class Bloom {
      * test topics against a bloom filter.
      *
      * @param bloomBytes the filter bytes.
-     * @param topics topics to be tested
+     * @param topics     topics to be tested
      * @return true if all topics is present in filter, otherwise returns false
-     * @throws IllegalArgumentException if bloomBytes length is not 256, or it is null, or topics is
-     *     null.
+     * @throws IllegalArgumentException if bloomBytes length is not 256, or it is
+     *                                  null, or topics is
+     *                                  null.
      */
     public static boolean test(String bloomBytes, String... topics) {
         Bloom bloom = new Bloom(bloomBytes);
@@ -73,7 +74,8 @@ public class Bloom {
     }
 
     /** creates empty filter (all bits set to zero). */
-    public Bloom() {}
+    public Bloom() {
+    }
 
     /**
      * create filter from hex string.
@@ -85,7 +87,7 @@ public class Bloom {
         if (bytes == null) {
             throw new IllegalArgumentException("bytes can not be null");
         }
-        setBytes(Numeric.hexStringToByteArray(bytes));
+        setBytes(io.brane.primitives.Hex.decode(bytes));
     }
 
     /**
@@ -99,7 +101,8 @@ public class Bloom {
     }
 
     /**
-     * add a byte array (topic) to filter. after adding, test() will return true for this topic.
+     * add a byte array (topic) to filter. after adding, test() will return true for
+     * this topic.
      *
      * @param topic the topic hex string.
      * @throws IllegalArgumentException if topic is null.
@@ -108,11 +111,12 @@ public class Bloom {
         if (topic == null) {
             throw new IllegalArgumentException("topic can not be null");
         }
-        add(Numeric.hexStringToByteArray(topic));
+        add(io.brane.primitives.Hex.decode(topic));
     }
 
     /**
-     * add a byte array (topic) to filter. after adding, test() will return true for this topic.
+     * add a byte array (topic) to filter. after adding, test() will return true for
+     * this topic.
      *
      * @param topic the topic hex string.
      * @throws IllegalArgumentException if topic is null.
@@ -131,23 +135,25 @@ public class Bloom {
      * test presents of a topic. for every topic added by add() this returns true.
      *
      * @param topic the topic hex string.
-     * @return true if topic is present (false-positive is possible), and false if topic is not
-     *     present(false-negative is not possible).
+     * @return true if topic is present (false-positive is possible), and false if
+     *         topic is not
+     *         present(false-negative is not possible).
      * @throws IllegalArgumentException if topic is null.
      */
     public boolean test(String topic) {
         if (topic == null) {
             throw new IllegalArgumentException("topic can not be null");
         }
-        return test(Numeric.hexStringToByteArray(topic));
+        return test(io.brane.primitives.Hex.decode(topic));
     }
 
     /**
      * test presents of a topic. for every topic added by add() this returns true.
      *
      * @param topic the topic bytes.
-     * @return true if topic is present (false-positive is possible), and false if topic is not
-     *     present(false-negative is not possible).
+     * @return true if topic is present (false-positive is possible), and false if
+     *         topic is not
+     *         present(false-negative is not possible).
      * @throws IllegalArgumentException if topic is null.
      */
     public boolean test(byte[] topic) {
@@ -166,7 +172,7 @@ public class Bloom {
      * @return Bloom filter bytes as hex string
      */
     public String getBytesHexString() {
-        return Numeric.toHexString(this.bytes);
+        return io.brane.primitives.Hex.encode(this.bytes);
     }
 
     /**
@@ -180,8 +186,10 @@ public class Bloom {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Bloom bloom = (Bloom) o;
         return Arrays.equals(bytes, bloom.bytes);
     }
@@ -202,7 +210,7 @@ public class Bloom {
     }
 
     private BloomValues getBloomValues(byte[] item) {
-        final byte[] hash = Hash.sha3(item);
+        final byte[] hash = io.brane.core.crypto.Keccak256.hash(item);
         byte v1 = (byte) (1 << (hash[1] & 0x7));
         byte v2 = (byte) (1 << (hash[3] & 0x7));
         byte v3 = (byte) (1 << (hash[5] & 0x7));
@@ -210,8 +218,9 @@ public class Bloom {
         int i1 = BYTES_LENGTH - ((byteBuffer.getShort(0) & 0x7ff) >> 3) - 1;
         int i2 = BYTES_LENGTH - ((byteBuffer.getShort(2) & 0x7ff) >> 3) - 1;
         int i3 = BYTES_LENGTH - ((byteBuffer.getShort(4) & 0x7ff) >> 3) - 1;
-        return new BloomValues(new byte[] {v1, v2, v3}, new int[] {i1, i2, i3});
+        return new BloomValues(new byte[] { v1, v2, v3 }, new int[] { i1, i2, i3 });
     }
 
-    private record BloomValues(byte[] value, int[] index) {}
+    private record BloomValues(byte[] value, int[] index) {
+    }
 }

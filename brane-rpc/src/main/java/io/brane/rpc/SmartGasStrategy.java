@@ -9,7 +9,7 @@ import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.Wei;
-import io.brane.internal.web3j.utils.Numeric;
+
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -123,7 +123,7 @@ final class SmartGasStrategy {
         }
         final Map<String, Object> tx = toTxObject(request);
         final String estimateHex = RpcRetry.run(() -> callEstimateGas(tx), 3);
-        final BigInteger estimate = Numeric.decodeQuantity(estimateHex);
+        final BigInteger estimate = RpcUtils.decodeHexBigInteger(estimateHex);
 
         // Apply safety buffer to prevent out-of-gas failures
         // Default: estimate × (120/100) = 20% buffer
@@ -206,7 +206,7 @@ final class SmartGasStrategy {
             return request;
         }
         final String gasPriceHex = RpcRetry.run(() -> callGasPrice(), 3);
-        final BigInteger gasPrice = Numeric.decodeQuantity(gasPriceHex);
+        final BigInteger gasPrice = RpcUtils.decodeHexBigInteger(gasPriceHex);
         return copyWithGasFields(request, request.gasLimit(), new Wei(gasPrice), null, null, false);
     }
 
