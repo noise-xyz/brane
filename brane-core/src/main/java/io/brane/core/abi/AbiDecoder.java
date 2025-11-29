@@ -142,8 +142,16 @@ public final class AbiDecoder {
             }
             case TypeSchema.ArraySchema s -> {
                 // Dynamic array: Length + Elements
-                int length = decodeInt(data, offset).intValueExact();
-                int elemOffset = offset + 32;
+                // OR Fixed array of dynamic types: Elements (no length prefix)
+                int length;
+                int elemOffset;
+                if (s.fixedLength() != -1) {
+                    length = s.fixedLength();
+                    elemOffset = offset;
+                } else {
+                    length = decodeInt(data, offset).intValueExact();
+                    elemOffset = offset + 32;
+                }
 
                 // Construct a schema list of 'length' elements
                 List<TypeSchema> elemSchemas = new ArrayList<>(length);

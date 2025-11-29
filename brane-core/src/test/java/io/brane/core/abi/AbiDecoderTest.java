@@ -133,4 +133,64 @@ class AbiDecoderTest {
         Assertions.assertEquals(e1, decodedArray.values().get(0));
         Assertions.assertEquals(e2, decodedArray.values().get(1));
     }
+
+    @Test
+    void testDecodeFixedArrayOfDynamicTypes() {
+        // string[2] = ["a", "b"]
+        // Encoded as:
+        // offset 1 (32 bytes)
+        // offset 2 (32 bytes)
+        // length 1 (32 bytes)
+        // "a" (32 bytes)
+        // length 1 (32 bytes)
+        // "b" (32 bytes)
+
+        Utf8String s1 = new Utf8String("a");
+        Utf8String s2 = new Utf8String("b");
+        AbiType array = new Array<>(List.of(s1, s2), Utf8String.class, false); // false = fixed length
+
+        // We need to encode it manually or trust AbiEncoder?
+        // AbiEncoder might also have issues with fixed array of dynamic types if not
+        // implemented correctly.
+        // Let's check AbiEncoder.encodeArray.
+        // If AbiEncoder is correct, we can use it.
+        // AbiEncoder.encodeArray checks isDynamic.
+        // For string[2], isDynamic is true (because elements are dynamic).
+        // So it encodes as dynamic array?
+        // Wait, fixed array of dynamic types is encoded as a tuple of dynamic types.
+        // AbiEncoder.encodeArray:
+        // if (array.isDynamic()) { encode length + elements } else { encode elements }
+        // Array.isDynamic() returns the boolean passed in constructor.
+        // For string[2], we pass false? No, Array.isDynamic() usually means "is this
+        // type dynamic in ABI sense?".
+        // string[2] IS dynamic type in ABI.
+        // But AbiEncoder needs to know if it should emit length prefix.
+        // Length prefix is emitted for dynamic arrays (T[]), NOT for fixed arrays
+        // (T[N]).
+        // So for string[2], we should NOT emit length.
+        // But AbiEncoder uses array.isDynamic() to decide.
+        // If we pass true to Array constructor, AbiEncoder emits length.
+        // If we pass false, AbiEncoder does NOT emit length.
+        // So for string[2], we should pass false to Array constructor?
+        // But string[2] IS dynamic.
+        // This suggests AbiEncoder might rely on a flag "emitLength" or similar, or
+        // just "isDynamicArray" vs "isFixedArray".
+        // The Array record has `boolean isDynamic`.
+        // If this flag means "is variable length array", then for string[2] it should
+        // be false.
+        // Let's assume Array.isDynamic means "is variable length".
+
+        byte[] encoded = AbiEncoder.encode(List.of(array));
+
+        // string[2] schema
+        TypeSchema arraySchema = new TypeSchema.ArraySchema(new TypeSchema.StringSchema(), 2);
+
+        List<AbiType> decoded = AbiDecoder.decode(encoded, List.of(arraySchema));
+
+        Assertions.assertEquals(1, decoded.size());
+        Array<?> decodedArray = (Array<?>) decoded.get(0);
+        Assertions.assertEquals(2, decodedArray.values().size());
+        Assertions.assertEquals(s1, decodedArray.values().get(0));
+        Assertions.assertEquals(s2, decodedArray.values().get(1));
+    }
 }
