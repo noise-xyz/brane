@@ -111,4 +111,26 @@ class AbiEncoderTest {
 
         assertEquals(expected, Hex.encodeNoPrefix(encoded));
     }
+
+    @Test
+    void encodeIntOutOfBounds() {
+        // int8 range: -128 to 127
+        // -129 is out of bounds
+        BigInteger tooSmall = BigInteger.valueOf(-129);
+        try {
+            new Int(8, tooSmall);
+            throw new RuntimeException("Should have thrown IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // Expected
+        }
+
+        // 128 is out of bounds
+        BigInteger tooLarge = BigInteger.valueOf(128);
+        try {
+            new Int(8, tooLarge);
+            throw new RuntimeException("Should have thrown IllegalArgumentException");
+        } catch (IllegalArgumentException e) {
+            // Expected
+        }
+    }
 }
