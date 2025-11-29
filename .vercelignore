@@ -1,0 +1,22 @@
+# Gradle build artifacts
+build/
+.gradle/
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+
+# Node modules (except website/node_modules if needed, but usually ignored)
+node_modules/
+website/node_modules/
+
+# Git
+.git/
+
+# Other
+.DS_Store
+.jdk/
+.next/
+website/.next/
+**/.next/

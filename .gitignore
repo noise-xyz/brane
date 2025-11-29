@@ -12,3 +12,4 @@ build/
 .vscode/
 *.iml
 anvil.log
+.vercel
