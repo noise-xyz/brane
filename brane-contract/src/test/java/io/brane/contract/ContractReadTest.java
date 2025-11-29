@@ -6,16 +6,10 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.core.types.Address;
-import io.brane.internal.web3j.abi.FunctionEncoder;
-import io.brane.internal.web3j.abi.TypeEncoder;
-import io.brane.internal.web3j.abi.datatypes.Utf8String;
-import io.brane.internal.web3j.abi.datatypes.generated.Uint256;
-import io.brane.internal.web3j.abi.datatypes.Function;
-import io.brane.internal.web3j.abi.datatypes.Type;
 import io.brane.rpc.Client;
 import io.brane.rpc.HttpClient;
 import java.math.BigInteger;
-import java.util.List;
+
 import java.net.URI;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.Test;
@@ -36,7 +30,9 @@ class ContractReadTest {
 
     @Test
     void fakeClientEchoReturnsSameValue() throws RpcException, RevertException {
-        String encoded = "0x" + TypeEncoder.encode(new Uint256(BigInteger.valueOf(42)));
+        String encoded = io.brane.primitives.Hex.encode(
+                io.brane.core.abi.AbiEncoder.encode(
+                        java.util.List.of(new io.brane.core.abi.UInt(256, BigInteger.valueOf(42)))));
         Client client = new FakeClient(encoded, null);
         Abi abi = Abi.fromJson(ECHO_ABI);
         Contract contract = new Contract(new Address("0x0000000000000000000000000000000000001234"), abi, client);
@@ -67,10 +63,14 @@ class ContractReadTest {
     }
 
     @Test
-    @SuppressWarnings("rawtypes")
+
     void readRevertThrowsRevertException() {
-        List<Type> inputs = List.of((Type) new Utf8String("simple reason"));
-        String rawData = FunctionEncoder.encode(new Function("Error", inputs, List.of()));
+        // Error(string) selector = 0x08c379a0
+        // string = "simple reason"
+        String rawData = io.brane.primitives.Hex.encode(
+                io.brane.core.abi.AbiEncoder.encodeFunction(
+                        "Error(string)",
+                        java.util.List.of(new io.brane.core.abi.Utf8String("simple reason"))));
 
         RpcException rpcEx = new RpcException(3, "execution reverted", rawData, null, null);
 

@@ -10,16 +10,9 @@ import io.brane.core.model.BlockHeader;
 import io.brane.core.model.Transaction;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
-import io.brane.internal.web3j.abi.FunctionEncoder;
-import io.brane.internal.web3j.abi.TypeEncoder;
-import io.brane.internal.web3j.abi.datatypes.Function;
-import io.brane.internal.web3j.abi.datatypes.Type;
-import io.brane.internal.web3j.abi.datatypes.Utf8String;
-import io.brane.internal.web3j.abi.datatypes.generated.Uint256;
 import io.brane.rpc.PublicClient;
 import java.math.BigInteger;
 
-import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
 
@@ -39,7 +32,9 @@ class ReadOnlyContractTest {
 
     @Test
     void callReturnsDecodedValue() throws Exception {
-        String encoded = "0x" + TypeEncoder.encode(new Uint256(BigInteger.valueOf(42)));
+        String encoded = io.brane.primitives.Hex.encode(
+                io.brane.core.abi.AbiEncoder.encode(
+                        java.util.List.of(new io.brane.core.abi.UInt(256, BigInteger.valueOf(42)))));
         PublicClient client = new FakePublicClient(encoded, null, null, null);
 
         Abi abi = Abi.fromJson(ECHO_ABI);
@@ -52,10 +47,14 @@ class ReadOnlyContractTest {
     }
 
     @Test
-    @SuppressWarnings("rawtypes")
+
     void callRevertThrowsRevertException() {
-        List<Type> inputs = List.of((Type) new Utf8String("simple reason"));
-        String rawData = FunctionEncoder.encode(new Function("Error", inputs, List.of()));
+        // Error(string) selector = 0x08c379a0
+        // string = "simple reason"
+        String rawData = io.brane.primitives.Hex.encode(
+                io.brane.core.abi.AbiEncoder.encodeFunction(
+                        "Error(string)",
+                        java.util.List.of(new io.brane.core.abi.Utf8String("simple reason"))));
 
         RpcException rpcEx = new RpcException(3, "execution reverted", rawData, null, null);
         PublicClient client = new FakePublicClient(null, rpcEx, null, null);

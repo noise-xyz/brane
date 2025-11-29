@@ -54,7 +54,6 @@ public final class PrivateKey {
 
     private static final BigInteger HALF_CURVE_ORDER = CURVE_PARAMS.getN().shiftRight(1);
 
-    private final byte[] keyBytes;
     private final BigInteger privateKeyValue;
     private final ECPoint publicKey;
 
@@ -63,7 +62,6 @@ public final class PrivateKey {
             throw new IllegalArgumentException("Private key must be 32 bytes, got " + keyBytes.length);
         }
 
-        this.keyBytes = Arrays.copyOf(keyBytes, 32);
         this.privateKeyValue = new BigInteger(1, keyBytes);
 
         if (privateKeyValue.compareTo(BigInteger.ZERO) == 0) {

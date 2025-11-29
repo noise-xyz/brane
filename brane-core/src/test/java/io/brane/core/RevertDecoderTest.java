@@ -4,11 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
-import io.brane.internal.web3j.abi.FunctionEncoder;
-import io.brane.internal.web3j.abi.datatypes.Utf8String;
-import io.brane.internal.web3j.abi.datatypes.Function;
-import io.brane.internal.web3j.abi.datatypes.Type;
-import io.brane.internal.web3j.abi.datatypes.generated.Uint256;
+import io.brane.core.abi.AbiEncoder;
+import io.brane.core.abi.TypeSchema;
+import io.brane.core.abi.UInt;
+import io.brane.core.abi.Utf8String;
+import io.brane.primitives.Hex;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
@@ -18,12 +18,10 @@ import org.junit.jupiter.api.Test;
 class RevertDecoderTest {
 
     @Test
-    @SuppressWarnings("rawtypes")
     void decodesErrorString() {
-        List<Type<?>> inputs = List.of((Type<?>) new Utf8String("simple reason"));
-        @SuppressWarnings("unchecked")
-        Function fn = new Function("Error", (List<Type>) (List<?>) inputs, List.of());
-        String rawData = FunctionEncoder.encode(fn);
+        String rawData = Hex.encode(
+                AbiEncoder.encodeFunction("Error(string)",
+                        List.of(new Utf8String("simple reason"))));
 
         RevertDecoder.Decoded decoded = RevertDecoder.decode(rawData);
 
@@ -33,12 +31,10 @@ class RevertDecoderTest {
     }
 
     @Test
-    @SuppressWarnings("rawtypes")
     void decodesPanic() {
-        List<Type<?>> inputs = List.of((Type<?>) new Uint256(BigInteger.valueOf(0x11)));
-        @SuppressWarnings("unchecked")
-        Function fn = new Function("Panic", (List<Type>) (List<?>) inputs, List.of());
-        String rawData = FunctionEncoder.encode(fn);
+        String rawData = Hex.encode(
+                AbiEncoder.encodeFunction("Panic(uint256)",
+                        List.of(new UInt(256, BigInteger.valueOf(0x11)))));
 
         RevertDecoder.Decoded decoded = RevertDecoder.decode(rawData);
 
@@ -48,19 +44,16 @@ class RevertDecoderTest {
     }
 
     @Test
-    @SuppressWarnings("rawtypes")
     void decodesCustomErrorsWhenProvided() {
-        List<Type<?>> inputs = List.of((Type<?>) new Utf8String("hello"));
-        @SuppressWarnings("unchecked")
-        Function fn = new Function("CustomError", (List<Type>) (List<?>) inputs, List.of());
-        String rawData = FunctionEncoder.encode(fn);
+        String rawData = Hex.encode(
+                AbiEncoder.encodeFunction("CustomError(string)",
+                        List.of(new Utf8String("hello"))));
         String selector = rawData.substring(2, 10).toLowerCase(Locale.ROOT);
 
         Map<String, RevertDecoder.CustomErrorAbi> customErrors = Map.of(
                 selector,
                 new RevertDecoder.CustomErrorAbi(
-                        "CustomError", List.of(new io.brane.internal.web3j.abi.TypeReference<Utf8String>() {
-                        })));
+                        "CustomError", List.of(new TypeSchema.StringSchema())));
 
         RevertDecoder.Decoded decoded = RevertDecoder.decode(rawData, customErrors);
 

@@ -9,7 +9,6 @@ import io.brane.primitives.rlp.RlpItem;
 import io.brane.primitives.rlp.RlpNumeric;
 import io.brane.primitives.rlp.RlpString;
 
-import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
