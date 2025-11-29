@@ -40,16 +40,6 @@ public sealed interface AbiType permits
     // The canonical Solidity type name (e.g., "uint256", "address[]")
     String typeName();
 }
-
-// Examples
-record UInt(int width, BigInteger value) implements AbiType { ... }
-record Int(int width, BigInteger value) implements AbiType { ... }
-record AddressType(Address value) implements AbiType { ... }
-record Bool(boolean value) implements AbiType { ... }
-record Bytes(HexData value, boolean isDynamic) implements AbiType { ... } // Covers bytes and bytesN
-record Utf8String(String value) implements AbiType { ... }
-record Array<T extends AbiType>(List<T> values, Class<T> type) implements AbiType { ... }
-record Tuple(List<AbiType> components) implements AbiType { ... }
 ```
 
 ---
@@ -72,11 +62,7 @@ public final class AbiEncoder {
      * 3. Offset calculation.
      */
     public static byte[] encode(List<AbiType> args) {
-        // 1. Calculate static size
-        // 2. Iterate args:
-        //    - If static: append to head
-        //    - If dynamic: append offset to head, append data to tail
-        // 3. Combine head + tail
+        // ...
     }
     
     /**
@@ -90,12 +76,12 @@ public final class AbiEncoder {
 ```
 
 ### Acceptance Criteria
-- [ ] **Type Hierarchy**: All Solidity types represented as records/sealed interfaces.
-- [ ] **Primitive Integration**: Uses `io.brane.primitives.Hex` and `io.brane.core.types.*`.
-- [ ] **Static Encoding**: `uint256`, `address`, `bool`, `bytes32` encode correctly (padded to 32 bytes).
-- [ ] **Dynamic Encoding**: `bytes`, `string`, `uint[]` encode with correct offsets and length prefixes.
-- [ ] **Complex Encoding**: `(uint, string, uint[])` tuples encode correctly.
-- [ ] **Tests**: Pass all vectors from Solidity ABI encoding test suite.
+- [x] **Type Hierarchy**: All Solidity types represented as records/sealed interfaces.
+- [x] **Primitive Integration**: Uses `io.brane.primitives.Hex` and `io.brane.core.types.*`.
+- [x] **Static Encoding**: `uint256`, `address`, `bool`, `bytes32` encode correctly (padded to 32 bytes).
+- [x] **Dynamic Encoding**: `bytes`, `string`, `uint[]` encode with correct offsets and length prefixes.
+- [x] **Complex Encoding**: `(uint, string, uint[])` tuples encode correctly.
+- [x] **Tests**: Pass all vectors from Solidity ABI encoding test suite.
 
 ---
 
@@ -114,20 +100,16 @@ public final class AbiDecoder {
      * @param types The expected schema (e.g., [UInt.class, String.class]).
      */
     public static List<AbiType> decode(byte[] data, List<TypeDescriptor> types) {
-        // 1. Validate data length >= static size
-        // 2. Iterate types:
-        //    - If static: read 32 bytes from current offset
-        //    - If dynamic: read offset, jump to offset, read length, read data
-        // 3. Return list of AbiType
+        // ...
     }
 }
 ```
 
 ### Acceptance Criteria
-- [ ] **Bounds Checking**: Throws clear exception if data is too short.
-- [ ] **Offset Validation**: Throws if offsets point outside valid range.
-- [ ] **Type Validation**: Ensures decoded data matches expected constraints (e.g., `bool` is 0 or 1).
-- [ ] **Tests**: Round-trip fuzzing (`decode(encode(x)) == x`).
+- [x] **Bounds Checking**: Throws clear exception if data is too short.
+- [x] **Offset Validation**: Throws if offsets point outside valid range.
+- [x] **Type Validation**: Ensures decoded data matches expected constraints (e.g., `bool` is 0 or 1).
+- [x] **Tests**: Round-trip fuzzing (`decode(encode(x)) == x`).
 
 ---
 
@@ -157,4 +139,38 @@ public final class AbiDecoder {
 - [x] Remove `jackson-databind` if it was only used by web3j (check usage). -> *Kept, used for ABI JSON parsing*
 - [x] Run `./gradlew test` to ensure no regressions.
 - [x] `git grep "web3j"` returns 0 matches.
-- [ ] Build succeeds.
+- [x] Build succeeds.
+
+---
+
+# Phase 4: Documentation Website
+
+## Goal
+Deploy a unified documentation site containing both the manual/guides (Next.js) and the generated Javadocs.
+
+## Architecture
+- **`/website`**: Next.js application for guides, tutorials, and landing page.
+- **`/javadoc`**: Generated Javadocs served under the `/javadoc` route.
+
+## Implementation Steps
+1.  **Initialize Website**:
+    - Create `website/` directory with a fresh Next.js project.
+    - Use a modern, clean template (Tailwind CSS).
+2.  **Build Automation (`vercel-build.sh`)**:
+    - Create a script to:
+        1.  Generate Javadocs (`./gradlew allJavadoc`).
+        2.  Copy Javadocs to `website/public/javadoc`.
+        3.  Build the Next.js app.
+3.  **Vercel Configuration**:
+    - Configure Vercel to use `vercel-build.sh` as the build command.
+    - Ensure proper caching of Gradle and NPM artifacts.
+
+## Verification Plan
+### Automated Tests
+- [x] **Build Script**: Verify `vercel-build.sh` runs successfully locally.
+- [x] **Content Check**: Verify `website/public/javadoc/index.html` exists after build.
+- [x] **Integration**: Verify `npm run build` in `website/` succeeds with the copied files.
+
+### Manual Verification
+- [ ] **Local Preview**: Run `npm run dev` in `website/` and access `localhost:3000/javadoc`.
+- [ ] **Vercel Preview**: Deploy to Vercel and verify live URL.
