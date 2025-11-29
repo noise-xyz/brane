@@ -8,13 +8,21 @@ import java.util.Objects;
  * 
  * <p>
  * Unlike {@link AbiType}, which represents a concrete value, {@code TypeSchema}
- * represents the <em>type</em> of a value. This is necessary for decoding
- * because
+ * represents the <em>type</em> of a value. This is necessary for decoding because
  * the ABI encoding format is ambiguous without a schema (e.g., dynamic arrays
  * look like tuples, and static types are just 32 bytes).
  * 
  * <p>
  * Schemas are used by {@link AbiDecoder} to interpret byte arrays.
+ * 
+ * <h2>Example</h2>
+ * <pre>{@code
+ * // Schema for: (uint256, string[])
+ * TypeSchema schema = new TypeSchema.TupleSchema(List.of(
+ *     new TypeSchema.UIntSchema(256),
+ *     new TypeSchema.ArraySchema(new TypeSchema.StringSchema(), -1)
+ * ));
+ * }</pre>
  */
 public sealed interface TypeSchema permits
         TypeSchema.UIntSchema,

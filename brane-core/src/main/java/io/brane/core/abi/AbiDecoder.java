@@ -15,10 +15,22 @@ import java.util.List;
  * 
  * <p>
  * This class provides static methods for decoding byte arrays into lists of
- * {@link AbiType}
- * based on a provided {@link TypeSchema}. It handles both static and dynamic
- * types,
- * resolving offsets and decoding primitive values.
+ * {@link AbiType} based on a provided {@link TypeSchema}. It handles both static
+ * and dynamic types, resolving offsets and decoding primitive values.
+ * 
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * // Schema: (uint256, string)
+ * List<TypeSchema> schemas = List.of(
+ *     new TypeSchema.UIntSchema(256),
+ *     new TypeSchema.StringSchema()
+ * );
+ * 
+ * // Decode
+ * List<AbiType> decoded = AbiDecoder.decode(data, schemas);
+ * UInt u = (UInt) decoded.get(0);
+ * Utf8String s = (Utf8String) decoded.get(1);
+ * }</pre>
  * 
  * @see AbiType
  * @see TypeSchema

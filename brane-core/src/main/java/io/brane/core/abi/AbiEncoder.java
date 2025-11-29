@@ -15,10 +15,18 @@ import java.util.List;
  * 
  * <p>
  * This class provides static methods for encoding lists of {@link AbiType}
- * (tuples)
- * and function calls. It handles both static and dynamic types, including
- * correct
- * padding and offset calculation.
+ * (tuples) and function calls. It handles both static and dynamic types, including
+ * correct padding and offset calculation.
+ * 
+ * <h2>Usage Example</h2>
+ * <pre>{@code
+ * // Encode a function call: transfer(address,uint256)
+ * List<AbiType> args = List.of(
+ *     new AddressType(new Address("0x...")),
+ *     new UInt(256, BigInteger.valueOf(1000))
+ * );
+ * byte[] data = AbiEncoder.encodeFunction("transfer(address,uint256)", args);
+ * }</pre>
  * 
  * @see AbiType
  * @see AbiDecoder
