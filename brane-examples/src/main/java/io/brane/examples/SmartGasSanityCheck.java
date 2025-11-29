@@ -10,7 +10,6 @@ import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PrivateKeyTransactionSigner;
 import io.brane.rpc.PublicClient;
-import io.brane.rpc.TransactionSigner;
 
 /**
  * Sanity check for Smart Gas Defaults.

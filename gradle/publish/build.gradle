@@ -31,7 +31,7 @@ publishing {
             pom {
                 name = project.name
                 description.set(project.provider({ project.description }))
-                url = 'https://web3j.io'
+                url = 'https://github.com/brane-io/brane'
 
                 licenses {
                     license {
@@ -40,15 +40,17 @@ publishing {
                     }
                 }
 
-                scm {
-                    def slug = rootProject.name
-                    if (project.hasProperty('rootProjectOverride')) {
-                        slug = project.rootProjectOverride
+                developers {
+                    developer {
+                        id = 'brane'
+                        name = 'Brane Team'
+                        email = 'hello@brane.io'
                     }
-
-                    url = "https://github.com/LFDT-web3j/$slug"
-                    connection = "scm:https://github.com/LFDT-web3j/${slug}.git"
-                    developerConnection = "scm:git://github.com/LFDT-web3j/${slug}.git"
+                }
+                scm {
+                    connection = 'scm:git:git://github.com/brane-io/brane.git'
+                    developerConnection = 'scm:git:ssh://github.com/brane-io/brane.git'
+                    url = 'https://github.com/brane-io/brane'
                 }
 
                 developers {

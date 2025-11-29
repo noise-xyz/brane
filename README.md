@@ -109,9 +109,9 @@ String deployData = bytecode + encodedArgs.value().substring(2);
 
 ## Project Structure
 
-*   `brane-core`: Core types (`Address`, `Wei`, `HexData`), error model, and chain profiles.
+*   `brane-core`: Core types (`Address`, `Wei`, `HexData`), native ABI system (`io.brane.core.abi`), error model, and chain profiles.
 *   `brane-rpc`: JSON-RPC client, `PublicClient`, `WalletClient`.
-*   `brane-contract`: ABI encoding/decoding, `BraneContract` runtime binding.
+*   `brane-contract`: High-level ABI utilities, `BraneContract` runtime binding.
 *   `brane-primitives`: Zero-dependency Hex and RLP utilities.
 
 ## Local Development

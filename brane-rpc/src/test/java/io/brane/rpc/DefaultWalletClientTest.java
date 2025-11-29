@@ -481,7 +481,6 @@ class DefaultWalletClientTest {
         private static final class FakeSigner {
                 private final Address address;
                 private io.brane.core.tx.UnsignedTransaction lastTx;
-                private long lastChainId;
 
                 private FakeSigner(final Address address) {
                         this.address = address;
@@ -494,7 +493,7 @@ class DefaultWalletClientTest {
                 TransactionSigner asSigner() {
                         return (tx, chainId) -> {
                                 this.lastTx = tx;
-                                this.lastChainId = chainId;
+
                                 return "0xsigned";
                         };
                 }

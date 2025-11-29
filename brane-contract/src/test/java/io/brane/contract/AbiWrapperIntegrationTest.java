@@ -119,17 +119,14 @@ class AbiWrapperIntegrationTest {
     assertEquals(BigInteger.valueOf(100), recipientBalance);
   }
 
-  @SuppressWarnings("rawtypes")
   private Address deployErc20(String name, String symbol, BigInteger initialSupply) {
     // Encode constructor argument (BraneToken takes only uint256 initialSupply)
-    final java.util.List<io.brane.internal.web3j.abi.datatypes.Type> constructorArgs = java.util.List.of(
-        new io.brane.internal.web3j.abi.datatypes.generated.Uint256(initialSupply));
-
-    final String encodedConstructor = io.brane.internal.web3j.abi.FunctionEncoder.encodeConstructor(constructorArgs);
+    Abi abi = Abi.fromJson(ERC20_ABI);
+    io.brane.core.types.HexData encodedArgs = abi.encodeConstructor(initialSupply);
 
     // Build deployment transaction
     var request = TxBuilder.eip1559()
-        .data(new io.brane.core.types.HexData(ERC20_BYTECODE + encodedConstructor.substring(2)))
+        .data(new io.brane.core.types.HexData(ERC20_BYTECODE + encodedArgs.value().substring(2)))
         .value(Wei.of(0))
         .build();
 
