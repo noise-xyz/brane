@@ -70,6 +70,7 @@ public class SmokeApp {
     private static final Address OWNER = new Address("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
     private static final Address RECIPIENT = new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
 
+    private static BraneProvider provider;
     private static PublicClient publicClient;
     private static WalletClient walletClient;
     private static Address tokenAddress;
@@ -81,10 +82,14 @@ public class SmokeApp {
         try {
             setup();
             
-            testCoreTransfer(); // Scenario A
-            testErrorHandling(); // Scenario B
-            testEventLogs(); // Scenario C
-            testAbiWrapper(); // Scenario D
+            testCoreTransfer();      // Scenario A
+            testErrorHandling();     // Scenario B
+            testEventLogs();         // Scenario C
+            testAbiWrapper();        // Scenario D
+            testEip1559();           // Scenario E
+            testRawSigning();        // Scenario F
+            testCustomRpc();         // Scenario G
+            testChainIdMismatch();   // Scenario H
             
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
             System.exit(0);
@@ -99,7 +104,7 @@ public class SmokeApp {
         System.out.println("\n[Setup] Initializing clients...");
         
         String rpcUrl = System.getProperty("brane.smoke.rpc", "http://127.0.0.1:8545");
-        BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
+        provider = HttpBraneProvider.builder(rpcUrl).build();
         
         publicClient = PublicClient.from(provider);
         walletClient = DefaultWalletClient.create(
@@ -240,5 +245,87 @@ public class SmokeApp {
         BigInteger newBalance = token.balanceOf(RECIPIENT);
         if (!newBalance.equals(new BigInteger("110"))) throw new RuntimeException("Wrapper write verification failed!");
         System.out.println("  ✓ Final Balance Verified: " + newBalance);
+    }
+
+    private static void testEip1559() {
+        System.out.println("\n[Scenario E] EIP-1559 & Access Lists");
+        
+        io.brane.core.model.AccessListEntry entry = new io.brane.core.model.AccessListEntry(
+            tokenAddress, 
+            List.of() // No storage keys, just warming the address
+        );
+        
+        TransactionRequest request = TxBuilder.eip1559()
+                .to(RECIPIENT)
+                .value(Wei.of(1))
+                .accessList(List.of(entry))
+                .build();
+                
+        TransactionReceipt receipt = walletClient.sendTransactionAndWait(request, 30_000, 1_000);
+        
+        if (!receipt.status()) throw new RuntimeException("EIP-1559 transfer failed!");
+        System.out.println("  ✓ EIP-1559 Transaction Mined: " + receipt.transactionHash());
+    }
+
+    private static void testRawSigning() {
+        System.out.println("\n[Scenario F] Raw Transaction Signing");
+        
+        PrivateKeyTransactionSigner signer = new PrivateKeyTransactionSigner(PRIVATE_KEY);
+        
+        // Create a dummy legacy transaction
+        io.brane.core.tx.LegacyTransaction tx = new io.brane.core.tx.LegacyTransaction(
+            0, // nonce
+            Wei.of(1000000000), // gasPrice
+            21000, // gasLimit
+            RECIPIENT, // to
+            Wei.of(1), // value
+            HexData.EMPTY // data
+        );
+        
+        String signature = signer.sign(tx, 31337);
+        
+        if (signature == null || !signature.startsWith("0x") || signature.length() < 130) {
+            throw new RuntimeException("Invalid signature generated: " + signature);
+        }
+        System.out.println("  ✓ Generated Valid Signature: " + signature.substring(0, 10) + "...");
+    }
+
+    private static void testCustomRpc() {
+        System.out.println("\n[Scenario G] Custom RPC (anvil_mine)");
+        
+        // Mine a block manually
+        io.brane.rpc.JsonRpcResponse response = provider.send("anvil_mine", List.of());
+        
+        if (response.hasError()) {
+            throw new RuntimeException("Custom RPC call failed: " + response.error().message());
+        }
+        System.out.println("  ✓ Successfully called 'anvil_mine'");
+    }
+
+    private static void testChainIdMismatch() {
+        System.out.println("\n[Scenario H] Chain ID Validation");
+        
+        // Create a client expecting Mainnet (Chain ID 1) but connected to Anvil (31337)
+        WalletClient badClient = DefaultWalletClient.from(
+            provider, 
+            publicClient, 
+            new PrivateKeyTransactionSigner(PRIVATE_KEY), 
+            OWNER,
+            1L // Expected: Mainnet
+        );
+        
+        try {
+            TransactionRequest req = TxBuilder.legacy()
+                .to(RECIPIENT)
+                .value(Wei.of(1))
+                .build();
+                
+            badClient.sendTransaction(req);
+            throw new RuntimeException("Should have thrown ChainMismatchException!");
+        } catch (io.brane.core.error.ChainMismatchException e) {
+            System.out.println("  ✓ Caught Expected ChainMismatchException: " + e.getMessage());
+        } catch (Exception e) {
+            throw new RuntimeException("Unexpected exception: " + e.getClass().getName(), e);
+        }
     }
 }

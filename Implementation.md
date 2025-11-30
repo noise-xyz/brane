@@ -29,10 +29,25 @@ The smoke test will execute 4 distinct scenarios to cover the entire SDK surface
 *   **Expectation**: Find exactly one log with correct topics and data.
 *   **Coverage**: `LogFilter`, `PublicClient.getLogs`.
 
-#### Scenario D: ABI Wrapper (Usability)
-*   **Action**: Use `BraneContract.bind(Erc20.class)` to interact with the deployed token via a Java interface.
-*   **Expectation**: `erc20.balanceOf(recipient)` returns the correct value.
-*   **Coverage**: `BraneContract`, `ContractInvocationHandler`, `AbiBinding`.
+#### Scenario E: EIP-1559 & Access Lists (Modern Standards)
+*   **Action**: Send a Type 2 transaction with an Access List using `TxBuilder.eip1559()`.
+*   **Expectation**: Transaction succeeds and is mined.
+*   **Coverage**: `Eip1559Transaction`, `AccessListEntry`, `TxBuilder`.
+
+#### Scenario F: Raw Signing (Offline Capability)
+*   **Action**: Manually sign a transaction using `signer.sign()` without broadcasting.
+*   **Expectation**: Recover the sender address from the signature (or verify hash).
+*   **Coverage**: `TransactionSigner`, `LegacyTransaction`.
+
+#### Scenario G: Custom RPC (Flexibility)
+*   **Action**: Call `anvil_mine` via `publicClient.call()`.
+*   **Expectation**: The block number increases.
+*   **Coverage**: `PublicClient.call` (arbitrary methods).
+
+#### Scenario H: Chain ID Validation (Safety)
+*   **Action**: Initialize `WalletClient` with an incorrect Chain ID (e.g., 1 for Mainnet) and attempt a transaction.
+*   **Expectation**: Throw `ChainMismatchException`.
+*   **Coverage**: `WalletClient`, `ChainMismatchException`.
 
 ### 2. Implementation Details
 
@@ -42,7 +57,7 @@ brane/
 ├── verify_smoke_test.sh (Orchestrator)
 └── smoke-test/
     ├── build.gradle
-    └── src/main/java/io/brane/smoke/SmokeApp.java (Runs all 4 scenarios)
+    └── src/main/java/io/brane/smoke/SmokeApp.java (Runs all 8 scenarios)
 ```
 
 #### `SmokeApp.java` Logic
@@ -50,10 +65,14 @@ brane/
 public class SmokeApp {
     public static void main(String[] args) {
         setup();
-        testCoreTransfer(); // Scenario A
-        testErrorHandling(); // Scenario B
-        testEventLogs(); // Scenario C
-        testAbiWrapper(); // Scenario D
+        testCoreTransfer();      // Scenario A
+        testErrorHandling();     // Scenario B
+        testEventLogs();         // Scenario C
+        testAbiWrapper();        // Scenario D
+        testEip1559();           // Scenario E
+        testRawSigning();        // Scenario F
+        testCustomRpc();         // Scenario G
+        testChainIdMismatch();   // Scenario H
         System.out.println("✅ All Smoke Tests Passed!");
     }
 }
@@ -61,6 +80,6 @@ public class SmokeApp {
 
 ### 3. Acceptance Criteria
 - [ ] **Isolation**: `smoke-test` is a standalone Gradle project.
-- [ ] **Completeness**: All 4 scenarios run and pass.
-- [ ] **Reliability**: The test fails if any scenario fails (e.g., revert not caught, balance mismatch).
+- [ ] **Completeness**: All 8 scenarios run and pass.
+- [ ] **Reliability**: The test fails if any scenario fails.
 
