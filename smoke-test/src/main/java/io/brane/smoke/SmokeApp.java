@@ -90,6 +90,10 @@ public class SmokeApp {
             testRawSigning();        // Scenario F
             testCustomRpc();         // Scenario G
             testChainIdMismatch();   // Scenario H
+            testPublicClientReads(); // Scenario I
+            testWeiUtilities();      // Scenario J
+            testComplexAbi();        // Scenario K
+            testGasStrategy();       // Scenario L
             
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
             System.exit(0);
@@ -327,5 +331,98 @@ public class SmokeApp {
         } catch (Exception e) {
             throw new RuntimeException("Unexpected exception: " + e.getClass().getName(), e);
         }
+    }
+
+    private static void testPublicClientReads() {
+        System.out.println("\n[Scenario I] Public Client Read Ops");
+        
+        io.brane.core.model.BlockHeader block = publicClient.getLatestBlock();
+        if (block == null || block.number() == null) throw new RuntimeException("Failed to get latest block");
+        System.out.println("  ✓ Latest Block: " + block.number());
+        
+        if (block.number() > 0) {
+            io.brane.core.model.BlockHeader parent = publicClient.getBlockByNumber(block.number() - 1);
+            if (!parent.hash().equals(block.parentHash())) throw new RuntimeException("Parent hash mismatch");
+            System.out.println("  ✓ Block Parent Hash Verified");
+        }
+    }
+
+    private static void testWeiUtilities() {
+        System.out.println("\n[Scenario J] Wei Utilities");
+        
+        Wei oneEther = Wei.fromEther(java.math.BigDecimal.ONE);
+        if (!oneEther.value().equals(new BigInteger("1000000000000000000"))) 
+            throw new RuntimeException("Wei.fromEther(1) failed");
+            
+        Wei gwei = Wei.gwei(1);
+        if (!gwei.value().equals(new BigInteger("1000000000"))) 
+            throw new RuntimeException("Wei.gwei(1) failed");
+            
+        System.out.println("  ✓ Wei conversions verified");
+    }
+
+    private static void testComplexAbi() throws Exception {
+        System.out.println("\n[Scenario K] Complex ABI (Arrays/Tuples)");
+        
+        // Load artifacts
+        String bytecode = new String(Objects.requireNonNull(
+            SmokeApp.class.getResourceAsStream("/ComplexContract.bin")).readAllBytes(), StandardCharsets.UTF_8).trim();
+        String abiJson = new String(Objects.requireNonNull(
+            SmokeApp.class.getResourceAsStream("/ComplexContract.json")).readAllBytes(), StandardCharsets.UTF_8).trim();
+            
+        if (!bytecode.startsWith("0x")) bytecode = "0x" + bytecode;
+        
+        // Deploy
+        TransactionRequest deployReq = TxBuilder.legacy().data(new HexData(bytecode)).build();
+        TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployReq, 30_000, 1_000);
+        if (!receipt.status()) throw new RuntimeException("ComplexContract deployment failed");
+        Address complexAddress = new Address(receipt.contractAddress().value());
+        System.out.println("  ✓ Deployed ComplexContract at " + complexAddress);
+        
+        Abi complexAbi = Abi.fromJson(abiJson);
+        ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, publicClient);
+        
+        // Test Array: processArray([1, 2]) -> [2, 4]
+        List<BigInteger> input = List.of(BigInteger.ONE, BigInteger.TWO);
+        @SuppressWarnings("unchecked")
+        List<BigInteger> output = (List<BigInteger>) contract.call("processArray", List.class, input);
+        
+        if (!output.get(0).equals(BigInteger.TWO) || !output.get(1).equals(BigInteger.valueOf(4)))
+            throw new RuntimeException("Array processing failed: " + output);
+        System.out.println("  ✓ Array processing verified");
+        
+        // Test Fixed Bytes: processFixedBytes(bytes32)
+        byte[] bytes32 = new byte[32];
+        bytes32[0] = 0x12;
+        HexData inputBytes = new HexData(io.brane.primitives.Hex.encode(bytes32));
+        HexData outputBytes = contract.call("processFixedBytes", HexData.class, inputBytes);
+        if (!outputBytes.value().equals(inputBytes.value()))
+            throw new RuntimeException("Fixed bytes processing failed");
+        System.out.println("  ✓ Fixed bytes verified");
+    }
+
+    private static void testGasStrategy() {
+        System.out.println("\n[Scenario L] Gas Strategy Configuration");
+        
+        // Create client with 2.0x gas buffer
+        WalletClient bufferedClient = DefaultWalletClient.from(
+            provider, 
+            publicClient, 
+            new PrivateKeyTransactionSigner(PRIVATE_KEY), 
+            OWNER,
+            31337L,
+            io.brane.core.chain.ChainProfile.of(31337L, "http://127.0.0.1:8545", true, Wei.of(1_000_000_000L)),
+            BigInteger.valueOf(2), // Numerator
+            BigInteger.ONE         // Denominator
+        );
+        
+        TransactionRequest req = TxBuilder.legacy()
+            .to(RECIPIENT)
+            .value(Wei.of(1))
+            .build(); // No gas limit set, so it will estimate and apply buffer
+            
+        TransactionReceipt receipt = bufferedClient.sendTransactionAndWait(req, 30_000, 1_000);
+        if (!receipt.status()) throw new RuntimeException("Buffered transaction failed");
+        System.out.println("  ✓ Buffered Gas Transaction Mined");
     }
 }

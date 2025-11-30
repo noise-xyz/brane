@@ -83,3 +83,28 @@ public class SmokeApp {
 - [ ] **Completeness**: All 8 scenarios run and pass.
 - [ ] **Reliability**: The test fails if any scenario fails.
 
+### 4. Future Smoke Test Scenarios (Comprehensive Gap Analysis)
+The following features are part of the SDK's API surface but are not covered by the current 8 scenarios. These should be considered for future expansion of the test suite.
+
+#### Public Client Read Operations
+*   **`getLatestBlock()` / `getBlockByNumber()`**: Verify block header parsing (timestamp, parentHash, baseFee).
+*   **`getTransactionByHash()`**: Verify transaction parsing (input, value, nonce, v/r/s).
+*   **`getChainId()`**: Explicitly verify the chain ID reported by the node.
+
+#### ABI Encoding/Decoding
+*   **Complex Types**:
+    *   **Arrays**: Test functions taking/returning `uint256[]`, `address[]`, etc.
+    *   **Tuples/Structs**: Test functions returning structs (mapped to Java classes or `List<Object>`).
+    *   **Fixed Bytes**: Test `bytes32` vs `bytes` (dynamic).
+*   **Event Decoding**:
+    *   **Indexed Primitives**: Test events with `indexed uint256` or `indexed bytes32`.
+    *   **Anonymous Events**: Test decoding of anonymous events (if supported).
+
+#### Utilities & Configuration
+*   **`Wei` Unit Conversion**: Verify `Wei.fromEther()`, `Wei.toEther()`, and `Wei.gwei()`.
+*   **Gas Strategy Configuration**: Test `DefaultWalletClient` with custom gas limit buffers (e.g., 1.5x multiplier).
+
+#### Contract Features
+*   **Multicall**: (If implemented) Batching multiple read calls.
+*   **Deployment Helper**: If a high-level `Contract.deploy` exists (currently manual via `WalletClient`).
+
