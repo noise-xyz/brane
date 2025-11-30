@@ -28,4 +28,10 @@ contract ComplexContract {
     function emitComplexEvent(uint256 id, bytes32 hash, uint256[] memory values) public {
         emit DataProcessed(id, hash, values);
     }
+
+    error CustomError(uint256 code, string message);
+
+    function revertWithCustomError(uint256 code, string memory message) public pure {
+        revert CustomError(code, message);
+    }
 }

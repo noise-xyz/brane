@@ -138,7 +138,12 @@ class ReadOnlyContractTest {
         @Override
         public java.util.List<io.brane.core.model.LogEntry> getLogs(
                 final io.brane.rpc.LogFilter filter) {
-            return java.util.Collections.emptyList();
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public long getChainId() {
+            return 1;
         }
     }
 }

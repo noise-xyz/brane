@@ -86,6 +86,32 @@ public class SmokeApp {
 ### 4. Future Smoke Test Scenarios (Comprehensive Gap Analysis)
 The following features are part of the SDK's API surface but are not covered by the current 8 scenarios. These should be considered for future expansion of the test suite.
 
+#### Phase 5: Final Polish & Gaps (P1 Scenarios)
+
+The following scenarios verify developer experience features and modern Solidity support.
+
+### Scenario M: Debug & Color Mode
+**Goal**: Verify that the SDK's debug logging and color output work as expected.
+- **Actions**:
+    - Enable `BraneDebug.setEnabled(true)`.
+    - Set `FORCE_COLOR=true` (simulated or via env).
+    - Perform a simple RPC call (e.g., `getChainId`).
+- **Success Criteria**:
+    - Logs appear in stdout.
+    - Logs contain ANSI color codes (if enabled).
+    - Logs contain RPC request/response payloads.
+
+### Scenario N: Custom Error Decoding
+**Goal**: Verify that the SDK can decode Solidity custom errors (introduced in Solidity 0.8.4).
+- **Actions**:
+    - Update `ComplexContract` to include a function that reverts with a custom error: `error CustomError(uint256 code, string message)`.
+    - Call this function using `ReadWriteContract`.
+    - Catch `RevertException`.
+    - Use `RevertDecoder.decode` with the known custom error ABI.
+- **Success Criteria**:
+    - `RevertException` is thrown.
+    - Decoded reason matches `CustomError(code, message)`.
+
 #### Public Client Read Operations
 *   **`getLatestBlock()` / `getBlockByNumber()`**: Verify block header parsing (timestamp, parentHash, baseFee).
 *   **`getTransactionByHash()`**: Verify transaction parsing (input, value, nonce, v/r/s).
@@ -107,4 +133,3 @@ The following features are part of the SDK's API surface but are not covered by 
 #### Contract Features
 *   **Multicall**: (If implemented) Batching multiple read calls.
 *   **Deployment Helper**: If a high-level `Contract.deploy` exists (currently manual via `WalletClient`).
-

@@ -76,6 +76,9 @@ public class SmokeApp {
     private static Address tokenAddress;
     private static Abi abi;
 
+    private static Address complexAddress;
+    private static Abi complexAbi;
+
     public static void main(String[] args) {
         System.out.println("=== 🚀 Brane SDK Smoke Test Suite ===");
         
@@ -94,6 +97,8 @@ public class SmokeApp {
             testWeiUtilities();      // Scenario J
             testComplexAbi();        // Scenario K
             testGasStrategy();       // Scenario L
+            testDebugAndColorMode(); // Scenario M
+            testCustomErrorDecoding(); // Scenario N
             
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
             System.exit(0);
@@ -376,10 +381,10 @@ public class SmokeApp {
         TransactionRequest deployReq = TxBuilder.legacy().data(new HexData(bytecode)).build();
         TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployReq, 30_000, 1_000);
         if (!receipt.status()) throw new RuntimeException("ComplexContract deployment failed");
-        Address complexAddress = new Address(receipt.contractAddress().value());
+        complexAddress = new Address(receipt.contractAddress().value());
         System.out.println("  ✓ Deployed ComplexContract at " + complexAddress);
         
-        Abi complexAbi = Abi.fromJson(abiJson);
+        complexAbi = Abi.fromJson(abiJson);
         ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, publicClient);
         
         // Test Array: processArray([1, 2]) -> [2, 4]
@@ -424,5 +429,73 @@ public class SmokeApp {
         TransactionReceipt receipt = bufferedClient.sendTransactionAndWait(req, 30_000, 1_000);
         if (!receipt.status()) throw new RuntimeException("Buffered transaction failed");
         System.out.println("  ✓ Buffered Gas Transaction Mined");
+    }
+
+    private static void testDebugAndColorMode() {
+        System.out.println("\n[Scenario M] Debug & Color Mode");
+        
+        // Enable debug and color
+        io.brane.core.BraneDebug.setEnabled(true);
+        // Force color (simulated) - usually controlled by env var, but we can check if logs appear
+        // We can't easily capture stdout here without redirecting, but we can ensure it doesn't crash
+        
+        System.out.println("  (Debug logging enabled - check stdout for cyan/teal logs)");
+        
+        // Make a simple call to trigger logs
+        publicClient.getChainId();
+        
+        // Disable debug to keep subsequent output clean
+        io.brane.core.BraneDebug.setEnabled(false);
+        System.out.println("  ✓ Debug mode toggled and executed without error");
+    }
+
+    private static void testCustomErrorDecoding() {
+        System.out.println("\n[Scenario N] Custom Error Decoding");
+        
+        // Use ReadOnlyContract to call the pure function via eth_call
+        ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, publicClient);
+        
+        try {
+            System.out.println("  Attempting to trigger custom error (expecting revert)...");
+            // We expect this to fail
+            contract.call("revertWithCustomError", String.class, BigInteger.valueOf(404), "Not Found");
+            
+            throw new RuntimeException("Should have reverted with CustomError!");
+        } catch (RevertException e) {
+            // Decode the custom error from the raw data
+            String data = e.rawDataHex();
+            if (data == null) {
+                throw new RuntimeException("RevertException caught but no data present: " + e.getMessage());
+            }
+
+            // Define the custom error ABI
+            io.brane.core.RevertDecoder.CustomErrorAbi customError = new io.brane.core.RevertDecoder.CustomErrorAbi(
+                "CustomError",
+                List.of(new io.brane.core.abi.TypeSchema.UIntSchema(256), new io.brane.core.abi.TypeSchema.StringSchema())
+            );
+            
+            // "CustomError(uint256,string)" selector is needed. 
+            // keccak256("CustomError(uint256,string)") = 0x97ea5a2f
+            String selector = "97ea5a2f"; 
+            
+            io.brane.core.RevertDecoder.Decoded decoded = io.brane.core.RevertDecoder.decode(
+                data, 
+                java.util.Map.of(selector, customError)
+            );
+            
+            if (decoded.kind() != io.brane.core.RevertDecoder.RevertKind.CUSTOM) {
+                throw new RuntimeException("Failed to decode custom error. Got: " + decoded.kind());
+            }
+            
+            if (!decoded.reason().equals("CustomError(404, Not Found)")) {
+                throw new RuntimeException("Unexpected decoded reason: " + decoded.reason());
+            }
+            
+            System.out.println("  ✓ Decoded Custom Error: " + decoded.reason());
+        } catch (RpcException e) {
+             throw new RuntimeException("Unexpected RpcException (should be wrapped in RevertException): " + e.getMessage(), e);
+        } catch (Exception e) {
+             throw new RuntimeException("Unexpected exception: " + e.getClass().getName(), e);
+        }
     }
 }

@@ -105,4 +105,11 @@ public interface PublicClient {
      * @return a list of matching logs
      */
     List<io.brane.core.model.LogEntry> getLogs(LogFilter filter);
+
+    /**
+     * Retrieves the chain ID.
+     *
+     * @return the chain ID
+     */
+    long getChainId();
 }

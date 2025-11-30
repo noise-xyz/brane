@@ -101,6 +101,11 @@ public final class BranePublicClient implements PublicClient {
         return delegate.getLogs(filter);
     }
 
+    @Override
+    public long getChainId() {
+        return delegate.getChainId();
+    }
+
     public static final class Builder {
         private final ChainProfile profile;
         private String rpcUrlOverride;

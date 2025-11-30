@@ -104,6 +104,24 @@
     "stateMutability": "pure"
   },
   {
+    "type": "function",
+    "name": "revertWithCustomError",
+    "inputs": [
+      {
+        "name": "code",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "message",
+        "type": "string",
+        "internalType": "string"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "pure"
+  },
+  {
     "type": "event",
     "name": "DataProcessed",
     "inputs": [
@@ -127,5 +145,21 @@
       }
     ],
     "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "CustomError",
+    "inputs": [
+      {
+        "name": "code",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "message",
+        "type": "string",
+        "internalType": "string"
+      }
+    ]
   }
 ]
