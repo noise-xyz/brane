@@ -86,11 +86,11 @@ public class SmokeApp {
 ### 4. Future Smoke Test Scenarios (Comprehensive Gap Analysis)
 The following features are part of the SDK's API surface but are not covered by the current 8 scenarios. These should be considered for future expansion of the test suite.
 
-#### Phase 5: Final Polish & Gaps (P1 Scenarios)
-
-The following scenarios verify developer experience features and modern Solidity support.
-
-### Scenario M: Debug & Color Mode
+#### Phase 5: Final Polish & Gaps (Completed)
+ 
+The following scenarios verify developer experience features and modern Solidity support. These have been implemented and verified.
+ 
+### Scenario M: Debug & Color Mode (Completed)
 **Goal**: Verify that the SDK's debug logging and color output work as expected.
 - **Actions**:
     - Enable `BraneDebug.setEnabled(true)`.
@@ -100,8 +100,8 @@ The following scenarios verify developer experience features and modern Solidity
     - Logs appear in stdout.
     - Logs contain ANSI color codes (if enabled).
     - Logs contain RPC request/response payloads.
-
-### Scenario N: Custom Error Decoding
+ 
+### Scenario N: Custom Error Decoding (Completed)
 **Goal**: Verify that the SDK can decode Solidity custom errors (introduced in Solidity 0.8.4).
 - **Actions**:
     - Update `ComplexContract` to include a function that reverts with a custom error: `error CustomError(uint256 code, string message)`.
