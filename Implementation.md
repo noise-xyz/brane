@@ -1,58 +1,36 @@
-# Phase 5: Internal Dogfooding (JitPack)
+# Phase 5: Internal Dogfooding (Smoke Test)
 
 ## Goal
-Enable internal engineers to easily consume the `brane` SDK in their projects immediately, using JitPack as the distribution mechanism.
+Ensure that the `brane` SDK can be successfully consumed as an external library by other projects.
+
+## Strategy: Standalone Smoke Test
+We will create a **standalone** consumer project within the repository to simulate a real-world user.
+
+*   **Location**: `smoke-test/` directory.
+*   **Isolation**: It will have its own `settings.gradle` and `build.gradle`. It will **NOT** be part of the main project's Gradle build tree.
+*   **Dependency**: It will depend on `com.github.noise-xyz.brane:brane-core` via `mavenLocal()`.
 
 ## Implementation Plan
 
-### 1. JitPack Configuration (`jitpack.yml`)
-Create a `jitpack.yml` file in the root directory to configure the build environment for JitPack. Since we use Java 21, we must explicitly request it.
-
-**Sample Code (`jitpack.yml`)**:
-```yaml
-jdk:
-  - openjdk21
-install:
-  - ./gradlew publishToMavenLocal
+### 1. Structure
+```
+brane/
+├── build.gradle (Main SDK)
+├── verify_smoke_test.sh (Orchestrator)
+└── smoke-test/ (Standalone Consumer)
+    ├── build.gradle
+    ├── settings.gradle
+    └── src/main/java/io/brane/smoke/SmokeApp.java
 ```
 
-### 2. Consumer Documentation (`DOGFOODING.md`)
-Create a guide for internal engineers explaining how to add the dependency.
+### 2. `verify_smoke_test.sh`
+This script will:
+1.  Build the main SDK and publish to local Maven (`./gradlew publishToMavenLocal`).
+2.  Switch to `smoke-test/` directory.
+3.  Run the consumer app (`../gradlew run`).
 
-**Sample Code (`DOGFOODING.md`)**:
-```markdown
-# Internal Dogfooding Guide
-
-## How to use `brane` in your project
-
-1. Add the JitPack repository to your `build.gradle`:
-   ```groovy
-   repositories {
-       mavenCentral()
-       maven { url 'https://jitpack.io' }
-   }
-   ```
-
-2. Add the dependency:
-   ```groovy
-   dependencies {
-       // Replace 'Tag' with a git tag (e.g., '0.1.0') or commit hash
-       implementation 'com.github.noise-xyz.brane:brane-core:Tag'
-   }
-   ```
-```
-
-## Acceptance Criteria
-- [ ] **Configuration**: `jitpack.yml` exists and specifies `openjdk21`.
-- [ ] **Documentation**: `DOGFOODING.md` exists with clear instructions.
-- [ ] **Verification**:
-    - Push changes to GitHub.
-    - Verify the build log on `jitpack.io` (Manual Step).
-    - Create a dummy consumer project locally to verify it *can* resolve the artifact (simulated).
-
-## Verification Plan (Simulated)
-Since we cannot "run" JitPack locally, we will verify the `publishToMavenLocal` command works, which is what JitPack runs.
-
-1. Run `./gradlew publishToMavenLocal` locally.
-2. Verify artifacts exist in `~/.m2/repository/com/github/noise-xyz/brane/...`.
+### 3. Acceptance Criteria
+- [ ] **Isolation**: `smoke-test` is not listed in the root `settings.gradle`.
+- [ ] **Execution**: `./verify_smoke_test.sh` runs successfully.
+- [ ] **Functionality**: The smoke test app successfully imports and uses a class from `brane-core`.
 
