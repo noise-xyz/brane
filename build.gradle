@@ -5,7 +5,7 @@ ext {
 }
 
 allprojects {
-    group = 'io.brane'
+    group = 'com.github.noise-xyz.brane'
     version = '0.1.0-alpha'
 
     repositories {
@@ -17,6 +17,15 @@ allprojects {
 
 subprojects {
     apply plugin: 'java-library'
+    apply plugin: 'maven-publish'
+
+    publishing {
+        publications {
+            mavenJava(MavenPublication) {
+                from components.java
+            }
+        }
+    }
 
     java {
         toolchain {
