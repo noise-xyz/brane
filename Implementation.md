@@ -37,7 +37,7 @@ Create a guide for internal engineers explaining how to add the dependency.
    ```groovy
    dependencies {
        // Replace 'Tag' with a git tag (e.g., '0.1.0') or commit hash
-       implementation 'com.github.noise-xyz:brane:Tag'
+       implementation 'com.github.noise-xyz.brane:brane-core:Tag'
    }
    ```
 ```

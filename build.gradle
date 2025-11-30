@@ -5,7 +5,7 @@ ext {
 }
 
 allprojects {
-    group = 'io.brane'
+    group = 'com.github.noise-xyz.brane'
     version = '0.1.0-alpha'
 
     repositories {

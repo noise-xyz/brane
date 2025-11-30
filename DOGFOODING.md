@@ -15,25 +15,25 @@ repositories {
 ```
 
 ### 2. Add the Dependency
-Add the dependency using the format `com.github.noise-xyz:brane:Tag`.
+Add the dependency using the format `com.github.noise-xyz.brane:Module:Tag`.
 
 #### Target a specific Release (Recommended)
 ```groovy
 dependencies {
-    implementation 'com.github.noise-xyz:brane:0.1.0'
+    implementation 'com.github.noise-xyz.brane:brane-core:0.1.0'
 }
 ```
 
 #### Target a specific Commit (For debugging)
 ```groovy
 dependencies {
-    implementation 'com.github.noise-xyz:brane:a1b2c3d'
+    implementation 'com.github.noise-xyz.brane:brane-core:a1b2c3d'
 }
 ```
 
 #### Target a Branch Snapshot (For testing latest changes)
 ```groovy
 dependencies {
-    implementation 'com.github.noise-xyz:brane:main-SNAPSHOT'
+    implementation 'com.github.noise-xyz.brane:brane-core:main-SNAPSHOT'
 }
 ```
