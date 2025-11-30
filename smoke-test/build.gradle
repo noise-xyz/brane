@@ -11,6 +11,8 @@ repositories {
 dependencies {
     // This matches the JitPack coordinates we configured
     implementation 'com.github.noise-xyz.brane:brane-core:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-rpc:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-contract:0.1.0-alpha'
 }
 
 application {
