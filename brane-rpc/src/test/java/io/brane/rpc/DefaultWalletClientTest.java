@@ -570,8 +570,13 @@ class DefaultWalletClientTest {
                 }
 
                 @Override
-                public java.util.List<io.brane.core.model.LogEntry> getLogs(final LogFilter filter) {
-                        return java.util.Collections.emptyList();
+                public java.util.List<io.brane.core.model.LogEntry> getLogs(io.brane.rpc.LogFilter filter) {
+                        throw new UnsupportedOperationException();
+                }
+
+                @Override
+                public long getChainId() {
+                        return 1;
                 }
         }
 

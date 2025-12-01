@@ -131,11 +131,12 @@ class AbiBindingTest {
             String badReturn(); // Wrong return type for uint256
         }
 
-        PublicClient fakePublic = new FakePublicClient() {};
-        WalletClient fakeWallet = new FakeWalletClient() {};
-        
-        assertThrows(IllegalArgumentException.class, () -> 
-            BraneContract.bind(
+        PublicClient fakePublic = new FakePublicClient() {
+        };
+        WalletClient fakeWallet = new FakeWalletClient() {
+        };
+
+        assertThrows(IllegalArgumentException.class, () -> BraneContract.bind(
                 new Address("0x" + "1".repeat(40)),
                 json,
                 fakePublic,
@@ -161,11 +162,12 @@ class AbiBindingTest {
             String write(); // Write functions must return void or TransactionReceipt
         }
 
-        PublicClient fakePublic = new FakePublicClient() {};
-        WalletClient fakeWallet = new FakeWalletClient() {};
+        PublicClient fakePublic = new FakePublicClient() {
+        };
+        WalletClient fakeWallet = new FakeWalletClient() {
+        };
 
-        assertThrows(IllegalArgumentException.class, () -> 
-            BraneContract.bind(
+        assertThrows(IllegalArgumentException.class, () -> BraneContract.bind(
                 new Address("0x" + "1".repeat(40)),
                 json,
                 fakePublic,
@@ -196,6 +198,7 @@ class AbiBindingTest {
 
         interface TestContract {
             void write1();
+
             TransactionReceipt write2();
         }
 
@@ -228,6 +231,11 @@ class AbiBindingTest {
         @Override
         public java.util.List<io.brane.core.model.LogEntry> getLogs(io.brane.rpc.LogFilter filter) {
             throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public long getChainId() {
+            return 1;
         }
     }
 

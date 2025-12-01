@@ -23,19 +23,19 @@ class SmartGasStrategyTest {
 
     @Test
     void txObjectIncludesAccessListWhenPresent() {
-        final TransactionRequest request =
-                new TransactionRequest(
-                        new Address("0x" + "f".repeat(40)),
-                        new Address("0x" + "e".repeat(40)),
-                        null,
-                        null,
-                        null,
-                        null,
-                        null,
-                        1L,
-                        null,
-                        true,
-                        List.of(new AccessListEntry(new Address("0x" + "a".repeat(40)), List.of(new Hash("0x" + "1".repeat(64))))));
+        final TransactionRequest request = new TransactionRequest(
+                new Address("0x" + "f".repeat(40)),
+                new Address("0x" + "e".repeat(40)),
+                null,
+                null,
+                null,
+                null,
+                null,
+                1L,
+                null,
+                true,
+                List.of(new AccessListEntry(new Address("0x" + "a".repeat(40)),
+                        List.of(new Hash("0x" + "1".repeat(64))))));
 
         final Map<String, Object> tx = strategy.toTxObject(request);
 
@@ -48,11 +48,10 @@ class SmartGasStrategyTest {
 
     @Test
     void txObjectOmitsAccessListWhenNullOrEmpty() {
-        final TransactionRequest nullAccessList =
-                new TransactionRequest(new Address("0x" + "f".repeat(40)), null, null, null, null, null, null, null, null, true, null);
-        final TransactionRequest emptyAccessList =
-                new TransactionRequest(
-                        new Address("0x" + "f".repeat(40)), null, null, null, null, null, null, null, null, true, List.of());
+        final TransactionRequest nullAccessList = new TransactionRequest(new Address("0x" + "f".repeat(40)), null, null,
+                null, null, null, null, null, null, true, null);
+        final TransactionRequest emptyAccessList = new TransactionRequest(
+                new Address("0x" + "f".repeat(40)), null, null, null, null, null, null, null, null, true, List.of());
 
         assertFalse(strategy.toTxObject(nullAccessList).containsKey("accessList"));
         assertFalse(strategy.toTxObject(emptyAccessList).containsKey("accessList"));
@@ -81,8 +80,13 @@ class SmartGasStrategyTest {
         }
 
         @Override
-        public List<io.brane.core.model.LogEntry> getLogs(final LogFilter filter) {
-            return List.of();
+        public java.util.List<io.brane.core.model.LogEntry> getLogs(io.brane.rpc.LogFilter filter) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public long getChainId() {
+            return 1;
         }
     }
 }

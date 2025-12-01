@@ -196,6 +196,11 @@ class ContractInvocationHandlerTest {
         public java.util.List<io.brane.core.model.LogEntry> getLogs(io.brane.rpc.LogFilter filter) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public long getChainId() {
+            return 1;
+        }
     }
 
     private static abstract class FakeWalletClient implements WalletClient {

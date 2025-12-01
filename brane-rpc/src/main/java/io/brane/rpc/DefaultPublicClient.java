@@ -69,6 +69,11 @@ final class DefaultPublicClient implements PublicClient {
         final long start = System.nanoTime();
         DebugLogger.log(LogFormatter.formatCall(blockTag, callObject));
         final JsonRpcResponse response = sendWithRetry("eth_call", List.of(callObject, blockTag));
+        if (response.hasError()) {
+            final JsonRpcError err = response.error();
+            throw new io.brane.core.error.RpcException(
+                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+        }
         final Object result = response.result();
         final String output = result != null ? result.toString() : null;
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
@@ -120,6 +125,16 @@ final class DefaultPublicClient implements PublicClient {
                             Boolean.TRUE.equals(map.get("removed"))));
         }
         return logs;
+    }
+
+    @Override
+    public long getChainId() {
+        final var response = sendWithRetry("eth_chainId", List.of());
+        final Object result = response.result();
+        if (result == null) {
+            throw new io.brane.core.error.RpcException(0, "eth_chainId returned null", (String) null, (Throwable) null);
+        }
+        return RpcUtils.decodeHexLong(result);
     }
 
     private Map<String, Object> buildLogParams(final LogFilter filter) {

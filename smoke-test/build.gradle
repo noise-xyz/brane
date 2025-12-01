@@ -1,0 +1,27 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+repositories {
+    mavenLocal() // Simulates JitPack (since we publish locally first)
+    mavenCentral()
+}
+
+dependencies {
+    // This matches the JitPack coordinates we configured
+    implementation 'com.github.noise-xyz.brane:brane-core:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-rpc:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-contract:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-primitives:0.1.0-alpha'
+}
+
+application {
+    mainClass = 'io.brane.smoke.SmokeApp'
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}

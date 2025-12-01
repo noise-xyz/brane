@@ -119,6 +119,16 @@ public interface Abi {
     }
 
     /**
+     * Computes the 4-byte function selector as a raw hex string (no 0x prefix).
+     * 
+     * @param functionSignature the function signature
+     * @return 8-character hex string
+     */
+    static String getSelector(final String functionSignature) {
+        return functionSelector(functionSignature).value().substring(2);
+    }
+
+    /**
      * Encodes a function call with arguments into calldata.
      * 
      * @param name the function name
