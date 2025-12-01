@@ -55,7 +55,7 @@ public class SignerBenchmark {
                 100000,
                 to,
                 Wei.of(0),
-                new HexData(io.brane.primitives.Hex.encode(largeData))
+                HexData.fromBytes(largeData)
         );
     }
 

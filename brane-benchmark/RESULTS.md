@@ -20,7 +20,7 @@ Measures the throughput of encoding complex nested structures (Tuples, Arrays, d
 
 | Benchmark | Brane (ops/s) | Web3j (ops/s) | Speedup | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| `encodeComplex` | **657,075** | 651,063 | **1.01x** | Uses `FastAbiEncoder` (Zero-Allocation strategy). |
+| `encodeComplex` | **603,038** | 639,558 | **0.94x** | Optimized `HexData` and decentralized size calc. Near parity. |
 
 ### 2. ABI Encoding (Functions & Constructors)
 
@@ -29,9 +29,9 @@ Measures the throughput of encoding function calls and constructor arguments, in
 | Benchmark | Brane (ops/s) | Web3j (ops/s) | Speedup | Notes |
 | :--- | :--- | :--- | :--- | :--- |
 | `encodeFunction` | 458,689 | N/A | N/A | Includes Keccak256 overhead for selector. |
-| `encodeConstructor` | **93,798,159** | 34,971,875 | **2.68x** | Optimized with direct `ByteBuffer` encoding and lazy `HexData`. |
+| `encodeConstructor` | **91,082,314** | 36,554,895 | **2.49x** | Optimized with direct `ByteBuffer` encoding and lazy `HexData`. |
 
-> **Note:** Brane's `encodeConstructor` is now significantly faster than Web3j due to direct buffer encoding and avoiding intermediate object allocations.
+> **Note:** Brane's `encodeConstructor` consistently outperforms Web3j due to direct buffer encoding and avoiding intermediate object allocations.
 
 ### 3. Transaction Signing
 
@@ -39,9 +39,9 @@ Measures the throughput of signing transactions (hashing + ECDSA signature gener
 
 | Benchmark | Brane (ops/s) | Web3j (ops/s) | Speedup | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| `signLegacy` | **20,067** | 7,737 | **2.59x** | Legacy (pre-EIP-155) signing. |
-| `signEip1559` | **19,694** | 4,789 | **4.11x** | EIP-1559 signing. |
-| `signLargePayload` | **11,331** | 6,162 | **1.84x** | Signing 10KB data payload. |
+| `signLegacy` | **19,994** | 7,850 | **2.55x** | Legacy (pre-EIP-155) signing. |
+| `signEip1559` | **19,435** | 4,820 | **4.03x** | EIP-1559 signing. |
+| `signLargePayload` | **14,203** | 6,330 | **2.24x** | Signing 10KB data payload. |
 
 ## Optimization Strategies
 

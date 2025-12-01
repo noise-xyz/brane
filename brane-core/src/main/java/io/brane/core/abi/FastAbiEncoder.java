@@ -1,6 +1,7 @@
 package io.brane.core.abi;
 
 import io.brane.core.crypto.Keccak256;
+import io.brane.core.types.HexData;
 import io.brane.primitives.Hex;
 
 import java.math.BigInteger;
@@ -75,7 +76,7 @@ public final class FastAbiEncoder {
             if (component.isDynamic()) {
                 // Write offset
                 encodeUInt256(BigInteger.valueOf(currentTailOffset), buffer);
-                currentTailOffset += PackedSizeCalculator.calculateType(component);
+                currentTailOffset += component.contentByteSize();
             } else {
                 // Write static data
                 encodeStaticContent(component, buffer);
@@ -113,7 +114,7 @@ public final class FastAbiEncoder {
 
     /**
      * Encodes a uint256 value directly into the buffer.
-     * Optimized to use primitive long for values <= 63 bits to avoid BigInteger
+     * Optimized to use primitive long for values &lt;= 63 bits to avoid BigInteger
      * overhead.
      *
      * @param value  the value to encode
@@ -232,12 +233,16 @@ public final class FastAbiEncoder {
      * @param buffer the destination buffer
      */
     public static void encodeBytes(Bytes bytes, ByteBuffer buffer) {
-        byte[] data = Hex.decode(bytes.value().value());
+        HexData hex = bytes.value();
+        int length = hex.byteLength();
+
         if (bytes.isDynamic()) {
-            encodeUInt256(BigInteger.valueOf(data.length), buffer);
+            encodeUInt256(BigInteger.valueOf(length), buffer);
         }
-        buffer.put(data);
-        int padding = (32 - (data.length % 32)) % 32;
+
+        hex.putTo(buffer);
+
+        int padding = (32 - (length % 32)) % 32;
         for (int i = 0; i < padding; i++) {
             buffer.put((byte) 0);
         }

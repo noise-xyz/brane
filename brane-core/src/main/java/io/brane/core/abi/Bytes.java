@@ -29,15 +29,19 @@ public record Bytes(HexData value, boolean isDynamic) implements AbiType {
         if (isDynamic) {
             return "bytes";
         }
-        // Calculate N from value length?
-        // Or should we store N?
-        // Usually bytesN implies a fixed size.
-        // If we just wrap HexData, we might not know the intended N.
-        // But for encoding, we just pad to 32.
-        // For typeName generation, we might need N.
-        // Let's assume bytes32 for now if static, or derive from length.
         int n = (value.value().length() - 2) / 2;
         return "bytes" + n;
+    }
+
+    @Override
+    public int contentByteSize() {
+        if (!isDynamic) {
+            return 0;
+        }
+        int len = value.byteLength();
+        int remainder = len % 32;
+        int padding = remainder == 0 ? 0 : 32 - remainder;
+        return 32 + len + padding; // Length (32) + Data + Padding
     }
 
     public static Bytes of(byte[] data) {

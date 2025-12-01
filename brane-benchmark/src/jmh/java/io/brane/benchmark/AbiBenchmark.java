@@ -77,7 +77,7 @@ public class AbiBenchmark {
         
         byte[] idBytes = new byte[32];
         idBytes[0] = (byte) 0xAB;
-        HexData id = new HexData(io.brane.primitives.Hex.encode(idBytes));
+        HexData id = HexData.fromBytes(idBytes);
         
         complexData = java.util.List.of(java.util.List.of(inners, id));
         complexArgs = complexData.toArray();

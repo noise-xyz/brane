@@ -106,7 +106,7 @@ final class InternalAbi implements Abi {
             }
         }
 
-        return new Call(fn, HexData.fromBytes(encoded).value());
+        return new Call(fn, HexData.fromBytes(encoded));
     }
 
     @Override
@@ -838,34 +838,38 @@ final class InternalAbi implements Abi {
         }
 
         final List<AbiParameter> params = new ArrayList<>(array.size());
-        for (JsonNode param : array) {
-            final String type = param.path("type").asText();
-            if (type == null || type.isBlank()) {
-                throw new AbiEncodingException("ABI parameter missing type");
-            }
-            final String name = param.path("name").asText("");
-            final boolean indexed = param.path("indexed").asBoolean(false);
-            final List<AbiParameter> components = parseParameters(arrayField(param, "components"));
-            params.add(new AbiParameter(name, type, indexed, components));
+        for (JsonNode node : array) {
+            params.add(parseParameter(node));
         }
         return params;
     }
 
-    private static ArrayNode arrayField(final JsonNode node, final String field) {
-        final JsonNode value = node.get(field);
-        if (value != null && value.isArray()) {
-            return (ArrayNode) value;
-        }
-        return MAPPER.createArrayNode();
+    private static AbiParameter parseParameter(final JsonNode node) {
+        final String name = node.path("name").asText("");
+        final String type = requireText(node, "type", "parameter");
+        final boolean indexed = node.path("indexed").asBoolean(false);
+        final List<AbiParameter> components = parseParameters(arrayField(node, "components"));
+        return new AbiParameter(name, type, indexed, components);
     }
 
-    private static String requireText(
-            final JsonNode node, final String field, final String entryType) {
-        final String value = node.path(field).asText();
-        if (value == null || value.isBlank()) {
-            throw new AbiEncodingException(entryType + " missing required field '" + field + "'");
+    private static ArrayNode arrayField(final JsonNode node, final String name) {
+        final JsonNode field = node.path(name);
+        if (field.isMissingNode() || field.isNull()) {
+            return null;
         }
-        return value;
+        if (!field.isArray()) {
+            throw new AbiEncodingException("Field '" + name + "' must be an array");
+        }
+        return (ArrayNode) field;
+    }
+
+    private static String requireText(final JsonNode node, final String field, final String context) {
+        final JsonNode value = node.path(field);
+        if (value.isMissingNode() || !value.isTextual()) {
+            throw new AbiEncodingException(
+                    "Field '" + field + "' is required and must be a string in " + context);
+        }
+        return value.asText();
     }
 
     private static final class AbiParameter {
@@ -917,11 +921,22 @@ final class InternalAbi implements Abi {
         }
     }
 
-    private record ParsedAbi(
-            Map<String, AbiFunction> functionsByName,
-            Map<String, AbiFunction> functionsBySignature,
-            Map<String, AbiEvent> eventsBySignature,
-            AbiFunction constructor) {
+    private static final class ParsedAbi {
+        final Map<String, AbiFunction> functionsByName;
+        final Map<String, AbiFunction> functionsBySignature;
+        final Map<String, AbiEvent> eventsBySignature;
+        final AbiFunction constructor;
+
+        ParsedAbi(
+                final Map<String, AbiFunction> functionsByName,
+                final Map<String, AbiFunction> functionsBySignature,
+                final Map<String, AbiEvent> eventsBySignature,
+                final AbiFunction constructor) {
+            this.functionsByName = functionsByName;
+            this.functionsBySignature = functionsBySignature;
+            this.eventsBySignature = eventsBySignature;
+            this.constructor = constructor;
+        }
     }
 
     @Override
@@ -1103,16 +1118,16 @@ final class InternalAbi implements Abi {
 
     private static final class Call implements Abi.FunctionCall {
         private final AbiFunction abiFunction;
-        private final String data;
+        private final HexData data;
 
-        private Call(final AbiFunction abiFunction, final String data) {
+        private Call(final AbiFunction abiFunction, final HexData data) {
             this.abiFunction = Objects.requireNonNull(abiFunction, "abiFunction");
             this.data = Objects.requireNonNull(data, "data");
         }
 
         @Override
         public String data() {
-            return data;
+            return data.value();
         }
 
         @Override

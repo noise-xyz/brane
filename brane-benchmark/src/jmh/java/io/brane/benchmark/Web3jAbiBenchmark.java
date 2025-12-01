@@ -69,9 +69,7 @@ public class Web3jAbiBenchmark {
             super(a, b);
         }
         
-        public Inner(Uint256 a, Utf8String b, BigInteger c) {
-             super(a,b);
-        }
+
     }
 
     public static class Outer extends DynamicStruct {

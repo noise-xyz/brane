@@ -1,6 +1,7 @@
 package io.brane.core.types;
 
 import io.brane.primitives.Hex;
+import java.nio.ByteBuffer;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -42,12 +43,10 @@ import java.util.regex.Pattern;
  * byte[] decoded = data.toBytes();
  * }</pre>
  * 
- * @param value the hex-encoded string with "0x" prefix
- *              <p>
- *              Throws {@link IllegalArgumentException} if value is not valid
- *              hex data.
- *              <p>
- *              Throws {@link NullPointerException} if value is null.
+ * Throws {@link IllegalArgumentException} if value is not valid
+ * hex data.
+ * <p>
+ * Throws {@link NullPointerException} if value is null.
  */
 public final class HexData {
     private static final Pattern HEX = Pattern.compile("^0x([0-9a-fA-F]{2})*$");
@@ -56,6 +55,11 @@ public final class HexData {
     private String value;
     private final byte[] raw;
 
+    /**
+     * Creates a HexData from a hex string.
+     *
+     * @param value the hex-encoded string with "0x" prefix
+     */
     public HexData(String value) {
         Objects.requireNonNull(value, "hex");
         if (!HEX.matcher(value).matches()) {
@@ -104,6 +108,32 @@ public final class HexData {
             value = Hex.encode(raw);
         }
         return value;
+    }
+
+    /**
+     * Returns the length of the raw bytes.
+     * 
+     * @return the byte length
+     */
+    public int byteLength() {
+        if (raw != null) {
+            return raw.length;
+        }
+        // "0x" + 2 chars per byte
+        return (value.length() - 2) / 2;
+    }
+
+    /**
+     * Writes the raw bytes directly to the provided ByteBuffer.
+     * 
+     * @param buffer the destination buffer
+     */
+    public void putTo(ByteBuffer buffer) {
+        if (raw != null) {
+            buffer.put(raw);
+        } else {
+            buffer.put(Hex.decode(value));
+        }
     }
 
     /**
