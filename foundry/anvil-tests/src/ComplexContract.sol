@@ -34,4 +34,18 @@ contract ComplexContract {
     function revertWithCustomError(uint256 code, string memory message) public pure {
         revert CustomError(code, message);
     }
+
+    struct Inner {
+        uint256 a;
+        string b;
+    }
+
+    struct Outer {
+        Inner[] inners;
+        bytes32 id;
+    }
+
+    function processNested(Outer memory outer) public pure returns (Outer memory) {
+        return outer;
+    }
 }

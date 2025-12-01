@@ -59,7 +59,7 @@ final class InternalAbi implements Abi {
         final List<AbiType> encodedInputs = new ArrayList<>(fn.inputs().size());
         for (int i = 0; i < fn.inputs().size(); i++) {
             final AbiParameter param = fn.inputs().get(i);
-            encodedInputs.add(toAbiType(param.type(), providedArgs[i]));
+            encodedInputs.add(toAbiType(param, providedArgs[i]));
         }
 
         final byte[] data = AbiEncoder.encodeFunction(fn.signature(), encodedInputs);
@@ -88,7 +88,7 @@ final class InternalAbi implements Abi {
         final List<AbiType> encodedInputs = new ArrayList<>(constructor.inputs().size());
         for (int i = 0; i < constructor.inputs().size(); i++) {
             final AbiParameter param = constructor.inputs().get(i);
-            encodedInputs.add(toAbiType(param.type(), providedArgs[i]));
+            encodedInputs.add(toAbiType(param, providedArgs[i]));
         }
 
         final byte[] encoded = AbiEncoder.encode(encodedInputs);
@@ -125,7 +125,8 @@ final class InternalAbi implements Abi {
         return function;
     }
 
-    private static AbiType toAbiType(final String solidityType, final Object value) {
+    private static AbiType toAbiType(final AbiParameter param, final Object value) {
+        final String solidityType = param.type();
         if (value == null) {
             throw new AbiEncodingException("Argument for type '" + solidityType + "' is null");
         }
@@ -134,17 +135,35 @@ final class InternalAbi implements Abi {
             final String baseType = solidityType.substring(0, solidityType.length() - 2);
             final List<?> listValue = asList(value);
             final List<AbiType> elements = new ArrayList<>(listValue.size());
+            final AbiParameter elementParam = new AbiParameter("", baseType, false, param.components());
             for (Object element : listValue) {
-                elements.add(toAbiType(baseType, element));
+                elements.add(toAbiType(elementParam, element));
             }
             // Infer element class from first element or generic AbiType
             return new Array<AbiType>(elements, AbiType.class, true);
         }
 
-        // Handle fixed size arrays? e.g. uint[2]
-        // Regex for array: (.+)\[(\d*)\]
-        // For now let's assume dynamic arrays only or handle static if needed.
-        // The previous implementation handled normalization recursively.
+        if (solidityType.equals("tuple")) {
+            if (param.components() == null || param.components().isEmpty()) {
+                throw new AbiEncodingException("Tuple parameter missing components");
+            }
+            final List<?> listValue = asList(value);
+            if (listValue.size() != param.components().size()) {
+                throw new AbiEncodingException(
+                        "Tuple expects "
+                                + param.components().size()
+                                + " components but got "
+                                + listValue.size());
+            }
+
+            final List<AbiType> components = new ArrayList<>();
+            for (int i = 0; i < param.components().size(); i++) {
+                final AbiParameter componentParam = param.components().get(i);
+                final Object componentValue = listValue.get(i);
+                components.add(toAbiType(componentParam, componentValue));
+            }
+            return new Tuple(components);
+        }
 
         final String normalizedType = solidityType.toLowerCase(Locale.ROOT);
 
@@ -328,7 +347,8 @@ final class InternalAbi implements Abi {
             }
             final String name = param.path("name").asText("");
             final boolean indexed = param.path("indexed").asBoolean(false);
-            params.add(new AbiParameter(name, type, indexed));
+            final List<AbiParameter> components = parseParameters(arrayField(param, "components"));
+            params.add(new AbiParameter(name, type, indexed, components));
         }
         return params;
     }
@@ -350,13 +370,23 @@ final class InternalAbi implements Abi {
         return value;
     }
 
-    private record AbiParameter(String name, String type, boolean indexed) {
+    private record AbiParameter(String name, String type, boolean indexed, List<AbiParameter> components) {
+        String canonicalType() {
+            if (type.startsWith("tuple")) {
+                final String suffix = type.substring(5);
+                final String joined = components.stream()
+                        .map(AbiParameter::canonicalType)
+                        .collect(Collectors.joining(","));
+                return "(" + joined + ")" + suffix;
+            }
+            return type;
+        }
     }
 
     private record AbiFunction(
             String name, String stateMutability, List<AbiParameter> inputs, List<AbiParameter> outputs) {
         String signature() {
-            final String joined = inputs.stream().map(AbiParameter::type).collect(Collectors.joining(","));
+            final String joined = inputs.stream().map(AbiParameter::canonicalType).collect(Collectors.joining(","));
             return name + "(" + joined + ")";
         }
 
@@ -369,7 +399,7 @@ final class InternalAbi implements Abi {
 
     private record AbiEvent(String name, List<AbiParameter> inputs) {
         String signature() {
-            final String joined = inputs.stream().map(AbiParameter::type).collect(Collectors.joining(","));
+            final String joined = inputs.stream().map(AbiParameter::canonicalType).collect(Collectors.joining(","));
             return name + "(" + joined + ")";
         }
     }
@@ -433,7 +463,7 @@ final class InternalAbi implements Abi {
                     // For now assume simple types.
                     // We need to decode the topic hex.
                     final byte[] topicBytes = Hex.decode(topic);
-                    final TypeSchema schema = toTypeSchema(param.type());
+                    final TypeSchema schema = toTypeSchema(param);
                     // Decode as if it's a single static value
                     // But AbiDecoder expects a tuple.
                     // Actually indexed params are just values.
@@ -446,7 +476,7 @@ final class InternalAbi implements Abi {
                 }
                 topicIdx++;
             } else {
-                nonIndexedSchemas.add(toTypeSchema(param.type()));
+                nonIndexedSchemas.add(toTypeSchema(param));
             }
         }
 
@@ -514,10 +544,22 @@ final class InternalAbi implements Abi {
         };
     }
 
-    private static TypeSchema toTypeSchema(String solidityType) {
+    private static TypeSchema toTypeSchema(final AbiParameter param) {
+        final String solidityType = param.type();
         if (solidityType.endsWith("[]")) {
             String base = solidityType.substring(0, solidityType.length() - 2);
-            return new TypeSchema.ArraySchema(toTypeSchema(base), -1);
+            AbiParameter baseParam = new AbiParameter("", base, false, param.components());
+            return new TypeSchema.ArraySchema(toTypeSchema(baseParam), -1);
+        }
+        if (solidityType.equals("tuple")) {
+            if (param.components() == null) {
+                throw new AbiEncodingException("Tuple missing components");
+            }
+            List<TypeSchema> componentSchemas = new ArrayList<>();
+            for (AbiParameter component : param.components()) {
+                componentSchemas.add(toTypeSchema(component));
+            }
+            return new TypeSchema.TupleSchema(componentSchemas);
         }
         String normalized = solidityType.toLowerCase(Locale.ROOT);
         if (normalized.startsWith("uint")) {
@@ -583,7 +625,7 @@ final class InternalAbi implements Abi {
 
                 final List<TypeSchema> schemas = new ArrayList<>();
                 for (AbiParameter param : abiFunction.outputs()) {
-                    schemas.add(toTypeSchema(param.type()));
+                    schemas.add(toTypeSchema(param));
                 }
 
                 final List<AbiType> decoded = AbiDecoder.decode(data, schemas);

@@ -111,5 +111,13 @@ public interface PublicClient {
      *
      * @return the chain ID
      */
-    long getChainId();
+    java.math.BigInteger getChainId();
+
+    /**
+     * Retrieves the balance of an account.
+     *
+     * @param address the account address
+     * @return the balance in Wei
+     */
+    java.math.BigInteger getBalance(io.brane.core.types.Address address);
 }

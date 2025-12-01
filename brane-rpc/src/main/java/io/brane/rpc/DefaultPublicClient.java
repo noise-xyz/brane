@@ -128,13 +128,24 @@ final class DefaultPublicClient implements PublicClient {
     }
 
     @Override
-    public long getChainId() {
+    public java.math.BigInteger getChainId() {
         final var response = sendWithRetry("eth_chainId", List.of());
         final Object result = response.result();
         if (result == null) {
             throw new io.brane.core.error.RpcException(0, "eth_chainId returned null", (String) null, (Throwable) null);
         }
-        return RpcUtils.decodeHexLong(result);
+        return RpcUtils.decodeHexBigInteger(result.toString());
+    }
+
+    @Override
+    public java.math.BigInteger getBalance(final Address address) {
+        final var response = sendWithRetry("eth_getBalance", List.of(address.value(), "latest"));
+        final Object result = response.result();
+        if (result == null) {
+            throw new io.brane.core.error.RpcException(0, "eth_getBalance returned null", (String) null,
+                    (Throwable) null);
+        }
+        return RpcUtils.decodeHexBigInteger(result.toString());
     }
 
     private Map<String, Object> buildLogParams(final LogFilter filter) {

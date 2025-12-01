@@ -79,26 +79,43 @@ public class SmokeApp {
     private static Address complexAddress;
     private static Abi complexAbi;
 
+    private static boolean sepoliaMode = false;
+
     public static void main(String[] args) {
         System.out.println("=== 🚀 Brane SDK Smoke Test Suite ===");
+        
+        for (String arg : args) {
+            if (arg.equals("--sepolia")) {
+                sepoliaMode = true;
+                System.out.println("⚠️ Running in SEPOLIA mode (Read-Only)");
+            }
+        }
         
         try {
             setup();
             
-            testCoreTransfer();      // Scenario A
-            testErrorHandling();     // Scenario B
-            testEventLogs();         // Scenario C
-            testAbiWrapper();        // Scenario D
-            testEip1559();           // Scenario E
-            testRawSigning();        // Scenario F
-            testCustomRpc();         // Scenario G
-            testChainIdMismatch();   // Scenario H
-            testPublicClientReads(); // Scenario I
-            testWeiUtilities();      // Scenario J
-            testComplexAbi();        // Scenario K
-            testGasStrategy();       // Scenario L
-            testDebugAndColorMode(); // Scenario M
-            testCustomErrorDecoding(); // Scenario N
+            if (sepoliaMode) {
+                testPublicClientReads(); // Scenario I
+                testWeiUtilities();      // Scenario J
+                testDebugAndColorMode(); // Scenario M
+                testSepoliaSpecifics();
+            } else {
+                testCoreTransfer();      // Scenario A
+                testErrorHandling();     // Scenario B
+                testEventLogs();         // Scenario C
+                testAbiWrapper();        // Scenario D
+                testEip1559();           // Scenario E
+                testRawSigning();        // Scenario F
+                testCustomRpc();         // Scenario G
+                testChainIdMismatch();   // Scenario H
+                testPublicClientReads(); // Scenario I
+                testWeiUtilities();      // Scenario J
+                testComplexAbi();        // Scenario K
+                testGasStrategy();       // Scenario L
+                testDebugAndColorMode(); // Scenario M
+                testCustomErrorDecoding(); // Scenario N
+                testComplexNestedStructs(); // Scenario O
+            }
             
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
             System.exit(0);
@@ -112,19 +129,52 @@ public class SmokeApp {
     private static void setup() throws Exception {
         System.out.println("\n[Setup] Initializing clients...");
         
-        String rpcUrl = System.getProperty("brane.smoke.rpc", "http://127.0.0.1:8545");
-        provider = HttpBraneProvider.builder(rpcUrl).build();
+        String defaultRpc = sepoliaMode ? "https://rpc.sepolia.org" : "http://127.0.0.1:8545";
+        String rpcUrl = System.getProperty("brane.smoke.rpc", defaultRpc);
         
+        // If env var BRANE_SEPOLIA_RPC is set and we are in sepolia mode, use it
+        if (sepoliaMode) {
+            // Use a more reliable public RPC
+            rpcUrl = System.getenv().getOrDefault("BRANE_SEPOLIA_RPC", "https://ethereum-sepolia-rpc.publicnode.com");
+        }
+
+        provider = HttpBraneProvider.builder(rpcUrl).build();
         publicClient = PublicClient.from(provider);
-        walletClient = DefaultWalletClient.create(
-            provider, 
-            publicClient, 
-            new PrivateKeyTransactionSigner(PRIVATE_KEY), 
-            OWNER
-        );
+        
+        if (!sepoliaMode) {
+            walletClient = DefaultWalletClient.create(
+                provider, 
+                publicClient, 
+                new PrivateKeyTransactionSigner(PRIVATE_KEY), 
+                OWNER
+            );
+        }
+        
         abi = Abi.fromJson(ABI_JSON);
         
         System.out.println("✓ Clients ready. RPC: " + rpcUrl);
+    }
+
+    private static void testSepoliaSpecifics() {
+        System.out.println("\n[Sepolia Specifics]");
+        try {
+            BigInteger chainId = publicClient.getChainId();
+            if (!chainId.equals(new BigInteger("11155111"))) {
+                throw new RuntimeException("Sepolia Chain ID mismatch. Expected 11155111, got " + chainId);
+            }
+            System.out.println("  ✓ Chain ID Verified: " + chainId);
+
+            // Check balance of zero address (should be > 0 usually, or just check it doesn't crash)
+            BigInteger balance = publicClient.getBalance(new Address("0x0000000000000000000000000000000000000000"));
+            System.out.println("  ✓ Zero Address Balance: " + balance);
+            System.out.println("  ✓ Balance Check Successful");
+        } catch (Exception e) {
+             if (sepoliaMode && (e instanceof RpcException || e.getCause() instanceof java.net.http.HttpTimeoutException)) {
+                System.out.println("  ⚠️ Sepolia Network Error (Expected on public RPC): " + e.getMessage());
+            } else {
+                throw e;
+            }
+        }
     }
 
     private static void testCoreTransfer() throws Exception {
@@ -142,14 +192,8 @@ public class SmokeApp {
         // 2. Deploy
         System.out.println("  Deploying BraneToken...");
         BigInteger initialSupply = new BigInteger("1000000000000000000000"); // 1000 tokens
-        HexData encodedArgs = abi.encodeConstructor(initialSupply);
         
-        // Concatenate bytecode and args (strip 0x from args)
-        String deployData = bytecodeHex + encodedArgs.value().substring(2);
-        
-        TransactionRequest deployRequest = TxBuilder.legacy()
-                .data(new HexData(deployData))
-                .build();
+        TransactionRequest deployRequest = BraneContract.deployRequest(ABI_JSON, bytecodeHex, initialSupply);
 
         TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployRequest, 30_000, 1_000);
         
@@ -340,14 +384,22 @@ public class SmokeApp {
     private static void testPublicClientReads() {
         System.out.println("\n[Scenario I] Public Client Read Ops");
         
-        io.brane.core.model.BlockHeader block = publicClient.getLatestBlock();
-        if (block == null || block.number() == null) throw new RuntimeException("Failed to get latest block");
-        System.out.println("  ✓ Latest Block: " + block.number());
-        
-        if (block.number() > 0) {
-            io.brane.core.model.BlockHeader parent = publicClient.getBlockByNumber(block.number() - 1);
-            if (!parent.hash().equals(block.parentHash())) throw new RuntimeException("Parent hash mismatch");
-            System.out.println("  ✓ Block Parent Hash Verified");
+        try {
+            io.brane.core.model.BlockHeader block = publicClient.getLatestBlock();
+            if (block == null || block.number() == null) throw new RuntimeException("Failed to get latest block");
+            System.out.println("  ✓ Latest Block: " + block.number());
+            
+            if (block.number() > 0) {
+                io.brane.core.model.BlockHeader parent = publicClient.getBlockByNumber(block.number() - 1);
+                if (!parent.hash().equals(block.parentHash())) throw new RuntimeException("Parent hash mismatch");
+                System.out.println("  ✓ Block Parent Hash Verified");
+            }
+        } catch (Exception e) {
+            if (sepoliaMode && (e instanceof RpcException || e.getCause() instanceof java.net.http.HttpTimeoutException)) {
+                System.out.println("  ⚠️ Sepolia Network Error (Expected on public RPC): " + e.getMessage());
+            } else {
+                throw e;
+            }
         }
     }
 
@@ -440,11 +492,19 @@ public class SmokeApp {
         
         System.out.println("  (Debug logging enabled - check stdout for cyan/teal logs)");
         
-        // Make a simple call to trigger logs
-        publicClient.getChainId();
-        
-        // Disable debug to keep subsequent output clean
-        io.brane.core.BraneDebug.setEnabled(false);
+        try {
+            // Make a simple call to trigger logs
+            publicClient.getChainId();
+        } catch (Exception e) {
+            if (sepoliaMode && (e instanceof RpcException || e.getCause() instanceof java.net.http.HttpTimeoutException)) {
+                System.out.println("  ⚠️ Sepolia Network Error (Expected on public RPC): " + e.getMessage());
+            } else {
+                throw e;
+            }
+        } finally {
+            // Disable debug to keep subsequent output clean
+            io.brane.core.BraneDebug.setEnabled(false);
+        }
         System.out.println("  ✓ Debug mode toggled and executed without error");
     }
 
@@ -496,5 +556,49 @@ public class SmokeApp {
         } catch (Exception e) {
              throw new RuntimeException("Unexpected exception: " + e.getClass().getName(), e);
         }
+    }
+
+    private static void testComplexNestedStructs() {
+        System.out.println("\n[Scenario O] Complex Nested Structs");
+        
+        ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, publicClient);
+        
+        // Struct Inner { uint256 a; string b; }
+        // Struct Outer { Inner[] inners; bytes32 id; }
+        
+        // Construct Inner objects
+        List<Object> inner1 = List.of(BigInteger.ONE, "inner1");
+        List<Object> inner2 = List.of(BigInteger.TWO, "inner2");
+        
+        // Construct Outer object
+        List<List<Object>> inners = List.of(inner1, inner2);
+        
+        byte[] idBytes = new byte[32];
+        idBytes[0] = (byte) 0xAB;
+        idBytes[31] = (byte) 0xCD;
+        HexData id = new HexData(io.brane.primitives.Hex.encode(idBytes));
+        
+        List<Object> outer = List.of(inners, id);
+        
+        // Call processNested(Outer) -> Outer
+        @SuppressWarnings("unchecked")
+        List<Object> result = (List<Object>) contract.call("processNested", List.class, outer);
+        
+        // Verify result
+        // Result structure: [List<List<Object>> (inners), HexData (id)]
+        
+        @SuppressWarnings("unchecked")
+        List<List<Object>> resultInners = (List<List<Object>>) result.get(0);
+        HexData resultId = (HexData) result.get(1);
+        
+        if (resultInners.size() != 2) throw new RuntimeException("Result inner array size mismatch");
+        
+        List<Object> resInner1 = resultInners.get(0);
+        if (!resInner1.get(0).equals(BigInteger.ONE)) throw new RuntimeException("Inner1.a mismatch");
+        if (!resInner1.get(1).equals("inner1")) throw new RuntimeException("Inner1.b mismatch");
+        
+        if (!resultId.value().equals(id.value())) throw new RuntimeException("Outer.id mismatch");
+        
+        System.out.println("  ✓ Nested Struct Encoding/Decoding Verified");
     }
 }
