@@ -13,3 +13,4 @@ build/
 *.iml
 anvil.log
 .vercel
+anvil_smoke_temp.log
