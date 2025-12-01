@@ -476,7 +476,7 @@ public class SmokeApp {
             
             // "CustomError(uint256,string)" selector is needed. 
             // keccak256("CustomError(uint256,string)") = 0x97ea5a2f
-            String selector = "97ea5a2f"; 
+            String selector = io.brane.primitives.Hex.encodeNoPrefix(io.brane.core.crypto.Keccak256.hash("CustomError(uint256,string)".getBytes(StandardCharsets.UTF_8))).substring(0, 8); 
             
             io.brane.core.RevertDecoder.Decoded decoded = io.brane.core.RevertDecoder.decode(
                 data, 

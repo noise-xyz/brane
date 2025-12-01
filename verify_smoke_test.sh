@@ -21,7 +21,21 @@ cleanup() {
 }
 trap cleanup EXIT
 
-sleep 5 # Wait for Anvil to be ready
+# Wait for Anvil to be ready by polling
+echo "   Waiting for Anvil to be ready..."
+MAX_RETRIES=30
+count=0
+while ! curl -s -X POST --data '{"jsonrpc":"2.0","method":"eth_chainId","params":[],"id":1}' -H "Content-Type: application/json" http://127.0.0.1:8545 &> /dev/null; do
+    echo -n "."
+    sleep 1
+    count=$((count+1))
+    if [ $count -ge $MAX_RETRIES ]; then
+        echo "❌ Timed out waiting for Anvil to start!"
+        cat "$LOG_FILE"
+        exit 1
+    fi
+done
+echo " Anvil is ready."
 
 # Check if Anvil is still running
 if ! ps -p $ANVIL_PID > /dev/null; then

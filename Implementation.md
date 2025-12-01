@@ -13,7 +13,7 @@ We will create a **standalone** consumer project within the repository to simula
 ## Implementation Plan
 
 ### 1. Scenarios
-The smoke test will execute 4 distinct scenarios to cover the entire SDK surface area:
+The smoke test will execute 14 distinct scenarios to cover the entire SDK surface area:
 
 #### Scenario A: End-to-End Token Transfer (Core)
 *   **Action**: Deploy `BraneToken`, check balance, transfer tokens.
