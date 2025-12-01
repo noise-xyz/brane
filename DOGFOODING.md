@@ -55,6 +55,22 @@ The smoke test suite is the primary verification tool. It compiles a standalone 
 4.  Verifies 14 scenarios (Core, Errors, Events, ABI, EIP-1559, etc.).
 5.  Cleans up Anvil process.
 
+#### Scenarios Covered
+*   **Scenario A: End-to-End Token Transfer**: Deploys `BraneToken`, checks balance, transfers tokens.
+*   **Scenario B: Error Handling**: Verifies `RevertException` and `RpcException` handling.
+*   **Scenario C: Event Logs**: Queries `eth_getLogs` for emitted events.
+*   **Scenario D: ABI Wrapper**: Uses `BraneContract` for high-level interaction.
+*   **Scenario E: EIP-1559 & Access Lists**: Sends modern transaction types.
+*   **Scenario F: Raw Signing**: Manually signs transactions offline.
+*   **Scenario G: Custom RPC**: Calls custom methods like `anvil_mine`.
+*   **Scenario H: Chain ID Validation**: Ensures safety against wrong networks.
+*   **Scenario I: Public Client Read Ops**: Verifies block and transaction reading.
+*   **Scenario J: Wei Utilities**: Tests unit conversion.
+*   **Scenario K: Complex ABI**: Tests arrays, tuples, and fixed bytes.
+*   **Scenario L: Gas Strategy**: Verifies gas limit buffering.
+*   **Scenario M: Debug & Color Mode**: Verifies logging output.
+*   **Scenario N: Custom Error Decoding**: Decodes Solidity custom errors.
+
 ### 2. Canonical Examples (Learning & Debugging)
 Run the examples to see the SDK in action or to debug specific features.
 

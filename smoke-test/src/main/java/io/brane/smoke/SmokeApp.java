@@ -215,8 +215,7 @@ public class SmokeApp {
         
         // Check for Transfer to Recipient
         // Topic 2 is 'to' (indexed)
-        // We need to pad the recipient address to 32 bytes to match the topic
-        String recipientTopic = "0x000000000000000000000000" + RECIPIENT.value().substring(2);
+        String recipientTopic = io.brane.core.utils.Topics.fromAddress(RECIPIENT).value();
         
         boolean foundTransfer = logs.stream().anyMatch(log -> 
             log.topics().size() >= 3 && 
@@ -476,7 +475,7 @@ public class SmokeApp {
             
             // "CustomError(uint256,string)" selector is needed. 
             // keccak256("CustomError(uint256,string)") = 0x97ea5a2f
-            String selector = io.brane.primitives.Hex.encodeNoPrefix(io.brane.core.crypto.Keccak256.hash("CustomError(uint256,string)".getBytes(StandardCharsets.UTF_8))).substring(0, 8); 
+            String selector = Abi.getSelector("CustomError(uint256,string)"); 
             
             io.brane.core.RevertDecoder.Decoded decoded = io.brane.core.RevertDecoder.decode(
                 data, 
