@@ -72,6 +72,45 @@ class AbiEncoderTest {
     }
 
     @Test
+    void encodeNestedTuple() {
+        // (uint256, (uint256, string))
+        AbiType innerUint = new UInt(256, BigInteger.valueOf(2));
+        AbiType innerStr = new Utf8String("b");
+        AbiType innerTuple = new Tuple(List.of(innerUint, innerStr));
+
+        AbiType outerUint = new UInt(256, BigInteger.valueOf(1));
+
+        byte[] encoded = AbiEncoder.encode(List.of(outerUint, innerTuple));
+
+        // Head:
+        // uint: 1 (32 bytes)
+        // tuple offset: 64 (0x40) (32 bytes)
+
+        // Tail (Tuple):
+        // uint: 2 (32 bytes)
+        // string offset: 64 (0x40) (relative to tuple start) -> 32 bytes
+
+        // Tail (String inside Tuple):
+        // length: 1 (32 bytes)
+        // data: "b" (0x62) + padding (32 bytes)
+
+        String expected =
+                // Outer Head
+                "0000000000000000000000000000000000000000000000000000000000000001" + // outer uint
+                        "0000000000000000000000000000000000000000000000000000000000000040" + // inner tuple offset
+
+                        // Inner Tuple Data
+                        "0000000000000000000000000000000000000000000000000000000000000002" + // inner uint
+                        "0000000000000000000000000000000000000000000000000000000000000040" + // inner string offset
+
+                        // Inner String Data
+                        "0000000000000000000000000000000000000000000000000000000000000001" + // length
+                        "6200000000000000000000000000000000000000000000000000000000000000"; // data
+
+        assertEquals(expected, Hex.encodeNoPrefix(encoded));
+    }
+
+    @Test
     void encodeInt() {
         // -1 (int8) -> padded to 32 bytes of FF
         AbiType i = new Int(8, BigInteger.valueOf(-1));

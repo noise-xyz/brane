@@ -102,8 +102,13 @@ public final class BranePublicClient implements PublicClient {
     }
 
     @Override
-    public long getChainId() {
+    public java.math.BigInteger getChainId() {
         return delegate.getChainId();
+    }
+
+    @Override
+    public java.math.BigInteger getBalance(final io.brane.core.types.Address address) {
+        return delegate.getBalance(address);
     }
 
     public static final class Builder {

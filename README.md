@@ -113,6 +113,7 @@ String deployData = bytecode + encodedArgs.value().substring(2);
 *   `brane-rpc`: JSON-RPC client, `PublicClient`, `WalletClient`.
 *   `brane-contract`: High-level ABI utilities, `BraneContract` runtime binding.
 *   `brane-primitives`: Zero-dependency Hex and RLP utilities.
+*   `brane-benchmark`: JMH benchmarks for performance critical paths.
 
 ## Local Development
 
@@ -130,6 +131,20 @@ This script checks for Anvil, starts the examples, and verifies:
 *   Debug logging
 *   Modern Tx features (Access Lists)
 *   ABI wrapper features
+
+**Run Smoke Tests (Comprehensive):**
+```bash
+./verify_smoke_test.sh
+```
+To verify against **Sepolia testnet** (read-only):
+```bash
+./verify_smoke_test.sh --sepolia
+```
+
+**Run Benchmarks:**
+```bash
+./gradlew :brane-benchmark:jmh
+```
 
 **Run Tests:**
 ```bash

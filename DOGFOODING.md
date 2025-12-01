@@ -70,8 +70,25 @@ The smoke test suite is the primary verification tool. It compiles a standalone 
 *   **Scenario L: Gas Strategy**: Verifies gas limit buffering.
 *   **Scenario M: Debug & Color Mode**: Verifies logging output.
 *   **Scenario N: Custom Error Decoding**: Decodes Solidity custom errors.
+*   **Scenario O: Complex Nested Structs**: Verifies encoding/decoding of nested tuples.
 
-### 2. Canonical Examples (Learning & Debugging)
+### 2. Real Network Verification (Sepolia)
+You can run the smoke tests against the Sepolia testnet in read-only mode. This verifies connectivity and data retrieval without spending gas.
+
+```bash
+./verify_smoke_test.sh --sepolia
+```
+**What it does:**
+1.  Connects to a public Sepolia RPC (default: `https://ethereum-sepolia-rpc.publicnode.com`).
+2.  Runs read-only scenarios (I, J, M).
+3.  Verifies Chain ID (11155111) and retrieves balance of the zero address.
+4.  **Note**: Public RPCs can be flaky. If you encounter timeouts, you can override the RPC URL:
+    ```bash
+    export BRANE_SEPOLIA_RPC="https://your-private-rpc.com"
+    ./verify_smoke_test.sh --sepolia
+    ```
+
+### 3. Canonical Examples (Learning & Debugging)
 Run the examples to see the SDK in action or to debug specific features.
 
 ```bash
@@ -86,7 +103,7 @@ Run the examples to see the SDK in action or to debug specific features.
 - Runs `CanonicalTxExample` (EIP-1559 & Access Lists)
 - Runs `CanonicalAbiExample` (ABI encoding/decoding)
 
-### 3. Integration Tests (Deep Testing)
+### 4. Integration Tests (Deep Testing)
 Run the full JUnit integration test suite.
 
 ```bash

@@ -85,8 +85,13 @@ class SmartGasStrategyTest {
         }
 
         @Override
-        public long getChainId() {
-            return 1;
+        public java.math.BigInteger getChainId() {
+            return java.math.BigInteger.ONE;
+        }
+
+        @Override
+        public java.math.BigInteger getBalance(io.brane.core.types.Address address) {
+            return java.math.BigInteger.ZERO;
         }
     }
 }

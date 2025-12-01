@@ -175,6 +175,39 @@ public final class BraneContract {
         return contractInterface.cast(proxy);
     }
 
+    /**
+     * Creates a deployment transaction request for a contract.
+     *
+     * @param abiJson  the contract ABI JSON
+     * @param bytecode the contract bytecode (hex string)
+     * @param args     constructor arguments
+     * @return a TransactionRequest ready to be sent
+     */
+    public static io.brane.core.model.TransactionRequest deployRequest(
+            final String abiJson,
+            final String bytecode,
+            final Object... args) {
+        Objects.requireNonNull(abiJson, "abiJson");
+        Objects.requireNonNull(bytecode, "bytecode");
+
+        final Abi abi = Abi.fromJson(abiJson);
+        final HexData encodedArgs = abi.encodeConstructor(args);
+
+        String deployData = bytecode.trim();
+        if (!deployData.startsWith("0x")) {
+            deployData = "0x" + deployData;
+        }
+
+        // Append encoded args (stripping 0x prefix from args)
+        if (encodedArgs.value().length() > 2) {
+            deployData += encodedArgs.value().substring(2);
+        }
+
+        return io.brane.core.builder.TxBuilder.legacy()
+                .data(new HexData(deployData))
+                .build();
+    }
+
     private static void validateMethods(final Class<?> contractInterface, final Abi abi) {
         for (Method method : contractInterface.getMethods()) {
             if (method.getDeclaringClass() == Object.class) {
