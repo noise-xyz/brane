@@ -59,7 +59,7 @@ final class InternalAbi implements Abi {
         final List<AbiType> encodedInputs = new ArrayList<>(fn.inputs().size());
         for (int i = 0; i < fn.inputs().size(); i++) {
             final AbiParameter param = fn.inputs().get(i);
-            encodedInputs.add(toAbiType(param, providedArgs[i]));
+            encodedInputs.add(param.converter.convert(providedArgs[i]));
         }
 
         final byte[] data = AbiEncoder.encodeFunction(fn.signature(), encodedInputs);
@@ -72,7 +72,7 @@ final class InternalAbi implements Abi {
             if (args != null && args.length > 0) {
                 throw new AbiEncodingException("Constructor not defined in ABI, but arguments provided");
             }
-            return new HexData("0x");
+            return HexData.EMPTY;
         }
 
         final Object[] providedArgs = args == null ? new Object[0] : args;
@@ -88,11 +88,12 @@ final class InternalAbi implements Abi {
         final List<AbiType> encodedInputs = new ArrayList<>(constructor.inputs().size());
         for (int i = 0; i < constructor.inputs().size(); i++) {
             final AbiParameter param = constructor.inputs().get(i);
-            encodedInputs.add(toAbiType(param, providedArgs[i]));
+            encodedInputs.add(param.converter.convert(providedArgs[i]));
         }
 
         final byte[] encoded = AbiEncoder.encode(encodedInputs);
-        return new HexData(Hex.encode(encoded));
+        // Use trusted constructor via fromBytes which uses Hex.encodeNoPrefix
+        return HexData.fromBytes(encoded);
     }
 
     @Override
@@ -125,44 +126,60 @@ final class InternalAbi implements Abi {
         return function;
     }
 
-    private static AbiType toAbiType(final AbiParameter param, final Object value) {
-        final String solidityType = param.type();
-        if (value == null) {
-            throw new AbiEncodingException("Argument for type '" + solidityType + "' is null");
-        }
+    @FunctionalInterface
+    interface TypeConverter {
+        AbiType convert(Object value);
+    }
+
+    private static TypeConverter createConverter(final AbiParameter param) {
+        final String solidityType = param.type;
 
         if (solidityType.endsWith("[]")) {
             final String baseType = solidityType.substring(0, solidityType.length() - 2);
-            final List<?> listValue = asList(value);
-            final List<AbiType> elements = new ArrayList<>(listValue.size());
-            final AbiParameter elementParam = new AbiParameter("", baseType, false, param.components());
-            for (Object element : listValue) {
-                elements.add(toAbiType(elementParam, element));
-            }
-            // Infer element class from first element or generic AbiType
-            return new Array<AbiType>(elements, AbiType.class, true);
+            // Create a dummy param for the element to generate its converter
+            final AbiParameter elementParam = new AbiParameter("", baseType, false, param.components);
+            // Recursively create converter for elements
+            final TypeConverter elementConverter = createConverter(elementParam);
+
+            return value -> {
+                if (value == null)
+                    throw new AbiEncodingException("Array value cannot be null");
+                final List<?> listValue = asList(value);
+                final List<AbiType> elements = new ArrayList<>(listValue.size());
+                for (Object element : listValue) {
+                    elements.add(elementConverter.convert(element));
+                }
+                return new Array<AbiType>(elements, AbiType.class, true);
+            };
         }
 
         if (solidityType.equals("tuple")) {
-            if (param.components() == null || param.components().isEmpty()) {
+            if (param.components == null || param.components.isEmpty()) {
                 throw new AbiEncodingException("Tuple parameter missing components");
             }
-            final List<?> listValue = asList(value);
-            if (listValue.size() != param.components().size()) {
-                throw new AbiEncodingException(
-                        "Tuple expects "
-                                + param.components().size()
-                                + " components but got "
-                                + listValue.size());
+            final List<TypeConverter> componentConverters = new ArrayList<>(param.components.size());
+            for (AbiParameter component : param.components) {
+                componentConverters.add(createConverter(component));
             }
 
-            final List<AbiType> components = new ArrayList<>();
-            for (int i = 0; i < param.components().size(); i++) {
-                final AbiParameter componentParam = param.components().get(i);
-                final Object componentValue = listValue.get(i);
-                components.add(toAbiType(componentParam, componentValue));
-            }
-            return new Tuple(components);
+            return value -> {
+                if (value == null)
+                    throw new AbiEncodingException("Tuple value cannot be null");
+                final List<?> listValue = asList(value);
+                if (listValue.size() != componentConverters.size()) {
+                    throw new AbiEncodingException(
+                            "Tuple expects "
+                                    + componentConverters.size()
+                                    + " components but got "
+                                    + listValue.size());
+                }
+
+                final List<AbiType> components = new ArrayList<>(componentConverters.size());
+                for (int i = 0; i < componentConverters.size(); i++) {
+                    components.add(componentConverters.get(i).convert(listValue.get(i)));
+                }
+                return new Tuple(components);
+            };
         }
 
         final String normalizedType = solidityType.toLowerCase(Locale.ROOT);
@@ -172,38 +189,67 @@ final class InternalAbi implements Abi {
             if (normalizedType.length() > 4) {
                 width = Integer.parseInt(normalizedType.substring(4));
             }
-            return new UInt(width, toBigInteger(value, false));
+            final int finalWidth = width;
+            return value -> {
+                if (value == null)
+                    throw new AbiEncodingException("uint value cannot be null");
+                return new UInt(finalWidth, toBigInteger(value, false));
+            };
         }
         if (normalizedType.startsWith("int")) {
             int width = 256;
             if (normalizedType.length() > 3) {
                 width = Integer.parseInt(normalizedType.substring(3));
             }
-            return new Int(width, toBigInteger(value, true));
+            final int finalWidth = width;
+            return value -> {
+                if (value == null)
+                    throw new AbiEncodingException("int value cannot be null");
+                return new Int(finalWidth, toBigInteger(value, true));
+            };
         }
         if (normalizedType.equals("address")) {
-            if (value instanceof Address a)
-                return new AddressType(a);
-            if (value instanceof String s)
-                return new AddressType(new Address(s));
-            throw new AbiEncodingException("Expected Address for type 'address'");
+            return value -> {
+                if (value == null)
+                    throw new AbiEncodingException("address value cannot be null");
+                if (value instanceof Address a)
+                    return new AddressType(a);
+                if (value instanceof String s)
+                    return new AddressType(new Address(s));
+                throw new AbiEncodingException("Expected Address for type 'address'");
+            };
         }
         if (normalizedType.equals("bool")) {
-            if (value instanceof Boolean b)
-                return new Bool(b);
-            throw new AbiEncodingException("Expected Boolean for type 'bool'");
+            return value -> {
+                if (value == null)
+                    throw new AbiEncodingException("bool value cannot be null");
+                if (value instanceof Boolean b)
+                    return new Bool(b);
+                throw new AbiEncodingException("Expected Boolean for type 'bool'");
+            };
         }
         if (normalizedType.equals("string")) {
-            if (value instanceof String s)
-                return new Utf8String(s);
-            throw new AbiEncodingException("Expected String for type 'string'");
+            return value -> {
+                if (value == null)
+                    throw new AbiEncodingException("string value cannot be null");
+                if (value instanceof String s)
+                    return new Utf8String(s);
+                throw new AbiEncodingException("Expected String for type 'string'");
+            };
         }
         if (normalizedType.equals("bytes")) {
-            return toBytes(value, true);
+            return value -> {
+                if (value == null)
+                    throw new AbiEncodingException("bytes value cannot be null");
+                return toBytes(value, true);
+            };
         }
         if (normalizedType.startsWith("bytes")) {
-            // bytesN
-            return toBytes(value, false);
+            return value -> {
+                if (value == null)
+                    throw new AbiEncodingException("bytesN value cannot be null");
+                return toBytes(value, false);
+            };
         }
 
         throw new AbiEncodingException("Unsupported argument type '" + solidityType + "'");
@@ -370,7 +416,22 @@ final class InternalAbi implements Abi {
         return value;
     }
 
-    private record AbiParameter(String name, String type, boolean indexed, List<AbiParameter> components) {
+    private static final class AbiParameter {
+        final String name;
+        final String type;
+        final boolean indexed;
+        final List<AbiParameter> components;
+        final TypeConverter converter;
+
+        AbiParameter(String name, String type, boolean indexed, List<AbiParameter> components) {
+            this.name = name;
+            this.type = type;
+            this.indexed = indexed;
+            this.components = components;
+            // Pre-compute the converter for this parameter type
+            this.converter = createConverter(this);
+        }
+
         String canonicalType() {
             if (type.startsWith("tuple")) {
                 final String suffix = type.substring(5);
@@ -391,8 +452,8 @@ final class InternalAbi implements Abi {
         }
 
         FunctionMetadata metadata() {
-            final List<String> inputTypes = inputs.stream().map(AbiParameter::type).toList();
-            final List<String> outputTypes = outputs.stream().map(AbiParameter::type).toList();
+            final List<String> inputTypes = inputs.stream().map(p -> p.type).toList();
+            final List<String> outputTypes = outputs.stream().map(p -> p.type).toList();
             return new FunctionMetadata(name, stateMutability, inputTypes, outputTypes);
         }
     }
@@ -453,9 +514,9 @@ final class InternalAbi implements Abi {
         int topicIdx = 1;
         final List<TypeSchema> nonIndexedSchemas = new ArrayList<>();
         for (AbiParameter param : params) {
-            if (param.indexed()) {
+            if (param.indexed) {
                 if (log.topics().size() <= topicIdx) {
-                    throw new AbiDecodingException("Missing topic for indexed param '" + param.name() + "'");
+                    throw new AbiDecodingException("Missing topic for indexed param '" + param.name + "'");
                 }
                 final String topic = log.topics().get(topicIdx).value();
                 try {
@@ -472,7 +533,7 @@ final class InternalAbi implements Abi {
                     final List<AbiType> decoded = AbiDecoder.decode(topicBytes, List.of(schema));
                     values.add(toJavaValue(decoded.get(0)));
                 } catch (Exception e) {
-                    throw new AbiDecodingException("Failed to decode indexed param '" + param.name() + "'", e);
+                    throw new AbiDecodingException("Failed to decode indexed param '" + param.name + "'", e);
                 }
                 topicIdx++;
             } else {
@@ -545,18 +606,18 @@ final class InternalAbi implements Abi {
     }
 
     private static TypeSchema toTypeSchema(final AbiParameter param) {
-        final String solidityType = param.type();
+        final String solidityType = param.type;
         if (solidityType.endsWith("[]")) {
             String base = solidityType.substring(0, solidityType.length() - 2);
-            AbiParameter baseParam = new AbiParameter("", base, false, param.components());
+            AbiParameter baseParam = new AbiParameter("", base, false, param.components);
             return new TypeSchema.ArraySchema(toTypeSchema(baseParam), -1);
         }
         if (solidityType.equals("tuple")) {
-            if (param.components() == null || param.components().isEmpty()) {
+            if (param.components == null || param.components.isEmpty()) {
                 throw new AbiEncodingException("Tuple missing components");
             }
             List<TypeSchema> componentSchemas = new ArrayList<>();
-            for (AbiParameter component : param.components()) {
+            for (AbiParameter component : param.components) {
                 componentSchemas.add(toTypeSchema(component));
             }
             return new TypeSchema.TupleSchema(componentSchemas);

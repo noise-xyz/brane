@@ -11,6 +11,8 @@ dependencies {
     implementation project(':brane-rpc')
     implementation project(':brane-core')
     implementation project(':brane-contract')
+    implementation project(':brane-primitives')
+    implementation 'org.web3j:core:4.10.3'
     implementation 'org.openjdk.jmh:jmh-core:1.37'
     annotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
 }

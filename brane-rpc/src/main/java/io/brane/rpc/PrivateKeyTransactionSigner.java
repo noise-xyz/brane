@@ -82,7 +82,8 @@ public final class PrivateKeyTransactionSigner implements TransactionSigner {
         final byte[] messageHash = Keccak256.hash(preimage);
 
         // 3. Sign the hash
-        final Signature baseSig = privateKey.sign(messageHash);
+        // 3. Sign the hash
+        final Signature baseSig = privateKey.signFast(messageHash);
 
         // 4. Create appropriately encoded signature based on transaction type
         final Signature signature;

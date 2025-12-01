@@ -49,15 +49,29 @@ import java.util.regex.Pattern;
  *              <p>
  *              Throws {@link NullPointerException} if value is null.
  */
-public record HexData(String value) {
+public final class HexData {
     private static final Pattern HEX = Pattern.compile("^0x([0-9a-fA-F]{2})*$");
-    public static final HexData EMPTY = new HexData("0x");
+    public static final HexData EMPTY = new HexData("0x", true);
 
-    public HexData {
+    private final String value;
+
+    public HexData(String value) {
         Objects.requireNonNull(value, "hex");
         if (!HEX.matcher(value).matches()) {
             throw new IllegalArgumentException("Invalid hex data: " + value);
         }
+        this.value = value;
+    }
+
+    /**
+     * Trusted constructor for internal use.
+     */
+    private HexData(String value, boolean trusted) {
+        this.value = value;
+    }
+
+    public String value() {
+        return value;
     }
 
     /**
@@ -79,6 +93,27 @@ public record HexData(String value) {
         if (bytes == null || bytes.length == 0) {
             return EMPTY;
         }
-        return new HexData("0x" + Hex.encodeNoPrefix(bytes));
+        // Hex.encodeNoPrefix is trusted to produce valid hex
+        return new HexData("0x" + Hex.encodeNoPrefix(bytes), true);
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+        HexData hexData = (HexData) o;
+        return Objects.equals(value, hexData.value);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(value);
+    }
+
+    @Override
+    public String toString() {
+        return "HexData[" + "value=" + value + ']';
     }
 }
