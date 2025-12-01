@@ -58,7 +58,13 @@ echo "📦 Publishing SDK to Maven Local..."
 # 3. Run Smoke Test Consumer
 echo "🔥 Running Smoke Test Consumer..."
 cd smoke-test
-if ../gradlew run --args="$*"; then
+if [ -z "$*" ]; then
+    CMD="../gradlew run"
+else
+    CMD="../gradlew run --args='$*'"
+fi
+
+if eval $CMD; then
     echo "✅ Smoke Test Verification Successful!"
 else
     echo "❌ Smoke Test Failed!"

@@ -552,7 +552,7 @@ final class InternalAbi implements Abi {
             return new TypeSchema.ArraySchema(toTypeSchema(baseParam), -1);
         }
         if (solidityType.equals("tuple")) {
-            if (param.components() == null) {
+            if (param.components() == null || param.components().isEmpty()) {
                 throw new AbiEncodingException("Tuple missing components");
             }
             List<TypeSchema> componentSchemas = new ArrayList<>();

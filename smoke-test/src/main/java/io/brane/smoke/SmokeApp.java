@@ -157,7 +157,7 @@ public class SmokeApp {
 
     private static void testSepoliaSpecifics() {
         System.out.println("\n[Sepolia Specifics]");
-        try {
+        runSepoliaTask(() -> {
             BigInteger chainId = publicClient.getChainId();
             if (!chainId.equals(new BigInteger("11155111"))) {
                 throw new RuntimeException("Sepolia Chain ID mismatch. Expected 11155111, got " + chainId);
@@ -168,13 +168,7 @@ public class SmokeApp {
             BigInteger balance = publicClient.getBalance(new Address("0x0000000000000000000000000000000000000000"));
             System.out.println("  ✓ Zero Address Balance: " + balance);
             System.out.println("  ✓ Balance Check Successful");
-        } catch (Exception e) {
-             if (sepoliaMode && (e instanceof RpcException || e.getCause() instanceof java.net.http.HttpTimeoutException)) {
-                System.out.println("  ⚠️ Sepolia Network Error (Expected on public RPC): " + e.getMessage());
-            } else {
-                throw e;
-            }
-        }
+        });
     }
 
     private static void testCoreTransfer() throws Exception {
@@ -384,7 +378,7 @@ public class SmokeApp {
     private static void testPublicClientReads() {
         System.out.println("\n[Scenario I] Public Client Read Ops");
         
-        try {
+        runSepoliaTask(() -> {
             io.brane.core.model.BlockHeader block = publicClient.getLatestBlock();
             if (block == null || block.number() == null) throw new RuntimeException("Failed to get latest block");
             System.out.println("  ✓ Latest Block: " + block.number());
@@ -394,13 +388,7 @@ public class SmokeApp {
                 if (!parent.hash().equals(block.parentHash())) throw new RuntimeException("Parent hash mismatch");
                 System.out.println("  ✓ Block Parent Hash Verified");
             }
-        } catch (Exception e) {
-            if (sepoliaMode && (e instanceof RpcException || e.getCause() instanceof java.net.http.HttpTimeoutException)) {
-                System.out.println("  ⚠️ Sepolia Network Error (Expected on public RPC): " + e.getMessage());
-            } else {
-                throw e;
-            }
-        }
+        });
     }
 
     private static void testWeiUtilities() {
@@ -492,19 +480,13 @@ public class SmokeApp {
         
         System.out.println("  (Debug logging enabled - check stdout for cyan/teal logs)");
         
-        try {
+        runSepoliaTask(() -> {
             // Make a simple call to trigger logs
             publicClient.getChainId();
-        } catch (Exception e) {
-            if (sepoliaMode && (e instanceof RpcException || e.getCause() instanceof java.net.http.HttpTimeoutException)) {
-                System.out.println("  ⚠️ Sepolia Network Error (Expected on public RPC): " + e.getMessage());
-            } else {
-                throw e;
-            }
-        } finally {
-            // Disable debug to keep subsequent output clean
-            io.brane.core.BraneDebug.setEnabled(false);
-        }
+        });
+        
+        // Disable debug to keep subsequent output clean
+        io.brane.core.BraneDebug.setEnabled(false);
         System.out.println("  ✓ Debug mode toggled and executed without error");
     }
 
@@ -600,5 +582,19 @@ public class SmokeApp {
         if (!resultId.value().equals(id.value())) throw new RuntimeException("Outer.id mismatch");
         
         System.out.println("  ✓ Nested Struct Encoding/Decoding Verified");
+    }
+
+
+    private static void runSepoliaTask(Runnable task) {
+        try {
+            task.run();
+        } catch (Exception e) {
+            if (sepoliaMode && (e instanceof RpcException || e.getCause() instanceof java.net.http.HttpTimeoutException)) {
+                System.out.println("  ⚠️ Sepolia Network Error (Expected on public RPC): " + e.getMessage());
+            } else {
+                if (e instanceof RuntimeException) throw (RuntimeException) e;
+                throw new RuntimeException(e);
+            }
+        }
     }
 }

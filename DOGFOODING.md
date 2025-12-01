@@ -88,7 +88,7 @@ You can run the smoke tests against the Sepolia testnet in read-only mode. This 
     ./verify_smoke_test.sh --sepolia
     ```
 
-### 2. Canonical Examples (Learning & Debugging)
+### 3. Canonical Examples (Learning & Debugging)
 Run the examples to see the SDK in action or to debug specific features.
 
 ```bash
@@ -103,7 +103,7 @@ Run the examples to see the SDK in action or to debug specific features.
 - Runs `CanonicalTxExample` (EIP-1559 & Access Lists)
 - Runs `CanonicalAbiExample` (ABI encoding/decoding)
 
-### 3. Integration Tests (Deep Testing)
+### 4. Integration Tests (Deep Testing)
 Run the full JUnit integration test suite.
 
 ```bash
