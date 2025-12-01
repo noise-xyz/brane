@@ -110,8 +110,8 @@ public record LegacyTransaction(
         // Add signature components
         // v is already EIP-155 encoded (chainId * 2 + 35 + yParity)
         items.add(RlpNumeric.encodeLongUnsignedItem(signature.v()));
-        items.add(new RlpString(signature.r()));
-        items.add(new RlpString(signature.s()));
+        items.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.r())));
+        items.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.s())));
 
         return Rlp.encodeList(items);
     }

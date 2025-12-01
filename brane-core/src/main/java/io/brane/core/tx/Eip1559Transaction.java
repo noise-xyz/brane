@@ -159,8 +159,8 @@ public record Eip1559Transaction(
             Objects.requireNonNull(signature, "signature is required");
             // For EIP-1559, v is just yParity (0 or 1), not EIP-155 encoded
             items.add(RlpNumeric.encodeLongUnsignedItem(signature.v()));
-            items.add(new RlpString(signature.r()));
-            items.add(new RlpString(signature.s()));
+            items.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.r())));
+            items.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.s())));
         }
 
         return Rlp.encodeList(items);
