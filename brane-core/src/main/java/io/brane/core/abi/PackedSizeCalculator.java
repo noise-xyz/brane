@@ -1,6 +1,5 @@
 package io.brane.core.abi;
 
-import java.math.BigInteger;
 import java.util.List;
 
 /**

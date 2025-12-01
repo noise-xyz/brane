@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
 import io.brane.core.abi.AbiDecoder;
-import io.brane.core.abi.AbiEncoder;
 import io.brane.core.abi.AbiType;
 import io.brane.core.abi.AddressType;
 import io.brane.core.abi.Array;
@@ -25,6 +24,7 @@ import java.io.IOException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -32,6 +32,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
 
 final class InternalAbi implements Abi {
@@ -56,14 +57,56 @@ final class InternalAbi implements Abi {
         final Object[] providedArgs = args == null ? new Object[0] : args;
         final AbiFunction fn = resolveFunction(name, providedArgs.length);
 
-        final List<AbiType> encodedInputs = new ArrayList<>(fn.inputs().size());
-        for (int i = 0; i < fn.inputs().size(); i++) {
-            final AbiParameter param = fn.inputs().get(i);
-            encodedInputs.add(param.converter.convert(providedArgs[i]));
+        // Calculate selector
+        final byte[] selector = Arrays
+                .copyOf(io.brane.core.crypto.Keccak256.hash(fn.signature().getBytes(StandardCharsets.UTF_8)), 4);
+
+        // Calculate arguments size
+        int headSize = 0;
+        int dynamicTailSize = 0;
+        final List<AbiParameter> inputs = fn.inputs();
+        final int count = inputs.size();
+
+        for (int i = 0; i < count; i++) {
+            final AbiParameter param = inputs.get(i);
+            final Object arg = providedArgs[i];
+            headSize += param.converter.getHeadSize();
+            if (param.converter.isDynamic()) {
+                dynamicTailSize += param.converter.getContentSize(arg);
+            }
         }
 
-        final byte[] data = AbiEncoder.encodeFunction(fn.signature(), encodedInputs);
-        return new Call(fn, Hex.encode(data));
+        final int totalSize = 4 + headSize + dynamicTailSize;
+        final byte[] encoded = new byte[totalSize];
+        final java.nio.ByteBuffer buffer = java.nio.ByteBuffer.wrap(encoded);
+
+        buffer.put(selector);
+
+        // Encode Heads
+        int currentTailOffset = headSize;
+        for (int i = 0; i < count; i++) {
+            final AbiParameter param = inputs.get(i);
+            final Object arg = providedArgs[i];
+
+            if (param.converter.isDynamic()) {
+                io.brane.core.abi.FastAbiEncoder.encodeUInt256(BigInteger.valueOf(currentTailOffset), buffer);
+                currentTailOffset += param.converter.getContentSize(arg);
+            } else {
+                param.converter.encodeContent(arg, buffer);
+            }
+        }
+
+        // Encode Tails
+        for (int i = 0; i < count; i++) {
+            final AbiParameter param = inputs.get(i);
+            final Object arg = providedArgs[i];
+
+            if (param.converter.isDynamic()) {
+                param.converter.encodeContent(arg, buffer);
+            }
+        }
+
+        return new Call(fn, HexData.fromBytes(encoded).value());
     }
 
     @Override
@@ -85,13 +128,51 @@ final class InternalAbi implements Abi {
                             + " were supplied");
         }
 
-        final List<AbiType> encodedInputs = new ArrayList<>(constructor.inputs().size());
-        for (int i = 0; i < constructor.inputs().size(); i++) {
-            final AbiParameter param = constructor.inputs().get(i);
-            encodedInputs.add(param.converter.convert(providedArgs[i]));
+        // 1. Calculate Total Size
+        int headSize = 0;
+        int dynamicTailSize = 0;
+        final List<AbiParameter> inputs = constructor.inputs();
+        final int count = inputs.size();
+
+        for (int i = 0; i < count; i++) {
+            final AbiParameter param = inputs.get(i);
+            final Object arg = providedArgs[i];
+            headSize += param.converter.getHeadSize();
+            if (param.converter.isDynamic()) {
+                dynamicTailSize += param.converter.getContentSize(arg);
+            }
         }
 
-        final byte[] encoded = AbiEncoder.encode(encodedInputs);
+        final int totalSize = headSize + dynamicTailSize;
+        final byte[] encoded = new byte[totalSize];
+        final java.nio.ByteBuffer buffer = java.nio.ByteBuffer.wrap(encoded);
+
+        // 2. Encode Heads
+        int currentTailOffset = headSize;
+        for (int i = 0; i < count; i++) {
+            final AbiParameter param = inputs.get(i);
+            final Object arg = providedArgs[i];
+
+            if (param.converter.isDynamic()) {
+                // Write offset
+                io.brane.core.abi.FastAbiEncoder.encodeUInt256(BigInteger.valueOf(currentTailOffset), buffer);
+                currentTailOffset += param.converter.getContentSize(arg);
+            } else {
+                // Write static content
+                param.converter.encodeContent(arg, buffer);
+            }
+        }
+
+        // 3. Encode Tails
+        for (int i = 0; i < count; i++) {
+            final AbiParameter param = inputs.get(i);
+            final Object arg = providedArgs[i];
+
+            if (param.converter.isDynamic()) {
+                param.converter.encodeContent(arg, buffer);
+            }
+        }
+
         // Use trusted constructor via fromBytes which uses Hex.encodeNoPrefix
         return HexData.fromBytes(encoded);
     }
@@ -126,9 +207,67 @@ final class InternalAbi implements Abi {
         return function;
     }
 
-    @FunctionalInterface
+    /**
+     * Internal interface for converting Java objects to ABI types and performing
+     * direct encoding.
+     * <p>
+     * This interface is the key to the high-performance encoding strategy. Instead
+     * of creating
+     * intermediate {@link AbiType} objects, implementations of this interface can
+     * calculate sizes
+     * and write directly to a {@link java.nio.ByteBuffer}.
+     * </p>
+     */
     interface TypeConverter {
+        /**
+         * Converts a Java object to an AbiType.
+         * Used for fallback or when an AbiType object is explicitly needed.
+         */
         AbiType convert(Object value);
+
+        // Optimization methods
+
+        /**
+         * Returns true if this type is dynamic (has a variable length).
+         * Dynamic types are encoded as an offset in the head, and their content is
+         * written in the tail.
+         */
+        default boolean isDynamic() {
+            return false; // Default to static
+        }
+
+        /**
+         * Returns the size of the head part of this type.
+         * For static types, this is the content size.
+         * For dynamic types, this is always 32 bytes (the offset).
+         */
+        default int getHeadSize() {
+            return 32; // Default head size
+        }
+
+        /**
+         * Calculates the size of the content part of this type.
+         * For static types, this is usually 32 bytes.
+         * For dynamic types, this is the length of the actual data (plus length
+         * prefix).
+         */
+        default int getContentSize(Object value) {
+            return 32; // Default content size (static)
+        }
+
+        /**
+         * Encodes the content of this type directly into the buffer.
+         * <p>
+         * For static types, this writes the data at the current position.
+         * For dynamic types, this writes the data at the tail position (which is the
+         * current position during Pass 2).
+         * </p>
+         */
+        default void encodeContent(Object value, java.nio.ByteBuffer buffer) {
+            // Fallback to legacy conversion if not optimized
+            // This is slow but safe for complex types not yet optimized
+            throw new UnsupportedOperationException("Direct encoding not implemented for this type");
+        }
     }
 
     private static TypeConverter createConverter(final AbiParameter param) {
@@ -136,20 +275,80 @@ final class InternalAbi implements Abi {
 
         if (solidityType.endsWith("[]")) {
             final String baseType = solidityType.substring(0, solidityType.length() - 2);
-            // Create a dummy param for the element to generate its converter
             final AbiParameter elementParam = new AbiParameter("", baseType, false, param.components);
-            // Recursively create converter for elements
             final TypeConverter elementConverter = createConverter(elementParam);
 
-            return value -> {
-                if (value == null)
-                    throw new AbiEncodingException("Array value cannot be null");
-                final List<?> listValue = asList(value);
-                final List<AbiType> elements = new ArrayList<>(listValue.size());
-                for (Object element : listValue) {
-                    elements.add(elementConverter.convert(element));
+            final int elementHeadSize = elementConverter.getHeadSize();
+
+            return new TypeConverter() {
+                @Override
+                public AbiType convert(Object value) {
+                    if (value == null)
+                        throw new AbiEncodingException("Array value cannot be null");
+                    final List<?> listValue = asList(value);
+                    final List<AbiType> elements = new ArrayList<>(listValue.size());
+                    for (Object element : listValue) {
+                        elements.add(elementConverter.convert(element));
+                    }
+                    return new Array<AbiType>(elements, AbiType.class, true);
                 }
-                return new Array<AbiType>(elements, AbiType.class, true);
+
+                @Override
+                public boolean isDynamic() {
+                    return true;
+                }
+
+                @Override
+                public int getContentSize(Object value) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> list = (List<Object>) value;
+
+                    // Length (32 bytes)
+                    int size = 32;
+
+                    if (elementConverter.isDynamic()) {
+                        // Offsets (32 * count)
+                        size += 32 * list.size();
+                        // Content of elements
+                        for (Object element : list) {
+                            size += elementConverter.getContentSize(element);
+                        }
+                    } else {
+                        // Elements are static, encoded in sequence
+                        size += list.size() * elementHeadSize;
+                    }
+                    return size;
+                }
+
+                @Override
+                public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> list = (List<Object>) value;
+
+                    // Write length
+                    io.brane.core.abi.FastAbiEncoder.encodeUInt256(BigInteger.valueOf(list.size()), buffer);
+
+                    if (elementConverter.isDynamic()) {
+                        int currentTailOffset = 32 * list.size();
+
+                        // Pass 1: Offsets
+                        for (Object element : list) {
+                            io.brane.core.abi.FastAbiEncoder.encodeUInt256(BigInteger.valueOf(currentTailOffset),
+                                    buffer);
+                            currentTailOffset += elementConverter.getContentSize(element);
+                        }
+
+                        // Pass 2: Tails
+                        for (Object element : list) {
+                            elementConverter.encodeContent(element, buffer);
+                        }
+                    } else {
+                        // Elements are static, write them directly
+                        for (Object element : list) {
+                            elementConverter.encodeContent(element, buffer);
+                        }
+                    }
+                }
             };
         }
 
@@ -162,23 +361,100 @@ final class InternalAbi implements Abi {
                 componentConverters.add(createConverter(component));
             }
 
-            return value -> {
-                if (value == null)
-                    throw new AbiEncodingException("Tuple value cannot be null");
-                final List<?> listValue = asList(value);
-                if (listValue.size() != componentConverters.size()) {
-                    throw new AbiEncodingException(
-                            "Tuple expects "
-                                    + componentConverters.size()
-                                    + " components but got "
-                                    + listValue.size());
+            // Pre-calculate dynamic status and static head size
+            boolean dynamic = false;
+            int staticSize = 0;
+            for (TypeConverter c : componentConverters) {
+                if (c.isDynamic()) {
+                    dynamic = true;
+                }
+                staticSize += c.getHeadSize();
+            }
+            final boolean isTupleDynamic = dynamic;
+            final int tupleStaticHeadSize = staticSize;
+
+            return new TypeConverter() {
+
+                @Override
+                public AbiType convert(Object value) {
+                    if (value == null)
+                        throw new AbiEncodingException("Tuple value cannot be null");
+                    final List<?> listValue = asList(value);
+                    if (listValue.size() != componentConverters.size()) {
+                        throw new AbiEncodingException(
+                                "Tuple expects "
+                                        + componentConverters.size()
+                                        + " components but got "
+                                        + listValue.size());
+                    }
+
+                    final List<AbiType> components = new ArrayList<>(componentConverters.size());
+                    for (int i = 0; i < componentConverters.size(); i++) {
+                        components.add(componentConverters.get(i).convert(listValue.get(i)));
+                    }
+                    return new Tuple(components);
                 }
 
-                final List<AbiType> components = new ArrayList<>(componentConverters.size());
-                for (int i = 0; i < componentConverters.size(); i++) {
-                    components.add(componentConverters.get(i).convert(listValue.get(i)));
+                @Override
+                public boolean isDynamic() {
+                    return isTupleDynamic;
                 }
-                return new Tuple(components);
+
+                @Override
+                public int getHeadSize() {
+                    return isTupleDynamic ? 32 : tupleStaticHeadSize;
+                }
+
+                @Override
+                public int getContentSize(Object value) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> list = (List<Object>) value;
+
+                    // Start with static head size of all components
+                    int size = tupleStaticHeadSize;
+
+                    // Add content size of dynamic components
+                    for (int i = 0; i < componentConverters.size(); i++) {
+                        TypeConverter c = componentConverters.get(i);
+                        if (c.isDynamic()) {
+                            size += c.getContentSize(list.get(i));
+                        }
+                    }
+                    return size;
+                }
+
+                @Override
+                public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
+                    @SuppressWarnings("unchecked")
+                    List<Object> list = (List<Object>) value;
+
+                    int headSize = tupleStaticHeadSize;
+                    int currentTailOffset = headSize;
+
+                    // Pass 1: Heads
+                    for (int i = 0; i < componentConverters.size(); i++) {
+                        TypeConverter c = componentConverters.get(i);
+                        Object v = list.get(i);
+
+                        if (c.isDynamic()) {
+                            io.brane.core.abi.FastAbiEncoder.encodeUInt256(BigInteger.valueOf(currentTailOffset),
+                                    buffer);
+                            currentTailOffset += c.getContentSize(v);
+                        } else {
+                            c.encodeContent(v, buffer);
+                        }
+                    }
+
+                    // Pass 2: Tails
+                    for (int i = 0; i < componentConverters.size(); i++) {
+                        TypeConverter c = componentConverters.get(i);
+                        Object v = list.get(i);
+
+                        if (c.isDynamic()) {
+                            c.encodeContent(v, buffer);
+                        }
+                    }
+                }
             };
         }
 
@@ -190,65 +466,242 @@ final class InternalAbi implements Abi {
                 width = Integer.parseInt(normalizedType.substring(4));
             }
             final int finalWidth = width;
-            return value -> {
-                if (value == null)
-                    throw new AbiEncodingException("uint value cannot be null");
-                return new UInt(finalWidth, toBigInteger(value, false));
+            return new TypeConverter() {
+                @Override
+                public AbiType convert(Object value) {
+                    if (value == null)
+                        throw new AbiEncodingException("uint value cannot be null");
+                    return new UInt(finalWidth, toBigInteger(value, false));
+                }
+
+                @Override
+                public boolean isDynamic() {
+                    return false;
+                }
+
+                @Override
+                public int getHeadSize() {
+                    return 32;
+                }
+
+                @Override
+                public int getContentSize(Object value) {
+                    return 32;
+                }
+
+                @Override
+                public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
+                    io.brane.core.abi.FastAbiEncoder.encodeUInt256(toBigInteger(value, false), buffer);
+                }
             };
         }
+
         if (normalizedType.startsWith("int")) {
             int width = 256;
             if (normalizedType.length() > 3) {
                 width = Integer.parseInt(normalizedType.substring(3));
             }
             final int finalWidth = width;
-            return value -> {
-                if (value == null)
-                    throw new AbiEncodingException("int value cannot be null");
-                return new Int(finalWidth, toBigInteger(value, true));
+            return new TypeConverter() {
+                @Override
+                public AbiType convert(Object value) {
+                    if (value == null)
+                        throw new AbiEncodingException("int value cannot be null");
+                    return new Int(finalWidth, toBigInteger(value, true));
+                }
+
+                @Override
+                public boolean isDynamic() {
+                    return false;
+                }
+
+                @Override
+                public int getHeadSize() {
+                    return 32;
+                }
+
+                @Override
+                public int getContentSize(Object value) {
+                    return 32;
+                }
+
+                @Override
+                public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
+                    io.brane.core.abi.FastAbiEncoder.encodeInt256(toBigInteger(value, true), buffer);
+                }
             };
         }
+
         if (normalizedType.equals("address")) {
-            return value -> {
-                if (value == null)
-                    throw new AbiEncodingException("address value cannot be null");
-                if (value instanceof Address a)
-                    return new AddressType(a);
-                if (value instanceof String s)
-                    return new AddressType(new Address(s));
-                throw new AbiEncodingException("Expected Address for type 'address'");
+            return new TypeConverter() {
+                @Override
+                public AbiType convert(Object value) {
+                    if (value == null)
+                        throw new AbiEncodingException("address value cannot be null");
+                    if (value instanceof Address a)
+                        return new AddressType(a);
+                    if (value instanceof String s)
+                        return new AddressType(new Address(s));
+                    throw new AbiEncodingException("Expected Address for type 'address'");
+                }
+
+                @Override
+                public boolean isDynamic() {
+                    return false;
+                }
+
+                @Override
+                public int getHeadSize() {
+                    return 32;
+                }
+
+                @Override
+                public int getContentSize(Object value) {
+                    return 32;
+                }
+
+                @Override
+                public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
+                    Address a = (value instanceof Address) ? (Address) value : new Address((String) value);
+                    io.brane.core.abi.FastAbiEncoder.encodeAddress(a, buffer);
+                }
             };
         }
+
         if (normalizedType.equals("bool")) {
-            return value -> {
-                if (value == null)
-                    throw new AbiEncodingException("bool value cannot be null");
-                if (value instanceof Boolean b)
-                    return new Bool(b);
-                throw new AbiEncodingException("Expected Boolean for type 'bool'");
+            return new TypeConverter() {
+                @Override
+                public AbiType convert(Object value) {
+                    if (value == null)
+                        throw new AbiEncodingException("bool value cannot be null");
+                    if (value instanceof Boolean b)
+                        return new Bool(b);
+                    throw new AbiEncodingException("Expected Boolean for type 'bool'");
+                }
+
+                @Override
+                public boolean isDynamic() {
+                    return false;
+                }
+
+                @Override
+                public int getHeadSize() {
+                    return 32;
+                }
+
+                @Override
+                public int getContentSize(Object value) {
+                    return 32;
+                }
+
+                @Override
+                public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
+                    io.brane.core.abi.FastAbiEncoder.encodeBool((Boolean) value, buffer);
+                }
             };
         }
+
         if (normalizedType.equals("string")) {
-            return value -> {
-                if (value == null)
-                    throw new AbiEncodingException("string value cannot be null");
-                if (value instanceof String s)
-                    return new Utf8String(s);
-                throw new AbiEncodingException("Expected String for type 'string'");
+            return new TypeConverter() {
+                @Override
+                public AbiType convert(Object value) {
+                    if (value == null)
+                        throw new AbiEncodingException("string value cannot be null");
+                    if (value instanceof String s)
+                        return new Utf8String(s);
+                    throw new AbiEncodingException("Expected String for type 'string'");
+                }
+
+                @Override
+                public boolean isDynamic() {
+                    return true;
+                }
+
+                @Override
+                public int getHeadSize() {
+                    return 32;
+                }
+
+                @Override
+                public int getContentSize(Object value) {
+                    String s = (String) value;
+                    int len = s.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+                    int padding = (32 - (len % 32)) % 32;
+                    return 32 + len + padding;
+                }
+
+                @Override
+                public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
+                    io.brane.core.abi.FastAbiEncoder.encodeString(new Utf8String((String) value), buffer);
+                }
             };
         }
+
         if (normalizedType.equals("bytes")) {
-            return value -> {
-                if (value == null)
-                    throw new AbiEncodingException("bytes value cannot be null");
-                return toBytes(value, true);
+            return new TypeConverter() {
+                @Override
+                public AbiType convert(Object value) {
+                    if (value == null)
+                        throw new AbiEncodingException("bytes value cannot be null");
+                    return toBytes(value, true);
+                }
+
+                @Override
+                public boolean isDynamic() {
+                    return true;
+                }
+
+                @Override
+                public int getHeadSize() {
+                    return 32;
+                }
+
+                @Override
+                public int getContentSize(Object value) {
+                    Bytes b = toBytes(value, true);
+                    int len = Hex.decode(b.value().value()).length;
+                    int padding = (32 - (len % 32)) % 32;
+                    return 32 + len + padding;
+                }
+
+                @Override
+                public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
+                    io.brane.core.abi.FastAbiEncoder.encodeBytes(toBytes(value, true), buffer);
+                }
             };
         }
+
         if (normalizedType.startsWith("bytes")) {
-            return value -> {
-                if (value == null)
-                    throw new AbiEncodingException("bytesN value cannot be null");
-                return toBytes(value, false);
+            return new TypeConverter() {
+                @Override
+                public AbiType convert(Object value) {
+                    if (value == null)
+                        throw new AbiEncodingException("bytesN value cannot be null");
+                    return toBytes(value, false);
+                }
+
+                @Override
+                public boolean isDynamic() {
+                    return false;
+                }
+
+                @Override
+                public int getHeadSize() {
+                    return 32;
+                }
+
+                @Override
+                public int getContentSize(Object value) {
+                    return 32;
+                }
+
+                @Override
+                public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
+                    // Static bytes are just right-padded
+                    Bytes b = toBytes(value, false);
+                    byte[] data = Hex.decode(b.value().value());
+                    buffer.put(io.brane.core.abi.FastAbiEncoder.padRight(data));
+                }
             };
         }
 
@@ -271,15 +724,14 @@ final class InternalAbi implements Abi {
             case Number number -> ensureSign(BigInteger.valueOf(number.longValue()), signed);
             case String s -> {
                 if (s.startsWith("0x"))
+
                     yield ensureSign(new BigInteger(s.substring(2), 16), signed);
+
                 yield ensureSign(new BigInteger(s), signed);
             }
-            default ->
-                throw new AbiEncodingException(
-                        "Expected numeric value for "
-                                + (signed ? "int" : "uint")
-                                + " but got "
-                                + value.getClass().getSimpleName());
+            default -> throw new AbiEncodingException("Expected numeric value for " + (signed ? "int" : "uint")
+                    + " but got " + value.getClass().getSimpleName());
+
         };
     }
 

@@ -53,7 +53,8 @@ public final class HexData {
     private static final Pattern HEX = Pattern.compile("^0x([0-9a-fA-F]{2})*$");
     public static final HexData EMPTY = new HexData("0x", true);
 
-    private final String value;
+    private String value;
+    private final byte[] raw;
 
     public HexData(String value) {
         Objects.requireNonNull(value, "hex");
@@ -61,16 +62,47 @@ public final class HexData {
             throw new IllegalArgumentException("Invalid hex data: " + value);
         }
         this.value = value;
+        this.raw = null;
     }
 
     /**
-     * Trusted constructor for internal use.
+     * Trusted constructor for internal use with string.
      */
     private HexData(String value, boolean trusted) {
         this.value = value;
+        this.raw = null;
     }
 
+    /**
+     * Constructor from raw bytes.
+     * <p>
+     * This constructor is optimized for performance by storing the raw bytes
+     * directly
+     * and deferring the expensive hex string generation until {@link #value()} is
+     * called.
+     * </p>
+     * 
+     * @param raw the raw byte array
+     */
+    private HexData(byte[] raw) {
+        this.raw = raw;
+        this.value = null;
+    }
+
+    /**
+     * Returns the hex string representation with "0x" prefix.
+     * <p>
+     * The string generation is lazy and cached. If this instance was created from
+     * bytes,
+     * the hex string is generated on the first call to this method.
+     * </p>
+     * 
+     * @return the hex string
+     */
     public String value() {
+        if (value == null) {
+            value = Hex.encode(raw);
+        }
         return value;
     }
 
@@ -80,11 +112,19 @@ public final class HexData {
      * @return the decoded byte array
      */
     public byte[] toBytes() {
+        if (raw != null) {
+            return raw.clone();
+        }
         return Hex.decode(value);
     }
 
     /**
      * Creates HexData from raw bytes.
+     * <p>
+     * This factory method is the preferred way to create HexData from bytes as it
+     * avoids immediate string conversion, significantly improving performance in
+     * encoding hot paths.
+     * </p>
      * 
      * @param bytes the byte array to encode, or null/empty for {@link #EMPTY}
      * @return HexData with "0x" prefix, or {@link #EMPTY} if bytes is null or empty
@@ -93,8 +133,7 @@ public final class HexData {
         if (bytes == null || bytes.length == 0) {
             return EMPTY;
         }
-        // Hex.encodeNoPrefix is trusted to produce valid hex
-        return new HexData("0x" + Hex.encodeNoPrefix(bytes), true);
+        return new HexData(bytes);
     }
 
     @Override
@@ -104,16 +143,16 @@ public final class HexData {
         if (o == null || getClass() != o.getClass())
             return false;
         HexData hexData = (HexData) o;
-        return Objects.equals(value, hexData.value);
+        return Objects.equals(value(), hexData.value());
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(value);
+        return Objects.hash(value());
     }
 
     @Override
     public String toString() {
-        return "HexData[" + "value=" + value + ']';
+        return "HexData[" + "value=" + value() + ']';
     }
 }

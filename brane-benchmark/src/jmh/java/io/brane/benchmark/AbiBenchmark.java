@@ -17,9 +17,11 @@ public class AbiBenchmark {
     private HexData encodedComplex;
     private Abi abi;
     private BigInteger supply;
+    private Object[] complexArgs;
 
     @Setup
     public void setup() {
+        // ... existing setup ...
         // Simple ABI
         String json = """
             [
@@ -78,9 +80,10 @@ public class AbiBenchmark {
         HexData id = new HexData(io.brane.primitives.Hex.encode(idBytes));
         
         complexData = java.util.List.of(java.util.List.of(inners, id));
+        complexArgs = complexData.toArray();
         
         // Pre-encode for decoding benchmark
-        String hex = complexAbi.encodeFunction("processNested", complexData.toArray()).data();
+        String hex = complexAbi.encodeFunction("processNested", complexArgs).data();
         encodedComplex = new HexData(hex);
     }
 
@@ -91,12 +94,12 @@ public class AbiBenchmark {
 
     @Benchmark
     public String encodeComplex() {
-        return complexAbi.encodeFunction("processNested", complexData.toArray()).data();
+        return complexAbi.encodeFunction("processNested", complexArgs).data();
     }
 
     @Benchmark
     public java.util.List<Object> decodeComplex() {
-        return complexAbi.encodeFunction("processNested", complexData.toArray())
+        return complexAbi.encodeFunction("processNested", complexArgs)
             .decode(encodedComplex.value(), java.util.List.class);
     }
 }

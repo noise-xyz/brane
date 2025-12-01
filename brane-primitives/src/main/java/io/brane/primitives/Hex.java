@@ -31,7 +31,8 @@ public final class Hex {
      *
      * @param hexString the string to decode
      * @return the decoded bytes
-     * @throws IllegalArgumentException if the input is null, has an odd number of characters, or contains invalid hex
+     * @throws IllegalArgumentException if the input is null, has an odd number of
+     *                                  characters, or contains invalid hex
      */
     public static byte[] decode(final String hexString) {
         if (hexString == null) {
@@ -67,7 +68,19 @@ public final class Hex {
      * @throws IllegalArgumentException if {@code bytes} is {@code null}
      */
     public static String encode(final byte[] bytes) {
-        return "0x" + encodeNoPrefix(bytes);
+        if (bytes == null) {
+            throw new IllegalArgumentException("Bytes cannot be null");
+        }
+
+        final char[] chars = new char[2 + bytes.length * 2];
+        chars[0] = '0';
+        chars[1] = 'x';
+        for (int i = 0; i < bytes.length; i++) {
+            final int v = bytes[i] & 0xFF;
+            chars[2 + i * 2] = HEX_CHARS[v >>> 4];
+            chars[2 + i * 2 + 1] = HEX_CHARS[v & 0x0F];
+        }
+        return new String(chars);
     }
 
     /**
@@ -106,7 +119,8 @@ public final class Hex {
     }
 
     /**
-     * Returns {@code true} if the provided string starts with {@code 0x} (case-insensitive).
+     * Returns {@code true} if the provided string starts with {@code 0x}
+     * (case-insensitive).
      *
      * @param hexString the string to check
      * @return {@code true} when the prefix is present
