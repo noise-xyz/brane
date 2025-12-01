@@ -163,6 +163,9 @@ public final class FastAbiEncoder {
      * @param buffer the destination buffer
      */
     public static void encodeInt256(BigInteger value, ByteBuffer buffer) {
+        if (value.bitLength() > 255) {
+            throw new IllegalArgumentException("Value too large for int256");
+        }
         byte[] bytes = value.toByteArray();
         int len = bytes.length;
         byte padding = value.signum() < 0 ? (byte) 0xFF : 0;

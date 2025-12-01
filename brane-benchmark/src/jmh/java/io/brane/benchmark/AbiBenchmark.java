@@ -19,6 +19,8 @@ public class AbiBenchmark {
     private BigInteger supply;
     private Object[] complexArgs;
 
+    private java.util.List<io.brane.core.abi.TypeSchema> schemas;
+
     @Setup
     public void setup() {
         // ... existing setup ...
@@ -83,8 +85,26 @@ public class AbiBenchmark {
         complexArgs = complexData.toArray();
         
         // Pre-encode for decoding benchmark
+        // Strip selector to get raw argument data
         String hex = complexAbi.encodeFunction("processNested", complexArgs).data();
-        encodedComplex = new HexData(hex);
+        String argsHex = "0x" + hex.substring(10);
+        encodedComplex = new HexData(argsHex);
+
+        // Prepare schemas for decoding
+        // (Outer) -> tuple(Inner[] inners, bytes32 id)
+        // Inner -> tuple(uint256 a, string b)
+        schemas = java.util.List.of(
+            new io.brane.core.abi.TypeSchema.TupleSchema(java.util.List.of(
+                new io.brane.core.abi.TypeSchema.ArraySchema(
+                    new io.brane.core.abi.TypeSchema.TupleSchema(java.util.List.of(
+                        new io.brane.core.abi.TypeSchema.UIntSchema(256),
+                        new io.brane.core.abi.TypeSchema.StringSchema()
+                    )),
+                    -1 // dynamic array
+                ),
+                new io.brane.core.abi.TypeSchema.BytesSchema(false) // bytes32
+            ))
+        );
     }
 
     @Benchmark
@@ -98,8 +118,7 @@ public class AbiBenchmark {
     }
 
     @Benchmark
-    public java.util.List<Object> decodeComplex() {
-        return complexAbi.encodeFunction("processNested", complexArgs)
-            .decode(encodedComplex.value(), java.util.List.class);
+    public java.util.List<io.brane.core.abi.AbiType> decodeComplex() {
+        return io.brane.core.abi.AbiDecoder.decode(encodedComplex.toBytes(), schemas);
     }
 }

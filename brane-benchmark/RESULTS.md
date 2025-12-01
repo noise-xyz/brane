@@ -8,8 +8,8 @@ This document tracks the performance of the Brane SDK's core components (ABI enc
 ## Executive Summary
 
 Recent optimizations have significantly improved performance across the board:
-*   **ABI Encoding**: **3.12x faster** than Web3j for complex data types.
-*   **Constructor Encoding**: **10.5x speedup** (gap reduced from 19x to 1.8x).
+*   **ABI Encoding**: **Parity (0.94x)** with Web3j for complex data types.
+*   **Constructor Encoding**: **2.5x speedup** (optimized with direct buffer encoding).
 *   **Transaction Signing**: **4x faster** for EIP-1559 transactions.
 
 ## Detailed Results

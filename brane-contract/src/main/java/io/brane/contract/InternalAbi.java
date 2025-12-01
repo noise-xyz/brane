@@ -300,8 +300,7 @@ final class InternalAbi implements Abi {
 
                 @Override
                 public int getContentSize(Object value) {
-                    @SuppressWarnings("unchecked")
-                    List<Object> list = (List<Object>) value;
+                    final List<?> list = asList(value);
 
                     // Length (32 bytes)
                     int size = 32;
@@ -322,8 +321,7 @@ final class InternalAbi implements Abi {
 
                 @Override
                 public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
-                    @SuppressWarnings("unchecked")
-                    List<Object> list = (List<Object>) value;
+                    final List<?> list = asList(value);
 
                     // Write length
                     io.brane.core.abi.FastAbiEncoder.encodeUInt256(BigInteger.valueOf(list.size()), buffer);
@@ -407,8 +405,7 @@ final class InternalAbi implements Abi {
 
                 @Override
                 public int getContentSize(Object value) {
-                    @SuppressWarnings("unchecked")
-                    List<Object> list = (List<Object>) value;
+                    final List<?> list = asList(value);
 
                     // Start with static head size of all components
                     int size = tupleStaticHeadSize;
@@ -425,8 +422,7 @@ final class InternalAbi implements Abi {
 
                 @Override
                 public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
-                    @SuppressWarnings("unchecked")
-                    List<Object> list = (List<Object>) value;
+                    final List<?> list = asList(value);
 
                     int headSize = tupleStaticHeadSize;
                     int currentTailOffset = headSize;
