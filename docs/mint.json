@@ -18,11 +18,15 @@
             ]
         },
         {
-            "group": "Client API",
+            "group": "Public Client",
             "pages": [
-                "public-client/api",
-                "wallet-client/api",
-                "providers/configuration"
+                "public-client/api"
+            ]
+        },
+        {
+            "group": "Wallet Client",
+            "pages": [
+                "wallet-client/api"
             ]
         },
         {
@@ -30,6 +34,12 @@
             "pages": [
                 "contracts/interaction",
                 "contracts/bindings"
+            ]
+        },
+        {
+            "group": "Providers & Chains",
+            "pages": [
+                "providers/configuration"
             ]
         },
         {
