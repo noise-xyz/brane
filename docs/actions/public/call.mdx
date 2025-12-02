@@ -1,0 +1,59 @@
+---
+title: call
+description: 'Executes a new message call immediately without creating a transaction on the blockchain.'
+---
+
+# call
+
+Executes a new message call immediately without creating a transaction on the blockchain. Often used for reading contract state.
+
+## Usage
+
+```java
+import java.util.Map;
+
+Map<String, Object> callParams = Map.of(
+    "to", "0x...", 
+    "data", "0x..."
+);
+
+String result = publicClient.call(callParams, "latest");
+```
+
+## Parameters
+
+### callObject
+- **Type:** `Map<String, Object>`
+
+The transaction call object.
+
+| Key | Type | Description |
+| --- | --- | --- |
+| `to` | `String` | The address the transaction is directed to. |
+| `from` | `String` | (Optional) The address the transaction is sent from. |
+| `data` | `String` | (Optional) Hash of the method signature and encoded parameters. |
+| `value` | `String` | (Optional) Value sent with this transaction. |
+
+### blockTag
+- **Type:** `String`
+- **Default:** `"latest"`
+
+The block tag to perform the call against.
+
+```text
+"latest" | "earliest" | "pending"
+```
+
+## Returns
+
+- **Type:** `String`
+
+The return value of the executed contract call, as a hex string.
+
+```java
+"0x0000000000000000000000000000000000000000000000000000000000000001"
+```
+
+## JSON-RPC
+
+Invokes `eth_call`.

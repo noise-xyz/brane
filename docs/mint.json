@@ -14,17 +14,35 @@
         {
             "group": "Get Started",
             "pages": [
-                "introduction"
+                "introduction",
+                "quickstart"
             ]
         },
         {
-            "group": "Reference",
+            "group": "Public Actions",
             "pages": [
-                {
-                    "label": "Javadocs",
-                    "url": "https://brane.sh/javadoc"
-                }
+                "actions/public/get-balance",
+                "actions/public/call"
             ]
+        },
+        {
+            "group": "Wallet Actions",
+            "pages": [
+                "actions/wallet/send-transaction-and-wait"
+            ]
+        },
+        {
+            "group": "Utilities",
+            "pages": [
+                "utilities/abi-encoding"
+            ]
+        }
+    ],
+    "anchors": [
+        {
+            "name": "Javadocs",
+            "icon": "book",
+            "url": "https://brane.sh/javadoc"
         }
     ],
     "footerSocials": {

@@ -15,19 +15,19 @@ export default function Home() {
 
         <div className="grid w-full max-w-lg grid-cols-1 gap-4 sm:grid-cols-2">
           <a
-            href="/javadoc/index.html"
+            href="/docs"
             className="flex h-12 items-center justify-center rounded-full bg-blue-600 px-6 font-medium text-white transition-colors hover:bg-blue-700"
           >
-            API Reference (Javadoc)
+            Documentation
           </a>
-          <a
-            href="https://github.com/Atlantropaz/brane"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex h-12 items-center justify-center rounded-full border border-zinc-200 bg-white px-6 font-medium text-zinc-900 transition-colors hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-white dark:hover:bg-zinc-800"
+          <div
+            className="flex h-12 cursor-not-allowed items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 px-6 font-medium text-zinc-400 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-600"
           >
-            GitHub Repository
-          </a>
+            GitHub (Coming Soon)
+          </div>
+        </div>
+        <div className="flex gap-4 text-sm text-zinc-500">
+          <a href="/javadoc/index.html" className="hover:underline">API Reference (Javadoc)</a>
         </div>
 
         <div className="mt-12 grid w-full grid-cols-1 gap-8 text-left sm:grid-cols-3">
