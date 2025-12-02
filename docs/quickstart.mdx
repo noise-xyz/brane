@@ -15,13 +15,18 @@ Add the following dependencies to your `pom.xml` (Maven) or `build.gradle` (Grad
 ```xml Maven
 <dependencies>
     <dependency>
-        <groupId>io.brane</groupId>
+        <groupId>com.github.noise-xyz.brane</groupId>
         <artifactId>brane-core</artifactId>
         <version>0.1.0-alpha</version>
     </dependency>
     <dependency>
-        <groupId>io.brane</groupId>
+        <groupId>com.github.noise-xyz.brane</groupId>
         <artifactId>brane-rpc</artifactId>
+        <version>0.1.0-alpha</version>
+    </dependency>
+    <dependency>
+        <groupId>com.github.noise-xyz.brane</groupId>
+        <artifactId>brane-contract</artifactId>
         <version>0.1.0-alpha</version>
     </dependency>
 </dependencies>
@@ -29,8 +34,9 @@ Add the following dependencies to your `pom.xml` (Maven) or `build.gradle` (Grad
 
 ```groovy Gradle
 dependencies {
-    implementation 'io.brane:brane-core:0.1.0-alpha'
-    implementation 'io.brane:brane-rpc:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-core:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-rpc:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-contract:0.1.0-alpha'
 }
 ```
 </CodeGroup>
