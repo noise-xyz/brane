@@ -1,12 +1,19 @@
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # 0. Install Java 21 (Amazon Corretto)
 echo "Installing Java 21..."
 curl -LO https://corretto.aws/downloads/latest/amazon-corretto-21-x64-linux-jdk.tar.gz
 tar -xzf amazon-corretto-21-x64-linux-jdk.tar.gz
 rm amazon-corretto-21-x64-linux-jdk.tar.gz
-export JAVA_HOME=$(pwd)/$(ls -d amazon-corretto-21*)
+
+shopt -s nullglob
+jdk_dirs=(amazon-corretto-21*)
+if (( ${#jdk_dirs[@]} != 1 )); then
+  echo "Error: Expected 1 JDK directory matching 'amazon-corretto-21*', but found ${#jdk_dirs[@]}." >&2
+  exit 1
+fi
+export JAVA_HOME="$PWD/${jdk_dirs[0]}"
 export PATH=$JAVA_HOME/bin:$PATH
 java -version
 
