@@ -1,0 +1,97 @@
+---
+title: Custom Signers
+description: 'Integrate external signers like Privy, AWS KMS, or HSMs.'
+---
+
+# Custom Signers
+
+Brane supports external signing via the `TransactionSigner` interface. This allows you to use keys managed by third-party services (Privy, Fireblocks, AWS KMS) or hardware wallets without exposing the private key to your application.
+
+## The Interface
+
+The `TransactionSigner` interface has a single method: `sign`.
+
+```java
+@FunctionalInterface
+public interface TransactionSigner {
+    /**
+     * Signs a transaction and returns the hex-encoded signed envelope.
+     * 
+     * @param tx      the unsigned transaction
+     * @param chainId the chain ID for replay protection
+     * @return hex-encoded signed transaction ready for broadcast
+     */
+    String sign(UnsignedTransaction tx, long chainId);
+}
+```
+
+## Example: External Service Integration
+
+Here is how you might implement a signer that delegates to an external API (e.g., Privy or a backend KMS).
+
+```java
+import io.brane.rpc.TransactionSigner;
+import io.brane.core.tx.UnsignedTransaction;
+import io.brane.core.crypto.Keccak256;
+import io.brane.core.crypto.Signature;
+import io.brane.primitives.Hex;
+
+// Dummy interface for the example
+interface ExternalService {
+    Signature sign(String keyId, byte[] hash);
+}
+
+public class RemoteSigner implements TransactionSigner {
+    private final String keyId;
+    private final ExternalService service;
+
+    public RemoteSigner(String keyId, ExternalService service) {
+        this.keyId = keyId;
+        this.service = service;
+    }
+
+    @Override
+    public String sign(UnsignedTransaction tx, long chainId) {
+        // 1. Get the transaction hash (preimage)
+        byte[] preimage = tx.encodeForSigning(chainId);
+        byte[] hash = Keccak256.hash(preimage);
+
+        // 2. Request signature from external service
+        // (This is where you call Privy, AWS KMS, etc.)
+        Signature sig = service.sign(this.keyId, hash);
+
+        // 3. Encode the signed transaction
+        byte[] signedEnvelope = tx.encodeAsEnvelope(sig);
+        
+        // 4. Return as Hex
+        return Hex.encode(signedEnvelope);
+    }
+}
+```
+
+## Usage with WalletClient
+
+Once you have your custom signer, simply pass it to the `WalletClient` builder.
+
+```java
+import io.brane.rpc.DefaultWalletClient;
+import io.brane.rpc.BraneProvider;
+import io.brane.rpc.PublicClient;
+import io.brane.core.chain.ChainProfiles;
+import io.brane.core.types.Address;
+
+// Assume these are defined
+BraneProvider provider = ...;
+PublicClient publicClient = ...;
+ExternalService service = ...;
+
+TransactionSigner mySigner = new RemoteSigner("key-123", service);
+
+WalletClient wallet = DefaultWalletClient.create(
+    provider,
+    publicClient,
+    mySigner,
+    new Address("0x..."), // The address corresponding to the remote key
+    ChainProfiles.ANVIL_LOCAL
+);
+```

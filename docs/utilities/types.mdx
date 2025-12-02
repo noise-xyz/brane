@@ -1,0 +1,57 @@
+---
+title: Types & Primitives
+description: 'Core data types used throughout the SDK.'
+---
+
+# Core Types
+
+Brane uses a set of immutable, type-safe primitives to represent Ethereum data.
+
+## Address
+
+Represents a 20-byte Ethereum address. It automatically handles checksum validation.
+
+```java
+import io.brane.core.types.Address;
+
+// From Hex String
+Address addr = new Address("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
+
+// To String (Checksummed)
+String hex = addr.toString();
+```
+
+## Wei
+
+Represents a monetary value in Wei (10^-18 Ether). It wraps `BigInteger` to prevent unit confusion.
+
+```java
+import io.brane.core.types.Wei;
+
+// From Ether (String or BigDecimal)
+Wei value = Wei.fromEther("1.5");
+
+// From Gwei
+Wei gasPrice = Wei.gwei(20);
+
+// From Raw Wei (BigInteger)
+Wei raw = Wei.of(1000);
+```
+
+## HexData
+
+Represents arbitrary hex-encoded data (bytes). It is immutable and efficient.
+
+```java
+import io.brane.core.types.HexData;
+
+// From Hex String
+HexData data = new HexData("0x1234");
+
+// From Byte Array
+HexData fromBytes = new HexData(new byte[]{0x12, 0x34});
+
+// Empty
+HexData empty = HexData.EMPTY;
+```
+

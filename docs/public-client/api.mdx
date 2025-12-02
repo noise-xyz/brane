@@ -1,0 +1,103 @@
+---
+title: Reading Data
+description: 'Interface for reading from the blockchain (blocks, transactions, logs).'
+---
+
+
+The `PublicClient` provides read-only access to the blockchain. It allows you to fetch blocks, read contract state, and query event logs.
+
+## Usage
+
+```java
+import io.brane.rpc.BranePublicClient;
+import io.brane.core.chain.ChainProfiles;
+
+PublicClient client = BranePublicClient.forChain(ChainProfiles.ETH_MAINNET)
+    .build();
+```
+
+## Methods
+
+### getBalance
+
+Returns the balance of an address in Wei.
+
+```java
+Wei balance = client.getBalance(new Address("0x..."));
+```
+
+### getChainId
+
+Returns the chain ID associated with the current network.
+
+```java
+BigInteger chainId = client.getChainId();
+```
+
+### getBlock
+
+Returns information about a block by number or hash.
+
+```java
+// Get latest block
+var block = client.getLatestBlock();
+System.out.println("Block Number: " + block.number());
+
+// Get by number
+var blockByNumber = client.getBlockByNumber(12345678);
+```
+
+### getTransactionByHash
+
+Fetch a transaction by its hash.
+
+```java
+import io.brane.core.types.Hash;
+
+Hash txHash = new Hash("0x...");
+var tx = client.getTransactionByHash(txHash);
+
+if (tx != null) {
+    System.out.println("From: " + tx.from());
+    System.out.println("Value: " + tx.value());
+}
+```
+
+### call
+
+Executes a new message call immediately without creating a transaction. Useful for reading contract state.
+
+```java
+Map<String, Object> params = Map.of(
+    "to", "0x...",
+    "data", "0x..." // Encoded function call
+);
+String result = client.call(params, "latest");
+```
+
+### getLogs
+
+Returns an array of all logs matching a given filter object.
+
+```java
+import io.brane.rpc.LogFilter;
+import io.brane.core.model.LogEntry;
+import java.util.List;
+import java.util.Optional;
+import java.math.BigInteger;
+
+long blockNumber = 12345678L;
+Address tokenAddress = new Address("0x...");
+
+// Filter for Transfer(address,address,uint256)
+LogFilter filter = new LogFilter(
+    Optional.of(blockNumber), // fromBlock
+    Optional.of(blockNumber), // toBlock
+    Optional.of(tokenAddress), // address
+    Optional.of(List.of(      // topics
+        new HexData("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef") // Transfer topic
+    ))
+);
+
+List<LogEntry> logs = client.getLogs(filter);
+```

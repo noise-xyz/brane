@@ -1,0 +1,83 @@
+---
+title: Error Handling
+description: 'Handling RPC errors and contract reverts.'
+---
+
+# Error Handling
+
+Brane provides typed exceptions to help you handle failures gracefully.
+
+## RpcException
+
+Thrown when the JSON-RPC node returns an error (e.g., rate limiting, invalid request).
+
+```java
+import io.brane.rpc.PublicClient;
+import io.brane.core.types.Address;
+
+PublicClient client = ...; // Your PublicClient instance
+Address address = new Address("0x...");
+
+try {
+    client.getBalance(address);
+} catch (RpcException e) {
+    System.err.println("RPC Error: " + e.getMessage());
+    System.err.println("Code: " + e.code());
+}
+```
+
+## RevertException
+
+Thrown when a smart contract execution reverts.
+
+```java
+import io.brane.contract.ReadWriteContract;
+
+ReadWriteContract contract = ...; // Your contract instance
+
+try {
+    contract.sendAndWait("transfer", ...);
+} catch (RevertException e) {
+    System.err.println("Transaction Reverted: " + e.revertReason());
+    // e.revertReason() automatically decodes standard string reverts
+}
+```
+
+## Decoding Custom Errors
+
+If your contract throws a custom error (e.g., `error InsufficientFunds(uint256 available, uint256 required)`), you can decode it using `RevertDecoder`.
+
+```java
+import io.brane.core.RevertDecoder;
+import io.brane.core.abi.TypeSchema;
+import io.brane.contract.Abi;
+import io.brane.contract.ReadWriteContract;
+
+ReadWriteContract contract = ...; // Your contract instance
+
+// 1. Define the Error Schema
+var customError = new RevertDecoder.CustomErrorAbi(
+    "InsufficientFunds",
+    List.of(
+        new TypeSchema.UIntSchema(256), // available
+        new TypeSchema.UIntSchema(256)  // required
+    )
+);
+
+// 2. Decode
+try {
+    contract.call(...);
+} catch (RevertException e) {
+    String data = e.rawDataHex();
+    String selector = Abi.getSelector("InsufficientFunds(uint256,uint256)");
+    
+    var decoded = RevertDecoder.decode(
+        data, 
+        Map.of(selector, customError)
+    );
+    
+    if (decoded.kind() == RevertDecoder.RevertKind.CUSTOM) {
+        System.out.println("Custom Error: " + decoded.reason());
+    }
+}
+```

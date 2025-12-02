@@ -9,19 +9,67 @@ Brane is a modern, type-safe Java SDK for Ethereum. It provides a clean, fluent 
 
 ## Installation
 
-Add the following dependencies to your `pom.xml` (Maven) or `build.gradle` (Gradle).
+<Warning>
+**Private Access Only**
+
+Brane is currently in **private alpha**. The artifacts are not yet available on Maven Central.
+</Warning>
+
+### For Maintainers
+
+If you are contributing to Brane or have access to the source code, you can install the SDK locally.
+
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/noise-xyz/brane.git
+    cd brane
+    ```
+
+2.  Publish to local Maven:
+    ```bash
+    ./gradlew publishToMavenLocal
+    ```
+
+3.  Add `mavenLocal()` to your project's repositories:
+
+    <CodeGroup>
+    ```xml Maven
+    <repositories>
+        <repository>
+            <id>local-maven</id>
+            <url>file://${user.home}/.m2/repository</url>
+        </repository>
+    </repositories>
+    ```
+
+    ```groovy Gradle
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+    ```
+    </CodeGroup>
+
+### Dependencies
+
+Once configured, add the dependencies:
 
 <CodeGroup>
 ```xml Maven
 <dependencies>
     <dependency>
-        <groupId>io.brane</groupId>
+        <groupId>com.github.noise-xyz.brane</groupId>
         <artifactId>brane-core</artifactId>
         <version>0.1.0-alpha</version>
     </dependency>
     <dependency>
-        <groupId>io.brane</groupId>
+        <groupId>com.github.noise-xyz.brane</groupId>
         <artifactId>brane-rpc</artifactId>
+        <version>0.1.0-alpha</version>
+    </dependency>
+    <dependency>
+        <groupId>com.github.noise-xyz.brane</groupId>
+        <artifactId>brane-contract</artifactId>
         <version>0.1.0-alpha</version>
     </dependency>
 </dependencies>
@@ -29,8 +77,9 @@ Add the following dependencies to your `pom.xml` (Maven) or `build.gradle` (Grad
 
 ```groovy Gradle
 dependencies {
-    implementation 'io.brane:brane-core:0.1.0-alpha'
-    implementation 'io.brane:brane-rpc:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-core:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-rpc:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-contract:0.1.0-alpha'
 }
 ```
 </CodeGroup>
@@ -48,7 +97,7 @@ import io.brane.core.chain.ChainProfiles;
 public class Example {
     public static void main(String[] args) {
         // Connect to Mainnet
-        var client = BranePublicClient.forChain(ChainProfiles.MAINNET)
+        var client = BranePublicClient.forChain(ChainProfiles.ETH_MAINNET)
             .build();
         
         // Get the latest block number
@@ -63,30 +112,37 @@ public class Example {
 Create a `WalletClient` to sign and send transactions.
 
 ```java
-import io.brane.rpc.BraneWalletClient;
+import io.brane.rpc.DefaultWalletClient;
+import io.brane.rpc.BranePublicClient;
+import io.brane.rpc.TransactionSigner;
+import io.brane.rpc.PrivateKeyTransactionSigner;
 import io.brane.core.types.Wei;
 import io.brane.core.types.Address;
 
 // ...
 
-var wallet = BraneWalletClient.forChain(ChainProfiles.SEPOLIA)
-    .withPrivateKey(System.getenv("SEPOLIA_PRIVATE_KEY")) // Load private key from environment variable
+// 1. Create dependencies
+var publicClient = BranePublicClient.forChain(ChainProfiles.ETH_SEPOLIA).build();
+var signer = new PrivateKeyTransactionSigner(System.getenv("SEPOLIA_PRIVATE_KEY"));
+
+// 2. Create Wallet
+var wallet = DefaultWalletClient.create(
+    publicClient.getProvider(),
+    publicClient,
+    signer,
+    signer.getAddress(),
+    ChainProfiles.ETH_SEPOLIA
+);
+
+import io.brane.core.builder.TxBuilder;
+
+var request = TxBuilder.eip1559()
+    .to(new Address("0x..."))
+    .value(Wei.fromEther("0.01"))
     .build();
 
 var receipt = wallet.sendTransactionAndWait(
-    new TransactionRequest(
-        wallet.getAddress(),           // from
-        new Address("0x..."),          // to
-        Wei.fromEther("0.01"),         // value
-        null,                          // gasLimit (auto-estimated)
-        null,                          // gasPrice (not used for EIP-1559)
-        null,                          // maxPriorityFeePerGas (auto-estimated)
-        null,                          // maxFeePerGas (auto-estimated)
-        null,                          // nonce (auto-fetched)
-        null,                          // data (none for simple transfer)
-        true,                          // isEip1559
-        null                           // accessList
-    ),
+    request,
     60_000, // timeout (ms)
     1_000   // poll interval (ms)
 );

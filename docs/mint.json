@@ -14,34 +14,53 @@
         {
             "group": "Get Started",
             "pages": [
-                "introduction",
                 "quickstart"
             ]
         },
         {
-            "group": "Public Actions",
+            "group": "Public Client",
             "pages": [
-                "actions/public/get-balance",
-                "actions/public/call"
+                "public-client/api"
             ]
         },
         {
-            "group": "Wallet Actions",
+            "group": "Wallet Client",
             "pages": [
-                "actions/wallet/send-transaction-and-wait"
+                "wallet-client/api"
             ]
         },
         {
-            "group": "Utilities",
+            "group": "Smart Contracts",
             "pages": [
-                "utilities/abi-encoding"
+                "contracts/interaction",
+                "contracts/bindings"
+            ]
+        },
+        {
+            "group": "Providers & Chains",
+            "pages": [
+                "providers/configuration"
+            ]
+        },
+        {
+            "group": "Advanced Signing",
+            "pages": [
+                "signing/custom-signers"
+            ]
+        },
+        {
+            "group": "Utilities & Types",
+            "pages": [
+                "utilities/types",
+                "utilities/abi",
+                "utilities/errors"
             ]
         }
     ],
     "anchors": [
         {
             "name": "Javadocs",
-            "icon": "book",
+            "icon": "book-open",
             "url": "https://brane.sh/javadoc"
         }
     ],
