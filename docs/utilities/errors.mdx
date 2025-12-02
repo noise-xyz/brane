@@ -12,6 +12,12 @@ Brane provides typed exceptions to help you handle failures gracefully.
 Thrown when the JSON-RPC node returns an error (e.g., rate limiting, invalid request).
 
 ```java
+import io.brane.rpc.PublicClient;
+import io.brane.core.types.Address;
+
+PublicClient client = ...; // Your PublicClient instance
+Address address = new Address("0x...");
+
 try {
     client.getBalance(address);
 } catch (RpcException e) {
@@ -25,6 +31,10 @@ try {
 Thrown when a smart contract execution reverts.
 
 ```java
+import io.brane.contract.ReadWriteContract;
+
+ReadWriteContract contract = ...; // Your contract instance
+
 try {
     contract.sendAndWait("transfer", ...);
 } catch (RevertException e) {
@@ -40,6 +50,10 @@ If your contract throws a custom error (e.g., `error InsufficientFunds(uint256 a
 ```java
 import io.brane.core.RevertDecoder;
 import io.brane.core.abi.TypeSchema;
+import io.brane.contract.Abi;
+import io.brane.contract.ReadWriteContract;
+
+ReadWriteContract contract = ...; // Your contract instance
 
 // 1. Define the Error Schema
 var customError = new RevertDecoder.CustomErrorAbi(

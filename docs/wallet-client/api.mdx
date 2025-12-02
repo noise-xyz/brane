@@ -43,6 +43,12 @@ System.out.println("Mined in block: " + receipt.blockNumber());
 Sends a transaction immediately and returns the transaction hash. Does not wait for mining.
 
 ```java
+TransactionRequest request = new TransactionRequest(
+    wallet.getAddress(),
+    new Address("0x..."),
+    Wei.fromEther("0.1")
+);
+
 // Returns the transaction hash (e.g., "0x...")
 String txHash = wallet.sendTransaction(request);
 ```
@@ -52,6 +58,12 @@ String txHash = wallet.sendTransaction(request);
 Signs a transaction offline without sending it.
 
 ```java
+TransactionRequest request = new TransactionRequest(
+    wallet.getAddress(),
+    new Address("0x..."),
+    Wei.fromEther("0.1")
+);
+
 // Returns the signed RLP-encoded transaction hex
 String signedTx = wallet.signTransaction(request);
 ```

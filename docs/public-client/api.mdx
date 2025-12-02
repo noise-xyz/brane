@@ -44,7 +44,7 @@ var block = client.getLatestBlock();
 System.out.println("Block Number: " + block.number());
 
 // Get by number
-// BlockHeader block = client.getBlockByNumber(12345678); // Original line, commented out as per instruction's implied change
+var blockByNumber = client.getBlockByNumber(12345678);
 ```
 
 ### getTransactionByHash
@@ -81,6 +81,11 @@ Returns an array of all logs matching a given filter object.
 
 ```java
 import io.brane.rpc.LogFilter;
+import io.brane.core.model.LogEntry;
+import java.math.BigInteger;
+
+long blockNumber = 12345678L;
+Address tokenAddress = new Address("0x...");
 
 // Filter for Transfer(address,address,uint256)
 LogFilter filter = new LogFilter(
