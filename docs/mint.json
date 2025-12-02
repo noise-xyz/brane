@@ -1,0 +1,33 @@
+{
+    "name": "Brane",
+    "logo": {
+        "light": "/logo/light.svg",
+        "dark": "/logo/dark.svg"
+    },
+    "favicon": "/favicon.png",
+    "colors": {
+        "primary": "#0D9373",
+        "light": "#07C983",
+        "dark": "#0D9373"
+    },
+    "navigation": [
+        {
+            "group": "Get Started",
+            "pages": [
+                "introduction"
+            ]
+        },
+        {
+            "group": "Reference",
+            "pages": [
+                {
+                    "label": "Javadocs",
+                    "url": "https://brane.sh/javadoc"
+                }
+            ]
+        }
+    ],
+    "footerSocials": {
+        "github": "https://github.com/noise-xyz/brane"
+    }
+}
