@@ -31,7 +31,7 @@ You can override the default RPC URL for any chain profile.
 ```java
 import io.brane.rpc.BranePublicClient;
 
-var client = BranePublicClient.forChain(ChainProfiles.MAINNET)
+var client = BranePublicClient.forChain(ChainProfiles.ETH_MAINNET)
     .withRpcUrl("https://eth-mainnet.g.alchemy.com/v2/YOUR-API-KEY")
     .build();
 ```

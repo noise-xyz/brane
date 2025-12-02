@@ -77,6 +77,7 @@ Once you have your custom signer, simply pass it to the `WalletClient` builder.
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.PublicClient;
+import io.brane.core.chain.ChainProfiles;
 import io.brane.core.types.Address;
 
 // Assume these are defined
@@ -85,10 +86,6 @@ PublicClient publicClient = ...;
 ExternalService service = ...;
 
 TransactionSigner mySigner = new RemoteSigner("key-123", service);
-
-import io.brane.core.chain.ChainProfiles;
-
-// ...
 
 WalletClient wallet = DefaultWalletClient.create(
     provider,
