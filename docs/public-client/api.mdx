@@ -41,10 +41,27 @@ Returns information about a block by number or hash.
 
 ```java
 // Get latest block
-BlockHeader latest = client.getLatestBlock();
+var block = client.getLatestBlock();
+System.out.println("Block Number: " + block.number());
 
 // Get by number
-BlockHeader block = client.getBlockByNumber(12345678);
+// BlockHeader block = client.getBlockByNumber(12345678); // Original line, commented out as per instruction's implied change
+```
+
+### getTransactionByHash
+
+Fetch a transaction by its hash.
+
+```java
+import io.brane.core.types.Hash;
+
+Hash txHash = new Hash("0x...");
+var tx = client.getTransactionByHash(txHash);
+
+if (tx != null) {
+    System.out.println("From: " + tx.from());
+    System.out.println("Value: " + tx.value());
+}
 ```
 
 ### call

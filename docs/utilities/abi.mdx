@@ -1,0 +1,68 @@
+---
+title: ABI Utilities
+description: 'Low-level ABI encoding, decoding, and utilities.'
+---
+
+# ABI Utilities
+
+The `Abi` class provides powerful helpers for working with Ethereum's Application Binary Interface (ABI).
+
+## Function Selectors
+
+Compute the 4-byte function selector for any function signature.
+
+```java
+import io.brane.contract.Abi;
+import io.brane.core.types.HexData;
+
+// "transfer(address,uint256)" -> 0xa9059cbb
+HexData selector = Abi.functionSelector("transfer(address,uint256)");
+```
+
+## Event Topics
+
+Compute the 32-byte topic hash for an event signature.
+
+```java
+import io.brane.contract.Abi;
+import io.brane.core.types.Hash;
+
+// "Transfer(address,address,uint256)" -> 0xddf252...
+Hash topic = Abi.eventTopic("Transfer(address,address,uint256)");
+```
+
+## Decoding Events
+
+Decode raw logs into Java objects using `Abi.decodeEvents`.
+
+```java
+// 1. Define the Event Class
+public static class TransferEvent {
+    public Address from;
+    public Address to;
+    public BigInteger value;
+}
+
+// 2. Fetch Logs
+var logs = client.getLogs(filter);
+
+// 3. Decode
+var transfers = abi.decodeEvents("Transfer", logs, TransferEvent.class);
+
+for (var event : transfers) {
+    System.out.println("Transfer: " + event.value);
+}
+```
+
+## FastAbiEncoder
+
+For zero-allocation, low-level encoding of arguments (useful for manual `eth_call` construction).
+
+```java
+import io.brane.core.abi.FastAbiEncoder;
+import io.brane.core.abi.UInt;
+
+byte[] encoded = FastAbiEncoder.encode(List.of(
+    new UInt(256, BigInteger.TEN)
+));
+```

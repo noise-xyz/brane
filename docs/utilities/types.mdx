@@ -55,15 +55,3 @@ HexData fromBytes = new HexData(new byte[]{0x12, 0x34});
 HexData empty = HexData.EMPTY;
 ```
 
-## FastAbiEncoder
-
-A zero-allocation utility for encoding ABI arguments manually.
-
-```java
-import io.brane.core.abi.FastAbiEncoder;
-import io.brane.core.abi.UInt;
-
-byte[] encoded = FastAbiEncoder.encode(List.of(
-    new UInt(256, BigInteger.TEN)
-));
-```

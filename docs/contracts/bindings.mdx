@@ -53,6 +53,18 @@ BigInteger balance = token.balanceOf(myAddress);
 TransactionReceipt receipt = token.transfer(recipient, amount);
 ```
 
+## Validation
+
+When you call `BraneContract.bind`, the SDK performs **strict validation** to ensure your Java interface matches the contract ABI. This "fail-fast" behavior prevents runtime errors.
+
+The validation checks:
+1.  **Method Existence**: Every method in your interface must exist in the ABI.
+2.  **Parameter Count**: The number of arguments must match.
+3.  **Type Compatibility**: Java types must be compatible with Solidity types (e.g., `uint256` -> `BigInteger`).
+4.  **Mutability**: You cannot bind a `void` return type to a `view` function (it must return a value).
+
+If any check fails, `bind` throws an `IllegalArgumentException` with a detailed error message explaining the mismatch.
+
 ## Supported Types
 
 The binding system automatically maps Solidity types to Java types:

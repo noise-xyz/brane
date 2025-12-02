@@ -52,6 +52,7 @@
             "group": "Utilities & Types",
             "pages": [
                 "utilities/types",
+                "utilities/abi",
                 "utilities/errors"
             ]
         }
