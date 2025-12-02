@@ -1,0 +1,43 @@
+---
+title: ABI Encoding
+description: 'High-performance ABI encoding utilities.'
+---
+
+# ABI Encoding
+
+Brane provides a zero-allocation ABI encoder for high-performance applications.
+
+## Usage
+
+```java
+import io.brane.core.abi.FastAbiEncoder;
+import io.brane.core.abi.AbiType;
+import io.brane.core.abi.UInt;
+import io.brane.core.abi.AddressType;
+
+import java.math.BigInteger;
+import java.util.List;
+
+// Encode: transfer(address,uint256)
+List<AbiType> args = List.of(
+    new AddressType(new Address("0x...")),
+    new UInt(BigInteger.TEN)
+);
+
+byte[] encoded = FastAbiEncoder.encode(args);
+```
+
+## Supported Types
+
+- `UInt` (uint8 - uint256)
+- `Int` (int8 - int256)
+- `AddressType`
+- `Bool`
+- `Bytes`
+- `Utf8String`
+- `Array`
+- `Tuple`
+
+## Performance
+
+`FastAbiEncoder` uses a two-pass approach to calculate the exact buffer size required, eliminating intermediate object allocations and array resizing. This makes it ideal for high-throughput applications.

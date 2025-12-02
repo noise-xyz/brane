@@ -14,7 +14,27 @@
         {
             "group": "Get Started",
             "pages": [
-                "introduction"
+                "introduction",
+                "quickstart"
+            ]
+        },
+        {
+            "group": "Public Actions",
+            "pages": [
+                "actions/public/get-balance",
+                "actions/public/call"
+            ]
+        },
+        {
+            "group": "Wallet Actions",
+            "pages": [
+                "actions/wallet/send-transaction"
+            ]
+        },
+        {
+            "group": "Utilities",
+            "pages": [
+                "utilities/abi-encoding"
             ]
         },
         {

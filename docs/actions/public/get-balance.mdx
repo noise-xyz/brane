@@ -1,0 +1,43 @@
+---
+title: getBalance
+description: 'Returns the balance of an address in Wei.'
+---
+
+# getBalance
+
+Returns the balance of an address in Wei.
+
+## Usage
+
+```java
+import io.brane.core.types.Address;
+import io.brane.core.types.Wei;
+
+Address address = new Address("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266");
+Wei balance = publicClient.getBalance(address);
+```
+
+## Parameters
+
+### address
+- **Type:** `Address`
+
+The address to query.
+
+```java
+new Address("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266")
+```
+
+## Returns
+
+- **Type:** `Wei`
+
+The balance of the address in Wei.
+
+```java
+Wei[value=1000000000000000000]
+```
+
+## JSON-RPC
+
+Invokes `eth_getBalance`.

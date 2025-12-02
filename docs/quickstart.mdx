@@ -1,0 +1,91 @@
+---
+title: Quickstart
+description: 'Get started with Brane in minutes.'
+---
+
+## Overview
+
+Brane is a modern, type-safe Java SDK for Ethereum. It provides a clean, fluent API for interacting with EVM chains, with a focus on correctness and performance.
+
+## Installation
+
+Add the following dependencies to your `pom.xml` (Maven) or `build.gradle` (Gradle).
+
+<CodeGroup>
+```xml Maven
+<dependencies>
+    <dependency>
+        <groupId>io.brane</groupId>
+        <artifactId>brane-core</artifactId>
+        <version>0.1.0-alpha</version>
+    </dependency>
+    <dependency>
+        <groupId>io.brane</groupId>
+        <artifactId>brane-rpc</artifactId>
+        <version>0.1.0-alpha</version>
+    </dependency>
+</dependencies>
+```
+
+```groovy Gradle
+dependencies {
+    implementation 'io.brane:brane-core:0.1.0-alpha'
+    implementation 'io.brane:brane-rpc:0.1.0-alpha'
+}
+```
+</CodeGroup>
+
+## Usage
+
+### 1. Connect to a Chain
+
+Create a `PublicClient` to read from the blockchain.
+
+```java
+import io.brane.rpc.BranePublicClient;
+import io.brane.core.chain.ChainProfiles;
+
+public class Example {
+    public static void main(String[] args) {
+        // Connect to Mainnet
+        var client = BranePublicClient.forChain(ChainProfiles.MAINNET)
+            .build();
+        
+        // Get the latest block number
+        var block = client.getLatestBlock();
+        System.out.println("Current Block: " + block.number());
+    }
+}
+```
+
+### 2. Send a Transaction
+
+Create a `WalletClient` to sign and send transactions.
+
+```java
+import io.brane.rpc.BraneWalletClient;
+import io.brane.core.types.Wei;
+import io.brane.core.types.Address;
+
+// ...
+
+var wallet = BraneWalletClient.forChain(ChainProfiles.SEPOLIA)
+    .withPrivateKey("0x...") // Your private key
+    .build();
+
+var receipt = wallet.sendTransactionAndWait(
+    new TransactionRequest(
+        wallet.getAddress(),           // from
+        new Address("0x..."),          // to
+        Wei.fromEther("0.01"),         // value
+        null, null, null,              // gas (auto)
+        null, null,                    // nonce, data (auto)
+        true,                          // EIP-1559
+        null                           // access list
+    ),
+    60_000, // timeout (ms)
+    1_000   // poll interval (ms)
+);
+
+System.out.println("Tx Hash: " + receipt.transactionHash());
+```

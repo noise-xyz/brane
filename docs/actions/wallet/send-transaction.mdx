@@ -1,0 +1,56 @@
+---
+title: sendTransaction
+description: 'Creates, signs, and sends a new transaction to the network.'
+---
+
+# sendTransaction
+
+Creates, signs, and sends a new transaction to the network.
+
+## Usage
+
+```java
+import io.brane.core.model.TransactionRequest;
+import io.brane.core.types.Wei;
+
+TransactionRequest request = new TransactionRequest(
+    wallet.getAddress(), // from
+    recipient,           // to
+    Wei.fromEther("1"),  // value
+    // ... other fields
+);
+
+// Send and wait for confirmation
+TransactionReceipt receipt = walletClient.sendTransactionAndWait(
+    request, 
+    60000, 
+    1000
+);
+```
+
+## Parameters
+
+### request
+- **Type:** `TransactionRequest`
+
+The transaction request object.
+
+### timeoutMillis
+- **Type:** `long`
+
+Maximum time to wait for the transaction to be mined (in milliseconds).
+
+### pollIntervalMillis
+- **Type:** `long`
+
+Interval between polling for the transaction receipt (in milliseconds).
+
+## Returns
+
+- **Type:** `TransactionReceipt`
+
+The transaction receipt, containing the transaction hash, block number, and status.
+
+## JSON-RPC
+
+Invokes `eth_sendRawTransaction`.
