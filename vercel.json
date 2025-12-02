@@ -1,5 +1,0 @@
-{
-    "buildCommand": "./vercel-build.sh",
-    "outputDirectory": "website/.next",
-    "framework": "nextjs"
-}

@@ -179,6 +179,18 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Creates an instance of a <code>ArraySchema</code> record class.</div>
 </dd>
+<dt><a href="io/brane/primitives/rlp/RlpString.html#asBigInteger()" class="member-name-link">asBigInteger()</a> - Method in class io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/RlpString.html" title="class in io.brane.primitives.rlp">RlpString</a></dt>
+<dd>
+<div class="block">Converts this RLP string to a <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link"><code>BigInteger</code></a>.</div>
+</dd>
+<dt><a href="io/brane/primitives/rlp/RlpString.html#asHexString()" class="member-name-link">asHexString()</a> - Method in class io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/RlpString.html" title="class in io.brane.primitives.rlp">RlpString</a></dt>
+<dd>
+<div class="block">Returns the hex string representation of the underlying bytes.</div>
+</dd>
+<dt><a href="io/brane/primitives/rlp/RlpString.html#asLong()" class="member-name-link">asLong()</a> - Method in class io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/RlpString.html" title="class in io.brane.primitives.rlp">RlpString</a></dt>
+<dd>
+<div class="block">Converts this RLP string to a long value.</div>
+</dd>
 </dl>
 <h2 class="title" id="I:B">B</h2>
 <dl class="index">
@@ -653,6 +665,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeBool(boolean,java.nio.ByteBuffer)" class="member-name-link">encodeBool(boolean, ByteBuffer)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
 <dd>
 <div class="block">Encodes a boolean value directly into the buffer.</div>
+</dd>
+<dt><a href="io/brane/primitives/Hex.html#encodeByte(int)" class="member-name-link">encodeByte(int)</a> - Static method in class io.brane.primitives.<a href="io/brane/primitives/Hex.html" title="class in io.brane.primitives">Hex</a></dt>
+<dd>
+<div class="block">Convert a single byte value (0x00-0xFF) into a lowercase hex string with <code>0x</code> prefix.</div>
 </dd>
 <dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeBytes(io.brane.core.abi.Bytes,java.nio.ByteBuffer)" class="member-name-link">encodeBytes(Bytes, ByteBuffer)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
 <dd>
@@ -2093,6 +2109,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/brane/core/types/HexData.html#toBytes()" class="member-name-link">toBytes()</a> - Method in class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
 <dd>
 <div class="block">Decodes this hex data into raw bytes.</div>
+</dd>
+<dt><a href="io/brane/primitives/Hex.html#toBytes(java.lang.Object)" class="member-name-link">toBytes(Object)</a> - Static method in class io.brane.primitives.<a href="io/brane/primitives/Hex.html" title="class in io.brane.primitives">Hex</a></dt>
+<dd>
+<div class="block">Convert input to a byte array.</div>
 </dd>
 <dt><a href="io/brane/core/types/Wei.html#toEther()" class="member-name-link">toEther()</a> - Method in record class io.brane.core.types.<a href="io/brane/core/types/Wei.html" title="class in io.brane.core.types">Wei</a></dt>
 <dd>&nbsp;</dd>

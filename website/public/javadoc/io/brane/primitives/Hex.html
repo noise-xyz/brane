@@ -122,15 +122,25 @@ loadScripts(document, 'script');</script>
 <div class="block">Convert a byte array into a lowercase hex string with a <code>0x</code> prefix.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#encodeNoPrefix(byte%5B%5D)" class="member-name-link">encodeNoPrefix</a><wbr>(byte[]&nbsp;bytes)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#encodeByte(int)" class="member-name-link">encodeByte</a><wbr>(int&nbsp;value)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Convert a single byte value (0x00-0xFF) into a lowercase hex string with <code>0x</code> prefix.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#encodeNoPrefix(byte%5B%5D)" class="member-name-link">encodeNoPrefix</a><wbr>(byte[]&nbsp;bytes)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Convert a byte array into a lowercase hex string without a <code>0x</code> prefix.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#hasPrefix(java.lang.String)" class="member-name-link">hasPrefix</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;hexString)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#hasPrefix(java.lang.String)" class="member-name-link">hasPrefix</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;hexString)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Returns <code>true</code> if the provided string starts with <code>0x</code>
  (case-insensitive).</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static byte[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#toBytes(java.lang.Object)" class="member-name-link">toBytes</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;input)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Convert input to a byte array.</div>
 </div>
 </div>
 </div>
@@ -162,6 +172,22 @@ loadScripts(document, 'script');</script>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if the input is null, has an odd number of
                                   characters, or contains invalid hex</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="encodeByte(int)">
+<h3>encodeByte</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">encodeByte</span><wbr><span class="parameters">(int&nbsp;value)</span></div>
+<div class="block">Convert a single byte value (0x00-0xFF) into a lowercase hex string with <code>0x</code> prefix.
+ This is useful for debugging RLP data where individual bytes need to be displayed.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>value</code> - the byte value (0-255)</dd>
+<dt>Returns:</dt>
+<dd>hex string with <code>0x</code> prefix, always 4 characters (e.g., "0x0f")</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if <code>value</code> is outside the range 0-255</dd>
 </dl>
 </section>
 </li>
@@ -221,6 +247,27 @@ loadScripts(document, 'script');</script>
 <dd><code>hexString</code> - the string to check</dd>
 <dt>Returns:</dt>
 <dd><code>true</code> when the prefix is present</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="toBytes(java.lang.Object)">
+<h3>toBytes</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="element-name">toBytes</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;input)</span></div>
+<div class="block">Convert input to a byte array. Accepts either a hex <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link"><code>String</code></a> (with or without
+ <code>0x</code> prefix) or a <code>byte[]</code>.
+ <p>
+ This mirrors the ethers.js <code>getBytes()</code> function for flexible input handling.
+ <p>
+ <strong>Note:</strong> When the input is already a <code>byte[]</code>, the same array
+ reference is returned without copying. Callers must not modify the returned array.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>input</code> - the input to convert (String or byte[])</dd>
+<dt>Returns:</dt>
+<dd>the resulting byte array (same reference if input is byte[])</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if input is null or not a supported type</dd>
 </dl>
 </section>
 </li>
