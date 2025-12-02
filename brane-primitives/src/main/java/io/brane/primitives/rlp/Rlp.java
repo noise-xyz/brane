@@ -208,11 +208,8 @@ public final class Rlp {
             final byte[] data, final int offset, final int length, final int headerSize) {
 
         final int start = offset + headerSize;
-        final int end = start + length;
-
-        if (end > data.length) {
-            throw new IllegalArgumentException("Invalid RLP string length");
-        }
+        checkBounds(data, start, length, String.format("string (prefix=0x%02X, length=%d)",
+                data[offset] & 0xFF, length));
 
         final byte[] value = new byte[length];
         System.arraycopy(data, start, value, 0, length);
@@ -227,24 +224,20 @@ public final class Rlp {
             final byte[] data, final int offset, final int lengthOfLength) {
 
         final int lengthStart = offset + 1;
-        final int lengthEnd = lengthStart + lengthOfLength;
-
-        if (lengthEnd > data.length) {
-            throw new IllegalArgumentException("Invalid RLP long string length");
-        }
+        checkBounds(data, lengthStart, lengthOfLength,
+                String.format("long string length field (prefix=0x%02X)", data[offset] & 0xFF));
 
         final int length = readLength(data, lengthStart, lengthOfLength);
 
         if (length < 56) {
-            throw new IllegalArgumentException("Non-minimal length encoding for string");
+            throw new IllegalArgumentException(
+                    String.format("Non-minimal length encoding for string: length=%d < 56 (prefix=0x%02X)",
+                            length, data[offset] & 0xFF));
         }
 
-        final int valueStart = lengthEnd;
-        final int valueEnd = valueStart + length;
-
-        if (valueEnd > data.length) {
-            throw new IllegalArgumentException("Invalid RLP string length");
-        }
+        final int valueStart = lengthStart + lengthOfLength;
+        checkBounds(data, valueStart, length,
+                String.format("long string payload (prefix=0x%02X, length=%d)", data[offset] & 0xFF, length));
 
         final byte[] value = new byte[length];
         System.arraycopy(data, valueStart, value, 0, length);
@@ -259,16 +252,17 @@ public final class Rlp {
             final byte[] data, final int offset, final int length, final int headerSize) {
 
         final int start = offset + headerSize;
-        final int end = start + length;
+        checkBounds(data, start, length,
+                String.format("list (prefix=0x%02X, length=%d)", data[offset] & 0xFF, length));
 
-        if (end > data.length) {
-            throw new IllegalArgumentException("Invalid RLP list length");
-        }
-
-        final int estimatedItems = Math.max(1, Math.min(8, length));
+        // Improved capacity estimation: assume average item is ~3 bytes (typical case: 1-byte header + 2-byte payload).
+        // Note: very small values (0-127) in RLP are encoded as a single byte with no header, so the actual average may be lower.
+        // Cap at 16 to avoid over-allocation for large lists
+        final int estimatedItems = Math.max(1, Math.min(length / 3, 16));
         final List<RlpItem> items = new ArrayList<>(estimatedItems);
 
         int currentOffset = start;
+        final int end = start + length;
         while (currentOffset < end) {
             final DecodeResult child = decode(data, currentOffset);
             items.add(child.item);
@@ -276,7 +270,9 @@ public final class Rlp {
         }
 
         if (currentOffset != end) {
-            throw new IllegalArgumentException("RLP list length mismatch");
+            throw new IllegalArgumentException(
+                    String.format("RLP list length mismatch: expected end=%d, actual=%d (prefix=0x%02X)",
+                            end, currentOffset, data[offset] & 0xFF));
         }
 
         return new DecodeResult(new RlpList(items), headerSize + length);
@@ -289,16 +285,15 @@ public final class Rlp {
             final byte[] data, final int offset, final int lengthOfLength) {
 
         final int lengthStart = offset + 1;
-        final int lengthEnd = lengthStart + lengthOfLength;
-
-        if (lengthEnd > data.length) {
-            throw new IllegalArgumentException("Invalid RLP long list length");
-        }
+        checkBounds(data, lengthStart, lengthOfLength,
+                String.format("long list length field (prefix=0x%02X)", data[offset] & 0xFF));
 
         final int length = readLength(data, lengthStart, lengthOfLength);
 
         if (length < 56) {
-            throw new IllegalArgumentException("Non-minimal length encoding for list");
+            throw new IllegalArgumentException(
+                    String.format("Non-minimal length encoding for list: length=%d < 56 (prefix=0x%02X)",
+                            length, data[offset] & 0xFF));
         }
 
         return decodeList(data, offset, length, 1 + lengthOfLength);
@@ -379,6 +374,24 @@ public final class Rlp {
                 buffer[offset + 3] = (byte) value;
             }
             default -> throw new IllegalArgumentException("Unsupported length size: " + size);
+        }
+    }
+
+    /**
+     * Validates that the data buffer has sufficient bytes available from the given offset.
+     * Throws a descriptive exception if bounds are exceeded.
+     *
+     * @param data the data buffer
+     * @param offset the current offset
+     * @param required the number of bytes required
+     * @param context descriptive context for the error message
+     */
+    private static void checkBounds(
+            final byte[] data, final int offset, final int required, final String context) {
+        if (required < 0 || offset < 0 || offset > data.length - required) {
+            throw new IllegalArgumentException(
+                    String.format("Invalid RLP %s: offset=%d, required=%d, available=%d",
+                            context, offset, required, Math.max(0, data.length - offset)));
         }
     }
 
