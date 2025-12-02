@@ -1,0 +1,67 @@
+---
+title: Type-Safe Bindings
+description: 'Generate Java interfaces for your contracts.'
+---
+
+# Type-Safe Bindings
+
+Brane allows you to bind smart contracts to Java interfaces, providing a type-safe and IDE-friendly way to interact with them.
+
+## 1. Define Interface
+
+Create a Java interface that mirrors your Solidity contract.
+
+```java
+import io.brane.core.types.Address;
+import io.brane.core.model.TransactionReceipt;
+import java.math.BigInteger;
+
+public interface Erc20 {
+    // View function
+    BigInteger balanceOf(Address account);
+
+    // State-changing function
+    TransactionReceipt transfer(Address to, BigInteger amount);
+}
+```
+
+## 2. Bind Contract
+
+Use `BraneContract.bind` to create an instance of your interface.
+
+```java
+import io.brane.contract.BraneContract;
+
+Erc20 token = BraneContract.bind(
+    new Address("0x..."), 
+    abiJson, 
+    publicClient, 
+    walletClient, 
+    Erc20.class
+);
+```
+
+## 3. Interact
+
+Call methods directly on the interface.
+
+```java
+// Read
+BigInteger balance = token.balanceOf(myAddress);
+
+// Write
+TransactionReceipt receipt = token.transfer(recipient, amount);
+```
+
+## Supported Types
+
+The binding system automatically maps Solidity types to Java types:
+
+| Solidity | Java |
+| --- | --- |
+| `uint256`, `int256` | `java.math.BigInteger` |
+| `address` | `io.brane.core.types.Address` |
+| `bool` | `java.lang.Boolean` |
+| `string` | `java.lang.String` |
+| `bytes` | `io.brane.core.types.HexData` |
+| `uint8`...`uint64` | `java.math.BigInteger` |

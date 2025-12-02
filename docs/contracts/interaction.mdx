@@ -1,0 +1,74 @@
+---
+title: Interaction
+description: 'Reading and writing to smart contracts.'
+---
+
+# Smart Contract Interaction
+
+Brane provides two primary classes for interacting with smart contracts: `ReadOnlyContract` and `ReadWriteContract`.
+
+## ReadOnlyContract
+
+Used for calling `pure` and `view` functions. It requires a `PublicClient`.
+
+```java
+import io.brane.contract.ReadOnlyContract;
+import io.brane.contract.Abi;
+
+// 1. Load ABI
+Abi abi = Abi.fromJson(jsonString);
+
+// 2. Create Contract
+ReadOnlyContract contract = ReadOnlyContract.from(
+    new Address("0x..."), 
+    abi, 
+    publicClient
+);
+
+// 3. Call Function
+// call(methodName, ReturnType.class, args...)
+BigInteger balance = contract.call("balanceOf", BigInteger.class, ownerAddress);
+```
+
+## ReadWriteContract
+
+Used for state-changing transactions. It requires both a `PublicClient` and a `WalletClient`.
+
+```java
+import io.brane.contract.ReadWriteContract;
+
+ReadWriteContract contract = ReadWriteContract.from(
+    new Address("0x..."), 
+    abi, 
+    publicClient, 
+    walletClient
+);
+
+// Send Transaction and Wait
+// sendAndWait(methodName, timeoutMs, pollIntervalMs, args...)
+TransactionReceipt receipt = contract.sendAndWait(
+    "transfer", 
+    60_000, 
+    1_000, 
+    recipientAddress, 
+    amount
+);
+```
+
+## Deploying Contracts
+
+You can deploy contracts using `BraneContract.deployRequest`.
+
+```java
+import io.brane.contract.BraneContract;
+
+TransactionRequest deployRequest = BraneContract.deployRequest(
+    abiJson,
+    bytecodeHex,
+    constructorArg1,
+    constructorArg2
+);
+
+TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployRequest, 60_000, 1_000);
+Address newContractAddress = new Address(receipt.contractAddress().value());
+```
