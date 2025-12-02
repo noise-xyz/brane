@@ -19,7 +19,6 @@ import io.brane.core.types.Hash;
  * <li>Transaction signing</li>
  * <li>Transaction submission via {@code eth_sendRawTransaction}</li>
  * </ul>
- * 
  * <p>
  * <strong>Transaction Lifecycle:</strong>
  * <ol>
@@ -30,7 +29,6 @@ import io.brane.core.types.Hash;
  * <li>Optionally call {@link #sendTransactionAndWait} to submit and wait for
  * confirmation</li>
  * </ol>
- * 
  * <p>
  * <strong>Usage Example:</strong>
  * 
@@ -38,7 +36,7 @@ import io.brane.core.types.Hash;
  * WalletClient client = BraneWalletClient.forChain(ChainProfiles.MAINNET)
  *         .withPrivateKey("0x...")
  *         .build();
- * 
+ *
  * // Simple transfer
  * TransactionRequest transfer = new TransactionRequest(
  *         myAddress, // from
@@ -49,22 +47,21 @@ import io.brane.core.types.Hash;
  *         true, // EIP-1559
  *         null // access list
  * );
- * 
+ *
  * // Send and wait for confirmation
  * TransactionReceipt receipt = client.sendTransactionAndWait(
  *         transfer,
  *         60_000, // timeout: 60 seconds
  *         1_000 // poll every 1 second
  * );
- * 
+ *
  * if (receipt.status()) {
  *     System.out.println("✓ Transaction confirmed in block " + receipt.blockNumber());
  * }
  * }</pre>
- * 
+ *
  * @see TransactionRequest
  * @see TransactionReceipt
- * @see DefaultWalletClient
  */
 public interface WalletClient {
 

@@ -6,7 +6,18 @@ import java.math.RoundingMode;
 import java.util.Objects;
 
 /**
- * Represents a quantity in wei.
+ * Represents a quantity in Wei (10^-18 Ether).
+ * <p>
+ * This is the smallest denomination of Ether.
+ * <p>
+ * <strong>Common Conversions:</strong>
+ * <ul>
+ * <li>1 Ether = 10^18 Wei</li>
+ * <li>1 Gwei = 10^9 Wei</li>
+ * </ul>
+ * <p>
+ * Use {@link #fromEther(BigDecimal)} and {@link #toEther()} for convenient
+ * conversions.
  */
 public record Wei(BigInteger value) {
     private static final BigDecimal WEI_PER_ETHER = BigDecimal.TEN.pow(18);

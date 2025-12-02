@@ -25,6 +25,18 @@ import java.util.List;
  * without allocating temporary padding arrays.</li>
  * </ul>
  * <p>
+ * Supported types:
+ * <ul>
+ * <li>{@link io.brane.core.abi.UInt} (uint8 - uint256)</li>
+ * <li>{@link io.brane.core.abi.Int} (int8 - int256)</li>
+ * <li>{@link io.brane.core.abi.AddressType}</li>
+ * <li>{@link io.brane.core.abi.Bool}</li>
+ * <li>{@link io.brane.core.abi.Bytes} (static and dynamic)</li>
+ * <li>{@link io.brane.core.abi.Utf8String}</li>
+ * <li>{@link io.brane.core.abi.Array} (static and dynamic)</li>
+ * <li>{@link io.brane.core.abi.Tuple}</li>
+ * </ul>
+ * <p>
  * This class is thread-safe as it contains no mutable state.
  */
 public final class FastAbiEncoder {

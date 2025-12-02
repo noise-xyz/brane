@@ -6,7 +6,15 @@ import java.util.Objects;
 import java.util.regex.Pattern;
 
 /**
- * Hex-encoded 32-byte hash.
+ * Hex-encoded 32-byte hash (Keccak-256).
+ * <p>
+ * Used for transaction hashes, block hashes, and topic filters.
+ * <p>
+ * <strong>Validation:</strong>
+ * <ul>
+ * <li>Must start with "0x"</li>
+ * <li>Must be exactly 64 hex characters long (32 bytes)</li>
+ * </ul>
  */
 public record Hash(String value) {
     private static final Pattern HEX = Pattern.compile("^0x[0-9a-fA-F]{64}$");

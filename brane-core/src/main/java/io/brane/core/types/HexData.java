@@ -7,7 +7,6 @@ import java.util.regex.Pattern;
 
 /**
  * Represents arbitrary-length hexadecimal-encoded byte data with "0x" prefix.
- * 
  * <p>
  * This type is commonly used for:
  * <ul>
@@ -16,7 +15,6 @@ import java.util.regex.Pattern;
  * <li>Function selectors and encoded arguments</li>
  * <li>Contract addresses (when deployed)</li>
  * </ul>
- * 
  * <p>
  * <strong>Validation:</strong> The value must:
  * <ul>
@@ -24,39 +22,37 @@ import java.util.regex.Pattern;
  * <li>Contain only hex characters (0-9, a-f, A-F)</li>
  * <li>Have an even number of hex digits (each byte = 2 hex chars)</li>
  * </ul>
- * 
  * <p>
  * <strong>Example usage:</strong>
  * 
- * <pre>
- * {@code
+ * <pre>{@code
  * // Empty data
  * HexData empty = HexData.EMPTY;
- * 
+ *
  * // From hex string
  * HexData data = new HexData("0x1234abcd");
- * 
+ *
  * // From bytes
  * byte[] bytes = { 0x12, 0x34 };
  * HexData fromBytes = HexData.fromBytes(bytes);
- * 
+ *
  * // Convert back to bytes
  * byte[] decoded = data.toBytes();
  * }</pre>
  * <p>
- * An immutable wrapper for hexadecimal data.
+ * <strong>Performance:</strong>
  * <p>
- * This class provides a type-safe way to handle hex strings and byte arrays,
- * ensuring correct formatting (0x prefix)
- * and efficient conversions. It supports both "lazy" validation (for trusted
- * internal data) and strict validation
- * (for user input).
+ * This class is designed to be immutable and efficient. It supports lazy
+ * initialization
+ * of the hex string representation when created from raw bytes, avoiding
+ * unnecessary
+ * string allocations in hot paths (like RLP encoding).
  * <p>
  * Key features:
  * <ul>
  * <li><b>Immutable</b>: Thread-safe and safe to share across components.</li>
- * <li><b>Efficient</b>: Avoids unnecessary string/byte conversions until
- * needed.</li>
+ * <li><b>Lazy String Generation</b>: Defers hex encoding until {@link #value()}
+ * is called.</li>
  * <li><b>Zero-Copy Encoding</b>: Can write directly to a
  * {@link java.nio.ByteBuffer} via {@link #putTo(java.nio.ByteBuffer)}.</li>
  * </ul>
