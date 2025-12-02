@@ -15,7 +15,7 @@ export default function Home() {
 
         <div className="grid w-full max-w-lg grid-cols-1 gap-4 sm:grid-cols-2">
           <a
-            href="/docs"
+            href="https://docs.brane.sh"
             className="flex h-12 items-center justify-center rounded-full bg-blue-600 px-6 font-medium text-white transition-colors hover:bg-blue-700"
           >
             Documentation
