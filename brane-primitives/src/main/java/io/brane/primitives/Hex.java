@@ -72,7 +72,12 @@ public final class Hex {
         if (value < 0 || value > 0xFF) {
             throw new IllegalArgumentException("Byte value must be in range 0-255: " + value);
         }
-        return "0x" + HEX_CHARS[(value >>> 4) & 0x0F] + HEX_CHARS[value & 0x0F];
+        final char[] chars = new char[4];
+        chars[0] = '0';
+        chars[1] = 'x';
+        chars[2] = HEX_CHARS[(value >>> 4) & 0x0F];
+        chars[3] = HEX_CHARS[value & 0x0F];
+        return new String(chars);
     }
 
     /**
@@ -152,9 +157,12 @@ public final class Hex {
      * {@code 0x} prefix) or a {@code byte[]}.
      * <p>
      * This mirrors the ethers.js {@code getBytes()} function for flexible input handling.
+     * <p>
+     * <strong>Note:</strong> When the input is already a {@code byte[]}, the same array
+     * reference is returned without copying. Callers must not modify the returned array.
      *
      * @param input the input to convert (String or byte[])
-     * @return the resulting byte array
+     * @return the resulting byte array (same reference if input is byte[])
      * @throws IllegalArgumentException if input is null or not a supported type
      */
     public static byte[] toBytes(final Object input) {

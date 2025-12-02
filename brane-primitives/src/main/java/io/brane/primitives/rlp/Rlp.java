@@ -255,7 +255,8 @@ public final class Rlp {
         checkBounds(data, start, length,
                 String.format("list (prefix=0x%02X, length=%d)", data[offset] & 0xFF, length));
 
-        // Improved capacity estimation: assume average item is ~3 bytes (1 header + small payload)
+        // Improved capacity estimation: assume average item is ~3 bytes (typical case: 1-byte header + 2-byte payload).
+        // Note: very small values (0-127) in RLP are encoded as a single byte with no header, so the actual average may be lower.
         // Cap at 16 to avoid over-allocation for large lists
         final int estimatedItems = Math.max(1, Math.min(length / 3, 16));
         final List<RlpItem> items = new ArrayList<>(estimatedItems);
@@ -387,10 +388,10 @@ public final class Rlp {
      */
     private static void checkBounds(
             final byte[] data, final int offset, final int required, final String context) {
-        if (offset + required > data.length) {
+        if (required < 0 || offset < 0 || offset > data.length - required) {
             throw new IllegalArgumentException(
                     String.format("Invalid RLP %s: offset=%d, required=%d, available=%d",
-                            context, offset, required, data.length - offset));
+                            context, offset, required, Math.max(0, data.length - offset)));
         }
     }
 

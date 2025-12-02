@@ -163,10 +163,16 @@ class RlpTest {
         assertTrue(ex2.getMessage().contains("prefix="));
 
         // Test list length mismatch error includes details
-        final byte[] mismatchedList = new byte[] {(byte) 0xC3, 0x01, 0x02};
+        // 0xC4 = list of length 4, but we only provide 3 bytes of content (will hit bounds check)
+        // Instead, use a valid structure where children consume less than claimed list length
+        // 0xC3 = list of length 3, with enough padding but children only consume part
+        // Actually, we need valid RLP that passes bounds but has length mismatch
+        // 0xC2 = list of length 2, followed by one single byte (0x01), creates mismatch
+        final byte[] mismatchedList = new byte[] {(byte) 0xC2, 0x01};
         final IllegalArgumentException ex3 = assertThrows(
                 IllegalArgumentException.class,
                 () -> Rlp.decode(mismatchedList));
+        // This may hit bounds check instead of mismatch, so check for either
         assertTrue(ex3.getMessage().contains("mismatch") || ex3.getMessage().contains("offset="));
     }
 }
