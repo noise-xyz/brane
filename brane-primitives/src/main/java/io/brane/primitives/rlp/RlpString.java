@@ -146,6 +146,59 @@ public final class RlpString implements RlpItem {
     }
 
     /**
+     * Converts this RLP string to a long value.
+     * The bytes are interpreted as a big-endian unsigned integer.
+     * <p>
+     * For values exceeding {@link Long#MAX_VALUE}, use {@link #asBigInteger()} instead.
+     *
+     * @return the long value
+     * @throws IllegalArgumentException if the value is too large for a long (> 8 bytes)
+     *         or exceeds {@link Long#MAX_VALUE}
+     */
+    public long asLong() {
+        if (bytes.length == 0) {
+            return 0L;
+        }
+        if (bytes.length > 8) {
+            throw new IllegalArgumentException(
+                    String.format("Value too large for long: %d bytes (max 8)", bytes.length));
+        }
+        // Reject values that would overflow into negative territory
+        if (bytes.length == 8 && (bytes[0] & 0x80) != 0) {
+            throw new IllegalArgumentException(
+                    "Value exceeds Long.MAX_VALUE, use asBigInteger() instead");
+        }
+        long result = 0L;
+        for (final byte b : bytes) {
+            result = (result << 8) | (b & 0xFF);
+        }
+        return result;
+    }
+
+    /**
+     * Converts this RLP string to a {@link BigInteger}.
+     * The bytes are interpreted as a big-endian unsigned integer.
+     *
+     * @return the {@link BigInteger} value
+     */
+    public BigInteger asBigInteger() {
+        if (bytes.length == 0) {
+            return BigInteger.ZERO;
+        }
+        return new BigInteger(1, bytes);
+    }
+
+    /**
+     * Returns the hex string representation of the underlying bytes.
+     * The result is prefixed with "0x".
+     *
+     * @return hex string with "0x" prefix
+     */
+    public String asHexString() {
+        return Hex.encode(bytes);
+    }
+
+    /**
      * Convert a long to its minimal RLP byte representation.
      */
     private static byte[] longToMinimalBytes(final long value) {

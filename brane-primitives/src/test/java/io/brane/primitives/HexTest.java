@@ -67,4 +67,77 @@ class HexTest {
         assertArrayEquals(values1, Hex.decode(Hex.encode(values1)));
         assertArrayEquals(values2, Hex.decode(Hex.encode(values2)));
     }
+
+    @Test
+    @DisplayName("encodeByte produces correct 0x-prefixed hex for single bytes")
+    void testEncodeByte() {
+        // Boundary values
+        assertEquals("0x00", Hex.encodeByte(0x00));
+        assertEquals("0x7f", Hex.encodeByte(0x7F));
+        assertEquals("0x80", Hex.encodeByte(0x80));
+        assertEquals("0xff", Hex.encodeByte(0xFF));
+
+        // Common values
+        assertEquals("0x01", Hex.encodeByte(0x01));
+        assertEquals("0x0f", Hex.encodeByte(0x0F));
+        assertEquals("0x10", Hex.encodeByte(0x10));
+        assertEquals("0xab", Hex.encodeByte(0xAB));
+
+        // RLP-relevant prefixes
+        assertEquals("0xb7", Hex.encodeByte(0xB7)); // Long string prefix base
+        assertEquals("0xc0", Hex.encodeByte(0xC0)); // Empty list
+        assertEquals("0xf7", Hex.encodeByte(0xF7)); // Long list prefix base
+    }
+
+    @Test
+    @DisplayName("encodeByte rejects out-of-range values")
+    void testEncodeByteInvalid() {
+        assertThrows(IllegalArgumentException.class, () -> Hex.encodeByte(-1));
+        assertThrows(IllegalArgumentException.class, () -> Hex.encodeByte(256));
+        assertThrows(IllegalArgumentException.class, () -> Hex.encodeByte(0x100));
+        assertThrows(IllegalArgumentException.class, () -> Hex.encodeByte(Integer.MAX_VALUE));
+    }
+
+    @Test
+    @DisplayName("toBytes accepts String input with or without 0x prefix")
+    void testToBytesString() {
+        assertArrayEquals(new byte[] {}, Hex.toBytes("0x"));
+        assertArrayEquals(new byte[] {}, Hex.toBytes(""));
+        assertArrayEquals(new byte[] {0x0A, (byte) 0xBC}, Hex.toBytes("0x0abc"));
+        assertArrayEquals(new byte[] {0x0A, (byte) 0xBC}, Hex.toBytes("0abc"));
+        assertArrayEquals(new byte[] {(byte) 0xFF}, Hex.toBytes("0xFF"));
+    }
+
+    @Test
+    @DisplayName("toBytes passes through byte[] unchanged")
+    void testToBytesByteArray() {
+        byte[] original = new byte[] {0x01, 0x02, 0x03};
+        assertSame(original, Hex.toBytes(original)); // Same reference, no copy
+
+        byte[] empty = new byte[] {};
+        assertSame(empty, Hex.toBytes(empty));
+    }
+
+    @Test
+    @DisplayName("toBytes rejects null and unsupported types")
+    void testToBytesInvalid() {
+        assertThrows(IllegalArgumentException.class, () -> Hex.toBytes(null));
+        assertThrows(IllegalArgumentException.class, () -> Hex.toBytes(123));
+        assertThrows(IllegalArgumentException.class, () -> Hex.toBytes(new Object()));
+
+        // Invalid hex string should still throw
+        assertThrows(IllegalArgumentException.class, () -> Hex.toBytes("0xzz"));
+    }
+
+    @Test
+    @DisplayName("toBytes round-trip with encode")
+    void testToBytesRoundTrip() {
+        byte[] original = new byte[] {0x00, 0x7F, (byte) 0x80, (byte) 0xFF};
+        String hex = Hex.encode(original);
+        assertArrayEquals(original, Hex.toBytes(hex));
+
+        // Also works with encodeNoPrefix
+        String noPrefix = Hex.encodeNoPrefix(original);
+        assertArrayEquals(original, Hex.toBytes(noPrefix));
+    }
 }

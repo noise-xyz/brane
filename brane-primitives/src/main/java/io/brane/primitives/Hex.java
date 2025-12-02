@@ -61,6 +61,21 @@ public final class Hex {
     }
 
     /**
+     * Convert a single byte value (0x00-0xFF) into a lowercase hex string with {@code 0x} prefix.
+     * This is useful for debugging RLP data where individual bytes need to be displayed.
+     *
+     * @param value the byte value (0-255)
+     * @return hex string with {@code 0x} prefix, always 4 characters (e.g., "0x0f")
+     * @throws IllegalArgumentException if {@code value} is outside the range 0-255
+     */
+    public static String encodeByte(final int value) {
+        if (value < 0 || value > 0xFF) {
+            throw new IllegalArgumentException("Byte value must be in range 0-255: " + value);
+        }
+        return "0x" + HEX_CHARS[(value >>> 4) & 0x0F] + HEX_CHARS[value & 0x0F];
+    }
+
+    /**
      * Convert a byte array into a lowercase hex string with a {@code 0x} prefix.
      *
      * @param bytes the bytes to encode
@@ -130,6 +145,30 @@ public final class Hex {
                 && hexString.length() >= 2
                 && hexString.charAt(0) == '0'
                 && (hexString.charAt(1) == 'x' || hexString.charAt(1) == 'X');
+    }
+
+    /**
+     * Convert input to a byte array. Accepts either a hex {@link String} (with or without
+     * {@code 0x} prefix) or a {@code byte[]}.
+     * <p>
+     * This mirrors the ethers.js {@code getBytes()} function for flexible input handling.
+     *
+     * @param input the input to convert (String or byte[])
+     * @return the resulting byte array
+     * @throws IllegalArgumentException if input is null or not a supported type
+     */
+    public static byte[] toBytes(final Object input) {
+        if (input == null) {
+            throw new IllegalArgumentException("Input cannot be null");
+        }
+        if (input instanceof byte[] bytes) {
+            return bytes;
+        }
+        if (input instanceof String hex) {
+            return decode(hex);
+        }
+        throw new IllegalArgumentException(
+                "Unsupported input type: " + input.getClass().getName() + ". Expected String or byte[]");
     }
 
     private static int toNibble(final char c, final String originalInput) {

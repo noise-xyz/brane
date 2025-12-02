@@ -91,4 +91,82 @@ class RlpTest {
         final byte[] invalidLength = new byte[] {(byte) 0xB8, 0x01, 0x00};
         assertThrows(IllegalArgumentException.class, () -> Rlp.decode(invalidLength));
     }
+
+    @Test
+    @DisplayName("Test RlpString convenience extractors")
+    void testConvenienceExtractors() {
+        // Test asLong() - valid range
+        assertEquals(0L, RlpString.of(new byte[] {}).asLong());
+        assertEquals(15L, RlpString.of(15L).asLong());
+        assertEquals(1024L, RlpString.of(1024L).asLong());
+        assertEquals(Long.MAX_VALUE, RlpString.of(Long.MAX_VALUE).asLong());
+
+        // Test asLong() error for values with too many bytes (> 8)
+        final byte[] tooLarge = new byte[9];
+        Arrays.fill(tooLarge, (byte) 0xFF);
+        final RlpString tooLargeString = RlpString.of(tooLarge);
+        final IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                tooLargeString::asLong);
+        assertTrue(ex.getMessage().contains("too large for long"));
+
+        // Test asLong() error for values exceeding Long.MAX_VALUE
+        // 0x8000000000000000 = Long.MIN_VALUE if interpreted as signed
+        final byte[] exceedsMax = new byte[] {(byte) 0x80, 0, 0, 0, 0, 0, 0, 0};
+        final IllegalArgumentException ex2 = assertThrows(
+                IllegalArgumentException.class,
+                () -> RlpString.of(exceedsMax).asLong());
+        assertTrue(ex2.getMessage().contains("exceeds Long.MAX_VALUE"));
+        assertTrue(ex2.getMessage().contains("asBigInteger"));
+
+        // Verify the boundary: Long.MAX_VALUE works, but Long.MAX_VALUE + 1 fails
+        final byte[] maxValue = new byte[] {0x7F, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF,
+                                             (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
+        assertEquals(Long.MAX_VALUE, RlpString.of(maxValue).asLong());
+
+        final byte[] maxPlusOne = new byte[] {(byte) 0x80, 0, 0, 0, 0, 0, 0, 0};
+        assertThrows(IllegalArgumentException.class, () -> RlpString.of(maxPlusOne).asLong());
+
+        // Test asBigInteger() - handles values beyond Long.MAX_VALUE
+        assertEquals(BigInteger.ZERO, RlpString.of(new byte[] {}).asBigInteger());
+        assertEquals(BigInteger.valueOf(1024), RlpString.of(1024L).asBigInteger());
+        final BigInteger large = new BigInteger("123456789012345678901234567890");
+        assertEquals(large, RlpString.of(large).asBigInteger());
+
+        // Verify asBigInteger() works for values that asLong() rejects
+        assertEquals(new BigInteger("9223372036854775808"), RlpString.of(exceedsMax).asBigInteger());
+
+        // Test asHexString()
+        assertEquals("0x", RlpString.of(new byte[] {}).asHexString());
+        assertEquals("0x0f", RlpString.of(new byte[] {0x0f}).asHexString());
+        assertEquals("0x0400", RlpString.of(1024L).asHexString());
+    }
+
+    @Test
+    @DisplayName("Test enhanced error messages with context")
+    void testEnhancedErrorMessages() {
+        // Test bounds check error message includes context
+        final byte[] invalidStringLength = new byte[] {(byte) 0x85, 0x01, 0x02};
+        final IllegalArgumentException ex1 = assertThrows(
+                IllegalArgumentException.class,
+                () -> Rlp.decode(invalidStringLength));
+        assertTrue(ex1.getMessage().contains("offset="));
+        assertTrue(ex1.getMessage().contains("required="));
+        assertTrue(ex1.getMessage().contains("available="));
+
+        // Test non-minimal encoding error includes details
+        final byte[] nonMinimalString = new byte[] {(byte) 0xB8, 0x30, 0x01};
+        final IllegalArgumentException ex2 = assertThrows(
+                IllegalArgumentException.class,
+                () -> Rlp.decode(nonMinimalString));
+        assertTrue(ex2.getMessage().contains("Non-minimal"));
+        assertTrue(ex2.getMessage().contains("prefix="));
+
+        // Test list length mismatch error includes details
+        final byte[] mismatchedList = new byte[] {(byte) 0xC3, 0x01, 0x02};
+        final IllegalArgumentException ex3 = assertThrows(
+                IllegalArgumentException.class,
+                () -> Rlp.decode(mismatchedList));
+        assertTrue(ex3.getMessage().contains("mismatch") || ex3.getMessage().contains("offset="));
+    }
 }
