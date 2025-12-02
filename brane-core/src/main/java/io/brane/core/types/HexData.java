@@ -72,6 +72,8 @@ public final class HexData {
      * Creates a HexData from a hex string.
      *
      * @param value the hex-encoded string with "0x" prefix
+     * @throws NullPointerException     if value is null
+     * @throws IllegalArgumentException if value is not valid hex data
      */
     public HexData(String value) {
         Objects.requireNonNull(value, "hex");
