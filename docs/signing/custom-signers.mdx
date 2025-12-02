@@ -86,10 +86,15 @@ ExternalService service = ...;
 
 TransactionSigner mySigner = new RemoteSigner("key-123", service);
 
+import io.brane.core.chain.ChainProfiles;
+
+// ...
+
 WalletClient wallet = DefaultWalletClient.create(
     provider,
     publicClient,
     mySigner,
-    new Address("0x...") // The address corresponding to the remote key
+    new Address("0x..."), // The address corresponding to the remote key
+    ChainProfiles.ANVIL_LOCAL
 );
 ```

@@ -12,7 +12,7 @@ The `WalletClient` is used for writing to the blockchain. It manages accounts, s
 import io.brane.rpc.BraneWalletClient;
 import io.brane.core.chain.ChainProfiles;
 
-WalletClient wallet = BraneWalletClient.forChain(ChainProfiles.SEPOLIA)
+WalletClient wallet = BraneWalletClient.forChain(ChainProfiles.ETH_SEPOLIA)
     .withPrivateKey(System.getenv("SEPOLIA_PRIVATE_KEY"))
     .build();
 ```
@@ -50,11 +50,12 @@ System.out.println("Mined in block: " + receipt.blockNumber());
 Sends a transaction immediately and returns the transaction hash. Does not wait for mining.
 
 ```java
-TransactionRequest request = new TransactionRequest(
-    wallet.getAddress(),
-    new Address("0x..."),
-    Wei.fromEther("0.1")
-);
+import io.brane.core.builder.TxBuilder;
+
+TransactionRequest request = TxBuilder.eip1559()
+    .to(new Address("0x..."))
+    .value(Wei.fromEther("0.1"))
+    .build();
 
 // Returns the transaction hash (e.g., "0x...")
 String txHash = wallet.sendTransaction(request);
@@ -65,11 +66,10 @@ String txHash = wallet.sendTransaction(request);
 Signs a transaction offline without sending it.
 
 ```java
-TransactionRequest request = new TransactionRequest(
-    wallet.getAddress(),
-    new Address("0x..."),
-    Wei.fromEther("0.1")
-);
+TransactionRequest request = TxBuilder.eip1559()
+    .to(new Address("0x..."))
+    .value(Wei.fromEther("0.1"))
+    .build();
 
 // Returns the signed RLP-encoded transaction hex
 String signedTx = wallet.signTransaction(request);
