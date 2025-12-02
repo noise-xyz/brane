@@ -19,8 +19,8 @@ class RlpTest {
         assertEquals(
                 "83646f67",
                 Hex.encodeNoPrefix(RlpString.of("dog".getBytes(StandardCharsets.US_ASCII)).encode()));
-        assertEquals("00", Hex.encodeNoPrefix(RlpString.of(new byte[] {0x00}).encode()));
-        assertEquals("0f", Hex.encodeNoPrefix(RlpString.of(new byte[] {0x0f}).encode()));
+        assertEquals("00", Hex.encodeNoPrefix(RlpString.of(new byte[] { 0x00 }).encode()));
+        assertEquals("0f", Hex.encodeNoPrefix(RlpString.of(new byte[] { 0x0f }).encode()));
         assertEquals("820400", Hex.encodeNoPrefix(RlpString.of(1024L).encode()));
     }
 
@@ -29,10 +29,9 @@ class RlpTest {
     void testListEncodingVectors() {
         assertEquals("c0", Hex.encodeNoPrefix(RlpList.of().encode()));
 
-        final RlpList animals =
-                RlpList.of(
-                        RlpString.of("cat".getBytes(StandardCharsets.US_ASCII)),
-                        RlpString.of("dog".getBytes(StandardCharsets.US_ASCII)));
+        final RlpList animals = RlpList.of(
+                RlpString.of("cat".getBytes(StandardCharsets.US_ASCII)),
+                RlpString.of("dog".getBytes(StandardCharsets.US_ASCII)));
         assertEquals("c88363617483646f67", Hex.encodeNoPrefix(animals.encode()));
 
         final RlpList nestedEmpty = RlpList.of(RlpList.of());
@@ -88,7 +87,7 @@ class RlpTest {
     void testDecodeListGuardrails() {
         assertThrows(IllegalArgumentException.class, () -> Rlp.decodeList(RlpString.of(1L).encode()));
 
-        final byte[] invalidLength = new byte[] {(byte) 0xB8, 0x01, 0x00};
+        final byte[] invalidLength = new byte[] { (byte) 0xB8, 0x01, 0x00 };
         assertThrows(IllegalArgumentException.class, () -> Rlp.decode(invalidLength));
     }
 
@@ -112,7 +111,7 @@ class RlpTest {
 
         // Test asLong() error for values exceeding Long.MAX_VALUE
         // 0x8000000000000000 = Long.MIN_VALUE if interpreted as signed
-        final byte[] exceedsMax = new byte[] {(byte) 0x80, 0, 0, 0, 0, 0, 0, 0};
+        final byte[] exceedsMax = new byte[] { (byte) 0x80, 0, 0, 0, 0, 0, 0, 0 };
         final IllegalArgumentException ex2 = assertThrows(
                 IllegalArgumentException.class,
                 () -> RlpString.of(exceedsMax).asLong());
@@ -120,11 +119,11 @@ class RlpTest {
         assertTrue(ex2.getMessage().contains("asBigInteger"));
 
         // Verify the boundary: Long.MAX_VALUE works, but Long.MAX_VALUE + 1 fails
-        final byte[] maxValue = new byte[] {0x7F, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF,
-                                             (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF};
+        final byte[] maxValue = new byte[] { 0x7F, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF,
+                (byte) 0xFF, (byte) 0xFF, (byte) 0xFF, (byte) 0xFF };
         assertEquals(Long.MAX_VALUE, RlpString.of(maxValue).asLong());
 
-        final byte[] maxPlusOne = new byte[] {(byte) 0x80, 0, 0, 0, 0, 0, 0, 0};
+        final byte[] maxPlusOne = new byte[] { (byte) 0x80, 0, 0, 0, 0, 0, 0, 0 };
         assertThrows(IllegalArgumentException.class, () -> RlpString.of(maxPlusOne).asLong());
 
         // Test asBigInteger() - handles values beyond Long.MAX_VALUE
@@ -138,7 +137,7 @@ class RlpTest {
 
         // Test asHexString()
         assertEquals("0x", RlpString.of(new byte[] {}).asHexString());
-        assertEquals("0x0f", RlpString.of(new byte[] {0x0f}).asHexString());
+        assertEquals("0x0f", RlpString.of(new byte[] { 0x0f }).asHexString());
         assertEquals("0x0400", RlpString.of(1024L).asHexString());
     }
 
@@ -146,7 +145,7 @@ class RlpTest {
     @DisplayName("Test enhanced error messages with context")
     void testEnhancedErrorMessages() {
         // Test bounds check error message includes context
-        final byte[] invalidStringLength = new byte[] {(byte) 0x85, 0x01, 0x02};
+        final byte[] invalidStringLength = new byte[] { (byte) 0x85, 0x01, 0x02 };
         final IllegalArgumentException ex1 = assertThrows(
                 IllegalArgumentException.class,
                 () -> Rlp.decode(invalidStringLength));
@@ -155,7 +154,7 @@ class RlpTest {
         assertTrue(ex1.getMessage().contains("available="));
 
         // Test non-minimal encoding error includes details
-        final byte[] nonMinimalString = new byte[] {(byte) 0xB8, 0x30, 0x01};
+        final byte[] nonMinimalString = new byte[] { (byte) 0xB8, 0x30, 0x01 };
         final IllegalArgumentException ex2 = assertThrows(
                 IllegalArgumentException.class,
                 () -> Rlp.decode(nonMinimalString));
@@ -163,16 +162,16 @@ class RlpTest {
         assertTrue(ex2.getMessage().contains("prefix="));
 
         // Test list length mismatch error includes details
-        // 0xC4 = list of length 4, but we only provide 3 bytes of content (will hit bounds check)
-        // Instead, use a valid structure where children consume less than claimed list length
-        // 0xC3 = list of length 3, with enough padding but children only consume part
-        // Actually, we need valid RLP that passes bounds but has length mismatch
-        // 0xC2 = list of length 2, followed by one single byte (0x01), creates mismatch
-        final byte[] mismatchedList = new byte[] {(byte) 0xC2, 0x01};
+        // 0xC2 = list of length 2.
+        // Item 1: 0x82, 0x00, 0x00 (String length 2). Consumes 3 bytes.
+        // currentOffset becomes 1 + 3 = 4.
+        // expected end = 1 + 2 = 3.
+        // Mismatch: expected 3, actual 4.
+        final byte[] mismatchedList = new byte[] { (byte) 0xC2, (byte) 0x82, 0x00, 0x00 };
         final IllegalArgumentException ex3 = assertThrows(
                 IllegalArgumentException.class,
                 () -> Rlp.decode(mismatchedList));
-        // This may hit bounds check instead of mismatch, so check for either
-        assertTrue(ex3.getMessage().contains("mismatch") || ex3.getMessage().contains("offset="));
+        assertTrue(ex3.getMessage().contains("RLP list length mismatch"));
+        assertTrue(ex3.getMessage().contains("expected end=3, actual=4"));
     }
 }
