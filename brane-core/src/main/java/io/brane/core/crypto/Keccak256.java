@@ -23,6 +23,8 @@ import java.util.Objects;
  */
 public final class Keccak256 {
 
+    private static final ThreadLocal<Keccak.Digest256> DIGEST = ThreadLocal.withInitial(Keccak.Digest256::new);
+
     private Keccak256() {
         // Utility class
     }
@@ -37,7 +39,8 @@ public final class Keccak256 {
     public static byte[] hash(final byte[] input) {
         Objects.requireNonNull(input, "input cannot be null");
 
-        final Keccak.Digest256 digest = new Keccak.Digest256();
+        final Keccak.Digest256 digest = DIGEST.get();
+        digest.reset(); // Ensure clean state
         return digest.digest(input);
     }
 
@@ -55,7 +58,8 @@ public final class Keccak256 {
     public static byte[] hash(final byte[]... inputs) {
         Objects.requireNonNull(inputs, "inputs cannot be null");
 
-        final Keccak.Digest256 digest = new Keccak.Digest256();
+        final Keccak.Digest256 digest = DIGEST.get();
+        digest.reset();
         for (byte[] input : inputs) {
             Objects.requireNonNull(input, "input element cannot be null");
             digest.update(input);

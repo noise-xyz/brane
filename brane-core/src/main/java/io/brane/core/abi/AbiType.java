@@ -41,4 +41,14 @@ public sealed interface AbiType permits
      * @return the type name string
      */
     String typeName();
+
+    /**
+     * Returns the size in bytes of the dynamic content (tail).
+     * Returns 0 for static types.
+     * 
+     * @return the content size in bytes
+     */
+    default int contentByteSize() {
+        return 0;
+    }
 }

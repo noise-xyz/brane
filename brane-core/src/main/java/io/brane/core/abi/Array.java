@@ -51,4 +51,22 @@ public record Array<T extends AbiType>(List<T> values, Class<T> type, boolean is
         // Let's rely on the list not being empty for now or improve later.
         return elementTypeName + (isDynamicLength ? "[]" : "[" + values.size() + "]");
     }
+
+    @Override
+    public int contentByteSize() {
+        if (!isDynamic()) {
+            return 0;
+        }
+        int size = 0;
+        if (isDynamicLength) {
+            size += 32; // Length slot
+        }
+        for (AbiType v : values) {
+            size += v.byteSize();
+            if (v.isDynamic()) {
+                size += v.contentByteSize();
+            }
+        }
+        return size;
+    }
 }

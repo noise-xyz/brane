@@ -5,9 +5,6 @@ import io.brane.primitives.Hex;
 import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.crypto.ec.CustomNamedCurves;
 import org.bouncycastle.crypto.params.ECDomainParameters;
-import org.bouncycastle.crypto.params.ECPrivateKeyParameters;
-import org.bouncycastle.crypto.signers.ECDSASigner;
-import org.bouncycastle.crypto.signers.HMacDSAKCalculator;
 import org.bouncycastle.math.ec.ECPoint;
 import org.bouncycastle.math.ec.FixedPointCombMultiplier;
 
@@ -51,8 +48,6 @@ public final class PrivateKey {
             CURVE_PARAMS.getG(),
             CURVE_PARAMS.getN(),
             CURVE_PARAMS.getH());
-
-    private static final BigInteger HALF_CURVE_ORDER = CURVE_PARAMS.getN().shiftRight(1);
 
     private final BigInteger privateKeyValue;
     private final ECPoint publicKey;
@@ -137,32 +132,21 @@ public final class PrivateKey {
      * @throws IllegalArgumentException if message hash is not 32 bytes
      */
     public Signature sign(final byte[] messageHash) {
+        return signFast(messageHash);
+    }
+
+    /**
+     * Optimized signing that avoids public key recovery.
+     * 
+     * @param messageHash 32-byte hash
+     * @return Signature with v
+     */
+    public Signature signFast(final byte[] messageHash) {
         Objects.requireNonNull(messageHash, "message hash cannot be null");
         if (messageHash.length != 32) {
             throw new IllegalArgumentException("Message hash must be 32 bytes, got " + messageHash.length);
         }
-
-        final ECDSASigner signer = new ECDSASigner(
-                new HMacDSAKCalculator(new org.bouncycastle.crypto.digests.SHA256Digest()));
-        final ECPrivateKeyParameters privateKeyParams = new ECPrivateKeyParameters(privateKeyValue, CURVE);
-        signer.init(true, privateKeyParams);
-
-        final BigInteger[] components = signer.generateSignature(messageHash);
-        BigInteger r = components[0];
-        BigInteger s = components[1];
-
-        // Normalize s to low-s (prevent signature malleability)
-        if (s.compareTo(HALF_CURVE_ORDER) > 0) {
-            s = CURVE.getN().subtract(s);
-        }
-
-        // Determine recovery ID (yParity)
-        final int recId = calculateRecoveryId(r, s, messageHash);
-
-        return new Signature(
-                toBytes32(r),
-                toBytes32(s),
-                recId);
+        return FastSigner.sign(messageHash, privateKeyValue);
     }
 
     /**
@@ -210,23 +194,6 @@ public final class PrivateKey {
         }
 
         throw new IllegalArgumentException("Failed to recover public key from signature");
-    }
-
-    /**
-     * Calculates the recovery ID for a signature.
-     */
-    private int calculateRecoveryId(final BigInteger r, final BigInteger s, final byte[] messageHash) {
-        for (int i = 0; i < 2; i++) {
-            try {
-                final ECPoint recovered = recoverPublicKey(r, s, messageHash, i);
-                if (recovered != null && recovered.equals(publicKey)) {
-                    return i;
-                }
-            } catch (Exception ignored) {
-                // Continue trying
-            }
-        }
-        throw new IllegalStateException("Failed to calculate recovery ID");
     }
 
     /**
@@ -282,25 +249,6 @@ public final class PrivateKey {
         final int off = xBytes.length > 32 ? 1 : 0;
         System.arraycopy(xBytes, off, encoded, 33 - (xBytes.length - off), xBytes.length - off);
         return encoded;
-    }
-
-    /**
-     * Converts BigInteger to fixed 32-byte array (big-endian).
-     */
-    private static byte[] toBytes32(final BigInteger value) {
-        final byte[] bytes = value.toByteArray();
-        final byte[] result = new byte[32];
-
-        if (bytes.length == 32) {
-            return bytes;
-        } else if (bytes.length < 32) {
-            System.arraycopy(bytes, 0, result, 32 - bytes.length, bytes.length);
-        } else {
-            // Skip leading zero byte from BigInteger sign bit
-            System.arraycopy(bytes, bytes.length - 32, result, 0, 32);
-        }
-
-        return result;
     }
 
     @Override

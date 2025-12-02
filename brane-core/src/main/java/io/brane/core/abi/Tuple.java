@@ -32,4 +32,19 @@ public record Tuple(List<AbiType> components) implements AbiType {
     public String typeName() {
         return "(" + components.stream().map(AbiType::typeName).collect(Collectors.joining(",")) + ")";
     }
+
+    @Override
+    public int contentByteSize() {
+        if (!isDynamic()) {
+            return 0;
+        }
+        int size = 0;
+        for (AbiType c : components) {
+            size += c.byteSize();
+            if (c.isDynamic()) {
+                size += c.contentByteSize();
+            }
+        }
+        return size;
+    }
 }

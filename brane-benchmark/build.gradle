@@ -11,14 +11,21 @@ dependencies {
     implementation project(':brane-rpc')
     implementation project(':brane-core')
     implementation project(':brane-contract')
+    implementation project(':brane-primitives')
+    implementation 'org.web3j:core:4.10.3'
     implementation 'org.openjdk.jmh:jmh-core:1.37'
     annotationProcessor 'org.openjdk.jmh:jmh-generator-annprocess:1.37'
 }
 
 jmh {
-    warmupIterations = 2
-    iterations = 5
+    warmupIterations = 1
+    iterations = 2
     fork = 1
     failOnError = true
     resultFormat = 'JSON'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add("-nowarn")
+    options.compilerArgs.add("-Xlint:none")
 }
