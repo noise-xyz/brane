@@ -18,9 +18,14 @@ dependencies {
 }
 
 jmh {
-    warmupIterations = 2
-    iterations = 5
+    warmupIterations = 1
+    iterations = 2
     fork = 1
     failOnError = true
     resultFormat = 'JSON'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.compilerArgs.add("-nowarn")
+    options.compilerArgs.add("-Xlint:none")
 }

@@ -662,7 +662,13 @@ final class InternalAbi implements Abi {
 
                 @Override
                 public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
-                    io.brane.core.abi.FastAbiEncoder.encodeBytes(toBytes(value, true), buffer);
+                    if (value instanceof byte[] b) {
+                        io.brane.core.abi.FastAbiEncoder.encodeBytes(HexData.fromBytes(b), buffer);
+                    } else if (value instanceof HexData h) {
+                        io.brane.core.abi.FastAbiEncoder.encodeBytes(h, buffer);
+                    } else {
+                        throw new AbiEncodingException("Expected byte[] or HexData for bytes");
+                    }
                 }
             };
         }
@@ -694,9 +700,26 @@ final class InternalAbi implements Abi {
                 @Override
                 public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
                     // Static bytes are just right-padded
-                    Bytes b = toBytes(value, false);
-                    byte[] data = Hex.decode(b.value().value());
-                    buffer.put(io.brane.core.abi.FastAbiEncoder.padRight(data));
+                    // Static bytes are just right-padded
+                    byte[] data;
+                    if (value instanceof byte[]) {
+                        data = (byte[]) value;
+                    } else if (value instanceof HexData) {
+                        data = Hex.decode(((HexData) value).value());
+                    } else {
+                        throw new AbiEncodingException("Expected byte[] or HexData for bytesN");
+                    }
+
+                    if (data.length > 32) {
+                        throw new AbiEncodingException(
+                                "Static bytesN data cannot be longer than 32 bytes, but got " + data.length);
+                    }
+
+                    buffer.put(data);
+                    // Pad remaining bytes with zeros
+                    for (int i = 0; i < 32 - data.length; i++) {
+                        buffer.put((byte) 0);
+                    }
                 }
             };
         }
@@ -720,9 +743,7 @@ final class InternalAbi implements Abi {
             case Number number -> ensureSign(BigInteger.valueOf(number.longValue()), signed);
             case String s -> {
                 if (s.startsWith("0x"))
-
                     yield ensureSign(new BigInteger(s.substring(2), 16), signed);
-
                 yield ensureSign(new BigInteger(s), signed);
             }
             default -> throw new AbiEncodingException("Expected numeric value for " + (signed ? "int" : "uint")

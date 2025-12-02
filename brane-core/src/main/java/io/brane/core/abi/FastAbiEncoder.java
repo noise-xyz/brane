@@ -126,9 +126,9 @@ public final class FastAbiEncoder {
 
         if (value.bitLength() <= 63) {
             long val = value.longValue();
-            for (int i = 0; i < 24; i++) {
-                buffer.put((byte) 0);
-            }
+            buffer.putLong(0L);
+            buffer.putLong(0L);
+            buffer.putLong(0L);
             buffer.putLong(val);
             return;
         }
@@ -195,9 +195,8 @@ public final class FastAbiEncoder {
      */
     public static void encodeAddress(io.brane.core.types.Address address, ByteBuffer buffer) {
         byte[] addrBytes = Hex.decode(address.value());
-        for (int i = 0; i < 12; i++) {
-            buffer.put((byte) 0);
-        }
+        buffer.putLong(0L);
+        buffer.putInt(0);
         buffer.put(addrBytes);
     }
 
@@ -215,9 +214,12 @@ public final class FastAbiEncoder {
      * @param buffer the destination buffer
      */
     public static void encodeBool(boolean value, ByteBuffer buffer) {
-        for (int i = 0; i < 31; i++) {
-            buffer.put((byte) 0);
-        }
+        buffer.putLong(0L);
+        buffer.putLong(0L);
+        buffer.putLong(0L);
+        buffer.putInt(0);
+        buffer.putShort((short) 0);
+        buffer.put((byte) 0);
         buffer.put(value ? (byte) 1 : (byte) 0);
     }
 
@@ -226,6 +228,31 @@ public final class FastAbiEncoder {
         ByteBuffer buffer = ByteBuffer.wrap(result);
         encodeBool(value, buffer);
         return result;
+    }
+
+    /**
+     * Encodes dynamic bytes directly into the buffer.
+     * Writes length (uint256) followed by data, right-padded to 32 bytes.
+     *
+     * @param bytes  the bytes object
+     * @param buffer the destination buffer
+     */
+
+    /**
+     * Encodes dynamic bytes (HexData) directly into the buffer.
+     * Writes length (uint256) followed by data, right-padded to 32 bytes.
+     *
+     * @param data   the HexData object
+     * @param buffer the destination buffer
+     */
+    public static void encodeBytes(HexData data, ByteBuffer buffer) {
+        int length = data.byteLength();
+        encodeUInt256(BigInteger.valueOf(length), buffer);
+        data.putTo(buffer);
+        int padding = (32 - (length % 32)) % 32;
+        for (int i = 0; i < padding; i++) {
+            buffer.put((byte) 0);
+        }
     }
 
     /**

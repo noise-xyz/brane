@@ -103,8 +103,11 @@ public final class FastSigner {
         if (bytes.length == 32) {
             return bytes;
         } else if (bytes.length < 32) {
+            // Pad with leading zeros for values smaller than 32 bytes.
             System.arraycopy(bytes, 0, result, 32 - bytes.length, bytes.length);
         } else {
+            // Truncate leading bytes for values larger than 32 bytes (e.g., from
+            // BigInteger's sign bit).
             System.arraycopy(bytes, bytes.length - 32, result, 0, 32);
         }
         return result;
