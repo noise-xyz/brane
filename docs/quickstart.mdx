@@ -9,7 +9,50 @@ Brane is a modern, type-safe Java SDK for Ethereum. It provides a clean, fluent 
 
 ## Installation
 
-Add the following dependencies to your `pom.xml` (Maven) or `build.gradle` (Gradle).
+<Warning>
+**Private Access Only**
+
+Brane is currently in **private alpha**. The artifacts are not yet available on Maven Central.
+</Warning>
+
+### For Maintainers
+
+If you are contributing to Brane or have access to the source code, you can install the SDK locally.
+
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/noise-xyz/brane.git
+    cd brane
+    ```
+
+2.  Publish to local Maven:
+    ```bash
+    ./gradlew publishToMavenLocal
+    ```
+
+3.  Add `mavenLocal()` to your project's repositories:
+
+    <CodeGroup>
+    ```xml Maven
+    <repositories>
+        <repository>
+            <id>local-maven</id>
+            <url>file://${user.home}/.m2/repository</url>
+        </repository>
+    </repositories>
+    ```
+
+    ```groovy Gradle
+    repositories {
+        mavenLocal()
+        mavenCentral()
+    }
+    ```
+    </CodeGroup>
+
+### Dependencies
+
+Once configured, add the dependencies:
 
 <CodeGroup>
 ```xml Maven
