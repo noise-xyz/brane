@@ -70,7 +70,7 @@ import io.brane.core.types.Address;
 // ...
 
 var wallet = BraneWalletClient.forChain(ChainProfiles.SEPOLIA)
-    .withPrivateKey("0x...") // Your private key
+    .withPrivateKey(System.getenv("SEPOLIA_PRIVATE_KEY")) // Load private key from environment variable
     .build();
 
 var receipt = wallet.sendTransactionAndWait(
@@ -78,10 +78,14 @@ var receipt = wallet.sendTransactionAndWait(
         wallet.getAddress(),           // from
         new Address("0x..."),          // to
         Wei.fromEther("0.01"),         // value
-        null, null, null,              // gas (auto)
-        null, null,                    // nonce, data (auto)
-        true,                          // EIP-1559
-        null                           // access list
+        null,                          // gasLimit (auto-estimated)
+        null,                          // gasPrice (not used for EIP-1559)
+        null,                          // maxPriorityFeePerGas (auto-estimated)
+        null,                          // maxFeePerGas (auto-estimated)
+        null,                          // nonce (auto-fetched)
+        null,                          // data (none for simple transfer)
+        true,                          // isEip1559
+        null                           // accessList
     ),
     60_000, // timeout (ms)
     1_000   // poll interval (ms)

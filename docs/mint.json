@@ -28,7 +28,7 @@
         {
             "group": "Wallet Actions",
             "pages": [
-                "actions/wallet/send-transaction"
+                "actions/wallet/send-transaction-and-wait"
             ]
         },
         {
