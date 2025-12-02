@@ -36,6 +36,14 @@ Hash topic = Abi.eventTopic("Transfer(address,address,uint256)");
 Decode raw logs into Java objects using `Abi.decodeEvents`.
 
 ```java
+import io.brane.rpc.PublicClient;
+import io.brane.rpc.LogFilter;
+import io.brane.contract.Abi;
+
+PublicClient client = ...;
+LogFilter filter = ...;
+Abi abi = ...;
+
 // 1. Define the Event Class
 public static class TransferEvent {
     public Address from;

@@ -29,7 +29,14 @@ TransactionReceipt receipt = wallet.sendTransactionAndWait(
         wallet.getAddress(),           // from
         new Address("0x..."),          // to
         Wei.fromEther("0.01"),         // value
-        null, null, null, null, null, null, true, null // other fields (auto-filled)
+        null,                          // gasLimit (auto-filled)
+        null,                          // gasPrice (not used for EIP-1559)
+        null,                          // maxPriorityFeePerGas (auto-filled)
+        null,                          // maxFeePerGas (auto-filled)
+        null,                          // nonce (auto-fetched)
+        null,                          // data
+        true,                          // isEip1559
+        null                           // accessList
     ),
     60_000, // timeout (ms)
     1_000   // poll interval (ms)

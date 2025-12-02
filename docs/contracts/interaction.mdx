@@ -26,6 +26,7 @@ ReadOnlyContract contract = ReadOnlyContract.from(
 
 // 3. Call Function
 // call(methodName, ReturnType.class, args...)
+Address ownerAddress = new Address("0x...");
 BigInteger balance = contract.call("balanceOf", BigInteger.class, ownerAddress);
 ```
 
@@ -45,6 +46,9 @@ ReadWriteContract contract = ReadWriteContract.from(
 
 // Send Transaction and Wait
 // sendAndWait(methodName, timeoutMs, pollIntervalMs, args...)
+Address recipientAddress = new Address("0x...");
+BigInteger amount = BigInteger.valueOf(1000);
+
 TransactionReceipt receipt = contract.sendAndWait(
     "transfer", 
     60_000, 
@@ -60,6 +64,11 @@ You can deploy contracts using `BraneContract.deployRequest`.
 
 ```java
 import io.brane.contract.BraneContract;
+
+String abiJson = "[...]";
+String bytecodeHex = "0x...";
+String constructorArg1 = "MyToken";
+String constructorArg2 = "MTK";
 
 TransactionRequest deployRequest = BraneContract.deployRequest(
     abiJson,

@@ -33,6 +33,13 @@ Here is how you might implement a signer that delegates to an external API (e.g.
 import io.brane.rpc.TransactionSigner;
 import io.brane.core.tx.UnsignedTransaction;
 import io.brane.core.crypto.Keccak256;
+import io.brane.core.crypto.Signature;
+import io.brane.primitives.Hex;
+
+// Dummy interface for the example
+interface ExternalService {
+    Signature sign(String keyId, byte[] hash);
+}
 
 public class RemoteSigner implements TransactionSigner {
     private final String keyId;
@@ -67,6 +74,16 @@ public class RemoteSigner implements TransactionSigner {
 Once you have your custom signer, simply pass it to the `WalletClient` builder.
 
 ```java
+import io.brane.rpc.DefaultWalletClient;
+import io.brane.rpc.BraneProvider;
+import io.brane.rpc.PublicClient;
+import io.brane.core.types.Address;
+
+// Assume these are defined
+BraneProvider provider = ...;
+PublicClient publicClient = ...;
+ExternalService service = ...;
+
 TransactionSigner mySigner = new RemoteSigner("key-123", service);
 
 WalletClient wallet = DefaultWalletClient.create(
@@ -75,7 +92,4 @@ WalletClient wallet = DefaultWalletClient.create(
     mySigner,
     new Address("0x...") // The address corresponding to the remote key
 );
-
-// Now all transactions sent via this wallet will be signed by your remote signer
-wallet.sendTransactionAndWait(...);
 ```
