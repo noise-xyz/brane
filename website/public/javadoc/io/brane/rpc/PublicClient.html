@@ -91,15 +91,9 @@ loadScripts(document, 'script');</script>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">PublicClient</span></div>
-<div class="block">Client for read-only blockchain queries via JSON-RPC.
- 
+<div class="block">A client for interacting with an Ethereum node via JSON-RPC.
  <p>
- This interface provides methods to query blockchain state without submitting
- transactions.
- All operations are read-only and do not require a wallet or private key.
- 
- <p>
- <strong>Common Use Cases:</strong>
+ This client provides read-only access to the blockchain, including:
  <ul>
  <li>Fetching block headers and transaction data</li>
  <li>Reading smart contract state via <a href="#call(java.util.Map,java.lang.String)"><code>call(java.util.Map&lt;java.lang.String, java.lang.Object&gt;, java.lang.String)</code></a></li>
@@ -168,10 +162,20 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1">
 <div class="block">Creates a new <a href="PublicClient.html" title="interface in io.brane.rpc"><code>PublicClient</code></a> using the given provider.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="../core/model/BlockHeader.html" title="class in io.brane.core.model">BlockHeader</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#getBlockByNumber(long)" class="member-name-link">getBlockByNumber</a><wbr>(long&nbsp;blockNumber)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#getBalance(io.brane.core.types.Address)" class="member-name-link">getBalance</a><wbr>(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Retrieves the balance of an account.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="../core/model/BlockHeader.html" title="class in io.brane.core.model">BlockHeader</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#getBlockByNumber(long)" class="member-name-link">getBlockByNumber</a><wbr>(long&nbsp;blockNumber)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Retrieves a block header by its number.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#getChainId()" class="member-name-link">getChainId</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Retrieves the chain ID.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="../core/model/BlockHeader.html" title="class in io.brane.core.model">BlockHeader</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#getLatestBlock()" class="member-name-link">getLatestBlock</a>()</code></div>
@@ -277,6 +281,30 @@ loadScripts(document, 'script');</script>
 <dd><code>filter</code> - the log filter criteria</dd>
 <dt>Returns:</dt>
 <dd>a list of matching logs</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="getChainId()">
+<h3>getChainId</h3>
+<div class="member-signature"><span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a></span>&nbsp;<span class="element-name">getChainId</span>()</div>
+<div class="block">Retrieves the chain ID.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>the chain ID</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="getBalance(io.brane.core.types.Address)">
+<h3>getBalance</h3>
+<div class="member-signature"><span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a></span>&nbsp;<span class="element-name">getBalance</span><wbr><span class="parameters">(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address)</span></div>
+<div class="block">Retrieves the balance of an account.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>address</code> - the account address</dd>
+<dt>Returns:</dt>
+<dd>the balance in Wei</dd>
 </dl>
 </section>
 </li>

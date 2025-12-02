@@ -12,12 +12,15 @@ import java.math.BigInteger;
 
 /**
  * High-performance deterministic ECDSA signer.
- * 
  * <p>
- * This class optimizes the signing process by:
- * 1. Calculating 'v' (recovery ID) directly from the random point R, avoiding
- * expensive public key recovery.
- * 2. Using Bouncy Castle's low-level APIs efficiently.
+ * This class implements deterministic ECDSA signing as per RFC 6979, but optimized for the secp256k1 curve used in Ethereum.
+ * Key optimizations include:
+ * <ul>
+ *     <li><b>Direct Recovery ID Calculation</b>: Calculates the recovery ID 'v' directly from the random point R during the signing process,
+ *     avoiding the computationally expensive public key recovery step typically required by standard libraries.</li>
+ *     <li><b>Efficient Arithmetic</b>: Uses Bouncy Castle's low-level {@link ECPoint} and {@link FixedPointCombMultiplier} for fast scalar multiplication.</li>
+ *     <li><b>Low Allocation</b>: Reuses digest instances and avoids unnecessary BigInteger conversions where possible.</li>
+ * </ul>
  */
 public final class FastSigner {
 

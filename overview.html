@@ -65,7 +65,14 @@
         </li>
     </ul>
 
-    <h3>4. Developer Experience</h3>
+    <h3>4. High-Performance Core</h3>
+    <ul>
+        <li><b>Zero-Copy ABI Encoding</b>: Optimized encoder that writes directly to buffers, achieving <b>1.42x speedup</b> over Web3j.</li>
+        <li><b>Fast Signing</b>: Deterministic ECDSA signer with direct recovery ID calculation, <b>4x faster</b> for EIP-1559 transactions.</li>
+        <li><b>Low Allocation</b>: Minimized object churn in hot paths (encoding, hashing, signing).</li>
+    </ul>
+
+    <h3>5. Developer Experience</h3>
     <ul>
         <li><b>Granular Logging</b>: Configurable logging via <code>BraneDebug</code> (RPC payloads, Tx lifecycle, Gas
             estimation).</li>

@@ -8,6 +8,7 @@ io.brane.core.error
 io.brane.core.model
 io.brane.core.tx
 io.brane.core.types
+io.brane.core.utils
 io.brane.primitives
 io.brane.primitives.rlp
 io.brane.rpc
