@@ -36,18 +36,15 @@
             "pages": [
                 "utilities/abi-encoding"
             ]
-        },
-        {
-            "group": "Reference",
-            "pages": [
-                {
-                    "label": "Javadocs",
-                    "url": "https://brane.sh/javadoc"
-                }
-            ]
+        ],
+        "anchors": [
+            {
+                "name": "Javadocs",
+                "icon": "book",
+                "url": "https://brane.sh/javadoc"
+            }
+        ],
+        "footerSocials": {
+            "github": "https://github.com/noise-xyz/brane"
         }
-    ],
-    "footerSocials": {
-        "github": "https://github.com/noise-xyz/brane"
     }
-}
