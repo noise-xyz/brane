@@ -5,6 +5,10 @@ on:
     branches:
       - main
       - fix/github-actions-deploy
+    paths:
+      - 'website/**'
+      - 'cloudflare-build.sh'
+      - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
 jobs:
