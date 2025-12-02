@@ -27,14 +27,14 @@ import java.util.List;
  * <p>
  * Supported types:
  * <ul>
- * <li>{@link io.brane.core.abi.UInt} (uint8 - uint256)</li>
- * <li>{@link io.brane.core.abi.Int} (int8 - int256)</li>
- * <li>{@link io.brane.core.abi.AddressType}</li>
- * <li>{@link io.brane.core.abi.Bool}</li>
- * <li>{@link io.brane.core.abi.Bytes} (static and dynamic)</li>
- * <li>{@link io.brane.core.abi.Utf8String}</li>
- * <li>{@link io.brane.core.abi.Array} (static and dynamic)</li>
- * <li>{@link io.brane.core.abi.Tuple}</li>
+ * <li>{@link UInt} (uint8 - uint256)</li>
+ * <li>{@link Int} (int8 - int256)</li>
+ * <li>{@link AddressType}</li>
+ * <li>{@link Bool}</li>
+ * <li>{@link Bytes} (static and dynamic)</li>
+ * <li>{@link Utf8String}</li>
+ * <li>{@link Array} (static and dynamic)</li>
+ * <li>{@link Tuple}</li>
  * </ul>
  * <p>
  * This class is thread-safe as it contains no mutable state.

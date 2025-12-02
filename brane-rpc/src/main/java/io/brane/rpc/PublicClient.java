@@ -42,7 +42,7 @@ import java.util.List;
  * String result = client.call(call, "latest");
  * }</pre>
  *
- * @see io.brane.rpc.WalletClient
+ * @see WalletClient
  */
 public interface PublicClient {
 
