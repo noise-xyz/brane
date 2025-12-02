@@ -50,6 +50,9 @@ export default function Home() {
             </p>
           </div>
         </div>
+        <footer className="mt-16 flex items-center justify-center gap-2 text-sm text-zinc-500">
+          <p>Deployed via GitHub Actions 🚀</p>
+        </footer>
       </main>
     </div>
   );
