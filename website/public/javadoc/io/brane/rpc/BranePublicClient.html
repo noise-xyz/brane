@@ -179,10 +179,20 @@ implements <a href="PublicClient.html" title="interface in io.brane.rpc">PublicC
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Creates a new builder for the specified chain.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../core/model/BlockHeader.html" title="class in io.brane.core.model">BlockHeader</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getBlockByNumber(long)" class="member-name-link">getBlockByNumber</a><wbr>(long&nbsp;blockNumber)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getBalance(io.brane.core.types.Address)" class="member-name-link">getBalance</a><wbr>(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Retrieves the balance of an account.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../core/model/BlockHeader.html" title="class in io.brane.core.model">BlockHeader</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getBlockByNumber(long)" class="member-name-link">getBlockByNumber</a><wbr>(long&nbsp;blockNumber)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Retrieves a block header by its number.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getChainId()" class="member-name-link">getChainId</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Retrieves the chain ID.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../core/model/BlockHeader.html" title="class in io.brane.core.model">BlockHeader</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#getLatestBlock()" class="member-name-link">getLatestBlock</a>()</code></div>
@@ -322,6 +332,36 @@ implements <a href="PublicClient.html" title="interface in io.brane.rpc">PublicC
 <dd><code>filter</code> - the log filter criteria</dd>
 <dt>Returns:</dt>
 <dd>a list of matching logs</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="getChainId()">
+<h3>getChainId</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a></span>&nbsp;<span class="element-name">getChainId</span>()</div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="PublicClient.html#getChainId()">PublicClient</a></code></span></div>
+<div class="block">Retrieves the chain ID.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="PublicClient.html#getChainId()">getChainId</a></code>&nbsp;in interface&nbsp;<code><a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a></code></dd>
+<dt>Returns:</dt>
+<dd>the chain ID</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="getBalance(io.brane.core.types.Address)">
+<h3>getBalance</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a></span>&nbsp;<span class="element-name">getBalance</span><wbr><span class="parameters">(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="PublicClient.html#getBalance(io.brane.core.types.Address)">PublicClient</a></code></span></div>
+<div class="block">Retrieves the balance of an account.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="PublicClient.html#getBalance(io.brane.core.types.Address)">getBalance</a></code>&nbsp;in interface&nbsp;<code><a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a></code></dd>
+<dt>Parameters:</dt>
+<dd><code>address</code> - the account address</dd>
+<dt>Returns:</dt>
+<dd>the balance in Wei</dd>
 </dl>
 </section>
 </li>

@@ -8,13 +8,10 @@ import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Hash;
 
 /**
- * Client for submitting transactions to the blockchain with automatic gas
- * estimation and nonce management.
- * 
+ * A client for signing and sending transactions.
  * <p>
- * This interface extends blockchain read operations with write capabilities
- * (sending transactions).
- * It automatically handles transaction preparation including:
+ * This client wraps a {@link PublicClient} and adds transaction management
+ * capabilities:
  * <ul>
  * <li>Gas estimation via {@code eth_estimateGas}</li>
  * <li>Nonce fetching via {@code eth_getTransactionCount}</li>

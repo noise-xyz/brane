@@ -216,6 +216,13 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Binds a Java interface to a deployed smart contract using dynamic proxy.</div>
 </div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="../core/model/TransactionRequest.html" title="class in io.brane.core.model">TransactionRequest</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#deployRequest(java.lang.String,java.lang.String,java.lang.Object...)" class="member-name-link">deployRequest</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;abiJson,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;bytecode,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a deployment transaction request for a contract.</div>
+</div>
 </div>
 </div>
 </div>
@@ -276,6 +283,23 @@ loadScripts(document, 'script');</script>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if validation fails (method not in ABI, type
                                   mismatch, etc.)</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="deployRequest(java.lang.String,java.lang.String,java.lang.Object...)">
+<h3>deployRequest</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="../core/model/TransactionRequest.html" title="class in io.brane.core.model">TransactionRequest</a></span>&nbsp;<span class="element-name">deployRequest</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;abiJson,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;bytecode,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>...&nbsp;args)</span></div>
+<div class="block">Creates a deployment transaction request for a contract.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>abiJson</code> - the contract ABI JSON</dd>
+<dd><code>bytecode</code> - the contract bytecode (hex string)</dd>
+<dd><code>args</code> - constructor arguments</dd>
+<dt>Returns:</dt>
+<dd>a TransactionRequest ready to be sent</dd>
 </dl>
 </section>
 </li>

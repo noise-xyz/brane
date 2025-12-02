@@ -91,13 +91,10 @@ loadScripts(document, 'script');</script>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">WalletClient</span></div>
-<div class="block">Client for submitting transactions to the blockchain with automatic gas
- estimation and nonce management.
- 
+<div class="block">A client for signing and sending transactions.
  <p>
- This interface extends blockchain read operations with write capabilities
- (sending transactions).
- It automatically handles transaction preparation including:
+ This client wraps a <a href="PublicClient.html" title="interface in io.brane.rpc"><code>PublicClient</code></a> and adds transaction management
+ capabilities:
  <ul>
  <li>Gas estimation via <code>eth_estimateGas</code></li>
  <li>Nonce fetching via <code>eth_getTransactionCount</code></li>

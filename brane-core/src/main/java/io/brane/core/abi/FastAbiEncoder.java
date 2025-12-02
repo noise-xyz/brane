@@ -12,6 +12,20 @@ import java.util.List;
 
 /**
  * High-performance ABI encoder that eliminates intermediate object allocations.
+ * <p>
+ * This encoder is designed for maximum throughput and low garbage collection
+ * pressure.
+ * It achieves this by:
+ * <ul>
+ * <li><b>Two-Pass Encoding</b>: Calculating the exact buffer size required
+ * before writing, avoiding array resizing.</li>
+ * <li><b>Zero-Copy</b>: Writing primitive values and byte arrays directly to
+ * the output {@link ByteBuffer}.</li>
+ * <li><b>Direct Padding</b>: Applying zero-padding directly to the buffer
+ * without allocating temporary padding arrays.</li>
+ * </ul>
+ * <p>
+ * This class is thread-safe as it contains no mutable state.
  */
 public final class FastAbiEncoder {
 

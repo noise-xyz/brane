@@ -180,6 +180,14 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab4">
 <div class="block">EIP-1559 transaction with dynamic fee market.</div>
 </div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="block">High-performance ABI encoder that eliminates intermediate object allocations.</div>
+</div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/core/crypto/FastSigner.html" title="class in io.brane.core.crypto">FastSigner</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
+<div class="block">High-performance deterministic ECDSA signer.</div>
+</div>
 <div class="col-first even-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/core/types/Hash.html" title="class in io.brane.core.types">Hash</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab4">
 <div class="block">Hex-encoded 32-byte hash.</div>
@@ -188,8 +196,8 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Utility methods for hex encoding/decoding with optional <code>0x</code> prefixes.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab4">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Represents arbitrary-length hexadecimal-encoded byte data with "0x" prefix.</div>
 </div>
 <div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/rpc/HttpBraneProvider.html" title="class in io.brane.rpc">HttpBraneProvider</a></div>
@@ -238,76 +246,85 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Utility that removes sensitive data from debug log payloads.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/core/crypto/PrivateKey.html" title="class in io.brane.core.crypto">PrivateKey</a></div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/core/abi/PackedSizeCalculator.html" title="class in io.brane.core.abi">PackedSizeCalculator</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="block">Calculates the exact byte size of encoded ABI types without performing the
+ encoding.</div>
+</div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/core/crypto/PrivateKey.html" title="class in io.brane.core.crypto">PrivateKey</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Ethereum private key with secp256k1 signing capabilities.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/contract/PrivateKeySigner.html" title="class in io.brane.contract">PrivateKeySigner</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">&nbsp;</div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/rpc/PrivateKeyTransactionSigner.html" title="class in io.brane.rpc">PrivateKeyTransactionSigner</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/contract/PrivateKeySigner.html" title="class in io.brane.contract">PrivateKeySigner</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">&nbsp;</div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/rpc/PrivateKeyTransactionSigner.html" title="class in io.brane.rpc">PrivateKeyTransactionSigner</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Transaction signer backed by a raw private key.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab1"><a href="io/brane/rpc/PublicClient.html" title="interface in io.brane.rpc">PublicClient</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab1">
-<div class="block">Client for read-only blockchain queries via JSON-RPC.</div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab1"><a href="io/brane/rpc/PublicClient.html" title="interface in io.brane.rpc">PublicClient</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab1">
+<div class="block">A client for interacting with an Ethereum node via JSON-RPC.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/contract/ReadOnlyContract.html" title="class in io.brane.contract">ReadOnlyContract</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/contract/ReadOnlyContract.html" title="class in io.brane.contract">ReadOnlyContract</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Read-only façade for contract calls using Abi + PublicClient.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/contract/ReadWriteContract.html" title="class in io.brane.contract">ReadWriteContract</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">&nbsp;</div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/core/RevertDecoder.html" title="class in io.brane.core">RevertDecoder</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/contract/ReadWriteContract.html" title="class in io.brane.contract">ReadWriteContract</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">&nbsp;</div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/core/RevertDecoder.html" title="class in io.brane.core">RevertDecoder</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Decodes EVM revert reasons from raw transaction revert data.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/core/RevertDecoder.CustomErrorAbi.html" title="class in io.brane.core">RevertDecoder.CustomErrorAbi</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab4">&nbsp;</div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/core/RevertDecoder.Decoded.html" title="class in io.brane.core">RevertDecoder.Decoded</a></div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/core/RevertDecoder.CustomErrorAbi.html" title="class in io.brane.core">RevertDecoder.CustomErrorAbi</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab3"><a href="io/brane/core/RevertDecoder.RevertKind.html" title="enum class in io.brane.core">RevertDecoder.RevertKind</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab3">&nbsp;</div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab5"><a href="io/brane/core/error/RevertException.html" title="class in io.brane.core.error">RevertException</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab5">
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/core/RevertDecoder.Decoded.html" title="class in io.brane.core">RevertDecoder.Decoded</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab3"><a href="io/brane/core/RevertDecoder.RevertKind.html" title="enum class in io.brane.core">RevertDecoder.RevertKind</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab3">&nbsp;</div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab5"><a href="io/brane/core/error/RevertException.html" title="class in io.brane.core.error">RevertException</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab5">
 <div class="block">Exception thrown when an Ethereum Virtual Machine (EVM) transaction reverts.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/primitives/rlp/Rlp.html" title="class in io.brane.primitives.rlp">Rlp</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/primitives/rlp/Rlp.html" title="class in io.brane.primitives.rlp">Rlp</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Utility methods for encoding and decoding Recursive Length Prefix (RLP) data.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab1"><a href="io/brane/primitives/rlp/RlpItem.html" title="interface in io.brane.primitives.rlp">RlpItem</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab1">
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab1"><a href="io/brane/primitives/rlp/RlpItem.html" title="interface in io.brane.primitives.rlp">RlpItem</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab1">
 <div class="block">Base sealed interface for all RLP items.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/primitives/rlp/RlpList.html" title="class in io.brane.primitives.rlp">RlpList</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab4">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/primitives/rlp/RlpList.html" title="class in io.brane.primitives.rlp">RlpList</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab4">
 <div class="block">RLP representation of a list of items.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/primitives/rlp/RlpNumeric.html" title="class in io.brane.primitives.rlp">RlpNumeric</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/primitives/rlp/RlpNumeric.html" title="class in io.brane.primitives.rlp">RlpNumeric</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Numeric helpers for RLP encoding of EVM-style integers.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/primitives/rlp/RlpString.html" title="class in io.brane.primitives.rlp">RlpString</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/primitives/rlp/RlpString.html" title="class in io.brane.primitives.rlp">RlpString</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
 <div class="block">RLP representation of a byte string.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/rpc/RpcConfig.html" title="class in io.brane.rpc">RpcConfig</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab4">&nbsp;</div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab5"><a href="io/brane/core/error/RpcException.html" title="class in io.brane.core.error">RpcException</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab5">
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/rpc/RpcConfig.html" title="class in io.brane.rpc">RpcConfig</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab5"><a href="io/brane/core/error/RpcException.html" title="class in io.brane.core.error">RpcException</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab5">
 <div class="block">Exception thrown when a JSON-RPC request to an Ethereum node fails.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/rpc/internal/RpcUtils.html" title="class in io.brane.rpc.internal">RpcUtils</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/rpc/internal/RpcUtils.html" title="class in io.brane.rpc.internal">RpcUtils</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab2">
 <div class="block">Internal utility methods for RPC data encoding, decoding, and error handling.</div>
 </div>
-<div class="col-first odd-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/core/crypto/Signature.html" title="class in io.brane.core.crypto">Signature</a></div>
-<div class="col-last odd-row-color all-classes-table all-classes-table-tab4">
+<div class="col-first even-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/core/crypto/Signature.html" title="class in io.brane.core.crypto">Signature</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab4">
 <div class="block">ECDSA signature for Ethereum transactions.</div>
 </div>
-<div class="col-first even-row-color all-classes-table all-classes-table-tab1"><a href="io/brane/contract/Signer.html" title="interface in io.brane.contract">Signer</a></div>
-<div class="col-last even-row-color all-classes-table all-classes-table-tab1">&nbsp;</div>
+<div class="col-first odd-row-color all-classes-table all-classes-table-tab1"><a href="io/brane/contract/Signer.html" title="interface in io.brane.contract">Signer</a></div>
+<div class="col-last odd-row-color all-classes-table all-classes-table-tab1">&nbsp;</div>
+<div class="col-first even-row-color all-classes-table all-classes-table-tab2"><a href="io/brane/core/utils/Topics.html" title="class in io.brane.core.utils">Topics</a></div>
+<div class="col-last even-row-color all-classes-table all-classes-table-tab2">
+<div class="block">Utility class for creating event topics.</div>
+</div>
 <div class="col-first odd-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/core/model/Transaction.html" title="class in io.brane.core.model">Transaction</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab4">
 <div class="block">Represents a blockchain transaction.</div>
@@ -369,8 +386,7 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first even-row-color all-classes-table all-classes-table-tab1"><a href="io/brane/rpc/WalletClient.html" title="interface in io.brane.rpc">WalletClient</a></div>
 <div class="col-last even-row-color all-classes-table all-classes-table-tab1">
-<div class="block">Client for submitting transactions to the blockchain with automatic gas
- estimation and nonce management.</div>
+<div class="block">A client for signing and sending transactions.</div>
 </div>
 <div class="col-first odd-row-color all-classes-table all-classes-table-tab4"><a href="io/brane/core/types/Wei.html" title="class in io.brane.core.types">Wei</a></div>
 <div class="col-last odd-row-color all-classes-table all-classes-table-tab4">
