@@ -93,7 +93,18 @@ loadScripts(document, 'script');</script>
 <hr>
 <div class="type-signature"><span class="modifiers">public record </span><span class="element-name type-name-label">Wei</span>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a>&nbsp;value)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a></span></div>
-<div class="block">Represents a quantity in wei.</div>
+<div class="block">Represents a quantity in Wei (10^-18 Ether).
+ <p>
+ This is the smallest denomination of Ether.
+ <p>
+ <strong>Common Conversions:</strong>
+ <ul>
+ <li>1 Ether = 10^18 Wei</li>
+ <li>1 Gwei = 10^9 Wei</li>
+ </ul>
+ <p>
+ Use <a href="#fromEther(java.math.BigDecimal)"><code>fromEther(BigDecimal)</code></a> and <a href="#toEther()"><code>toEther()</code></a> for convenient
+ conversions.</div>
 </section>
 <section class="summary">
 <ul class="summary-list">

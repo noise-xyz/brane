@@ -25,6 +25,18 @@ import java.util.List;
  * without allocating temporary padding arrays.</li>
  * </ul>
  * <p>
+ * Supported types:
+ * <ul>
+ * <li>{@link UInt} (uint8 - uint256)</li>
+ * <li>{@link Int} (int8 - int256)</li>
+ * <li>{@link AddressType}</li>
+ * <li>{@link Bool}</li>
+ * <li>{@link Bytes} (static and dynamic)</li>
+ * <li>{@link Utf8String}</li>
+ * <li>{@link Array} (static and dynamic)</li>
+ * <li>{@link Tuple}</li>
+ * </ul>
+ * <p>
  * This class is thread-safe as it contains no mutable state.
  */
 public final class FastAbiEncoder {

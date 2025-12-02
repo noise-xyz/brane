@@ -93,7 +93,17 @@ loadScripts(document, 'script');</script>
 <hr>
 <div class="type-signature"><span class="modifiers">public record </span><span class="element-name type-name-label">Address</span>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;value)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a></span></div>
-<div class="block">Hex-encoded 20-byte Ethereum address.</div>
+<div class="block">Hex-encoded 20-byte Ethereum address.
+ <p>
+ Represents an account address (EOA or Contract).
+ <p>
+ <strong>Validation:</strong>
+ <ul>
+ <li>Must start with "0x"</li>
+ <li>Must be exactly 40 hex characters long (20 bytes)</li>
+ </ul>
+ <p>
+ The value is stored in lowercase.</div>
 </section>
 <section class="summary">
 <ul class="summary-list">

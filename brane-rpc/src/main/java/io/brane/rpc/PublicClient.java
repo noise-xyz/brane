@@ -16,27 +16,24 @@ import java.util.List;
  * <li>Querying event logs via {@link #getLogs}</li>
  * <li>Monitoring blockchain state</li>
  * </ul>
- * 
  * <p>
  * <strong>Thread Safety:</strong> Implementations are expected to be
- * thread-safe
- * and can be shared across multiple threads.
- * 
+ * thread-safe and can be shared across multiple threads.
  * <p>
  * <strong>Usage Example:</strong>
  * 
  * <pre>{@code
  * PublicClient client = BranePublicClient.forChain(ChainProfiles.MAINNET)
  *         .build();
- * 
+ *
  * // Get latest block
  * BlockHeader latest = client.getLatestBlock();
  * System.out.println("Block #" + latest.number());
- * 
+ *
  * // Get specific transaction
  * Hash txHash = new Hash("0x...");
  * Transaction tx = client.getTransactionByHash(txHash);
- * 
+ *
  * // Read contract storage (balanceOf call)
  * Map<String, Object> call = Map.of(
  *         "to", "0x...", // contract address
@@ -44,8 +41,7 @@ import java.util.List;
  * );
  * String result = client.call(call, "latest");
  * }</pre>
- * 
- * @see BranePublicClient
+ *
  * @see WalletClient
  */
 public interface PublicClient {

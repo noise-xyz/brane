@@ -102,7 +102,6 @@ loadScripts(document, 'script');</script>
  <li>Transaction signing</li>
  <li>Transaction submission via <code>eth_sendRawTransaction</code></li>
  </ul>
- 
  <p>
  <strong>Transaction Lifecycle:</strong>
  <ol>
@@ -113,7 +112,6 @@ loadScripts(document, 'script');</script>
  <li>Optionally call <a href="#sendTransactionAndWait(io.brane.core.model.TransactionRequest,long,long)"><code>sendTransactionAndWait(io.brane.core.model.TransactionRequest, long, long)</code></a> to submit and wait for
  confirmation</li>
  </ol>
- 
  <p>
  <strong>Usage Example:</strong>
  
@@ -121,7 +119,7 @@ loadScripts(document, 'script');</script>
  WalletClient client = BraneWalletClient.forChain(ChainProfiles.MAINNET)
          .withPrivateKey("0x...")
          .build();
- 
+
  // Simple transfer
  TransactionRequest transfer = new TransactionRequest(
          myAddress, // from
@@ -132,14 +130,14 @@ loadScripts(document, 'script');</script>
          true, // EIP-1559
          null // access list
  );
- 
+
  // Send and wait for confirmation
  TransactionReceipt receipt = client.sendTransactionAndWait(
          transfer,
          60_000, // timeout: 60 seconds
          1_000 // poll every 1 second
  );
- 
+
  if (receipt.status()) {
      System.out.println("✓ Transaction confirmed in block " + receipt.blockNumber());
  }
@@ -150,7 +148,6 @@ loadScripts(document, 'script');</script>
 <ul class="tag-list">
 <li><a href="../core/model/TransactionRequest.html" title="class in io.brane.core.model"><code>TransactionRequest</code></a></li>
 <li><a href="../core/model/TransactionReceipt.html" title="class in io.brane.core.model"><code>TransactionReceipt</code></a></li>
-<li><a href="DefaultWalletClient.html" title="class in io.brane.rpc"><code>DefaultWalletClient</code></a></li>
 </ul>
 </dd>
 </dl>

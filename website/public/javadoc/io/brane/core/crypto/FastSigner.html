@@ -93,14 +93,25 @@ loadScripts(document, 'script');</script>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span></div>
 <div class="block">High-performance deterministic ECDSA signer.
  <p>
- This class implements deterministic ECDSA signing as per RFC 6979, but optimized for the secp256k1 curve used in Ethereum.
+ This class implements deterministic ECDSA signing as per
+ <a href="https://tools.ietf.org/html/rfc6979">RFC 6979</a>,
+ but optimized for the secp256k1 curve used in Ethereum.
+ <p>
  Key optimizations include:
  <ul>
-     <li><b>Direct Recovery ID Calculation</b>: Calculates the recovery ID 'v' directly from the random point R during the signing process,
-     avoiding the computationally expensive public key recovery step typically required by standard libraries.</li>
-     <li><b>Efficient Arithmetic</b>: Uses Bouncy Castle's low-level <code>ECPoint</code> and <code>FixedPointCombMultiplier</code> for fast scalar multiplication.</li>
-     <li><b>Low Allocation</b>: Reuses digest instances and avoids unnecessary BigInteger conversions where possible.</li>
- </ul></div>
+ <li><b>Direct Recovery ID Calculation</b>: Calculates the recovery ID 'v'
+ directly from the random point R during the signing process,
+ avoiding the computationally expensive public key recovery step typically
+ required by standard libraries.</li>
+ <li><b>Efficient Arithmetic</b>: Uses Bouncy Castle's low-level
+ <code>ECPoint</code> and <code>FixedPointCombMultiplier</code> for fast scalar
+ multiplication.</li>
+ <li><b>Low Allocation</b>: Reuses digest instances and avoids unnecessary
+ BigInteger conversions where possible.</li>
+ </ul>
+ <p>
+ This signer enforces <b>Low-S</b> values (EIP-2) to prevent signature
+ malleability.</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
