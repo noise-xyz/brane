@@ -7,15 +7,9 @@ import java.util.Map;
 import java.util.List;
 
 /**
- * Client for read-only blockchain queries via JSON-RPC.
- * 
+ * A client for interacting with an Ethereum node via JSON-RPC.
  * <p>
- * This interface provides methods to query blockchain state without submitting
- * transactions.
- * All operations are read-only and do not require a wallet or private key.
- * 
- * <p>
- * <strong>Common Use Cases:</strong>
+ * This client provides read-only access to the blockchain, including:
  * <ul>
  * <li>Fetching block headers and transaction data</li>
  * <li>Reading smart contract state via {@link #call}</li>

@@ -61,6 +61,7 @@ loadScripts(document, 'script');</script>
 <li><a href="io/brane/core/model/package-tree.html">io.brane.core.model</a>, </li>
 <li><a href="io/brane/core/tx/package-tree.html">io.brane.core.tx</a>, </li>
 <li><a href="io/brane/core/types/package-tree.html">io.brane.core.types</a>, </li>
+<li><a href="io/brane/core/utils/package-tree.html">io.brane.core.utils</a>, </li>
 <li><a href="io/brane/primitives/package-tree.html">io.brane.primitives</a>, </li>
 <li><a href="io/brane/primitives/rlp/package-tree.html">io.brane.primitives.rlp</a>, </li>
 <li><a href="io/brane/rpc/package-tree.html">io.brane.rpc</a>, </li>
@@ -85,7 +86,10 @@ loadScripts(document, 'script');</script>
 <li class="circle">io.brane.core.<a href="io/brane/core/DebugLogger.html" class="type-name-link" title="class in io.brane.core">DebugLogger</a></li>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" class="type-name-link" title="class in io.brane.rpc">DefaultWalletClient</a> (implements io.brane.rpc.<a href="io/brane/rpc/WalletClient.html" title="interface in io.brane.rpc">WalletClient</a>)</li>
 <li class="circle">io.brane.core.builder.<a href="io/brane/core/builder/Eip1559Builder.html" class="type-name-link" title="class in io.brane.core.builder">Eip1559Builder</a> (implements io.brane.core.builder.<a href="io/brane/core/builder/TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;T&gt;)</li>
+<li class="circle">io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" class="type-name-link" title="class in io.brane.core.abi">FastAbiEncoder</a></li>
+<li class="circle">io.brane.core.crypto.<a href="io/brane/core/crypto/FastSigner.html" class="type-name-link" title="class in io.brane.core.crypto">FastSigner</a></li>
 <li class="circle">io.brane.primitives.<a href="io/brane/primitives/Hex.html" class="type-name-link" title="class in io.brane.primitives">Hex</a></li>
+<li class="circle">io.brane.core.types.<a href="io/brane/core/types/HexData.html" class="type-name-link" title="class in io.brane.core.types">HexData</a></li>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/HttpBraneProvider.html" class="type-name-link" title="class in io.brane.rpc">HttpBraneProvider</a> (implements io.brane.rpc.<a href="io/brane/rpc/BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>)</li>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/HttpBraneProvider.Builder.html" class="type-name-link" title="class in io.brane.rpc">HttpBraneProvider.Builder</a></li>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/HttpClient.html" class="type-name-link" title="class in io.brane.rpc">HttpClient</a> (implements io.brane.rpc.<a href="io/brane/rpc/Client.html" title="interface in io.brane.rpc">Client</a>)</li>
@@ -93,6 +97,7 @@ loadScripts(document, 'script');</script>
 <li class="circle">io.brane.core.builder.<a href="io/brane/core/builder/LegacyBuilder.html" class="type-name-link" title="class in io.brane.core.builder">LegacyBuilder</a> (implements io.brane.core.builder.<a href="io/brane/core/builder/TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;T&gt;)</li>
 <li class="circle">io.brane.core.<a href="io/brane/core/LogFormatter.html" class="type-name-link" title="class in io.brane.core">LogFormatter</a></li>
 <li class="circle">io.brane.core.<a href="io/brane/core/LogSanitizer.html" class="type-name-link" title="class in io.brane.core">LogSanitizer</a></li>
+<li class="circle">io.brane.core.abi.<a href="io/brane/core/abi/PackedSizeCalculator.html" class="type-name-link" title="class in io.brane.core.abi">PackedSizeCalculator</a></li>
 <li class="circle">io.brane.core.crypto.<a href="io/brane/core/crypto/PrivateKey.html" class="type-name-link" title="class in io.brane.core.crypto">PrivateKey</a></li>
 <li class="circle">io.brane.contract.<a href="io/brane/contract/PrivateKeySigner.html" class="type-name-link" title="class in io.brane.contract">PrivateKeySigner</a> (implements io.brane.contract.<a href="io/brane/contract/Signer.html" title="interface in io.brane.contract">Signer</a>)</li>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/PrivateKeyTransactionSigner.html" class="type-name-link" title="class in io.brane.rpc">PrivateKeyTransactionSigner</a> (implements io.brane.rpc.<a href="io/brane/rpc/TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>)</li>
@@ -133,6 +138,7 @@ loadScripts(document, 'script');</script>
 </li>
 </ul>
 </li>
+<li class="circle">io.brane.core.utils.<a href="io/brane/core/utils/Topics.html" class="type-name-link" title="class in io.brane.core.utils">Topics</a></li>
 </ul>
 </li>
 </ul>
@@ -187,7 +193,6 @@ loadScripts(document, 'script');</script>
 <li class="circle">io.brane.core.model.<a href="io/brane/core/model/ChainProfile.html" class="type-name-link" title="class in io.brane.core.model">ChainProfile</a></li>
 <li class="circle">io.brane.core.tx.<a href="io/brane/core/tx/Eip1559Transaction.html" class="type-name-link" title="class in io.brane.core.tx">Eip1559Transaction</a> (implements io.brane.core.tx.<a href="io/brane/core/tx/UnsignedTransaction.html" title="interface in io.brane.core.tx">UnsignedTransaction</a>)</li>
 <li class="circle">io.brane.core.types.<a href="io/brane/core/types/Hash.html" class="type-name-link" title="class in io.brane.core.types">Hash</a></li>
-<li class="circle">io.brane.core.types.<a href="io/brane/core/types/HexData.html" class="type-name-link" title="class in io.brane.core.types">HexData</a></li>
 <li class="circle">io.brane.core.abi.<a href="io/brane/core/abi/Int.html" class="type-name-link" title="class in io.brane.core.abi">Int</a> (implements io.brane.core.abi.<a href="io/brane/core/abi/AbiType.html" title="interface in io.brane.core.abi">AbiType</a>)</li>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/JsonRpcError.html" class="type-name-link" title="class in io.brane.rpc">JsonRpcError</a></li>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/JsonRpcRequest.html" class="type-name-link" title="class in io.brane.rpc">JsonRpcRequest</a></li>

@@ -286,6 +286,10 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/LogFilter.html#byContract(io.brane.core.types.Address,java.util.List)" class="member-name-link">byContract(Address, List&lt;Hash&gt;)</a> - Static method in record class io.brane.rpc.<a href="io/brane/rpc/LogFilter.html" title="class in io.brane.rpc">LogFilter</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/core/types/HexData.html#byteLength()" class="member-name-link">byteLength()</a> - Method in class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
+<dd>
+<div class="block">Returns the length of the raw bytes.</div>
+</dd>
 <dt><a href="io/brane/primitives/rlp/RlpString.html#bytes()" class="member-name-link">bytes()</a> - Method in class io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/RlpString.html" title="class in io.brane.primitives.rlp">RlpString</a></dt>
 <dd>
 <div class="block">Returns a defensive copy of the underlying bytes.</div>
@@ -327,6 +331,10 @@ loadScripts(document, 'script');</script>
 <dl class="index">
 <dt><a href="index.html#1-core-connectivity-and-rpc-heading" class="search-tag-link">1. Core Connectivity and RPC</a> - Search tag in Overview</dt>
 <dd>Section</dd>
+<dt><a href="io/brane/core/abi/PackedSizeCalculator.html#calculate(java.util.List)" class="member-name-link">calculate(List&lt;AbiType&gt;)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/PackedSizeCalculator.html" title="class in io.brane.core.abi">PackedSizeCalculator</a></dt>
+<dd>
+<div class="block">Calculates the size of a list of ABI types (tuple).</div>
+</dd>
 <dt><a href="io/brane/contract/ReadOnlyContract.html#call(java.lang.String,java.lang.Class,java.lang.Object...)" class="member-name-link">call(String, Class&lt;T&gt;, Object...)</a> - Method in class io.brane.contract.<a href="io/brane/contract/ReadOnlyContract.html" title="class in io.brane.contract">ReadOnlyContract</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/Client.html#call(java.lang.String,java.lang.Class,java.lang.Object...)" class="member-name-link">call(String, Class&lt;T&gt;, Object...)</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/Client.html" title="interface in io.brane.rpc">Client</a></dt>
@@ -409,6 +417,18 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="io/brane/rpc/HttpBraneProvider.Builder.html#connectTimeout(java.time.Duration)" class="member-name-link">connectTimeout(Duration)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/HttpBraneProvider.Builder.html" title="class in io.brane.rpc">HttpBraneProvider.Builder</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/core/abi/AbiType.html#contentByteSize()" class="member-name-link">contentByteSize()</a> - Method in interface io.brane.core.abi.<a href="io/brane/core/abi/AbiType.html" title="interface in io.brane.core.abi">AbiType</a></dt>
+<dd>
+<div class="block">Returns the size in bytes of the dynamic content (tail).</div>
+</dd>
+<dt><a href="io/brane/core/abi/Array.html#contentByteSize()" class="member-name-link">contentByteSize()</a> - Method in record class io.brane.core.abi.<a href="io/brane/core/abi/Array.html" title="class in io.brane.core.abi">Array</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/core/abi/Bytes.html#contentByteSize()" class="member-name-link">contentByteSize()</a> - Method in record class io.brane.core.abi.<a href="io/brane/core/abi/Bytes.html" title="class in io.brane.core.abi">Bytes</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/core/abi/Tuple.html#contentByteSize()" class="member-name-link">contentByteSize()</a> - Method in record class io.brane.core.abi.<a href="io/brane/core/abi/Tuple.html" title="class in io.brane.core.abi">Tuple</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/core/abi/Utf8String.html#contentByteSize()" class="member-name-link">contentByteSize()</a> - Method in record class io.brane.core.abi.<a href="io/brane/core/abi/Utf8String.html" title="class in io.brane.core.abi">Utf8String</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/contract/Contract.html" class="type-name-link" title="class in io.brane.contract">Contract</a> - Class in <a href="io/brane/contract/package-summary.html">io.brane.contract</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/contract/Contract.html#%3Cinit%3E(io.brane.core.types.Address,io.brane.contract.Abi,io.brane.rpc.Client)" class="member-name-link">Contract(Address, Abi, Client)</a> - Constructor for class io.brane.contract.<a href="io/brane/contract/Contract.html" title="class in io.brane.contract">Contract</a></dt>
@@ -440,7 +460,7 @@ loadScripts(document, 'script');</script>
 </dl>
 <h2 class="title" id="I:D">D</h2>
 <dl class="index">
-<dt><a href="index.html#4-developer-experience-heading" class="search-tag-link">4. Developer Experience</a> - Search tag in Overview</dt>
+<dt><a href="index.html#5-developer-experience-heading" class="search-tag-link">5. Developer Experience</a> - Search tag in Overview</dt>
 <dd>Section</dd>
 <dt><a href="io/brane/contract/Abi.FunctionCall.html#data()" class="member-name-link">data()</a> - Method in interface io.brane.contract.<a href="io/brane/contract/Abi.FunctionCall.html" title="interface in io.brane.contract">Abi.FunctionCall</a></dt>
 <dd>&nbsp;</dd>
@@ -533,6 +553,10 @@ loadScripts(document, 'script');</script>
 <div class="block">Default implementation of <a href="io/brane/rpc/WalletClient.html" title="interface in io.brane.rpc"><code>WalletClient</code></a> with automatic transaction
  preparation.</div>
 </dd>
+<dt><a href="io/brane/contract/BraneContract.html#deployRequest(java.lang.String,java.lang.String,java.lang.Object...)" class="member-name-link">deployRequest(String, String, Object...)</a> - Static method in class io.brane.contract.<a href="io/brane/contract/BraneContract.html" title="class in io.brane.contract">BraneContract</a></dt>
+<dd>
+<div class="block">Creates a deployment transaction request for a contract.</div>
+</dd>
 <dt><a href="io/brane/core/LogFormatter.html#design-philosophy-heading" class="search-tag-link">Design Philosophy</a> - Search tag in class io.brane.core.LogFormatter</dt>
 <dd>Section</dd>
 <dt><a href="io/brane/core/AnsiColors.html#DIM" class="member-name-link">DIM</a> - Static variable in class io.brane.core.<a href="io/brane/core/AnsiColors.html" title="class in io.brane.core">AnsiColors</a></dt>
@@ -570,7 +594,7 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns the value of the <code>element</code> record component.</div>
 </dd>
-<dt><a href="io/brane/core/types/HexData.html#EMPTY" class="member-name-link">EMPTY</a> - Static variable in record class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
+<dt><a href="io/brane/core/types/HexData.html#EMPTY" class="member-name-link">EMPTY</a> - Static variable in class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/primitives/rlp/RlpItem.html#encode()" class="member-name-link">encode()</a> - Method in interface io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/RlpItem.html" title="interface in io.brane.primitives.rlp">RlpItem</a></dt>
 <dd>
@@ -594,6 +618,20 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Encodes a list of ABI types as a tuple.</div>
 </dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encode(java.util.List)" class="member-name-link">encode(List&lt;AbiType&gt;)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>
+<div class="block">Encodes a list of ABI types into a byte array.</div>
+</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeAddress(io.brane.core.types.Address)" class="member-name-link">encodeAddress(Address)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeAddress(io.brane.core.types.Address,java.nio.ByteBuffer)" class="member-name-link">encodeAddress(Address, ByteBuffer)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>
+<div class="block">Encodes an address directly into the buffer.</div>
+</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeArray(io.brane.core.abi.Array,java.nio.ByteBuffer)" class="member-name-link">encodeArray(Array&lt;?&gt;, ByteBuffer)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>
+<div class="block">Encodes an array of ABI types directly into the buffer.</div>
+</dd>
 <dt><a href="io/brane/core/tx/Eip1559Transaction.html#encodeAsEnvelope(io.brane.core.crypto.Signature)" class="member-name-link">encodeAsEnvelope(Signature)</a> - Method in record class io.brane.core.tx.<a href="io/brane/core/tx/Eip1559Transaction.html" title="class in io.brane.core.tx">Eip1559Transaction</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/tx/LegacyTransaction.html#encodeAsEnvelope(io.brane.core.crypto.Signature)" class="member-name-link">encodeAsEnvelope(Signature)</a> - Method in record class io.brane.core.tx.<a href="io/brane/core/tx/LegacyTransaction.html" title="class in io.brane.core.tx">LegacyTransaction</a></dt>
@@ -609,6 +647,20 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/brane/primitives/rlp/RlpNumeric.html#encodeBigIntegerUnsignedItem(java.math.BigInteger)" class="member-name-link">encodeBigIntegerUnsignedItem(BigInteger)</a> - Static method in class io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/RlpNumeric.html" title="class in io.brane.primitives.rlp">RlpNumeric</a></dt>
 <dd>
 <div class="block">Encode a non-negative BigInteger as an RlpItem (RlpString).</div>
+</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeBool(boolean)" class="member-name-link">encodeBool(boolean)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeBool(boolean,java.nio.ByteBuffer)" class="member-name-link">encodeBool(boolean, ByteBuffer)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>
+<div class="block">Encodes a boolean value directly into the buffer.</div>
+</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeBytes(io.brane.core.abi.Bytes,java.nio.ByteBuffer)" class="member-name-link">encodeBytes(Bytes, ByteBuffer)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>
+<div class="block">Encodes dynamic bytes directly into the buffer.</div>
+</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeBytes(io.brane.core.types.HexData,java.nio.ByteBuffer)" class="member-name-link">encodeBytes(HexData, ByteBuffer)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>
+<div class="block">Encodes dynamic bytes (HexData) directly into the buffer.</div>
 </dd>
 <dt><a href="io/brane/contract/Abi.html#encodeConstructor(java.lang.Object...)" class="member-name-link">encodeConstructor(Object...)</a> - Method in interface io.brane.contract.<a href="io/brane/contract/Abi.html" title="interface in io.brane.contract">Abi</a></dt>
 <dd>
@@ -630,6 +682,16 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Encodes a function call with its arguments.</div>
 </dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeFunction(java.lang.String,java.util.List)" class="member-name-link">encodeFunction(String, List&lt;AbiType&gt;)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>
+<div class="block">Encodes a function call with its arguments.</div>
+</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeInt256(java.math.BigInteger)" class="member-name-link">encodeInt256(BigInteger)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeInt256(java.math.BigInteger,java.nio.ByteBuffer)" class="member-name-link">encodeInt256(BigInteger, ByteBuffer)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>
+<div class="block">Encodes an int256 value directly into the buffer.</div>
+</dd>
 <dt><a href="io/brane/primitives/rlp/Rlp.html#encodeList(java.util.List)" class="member-name-link">encodeList(List&lt;RlpItem&gt;)</a> - Static method in class io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/Rlp.html" title="class in io.brane.primitives.rlp">Rlp</a></dt>
 <dd>
 <div class="block">Encodes the provided list of RLP items.</div>
@@ -649,6 +711,20 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/brane/primitives/rlp/Rlp.html#encodeString(byte%5B%5D)" class="member-name-link">encodeString(byte[])</a> - Static method in class io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/Rlp.html" title="class in io.brane.primitives.rlp">Rlp</a></dt>
 <dd>
 <div class="block">Encodes the provided byte string into RLP format.</div>
+</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeString(io.brane.core.abi.Utf8String,java.nio.ByteBuffer)" class="member-name-link">encodeString(Utf8String, ByteBuffer)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>
+<div class="block">Encodes a UTF-8 string directly into the buffer.</div>
+</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeTuple(java.util.List,java.nio.ByteBuffer)" class="member-name-link">encodeTuple(List&lt;AbiType&gt;, ByteBuffer)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>
+<div class="block">Encodes a tuple of ABI types directly into the provided ByteBuffer.</div>
+</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeUInt256(java.math.BigInteger)" class="member-name-link">encodeUInt256(BigInteger)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#encodeUInt256(java.math.BigInteger,java.nio.ByteBuffer)" class="member-name-link">encodeUInt256(BigInteger, ByteBuffer)</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>
+<div class="block">Encodes a uint256 value directly into the buffer.</div>
 </dd>
 <dt><a href="io/brane/contract/Abi.FunctionMetadata.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in record class io.brane.contract.<a href="io/brane/contract/Abi.FunctionMetadata.html" title="class in io.brane.contract">Abi.FunctionMetadata</a></dt>
 <dd>
@@ -774,10 +850,8 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Indicates whether some other object is "equal to" this one.</div>
 </dd>
-<dt><a href="io/brane/core/types/HexData.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in record class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
-<dd>
-<div class="block">Indicates whether some other object is "equal to" this one.</div>
-</dd>
+<dt><a href="io/brane/core/types/HexData.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/core/types/Wei.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in record class io.brane.core.types.<a href="io/brane/core/types/Wei.html" title="class in io.brane.core.types">Wei</a></dt>
 <dd>
 <div class="block">Indicates whether some other object is "equal to" this one.</div>
@@ -841,6 +915,14 @@ loadScripts(document, 'script');</script>
 </dl>
 <h2 class="title" id="I:F">F</h2>
 <dl class="index">
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html" class="type-name-link" title="class in io.brane.core.abi">FastAbiEncoder</a> - Class in <a href="io/brane/core/abi/package-summary.html">io.brane.core.abi</a></dt>
+<dd>
+<div class="block">High-performance ABI encoder that eliminates intermediate object allocations.</div>
+</dd>
+<dt><a href="io/brane/core/crypto/FastSigner.html" class="type-name-link" title="class in io.brane.core.crypto">FastSigner</a> - Class in <a href="io/brane/core/crypto/package-summary.html">io.brane.core.crypto</a></dt>
+<dd>
+<div class="block">High-performance deterministic ECDSA signer.</div>
+</dd>
 <dt><a href="index.html#feature-reference-heading" class="search-tag-link">Feature Reference</a> - Search tag in Overview</dt>
 <dd>Section</dd>
 <dt><a href="io/brane/core/abi/TypeSchema.ArraySchema.html#fixedLength()" class="member-name-link">fixedLength()</a> - Method in record class io.brane.core.abi.<a href="io/brane/core/abi/TypeSchema.ArraySchema.html" title="class in io.brane.core.abi">TypeSchema.ArraySchema</a></dt>
@@ -933,6 +1015,10 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/DefaultWalletClient.html#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)" class="member-name-link">from(BraneProvider, PublicClient, TransactionSigner, Address, long, ChainProfile, BigInteger, BigInteger)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/core/utils/Topics.html#fromAddress(io.brane.core.types.Address)" class="member-name-link">fromAddress(Address)</a> - Static method in class io.brane.core.utils.<a href="io/brane/core/utils/Topics.html" title="class in io.brane.core.utils">Topics</a></dt>
+<dd>
+<div class="block">Creates a 32-byte topic from an address (left-padded with zeros).</div>
+</dd>
 <dt><a href="io/brane/rpc/LogFilter.html#fromBlock()" class="member-name-link">fromBlock()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/LogFilter.html" title="class in io.brane.rpc">LogFilter</a></dt>
 <dd>
 <div class="block">Returns the value of the <a href="./io/brane/rpc/LogFilter.html#param-fromBlock"><code>fromBlock</code></a> record component.</div>
@@ -945,7 +1031,7 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/types/Hash.html#fromBytes(byte%5B%5D)" class="member-name-link">fromBytes(byte[])</a> - Static method in record class io.brane.core.types.<a href="io/brane/core/types/Hash.html" title="class in io.brane.core.types">Hash</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/brane/core/types/HexData.html#fromBytes(byte%5B%5D)" class="member-name-link">fromBytes(byte[])</a> - Static method in record class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
+<dt><a href="io/brane/core/types/HexData.html#fromBytes(byte%5B%5D)" class="member-name-link">fromBytes(byte[])</a> - Static method in class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
 <dd>
 <div class="block">Creates HexData from raw bytes.</div>
 </dd>
@@ -1002,11 +1088,23 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/model/TransactionRequest.html#gasPriceOpt()" class="member-name-link">gasPriceOpt()</a> - Method in record class io.brane.core.model.<a href="io/brane/core/model/TransactionRequest.html" title="class in io.brane.core.model">TransactionRequest</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/BranePublicClient.html#getBalance(io.brane.core.types.Address)" class="member-name-link">getBalance(Address)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/BranePublicClient.html" title="class in io.brane.rpc">BranePublicClient</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/PublicClient.html#getBalance(io.brane.core.types.Address)" class="member-name-link">getBalance(Address)</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/PublicClient.html" title="interface in io.brane.rpc">PublicClient</a></dt>
+<dd>
+<div class="block">Retrieves the balance of an account.</div>
+</dd>
 <dt><a href="io/brane/rpc/BranePublicClient.html#getBlockByNumber(long)" class="member-name-link">getBlockByNumber(long)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/BranePublicClient.html" title="class in io.brane.rpc">BranePublicClient</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/PublicClient.html#getBlockByNumber(long)" class="member-name-link">getBlockByNumber(long)</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/PublicClient.html" title="interface in io.brane.rpc">PublicClient</a></dt>
 <dd>
 <div class="block">Retrieves a block header by its number.</div>
+</dd>
+<dt><a href="io/brane/rpc/BranePublicClient.html#getChainId()" class="member-name-link">getChainId()</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/BranePublicClient.html" title="class in io.brane.rpc">BranePublicClient</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/PublicClient.html#getChainId()" class="member-name-link">getChainId()</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/PublicClient.html" title="interface in io.brane.rpc">PublicClient</a></dt>
+<dd>
+<div class="block">Retrieves the chain ID.</div>
 </dd>
 <dt><a href="io/brane/contract/Abi.html#getFunction(java.lang.String)" class="member-name-link">getFunction(String)</a> - Method in interface io.brane.contract.<a href="io/brane/contract/Abi.html" title="interface in io.brane.contract">Abi</a></dt>
 <dd>&nbsp;</dd>
@@ -1026,6 +1124,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Extracts the recovery ID (yParity) from the v value.</div>
 </dd>
+<dt><a href="io/brane/contract/Abi.html#getSelector(java.lang.String)" class="member-name-link">getSelector(String)</a> - Static method in interface io.brane.contract.<a href="io/brane/contract/Abi.html" title="interface in io.brane.contract">Abi</a></dt>
+<dd>
+<div class="block">Computes the 4-byte function selector as a raw hex string (no 0x prefix).</div>
+</dd>
 <dt><a href="io/brane/rpc/BranePublicClient.html#getTransactionByHash(io.brane.core.types.Hash)" class="member-name-link">getTransactionByHash(Hash)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/BranePublicClient.html" title="class in io.brane.rpc">BranePublicClient</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/PublicClient.html#getTransactionByHash(io.brane.core.types.Hash)" class="member-name-link">getTransactionByHash(Hash)</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/PublicClient.html" title="interface in io.brane.rpc">PublicClient</a></dt>
@@ -1037,6 +1139,8 @@ loadScripts(document, 'script');</script>
 </dl>
 <h2 class="title" id="I:H">H</h2>
 <dl class="index">
+<dt><a href="index.html#4-high-performance-core-heading" class="search-tag-link">4. High-Performance Core</a> - Search tag in Overview</dt>
+<dd>Section</dd>
 <dt><a href="io/brane/rpc/JsonRpcResponse.html#hasError()" class="member-name-link">hasError()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcResponse.html" title="class in io.brane.rpc">JsonRpcResponse</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/model/BlockHeader.html#hash()" class="member-name-link">hash()</a> - Method in record class io.brane.core.model.<a href="io/brane/core/model/BlockHeader.html" title="class in io.brane.core.model">BlockHeader</a></dt>
@@ -1191,10 +1295,8 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns a hash code value for this object.</div>
 </dd>
-<dt><a href="io/brane/core/types/HexData.html#hashCode()" class="member-name-link">hashCode()</a> - Method in record class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
-<dd>
-<div class="block">Returns a hash code value for this object.</div>
-</dd>
+<dt><a href="io/brane/core/types/HexData.html#hashCode()" class="member-name-link">hashCode()</a> - Method in class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/core/types/Wei.html#hashCode()" class="member-name-link">hashCode()</a> - Method in record class io.brane.core.types.<a href="io/brane/core/types/Wei.html" title="class in io.brane.core.types">Wei</a></dt>
 <dd>
 <div class="block">Returns a hash code value for this object.</div>
@@ -1227,7 +1329,8 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="io/brane/primitives/Hex.html#hasPrefix(java.lang.String)" class="member-name-link">hasPrefix(String)</a> - Static method in class io.brane.primitives.<a href="io/brane/primitives/Hex.html" title="class in io.brane.primitives">Hex</a></dt>
 <dd>
-<div class="block">Returns <code>true</code> if the provided string starts with <code>0x</code> (case-insensitive).</div>
+<div class="block">Returns <code>true</code> if the provided string starts with <code>0x</code>
+ (case-insensitive).</div>
 </dd>
 <dt><a href="io/brane/rpc/HttpBraneProvider.Builder.html#header(java.lang.String,java.lang.String)" class="member-name-link">header(String, String)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/HttpBraneProvider.Builder.html" title="class in io.brane.rpc">HttpBraneProvider.Builder</a></dt>
 <dd>&nbsp;</dd>
@@ -1241,13 +1344,13 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Utility methods for hex encoding/decoding with optional <code>0x</code> prefixes.</div>
 </dd>
-<dt><a href="io/brane/core/types/HexData.html" class="type-name-link" title="class in io.brane.core.types">HexData</a> - Record Class in <a href="io/brane/core/types/package-summary.html">io.brane.core.types</a></dt>
+<dt><a href="io/brane/core/types/HexData.html" class="type-name-link" title="class in io.brane.core.types">HexData</a> - Class in <a href="io/brane/core/types/package-summary.html">io.brane.core.types</a></dt>
 <dd>
 <div class="block">Represents arbitrary-length hexadecimal-encoded byte data with "0x" prefix.</div>
 </dd>
-<dt><a href="io/brane/core/types/HexData.html#%3Cinit%3E(java.lang.String)" class="member-name-link">HexData(String)</a> - Constructor for record class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
+<dt><a href="io/brane/core/types/HexData.html#%3Cinit%3E(java.lang.String)" class="member-name-link">HexData(String)</a> - Constructor for class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
 <dd>
-<div class="block">Creates an instance of a <code>HexData</code> record class.</div>
+<div class="block">Creates a HexData from a hex string.</div>
 </dd>
 <dt><a href="io/brane/core/model/Chains.html#HOLESKY" class="member-name-link">HOLESKY</a> - Static variable in class io.brane.core.model.<a href="io/brane/core/model/Chains.html" title="class in io.brane.core.model">Chains</a></dt>
 <dd>&nbsp;</dd>
@@ -1327,6 +1430,8 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/brane/core/tx/package-summary.html">io.brane.core.tx</a> - package io.brane.core.tx</dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/types/package-summary.html">io.brane.core.types</a> - package io.brane.core.types</dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/core/utils/package-summary.html">io.brane.core.utils</a> - package io.brane.core.utils</dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/primitives/package-summary.html">io.brane.primitives</a> - package io.brane.primitives</dt>
 <dd>&nbsp;</dd>
@@ -1661,6 +1766,15 @@ loadScripts(document, 'script');</script>
 </dl>
 <h2 class="title" id="I:P">P</h2>
 <dl class="index">
+<dt><a href="io/brane/core/abi/PackedSizeCalculator.html" class="type-name-link" title="class in io.brane.core.abi">PackedSizeCalculator</a> - Class in <a href="io/brane/core/abi/package-summary.html">io.brane.core.abi</a></dt>
+<dd>
+<div class="block">Calculates the exact byte size of encoded ABI types without performing the
+ encoding.</div>
+</dd>
+<dt><a href="io/brane/core/abi/FastAbiEncoder.html#padRight(byte%5B%5D)" class="member-name-link">padRight(byte[])</a> - Static method in class io.brane.core.abi.<a href="io/brane/core/abi/FastAbiEncoder.html" title="class in io.brane.core.abi">FastAbiEncoder</a></dt>
+<dd>
+<div class="block">Pads a byte array to the right with zeros to a multiple of 32 bytes.</div>
+</dd>
 <dt><a href="io/brane/core/RevertDecoder.RevertKind.html#PANIC" class="member-name-link">PANIC</a> - Enum constant in enum class io.brane.core.<a href="io/brane/core/RevertDecoder.RevertKind.html" title="enum class in io.brane.core">RevertDecoder.RevertKind</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/JsonRpcRequest.html#params()" class="member-name-link">params()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcRequest.html" title="class in io.brane.rpc">JsonRpcRequest</a></dt>
@@ -1693,7 +1807,11 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="io/brane/rpc/PublicClient.html" class="type-name-link" title="interface in io.brane.rpc">PublicClient</a> - Interface in <a href="io/brane/rpc/package-summary.html">io.brane.rpc</a></dt>
 <dd>
-<div class="block">Client for read-only blockchain queries via JSON-RPC.</div>
+<div class="block">A client for interacting with an Ethereum node via JSON-RPC.</div>
+</dd>
+<dt><a href="io/brane/core/types/HexData.html#putTo(java.nio.ByteBuffer)" class="member-name-link">putTo(ByteBuffer)</a> - Method in class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
+<dd>
+<div class="block">Writes the raw bytes directly to the provided ByteBuffer.</div>
 </dd>
 </dl>
 <h2 class="title" id="I:R">R</h2>
@@ -1857,6 +1975,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Signs a message hash using deterministic ECDSA (RFC 6979).</div>
 </dd>
+<dt><a href="io/brane/core/crypto/FastSigner.html#sign(byte%5B%5D,java.math.BigInteger)" class="member-name-link">sign(byte[], BigInteger)</a> - Static method in class io.brane.core.crypto.<a href="io/brane/core/crypto/FastSigner.html" title="class in io.brane.core.crypto">FastSigner</a></dt>
+<dd>
+<div class="block">Signs a message hash and returns the signature with recovery ID.</div>
+</dd>
 <dt><a href="io/brane/rpc/PrivateKeyTransactionSigner.html#sign(io.brane.core.tx.UnsignedTransaction,long)" class="member-name-link">sign(UnsignedTransaction, long)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/PrivateKeyTransactionSigner.html" title="class in io.brane.rpc">PrivateKeyTransactionSigner</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/TransactionSigner.html#sign(io.brane.core.tx.UnsignedTransaction,long)" class="member-name-link">sign(UnsignedTransaction, long)</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a></dt>
@@ -1875,6 +1997,10 @@ loadScripts(document, 'script');</script>
 <dd>Section</dd>
 <dt><a href="io/brane/contract/Signer.html" class="type-name-link" title="interface in io.brane.contract">Signer</a> - Interface in <a href="io/brane/contract/package-summary.html">io.brane.contract</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/core/crypto/PrivateKey.html#signFast(byte%5B%5D)" class="member-name-link">signFast(byte[])</a> - Method in class io.brane.core.crypto.<a href="io/brane/core/crypto/PrivateKey.html" title="class in io.brane.core.crypto">PrivateKey</a></dt>
+<dd>
+<div class="block">Optimized signing that avoids public key recovery.</div>
+</dd>
 <dt><a href="io/brane/contract/PrivateKeySigner.html#signTransaction(io.brane.core.tx.UnsignedTransaction,long)" class="member-name-link">signTransaction(UnsignedTransaction, long)</a> - Method in class io.brane.contract.<a href="io/brane/contract/PrivateKeySigner.html" title="class in io.brane.contract">PrivateKeySigner</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/contract/Signer.html#signTransaction(io.brane.core.tx.UnsignedTransaction,long)" class="member-name-link">signTransaction(UnsignedTransaction, long)</a> - Method in interface io.brane.contract.<a href="io/brane/contract/Signer.html" title="interface in io.brane.contract">Signer</a></dt>
@@ -1964,7 +2090,7 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/types/Hash.html#toBytes()" class="member-name-link">toBytes()</a> - Method in record class io.brane.core.types.<a href="io/brane/core/types/Hash.html" title="class in io.brane.core.types">Hash</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/brane/core/types/HexData.html#toBytes()" class="member-name-link">toBytes()</a> - Method in record class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
+<dt><a href="io/brane/core/types/HexData.html#toBytes()" class="member-name-link">toBytes()</a> - Method in class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
 <dd>
 <div class="block">Decodes this hex data into raw bytes.</div>
 </dd>
@@ -1983,6 +2109,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/brane/rpc/LogFilter.html#topics()" class="member-name-link">topics()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/LogFilter.html" title="class in io.brane.rpc">LogFilter</a></dt>
 <dd>
 <div class="block">Returns the value of the <a href="./io/brane/rpc/LogFilter.html#param-topics"><code>topics</code></a> record component.</div>
+</dd>
+<dt><a href="io/brane/core/utils/Topics.html" class="type-name-link" title="class in io.brane.core.utils">Topics</a> - Class in <a href="io/brane/core/utils/package-summary.html">io.brane.core.utils</a></dt>
+<dd>
+<div class="block">Utility class for creating event topics.</div>
 </dd>
 <dt><a href="io/brane/rpc/internal/RpcUtils.html#toQuantityHex(java.math.BigInteger)" class="member-name-link">toQuantityHex(BigInteger)</a> - Static method in class io.brane.rpc.internal.<a href="io/brane/rpc/internal/RpcUtils.html" title="class in io.brane.rpc.internal">RpcUtils</a></dt>
 <dd>
@@ -2118,10 +2248,8 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns a string representation of this record class.</div>
 </dd>
-<dt><a href="io/brane/core/types/HexData.html#toString()" class="member-name-link">toString()</a> - Method in record class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
-<dd>
-<div class="block">Returns a string representation of this record class.</div>
-</dd>
+<dt><a href="io/brane/core/types/HexData.html#toString()" class="member-name-link">toString()</a> - Method in class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/core/types/Wei.html#toString()" class="member-name-link">toString()</a> - Method in record class io.brane.core.types.<a href="io/brane/core/types/Wei.html" title="class in io.brane.core.types">Wei</a></dt>
 <dd>
 <div class="block">Returns a string representation of this record class.</div>
@@ -2369,9 +2497,9 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns the value of the <code>value</code> record component.</div>
 </dd>
-<dt><a href="io/brane/core/types/HexData.html#value()" class="member-name-link">value()</a> - Method in record class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
+<dt><a href="io/brane/core/types/HexData.html#value()" class="member-name-link">value()</a> - Method in class io.brane.core.types.<a href="io/brane/core/types/HexData.html" title="class in io.brane.core.types">HexData</a></dt>
 <dd>
-<div class="block">Returns the value of the <a href="./io/brane/core/types/HexData.html#param-value"><code>value</code></a> record component.</div>
+<div class="block">Returns the hex string representation with "0x" prefix.</div>
 </dd>
 <dt><a href="io/brane/core/types/Wei.html#value()" class="member-name-link">value()</a> - Method in record class io.brane.core.types.<a href="io/brane/core/types/Wei.html" title="class in io.brane.core.types">Wei</a></dt>
 <dd>
@@ -2405,8 +2533,7 @@ the order they are declared.</div>
 <dl class="index">
 <dt><a href="io/brane/rpc/WalletClient.html" class="type-name-link" title="interface in io.brane.rpc">WalletClient</a> - Interface in <a href="io/brane/rpc/package-summary.html">io.brane.rpc</a></dt>
 <dd>
-<div class="block">Client for submitting transactions to the blockchain with automatic gas
- estimation and nonce management.</div>
+<div class="block">A client for signing and sending transactions.</div>
 </dd>
 <dt><a href="io/brane/core/types/Wei.html" class="type-name-link" title="class in io.brane.core.types">Wei</a> - Record Class in <a href="io/brane/core/types/package-summary.html">io.brane.core.types</a></dt>
 <dd>

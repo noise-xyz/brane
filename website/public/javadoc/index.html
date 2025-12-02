@@ -108,7 +108,14 @@ loadScripts(document, 'script');</script>
         </li>
     </ul>
 
-    <h3 id="4-developer-experience-heading">4. Developer Experience</h3>
+    <h3 id="4-high-performance-core-heading">4. High-Performance Core</h3>
+    <ul>
+        <li><b>Zero-Copy ABI Encoding</b>: Optimized encoder that writes directly to buffers, achieving <b>1.42x speedup</b> over Web3j.</li>
+        <li><b>Fast Signing</b>: Deterministic ECDSA signer with direct recovery ID calculation, <b>4x faster</b> for EIP-1559 transactions.</li>
+        <li><b>Low Allocation</b>: Minimized object churn in hot paths (encoding, hashing, signing).</li>
+    </ul>
+
+    <h3 id="5-developer-experience-heading">5. Developer Experience</h3>
     <ul>
         <li><b>Granular Logging</b>: Configurable logging via <code>BraneDebug</code> (RPC payloads, Tx lifecycle, Gas
             estimation).</li>
@@ -153,14 +160,16 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color all-packages-table all-packages-table-tab1">&nbsp;</div>
 <div class="col-first odd-row-color all-packages-table all-packages-table-tab1"><a href="io/brane/core/types/package-summary.html">io.brane.core.types</a></div>
 <div class="col-last odd-row-color all-packages-table all-packages-table-tab1">&nbsp;</div>
-<div class="col-first even-row-color all-packages-table all-packages-table-tab1"><a href="io/brane/primitives/package-summary.html">io.brane.primitives</a></div>
+<div class="col-first even-row-color all-packages-table all-packages-table-tab1"><a href="io/brane/core/utils/package-summary.html">io.brane.core.utils</a></div>
 <div class="col-last even-row-color all-packages-table all-packages-table-tab1">&nbsp;</div>
-<div class="col-first odd-row-color all-packages-table all-packages-table-tab1"><a href="io/brane/primitives/rlp/package-summary.html">io.brane.primitives.rlp</a></div>
+<div class="col-first odd-row-color all-packages-table all-packages-table-tab1"><a href="io/brane/primitives/package-summary.html">io.brane.primitives</a></div>
 <div class="col-last odd-row-color all-packages-table all-packages-table-tab1">&nbsp;</div>
-<div class="col-first even-row-color all-packages-table all-packages-table-tab1"><a href="io/brane/rpc/package-summary.html">io.brane.rpc</a></div>
+<div class="col-first even-row-color all-packages-table all-packages-table-tab1"><a href="io/brane/primitives/rlp/package-summary.html">io.brane.primitives.rlp</a></div>
 <div class="col-last even-row-color all-packages-table all-packages-table-tab1">&nbsp;</div>
-<div class="col-first odd-row-color all-packages-table all-packages-table-tab1"><a href="io/brane/rpc/internal/package-summary.html">io.brane.rpc.internal</a></div>
+<div class="col-first odd-row-color all-packages-table all-packages-table-tab1"><a href="io/brane/rpc/package-summary.html">io.brane.rpc</a></div>
 <div class="col-last odd-row-color all-packages-table all-packages-table-tab1">&nbsp;</div>
+<div class="col-first even-row-color all-packages-table all-packages-table-tab1"><a href="io/brane/rpc/internal/package-summary.html">io.brane.rpc.internal</a></div>
+<div class="col-last even-row-color all-packages-table all-packages-table-tab1">&nbsp;</div>
 </div>
 </div>
 </main>

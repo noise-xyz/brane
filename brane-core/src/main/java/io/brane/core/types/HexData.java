@@ -28,7 +28,8 @@ import java.util.regex.Pattern;
  * <p>
  * <strong>Example usage:</strong>
  * 
- * <pre>{@code
+ * <pre>
+ * {@code
  * // Empty data
  * HexData empty = HexData.EMPTY;
  * 
@@ -42,11 +43,23 @@ import java.util.regex.Pattern;
  * // Convert back to bytes
  * byte[] decoded = data.toBytes();
  * }</pre>
- * 
- * Throws {@link IllegalArgumentException} if value is not valid
- * hex data.
  * <p>
- * Throws {@link NullPointerException} if value is null.
+ * An immutable wrapper for hexadecimal data.
+ * <p>
+ * This class provides a type-safe way to handle hex strings and byte arrays,
+ * ensuring correct formatting (0x prefix)
+ * and efficient conversions. It supports both "lazy" validation (for trusted
+ * internal data) and strict validation
+ * (for user input).
+ * <p>
+ * Key features:
+ * <ul>
+ * <li><b>Immutable</b>: Thread-safe and safe to share across components.</li>
+ * <li><b>Efficient</b>: Avoids unnecessary string/byte conversions until
+ * needed.</li>
+ * <li><b>Zero-Copy Encoding</b>: Can write directly to a
+ * {@link java.nio.ByteBuffer} via {@link #putTo(java.nio.ByteBuffer)}.</li>
+ * </ul>
  */
 public final class HexData {
     private static final Pattern HEX = Pattern.compile("^0x([0-9a-fA-F]{2})*$");
