@@ -10,7 +10,13 @@ echo "🧪 [Level 1] Running Unit Tests..."
 # Based on current gradle setup, we might need to be specific.
 # Let's run the fast sanity checks as part of unit tests too.
 
-./gradlew test \
+# Run Unit Tests for each module (excluding integration tests)
+./gradlew \
+    :brane-primitives:test \
+    :brane-core:test \
+    :brane-rpc:test \
+    :brane-contract:test \
+    -Pbrane.unit.tests=true \
     :brane-examples:run -PmainClass=io.brane.examples.CryptoSanityCheck \
     :brane-examples:run -PmainClass=io.brane.examples.TransactionSanityCheck \
     --parallel --no-daemon --console=plain
