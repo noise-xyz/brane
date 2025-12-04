@@ -5,32 +5,26 @@ A modern, type-safe JVM SDK for Ethereum and EVM chains.
 Built on Java 21. Focused on clarity, correctness, and developer experience.
 
 ## Quickstart
-
-Add dependencies:
-
-```xml
-<dependencies>
-    <dependency>
-        <groupId>io.brane</groupId>
-        <artifactId>brane-core</artifactId>
-        <version>0.1.0-alpha</version>
-    </dependency>
-    <dependency>
-        <groupId>io.brane</groupId>
-        <artifactId>brane-rpc</artifactId>
-        <version>0.1.0-alpha</version>
-    </dependency>
-    <dependency>
-        <groupId>io.brane</groupId>
-        <artifactId>brane-contract</artifactId>
-        <version>0.1.0-alpha</version>
-    </dependency>
-    <dependency>
-        <groupId>io.brane</groupId>
-        <artifactId>brane-primitives</artifactId>
-        <version>0.1.0-alpha</version>
-    </dependency>
-</dependencies>
+ 
+We use [JitPack](https://jitpack.io) for distribution.
+ 
+### 1. Add Repository
+```groovy
+repositories {
+    mavenCentral()
+    maven { url 'https://jitpack.io' }
+}
+```
+ 
+### 2. Add Dependencies
+```groovy
+dependencies {
+    // Replace '0.1.0-alpha' with a specific tag or 'main-SNAPSHOT'
+    implementation 'com.github.noise-xyz.brane:brane-core:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-rpc:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-contract:0.1.0-alpha'
+    implementation 'com.github.noise-xyz.brane:brane-primitives:0.1.0-alpha'
+}
 ```
 
 ## Features
@@ -124,7 +118,7 @@ Prerequisites: Java 21, [Foundry](https://getfoundry.sh/) (for Anvil).
 The best way to explore the SDK is to run the canonical examples against a local Anvil node.
 
 ```bash
-./run_examples.sh
+./scripts/test_integration.sh
 ```
 This script checks for Anvil, starts the examples, and verifies:
 *   ERC-20 interactions
@@ -135,16 +129,12 @@ This script checks for Anvil, starts the examples, and verifies:
 
 **Run Smoke Tests (Comprehensive):**
 ```bash
-./verify_smoke_test.sh
-```
-To verify against **Sepolia testnet** (read-only):
-```bash
-./verify_smoke_test.sh --sepolia
+./scripts/test_smoke.sh
 ```
 
 **Run Benchmarks:**
 ```bash
-./gradlew :brane-benchmark:jmh
+./scripts/test_perf.sh
 ```
 
 **Run Tests:**

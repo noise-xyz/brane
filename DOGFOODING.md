@@ -46,7 +46,7 @@ If you are developing `brane` itself, use these scripts to verify your changes.
 The smoke test suite is the primary verification tool. It compiles a standalone consumer app and runs it against a local Anvil node.
 
 ```bash
-./verify_smoke_test.sh
+./scripts/test_smoke.sh
 ```
 **What it does:**
 1.  Starts a fresh Anvil instance (fails if port 8545 is busy).
@@ -76,25 +76,18 @@ The smoke test suite is the primary verification tool. It compiles a standalone 
 You can run the smoke tests against the Sepolia testnet in read-only mode. This verifies connectivity and data retrieval without spending gas.
 
 ```bash
-./verify_smoke_test.sh --sepolia
+# Note: You need to manually configure the SmokeApp for Sepolia if needed, 
+# or use the integration tests which are more flexible.
+# The current test_smoke.sh focuses on local Anvil.
 ```
-**What it does:**
-1.  Connects to a public Sepolia RPC (default: `https://ethereum-sepolia-rpc.publicnode.com`).
-2.  Runs read-only scenarios (I, J, M).
-3.  Verifies Chain ID (11155111) and retrieves balance of the zero address.
-4.  **Note**: Public RPCs can be flaky. If you encounter timeouts, you can override the RPC URL:
-    ```bash
-    export BRANE_SEPOLIA_RPC="https://your-private-rpc.com"
-    ./verify_smoke_test.sh --sepolia
-    ```
 
 ### 3. Canonical Examples (Learning & Debugging)
 Run the examples to see the SDK in action or to debug specific features.
 
 ```bash
-./run_examples.sh
+./scripts/test_integration.sh
 ```
-**Prerequisite:** You must have `anvil` running in a separate terminal.
+**Prerequisite:** You must have `anvil` running in a separate terminal (or let the script start it).
 
 **What it does:**
 - Runs `CanonicalErc20Example` (High-level binding)
@@ -107,7 +100,7 @@ Run the examples to see the SDK in action or to debug specific features.
 Run the full JUnit integration test suite.
 
 ```bash
-./run_integration_tests.sh
+./scripts/test_integration.sh
 ```
 **What it does:**
 - Runs standard JUnit tests in `brane-rpc` and `brane-core`.
