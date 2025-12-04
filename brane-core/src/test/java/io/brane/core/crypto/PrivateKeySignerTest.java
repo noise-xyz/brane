@@ -38,4 +38,18 @@ class PrivateKeySignerTest {
     void invalidKeyThrows() {
         assertThrows(IllegalArgumentException.class, () -> new PrivateKeySigner("not-a-key"));
     }
+
+    @Test
+    void signMessageProducesEthereumCompatibleV() {
+        PrivateKeySigner signer = new PrivateKeySigner(
+                "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
+
+        String message = "Hello World";
+        Signature sig = signer.signMessage(message.getBytes());
+
+        // EIP-191 expects v to be 27 or 28
+        // 0 or 1 is not valid for personal_sign
+        boolean isEthereumCompatible = sig.v() == 27 || sig.v() == 28;
+        assertEquals(true, isEthereumCompatible, "v should be 27 or 28, but was " + sig.v());
+    }
 }

@@ -78,6 +78,10 @@ public final class PrivateKeySigner implements Signer {
         System.arraycopy(prefix, 0, prefixedMessage, 0, prefix.length);
         System.arraycopy(message, 0, prefixedMessage, prefix.length, message.length);
 
-        return privateKey.signFast(Keccak256.hash(prefixedMessage));
+        Signature sig = privateKey.signFast(Keccak256.hash(prefixedMessage));
+
+        // Adjust v to be 27 or 28 for EIP-191 compatibility
+        int v = sig.v() + 27;
+        return new Signature(sig.r(), sig.s(), v);
     }
 }
