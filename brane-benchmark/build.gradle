@@ -23,6 +23,7 @@ jmh {
     fork = 1
     failOnError = true
     resultFormat = 'JSON'
+    includes = ['SignerBenchmark']
 }
 
 tasks.withType(JavaCompile).configureEach {

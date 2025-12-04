@@ -23,7 +23,7 @@
 - **Chains**: Using `ChainProfiles` (Mainnet, Sepolia, Anvil).
 
 ## 6. Advanced Signing (External Signers)
-- **`TransactionSigner` Interface**: Implementing custom signers (e.g., Privy, AWS KMS, HSM).
+- **`Signer` Interface**: Implementing custom signers (e.g., Privy, AWS KMS, HSM).
 - **Example**: How to inject a custom signer into `WalletClient`.
 
 ## 7. Utilities & Types

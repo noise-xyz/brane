@@ -10,7 +10,7 @@ import io.brane.core.types.Wei;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PrivateKeyTransactionSigner;
+import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 import java.util.List;
@@ -33,9 +33,9 @@ public final class AccessListExample {
 
         final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
         final PublicClient publicClient = PublicClient.from(provider);
-        final PrivateKeyTransactionSigner signer = new PrivateKeyTransactionSigner(privateKey);
+        final PrivateKeySigner signer = new PrivateKeySigner(privateKey);
         final WalletClient wallet =
-                DefaultWalletClient.create(provider, publicClient, signer::sign, signer.address());
+                DefaultWalletClient.create(provider, publicClient, signer, signer.address());
 
         final Address target = signer.address();
         final List<AccessListEntry> accessList =

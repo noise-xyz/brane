@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import io.brane.core.crypto.Signer;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -36,7 +37,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * <ol>
  * <li>Fills missing gas parameters via {@link SmartGasStrategy}</li>
  * <li>Fetches nonce via {@code eth_getTransactionCount} if not provided</li>
- * <li>Signs the transaction using {@link TransactionSigner}</li>
+ * <li>Signs the transaction using {@link io.brane.core.crypto.Signer}</li>
  * <li>Broadcasts via {@code eth_sendRawTransaction}</li>
  * <li>Optionally polls for receipt via {@code eth_getTransactionReceipt}</li>
  * </ol>
@@ -56,13 +57,13 @@ import java.util.concurrent.atomic.AtomicReference;
  * 
  * @see WalletClient
  * @see SmartGasStrategy
- * @see TransactionSigner
+ * @see io.brane.core.crypto.Signer
  */
 public final class DefaultWalletClient implements WalletClient {
 
     private final BraneProvider provider;
 
-    private final TransactionSigner signer;
+    private final Signer signer;
     private final Address senderAddress;
     private final long expectedChainId;
 
@@ -72,7 +73,7 @@ public final class DefaultWalletClient implements WalletClient {
 
     private DefaultWalletClient(
             final BraneProvider provider,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress,
             final long expectedChainId,
             final SmartGasStrategy gasStrategy) {
@@ -88,7 +89,7 @@ public final class DefaultWalletClient implements WalletClient {
     public static DefaultWalletClient from(
             final BraneProvider provider,
             final PublicClient publicClient,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress,
             final long expectedChainId,
             final ChainProfile chainProfile) {
@@ -100,7 +101,7 @@ public final class DefaultWalletClient implements WalletClient {
     public static DefaultWalletClient from(
             final BraneProvider provider,
             final PublicClient publicClient,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress,
             final long expectedChainId,
             final ChainProfile chainProfile,
@@ -119,7 +120,7 @@ public final class DefaultWalletClient implements WalletClient {
     public static DefaultWalletClient from(
             final BraneProvider provider,
             final PublicClient publicClient,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress,
             final long expectedChainId) {
         final ChainProfile profile = ChainProfile.of(expectedChainId, null, true, Wei.of(1_000_000_000L));
@@ -129,7 +130,7 @@ public final class DefaultWalletClient implements WalletClient {
     public static DefaultWalletClient create(
             final BraneProvider provider,
             final PublicClient publicClient,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress,
             final ChainProfile chainProfile) {
         final SmartGasStrategy gasStrategy = new SmartGasStrategy(publicClient, provider, chainProfile);
@@ -140,7 +141,15 @@ public final class DefaultWalletClient implements WalletClient {
     public static DefaultWalletClient create(
             final BraneProvider provider,
             final PublicClient publicClient,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer,
+            final ChainProfile chainProfile) {
+        return create(provider, publicClient, signer, signer.address(), chainProfile);
+    }
+
+    public static DefaultWalletClient create(
+            final BraneProvider provider,
+            final PublicClient publicClient,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress) {
         return from(provider, publicClient, signer, senderAddress, 0L);
     }
@@ -148,7 +157,14 @@ public final class DefaultWalletClient implements WalletClient {
     public static DefaultWalletClient create(
             final BraneProvider provider,
             final PublicClient publicClient,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer) {
+        return create(provider, publicClient, signer, signer.address());
+    }
+
+    public static DefaultWalletClient create(
+            final BraneProvider provider,
+            final PublicClient publicClient,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress,
             final ChainProfile chainProfile,
             final BigInteger gasLimitBufferNumerator,
@@ -209,7 +225,22 @@ public final class DefaultWalletClient implements WalletClient {
         DebugLogger.logTx(
                 LogFormatter.formatTxSend(from.value(), valueParts.to, nonce, gasLimit, valueParts.value));
 
-        final String signedHex = signer.sign(unsignedTx, chainId);
+        final io.brane.core.crypto.Signature baseSig = signer.signTransaction(unsignedTx, chainId);
+
+        // Adjust V value and encode
+        final io.brane.core.crypto.Signature signature;
+        if (unsignedTx instanceof io.brane.core.tx.LegacyTransaction) {
+            // For legacy transactions, use EIP-155 encoding: v = chainId * 2 + 35 + yParity
+            final int v = (int) (chainId * 2 + 35 + baseSig.v());
+            signature = new io.brane.core.crypto.Signature(baseSig.r(), baseSig.s(), v);
+        } else {
+            // For EIP-1559, v is just yParity (0 or 1)
+            signature = baseSig;
+        }
+
+        final byte[] envelope = unsignedTx.encodeAsEnvelope(signature);
+        final String signedHex = io.brane.primitives.Hex.encode(envelope);
+
         final String txHash;
         final long start = System.nanoTime();
         try {

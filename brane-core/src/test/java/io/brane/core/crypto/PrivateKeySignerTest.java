@@ -1,0 +1,58 @@
+package io.brane.core.crypto;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import io.brane.core.tx.LegacyTransaction;
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
+import io.brane.core.types.Wei;
+import org.junit.jupiter.api.Test;
+
+class PrivateKeySignerTest {
+
+    @Test
+    void derivesAddressAndSigns() {
+        PrivateKeySigner signer = new PrivateKeySigner(
+                "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
+
+        Address address = signer.address();
+        assertEquals("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", address.value());
+
+        // Create a Legacy transaction for testing
+        LegacyTransaction tx = new LegacyTransaction(
+                0L, // nonce
+                Wei.of(0), // gasPrice
+                21_000L, // gasLimit
+                new Address("0x0000000000000000000000000000000000000000"), // to
+                Wei.of(0), // value
+                HexData.EMPTY // data
+        );
+
+        Signature signed = signer.signTransaction(tx, 1L); // chainId = 1
+        assertNotNull(signed);
+        // Verify signature components are present
+        assertNotNull(signed.r());
+        assertNotNull(signed.s());
+    }
+
+    @Test
+    void invalidKeyThrows() {
+        assertThrows(IllegalArgumentException.class, () -> new PrivateKeySigner("not-a-key"));
+    }
+
+    @Test
+    void signMessageProducesEthereumCompatibleV() {
+        PrivateKeySigner signer = new PrivateKeySigner(
+                "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
+
+        String message = "Hello World";
+        Signature sig = signer.signMessage(message.getBytes());
+
+        // EIP-191 expects v to be 27 or 28
+        // 0 or 1 is not valid for personal_sign
+        assertTrue(sig.v() == 27 || sig.v() == 28, "v should be 27 or 28, but was " + sig.v());
+    }
+}

@@ -74,9 +74,9 @@ class AbiWrapperIntegrationTest {
     String pk = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; // Anvil account #0
     provider = HttpBraneProvider.builder(rpcUrl).build();
     publicClient = PublicClient.from(provider);
-    var signer = new io.brane.rpc.PrivateKeyTransactionSigner(pk);
+    var signer = new io.brane.core.crypto.PrivateKeySigner(pk);
     walletClient = io.brane.rpc.DefaultWalletClient.create(
-        provider, publicClient, signer::sign, signer.address());
+        provider, publicClient, signer, signer.address());
     deployer = signer.address();
   }
 

@@ -12,6 +12,7 @@ import io.brane.rpc.internal.RpcUtils;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import io.brane.primitives.Hex;
 
 public final class Contract {
 
@@ -52,7 +53,7 @@ public final class Contract {
         }
     }
 
-    public String write(final Signer signer, final String functionName, final Object... args)
+    public String write(final io.brane.core.crypto.Signer signer, final String functionName, final Object... args)
             throws RpcException, RevertException {
         final Abi.FunctionCall call = abi.encodeFunction(functionName, args);
         final String data = call.data();
@@ -75,7 +76,15 @@ public final class Contract {
                 Wei.of(0),
                 new HexData(data));
 
-        final String signedHex = signer.signTransaction(tx, chainId);
+        final io.brane.core.crypto.Signature baseSig = signer.signTransaction(tx, chainId);
+
+        // Adjust V for Legacy Transaction (EIP-155)
+        final int v = (int) (chainId * 2 + 35 + baseSig.v());
+        final io.brane.core.crypto.Signature signature = new io.brane.core.crypto.Signature(baseSig.r(), baseSig.s(),
+                v);
+
+        final byte[] envelope = tx.encodeAsEnvelope(signature);
+        final String signedHex = io.brane.primitives.Hex.encode(envelope);
         try {
             return client.call("eth_sendRawTransaction", String.class, signedHex);
         } catch (RpcException e) {

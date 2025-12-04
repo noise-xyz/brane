@@ -18,7 +18,8 @@ import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.LogFilter;
-import io.brane.rpc.PrivateKeyTransactionSigner;
+import io.brane.core.crypto.PrivateKeySigner;
+import io.brane.core.crypto.Signer;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 
@@ -145,7 +146,7 @@ public class SmokeApp {
             walletClient = DefaultWalletClient.create(
                 provider, 
                 publicClient, 
-                new PrivateKeyTransactionSigner(PRIVATE_KEY), 
+                new PrivateKeySigner(PRIVATE_KEY), 
                 OWNER
             );
         }
@@ -316,7 +317,7 @@ public class SmokeApp {
     private static void testRawSigning() {
         System.out.println("\n[Scenario F] Raw Transaction Signing");
         
-        PrivateKeyTransactionSigner signer = new PrivateKeyTransactionSigner(PRIVATE_KEY);
+        Signer signer = new PrivateKeySigner(PRIVATE_KEY);
         
         // Create a dummy legacy transaction
         io.brane.core.tx.LegacyTransaction tx = new io.brane.core.tx.LegacyTransaction(
@@ -328,12 +329,12 @@ public class SmokeApp {
             HexData.EMPTY // data
         );
         
-        String signature = signer.sign(tx, 31337);
+        io.brane.core.crypto.Signature signature = signer.signTransaction(tx, 31337);
         
-        if (signature == null || !signature.startsWith("0x") || signature.length() < 130) {
-            throw new RuntimeException("Invalid signature generated: " + signature);
+        if (signature == null) {
+            throw new RuntimeException("Invalid signature generated: null");
         }
-        System.out.println("  ✓ Generated Valid Signature: " + signature.substring(0, 10) + "...");
+        System.out.println("  ✓ Generated Valid Signature: r=" + io.brane.primitives.Hex.encode(signature.r()) + "...");
     }
 
     private static void testCustomRpc() {
@@ -355,7 +356,7 @@ public class SmokeApp {
         WalletClient badClient = DefaultWalletClient.from(
             provider, 
             publicClient, 
-            new PrivateKeyTransactionSigner(PRIVATE_KEY), 
+            new PrivateKeySigner(PRIVATE_KEY), 
             OWNER,
             1L // Expected: Mainnet
         );
@@ -452,7 +453,7 @@ public class SmokeApp {
         WalletClient bufferedClient = DefaultWalletClient.from(
             provider, 
             publicClient, 
-            new PrivateKeyTransactionSigner(PRIVATE_KEY), 
+            new PrivateKeySigner(PRIVATE_KEY), 
             OWNER,
             31337L,
             io.brane.core.chain.ChainProfile.of(31337L, "http://127.0.0.1:8545", true, Wei.of(1_000_000_000L)),

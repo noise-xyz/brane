@@ -75,9 +75,9 @@ public final class AbiWrapperExample {
     try {
       final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
       final PublicClient publicClient = PublicClient.from(provider);
-      final var signer = new io.brane.rpc.PrivateKeyTransactionSigner(privateKey);
+      final var signer = new io.brane.core.crypto.PrivateKeySigner(privateKey);
       final WalletClient walletClient = io.brane.rpc.DefaultWalletClient.create(
-          provider, publicClient, signer::sign, signer.address());
+          provider, publicClient, signer, signer.address());
 
       System.out.println("=== Runtime ABI Wrapper Demo ===\n");
 

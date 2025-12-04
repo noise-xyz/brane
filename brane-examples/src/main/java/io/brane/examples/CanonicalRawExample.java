@@ -47,9 +47,9 @@ public final class CanonicalRawExample {
             // 1. Initialize Clients
             final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
             final PublicClient publicClient = PublicClient.from(provider);
-            final var signer = new io.brane.rpc.PrivateKeyTransactionSigner(privateKey);
+            final var signer = new io.brane.core.crypto.PrivateKeySigner(privateKey);
             final WalletClient walletClient = io.brane.rpc.DefaultWalletClient.create(
-                    provider, publicClient, signer::sign, signer.address());
+                    provider, publicClient, signer);
 
             System.out.println("=== Canonical Low-Level Example ===");
             System.out.println("Signer: " + signer.address().value());
