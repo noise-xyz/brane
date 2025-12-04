@@ -6,7 +6,7 @@ Built on Java 21. Focused on clarity, correctness, and developer experience.
 
 ## Quickstart
  
-We use [JitPack](https://jitpack.io) for distribution.
+We use [JitPack](https://jitpack.io/#noise-xyz/brane) for distribution.
  
 ### 1. Add Repository
 ```groovy

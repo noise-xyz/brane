@@ -76,9 +76,9 @@ The smoke test suite is the primary verification tool. It compiles a standalone 
 You can run the smoke tests against the Sepolia testnet in read-only mode. This verifies connectivity and data retrieval without spending gas.
 
 ```bash
-# Note: You need to manually configure the SmokeApp for Sepolia if needed, 
-# or use the integration tests which are more flexible.
-# The current test_smoke.sh focuses on local Anvil.
+# Note: Sepolia tests are run by passing arguments to the SmokeApp via Gradle, not through this script directly.
+# Example: ./gradlew :smoke-test:run --args='--sepolia'
+# You can also override the RPC via the BRANE_SEPOLIA_RPC environment variable.
 ```
 
 ### 3. Canonical Examples (Learning & Debugging)
