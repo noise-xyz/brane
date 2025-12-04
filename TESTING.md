@@ -74,21 +74,40 @@ If you are an AI assistant (like Gemini) helping with this codebase, follow thes
     *   Throw `RuntimeException` on failure.
     *   Log success with `System.out.println("  ✓ ...")`.
 
-### 4. Workflow for Agents (CRITICAL)
+### 4. Agent Protocol: The "Targeted -> Layer -> Full" Workflow (CRITICAL)
 
-When implementing a feature or fixing a bug, you **MUST** follow this verification order to ensure efficiency and correctness:
+As an AI agent, you **MUST** strictly follow this 3-step protocol for **EVERY** code change. Do not skip steps.
 
-1.  **Targeted Verification (Fastest)**:
-    *   After writing a test, run **ONLY** that test to verify your logic.
-    *   Command: `./gradlew test --tests "com.package.MyTest"`
-    *   *Do not proceed until this passes.*
+#### Step 1: Targeted Verification (The "Single Test" Rule)
+*   **Goal**: Verify your specific change works in isolation.
+*   **Action**: Run **ONLY** the test case you just wrote or modified.
+*   **Commands**:
+    *   Unit: `./gradlew test --tests "io.brane.core.MyClassTest"`
+    *   Integration: `./gradlew :brane-examples:run -PmainClass=io.brane.examples.MyNewExample`
+*   **Rule**: If this fails, **STOP**. Fix the code. Do not run other tests.
 
-2.  **Layer Verification (Fast)**:
-    *   Run the full suite for that layer to ensure no regressions in related code.
-    *   Command: `./scripts/test_unit.sh` (or `test_integration.sh`).
-    *   *Do not proceed until this passes.*
+#### Step 2: Layer Verification (The "Regression" Check)
+*   **Goal**: Ensure you haven't broken other parts of the same component.
+*   **Action**: Run the full suite for the specific layer you touched.
+*   **Commands**:
+    *   If you touched Unit logic: `./scripts/test_unit.sh`
+    *   If you touched Integration logic: `./scripts/test_integration.sh`
+*   **Rule**: If this fails, **STOP**. You likely introduced a regression.
 
-3.  **Full Verification (Comprehensive)**:
-    *   Run the master script to ensure the entire SDK is healthy.
-    *   Command: `./verify_all.sh`
-    *   *This is required before requesting user approval.*
+#### Step 3: Full Verification (The "Definition of Done")
+*   **Goal**: Ensure the entire SDK is healthy before requesting user review.
+*   **Action**: Run the master script.
+*   **Command**: `./verify_all.sh`
+*   **Success Criteria**:
+    *   ✅ Sanity Checks PASS
+    *   ✅ Unit Tests PASS
+    *   ✅ Integration Tests PASS
+    *   ✅ Smoke Tests PASS
+*   **Rule**: You are **NOT DONE** until this script prints "🎉 ALL CHECKS PASSED!".
+
+---
+
+### 5. Common Pitfalls for Agents
+*   **Anvil Issues**: If integration tests fail with "Connection refused", check if Anvil is running (`./scripts/test_sanity.sh`).
+*   **Timeout**: If tests hang, you might be waiting for a transaction that was never mined. Ensure you are using `sendTransactionAndWait`.
+*   **Gas Errors**: If you see "intrinsic gas too low", check your gas limits or use `TxBuilder`.
