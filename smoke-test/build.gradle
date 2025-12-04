@@ -9,10 +9,10 @@ repositories {
 }
 
 dependencies {
-    implementation project(':brane-core')
-    implementation project(':brane-rpc')
-    implementation project(':brane-contract')
-    implementation project(':brane-primitives')
+    implementation "com.github.noise-xyz.brane:brane-core:${rootProject.version}"
+    implementation "com.github.noise-xyz.brane:brane-rpc:${rootProject.version}"
+    implementation "com.github.noise-xyz.brane:brane-contract:${rootProject.version}"
+    implementation "com.github.noise-xyz.brane:brane-primitives:${rootProject.version}"
 }
 
 application {

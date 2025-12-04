@@ -26,10 +26,10 @@ public final class RevertIntegrationTest {
 
     public static void main(String[] args) {
         final String rpcUrl = System.getProperty("brane.examples.rpc", "http://127.0.0.1:8545");
-        final String contractAddr = System.getProperty("brane.examples.contract");
+        final String contractAddr = System.getProperty("brane.anvil.revertExample.address");
 
         if (contractAddr == null || contractAddr.isBlank()) {
-            System.err.println("Error: -Dbrane.examples.contract must be set");
+            System.err.println("Error: -Dbrane.anvil.revertExample.address must be set");
             System.exit(1);
         }
 
