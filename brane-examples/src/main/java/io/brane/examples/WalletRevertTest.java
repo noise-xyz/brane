@@ -13,7 +13,6 @@ import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.rpc.PublicClient;
-import io.brane.core.crypto.Signer;
 import io.brane.rpc.WalletClient;
 
 /**
