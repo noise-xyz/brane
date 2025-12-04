@@ -52,7 +52,7 @@ The smoke test suite is the primary verification tool. It compiles a standalone 
 1.  Starts a fresh Anvil instance (fails if port 8545 is busy).
 2.  Publishes the SDK to `mavenLocal`.
 3.  Compiles and runs `smoke-test/src/main/java/io/brane/smoke/SmokeApp.java`.
-4.  Verifies 14 scenarios (Core, Errors, Events, ABI, EIP-1559, etc.).
+4.  Verifies 15 scenarios (Core, Errors, Events, ABI, EIP-1559, etc.).
 5.  Cleans up Anvil process.
 
 #### Scenarios Covered
