@@ -9,10 +9,10 @@ repositories {
 }
 
 dependencies {
-    implementation 'com.github.noise-xyz.brane:brane-core:0.1.0-alpha'
-    implementation 'com.github.noise-xyz.brane:brane-rpc:0.1.0-alpha'
-    implementation 'com.github.noise-xyz.brane:brane-contract:0.1.0-alpha'
-    implementation 'com.github.noise-xyz.brane:brane-primitives:0.1.0-alpha'
+    implementation "com.github.noise-xyz.brane:brane-core:${rootProject.version}"
+    implementation "com.github.noise-xyz.brane:brane-rpc:${rootProject.version}"
+    implementation "com.github.noise-xyz.brane:brane-contract:${rootProject.version}"
+    implementation "com.github.noise-xyz.brane:brane-primitives:${rootProject.version}"
 }
 
 application {

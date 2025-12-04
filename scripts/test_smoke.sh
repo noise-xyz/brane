@@ -26,9 +26,6 @@ fi
 
 # 3. Run SmokeApp
 echo "   Running SmokeApp..."
-(
-  cd smoke-test
-  ../gradlew run --quiet --console=plain
-)
+./gradlew :smoke-test:run --quiet --console=plain
 
 echo "✅ Smoke Tests Passed"

@@ -34,9 +34,7 @@ if [ -d "foundry/anvil-tests" ]; then
     
     # Deploy RevertExample
     REVERT_OUT=$(forge create src/RevertExample.sol:RevertExample --private-key $PRIVATE_KEY --rpc-url $RPC_URL --broadcast)
-    echo "DEBUG: REVERT_OUT=$REVERT_OUT"
     REVERT_ADDR=$(echo "$REVERT_OUT" | grep "Deployed to:" | awk '{print $3}')
-    echo "DEBUG: REVERT_ADDR=$REVERT_ADDR"
     
     # Deploy Storage
     STORAGE_OUT=$(forge create src/Storage.sol:Storage --private-key $PRIVATE_KEY --rpc-url $RPC_URL --broadcast)
