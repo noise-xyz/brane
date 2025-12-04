@@ -11,6 +11,7 @@ import io.brane.core.model.LogEntry;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.rpc.BraneProvider;
@@ -191,8 +192,9 @@ public class SmokeApp {
 
         TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployRequest, 30_000, 1_000);
 
-        if (!receipt.status())
+        if (!receipt.status()) {
             throw new RuntimeException("Deployment failed!");
+        }
         tokenAddress = new Address(receipt.contractAddress().value()); // Convert HexData to Address
         System.out.println("  ✓ Deployed at: " + tokenAddress);
 
