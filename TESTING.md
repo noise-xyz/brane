@@ -28,9 +28,12 @@ For a Pull Request to be merged, it must:
 1.  **Start Anvil**: Open a terminal and run `anvil`.
 2.  **Run Sanity**: `./scripts/test_sanity.sh` to check your setup.
 3.  **Develop**: Write code and Unit Tests.
-4.  **Test Loop**: Run `./scripts/test_unit.sh` frequently.
-5.  **Verify**: Run `./scripts/test_integration.sh` before pushing.
-6.  **Final Check**: Run `./verify_all.sh` to run the full suite.
+4.  **Targeted Test**: Run *only* your new test to iterate fast.
+    *   Unit: `./gradlew test --tests "com.package.MyTest"`
+    *   Integration: `./gradlew :brane-examples:run -PmainClass=io.brane.examples.MyExample`
+5.  **Test Loop**: Run `./scripts/test_unit.sh` to ensure no regressions.
+6.  **Verify**: Run `./scripts/test_integration.sh` before pushing.
+7.  **Final Check**: Run `./verify_all.sh` to run the full suite.
 
 ---
 
