@@ -52,11 +52,13 @@ run_example "io.brane.examples.CanonicalAbiExample"
 run_example "io.brane.examples.CanonicalCustomSignerExample"
 run_example "io.brane.examples.CanonicalSafeMultisigExample"
 
-# 4. Run JUnit Integration Tests
+# 4. Run Sanity Checks with I/O
+echo "   Running Sanity Checks with I/O..."
+run_example "io.brane.examples.RequestIdSanityCheck"
+
+# 5. Run JUnit Integration Tests
 echo "   Running JUnit Integration Tests..."
 ./gradlew :brane-contract:test --tests "io.brane.contract.AbiWrapperIntegrationTest" \
-    :brane-rpc:test --tests "io.brane.rpc.DefaultWalletClientTest.sendsTransactionWithCustomGasBuffer" \
-    :brane-rpc:test --tests "io.brane.rpc.DefaultWalletClientTest.sendsEip1559TransactionWithAccessList" \
     -Dbrane.integration.tests=true \
     -Dbrane.examples.rpc="$RPC_URL" \
     -Dbrane.anvil.rpc="$RPC_URL" \

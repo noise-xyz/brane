@@ -13,7 +13,6 @@ echo "🧪 [Level 1] Running Unit Tests..."
 ./gradlew test \
     :brane-examples:run -PmainClass=io.brane.examples.CryptoSanityCheck \
     :brane-examples:run -PmainClass=io.brane.examples.TransactionSanityCheck \
-    :brane-examples:run -PmainClass=io.brane.examples.RequestIdSanityCheck \
     --parallel --no-daemon --console=plain
 
 echo "✅ Unit Tests Passed"

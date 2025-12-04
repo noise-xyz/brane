@@ -21,7 +21,7 @@ echo ""
 echo ""
 
 # Level 4: Performance (Optional, can be skipped with --skip-perf)
-if [ "$1" != "--skip-perf" ]; then
+if [[ "$1" != "--skip-perf" ]]; then
     ./scripts/test_perf.sh
 else
     echo "⏩ Skipping Performance Tests"
