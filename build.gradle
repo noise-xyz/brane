@@ -39,6 +39,16 @@ subprojects {
 
     tasks.withType(Test).configureEach {
         useJUnitPlatform()
+        // Forward all brane.* system properties to tests
+        systemProperties System.getProperties().findAll { it.key.toString().startsWith("brane.") }
+
+        if (project.hasProperty("brane.integration.tests")) {
+            filter {
+                includeTestsMatching "*IntegrationTest"
+                includeTestsMatching "*AnvilTest"
+                setFailOnNoMatchingTests(false)
+            }
+        }
     }
 
     dependencies {

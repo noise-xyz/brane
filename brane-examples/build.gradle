@@ -62,4 +62,8 @@ tasks.named('run') {
     // TxBuilder integration test
     systemProperty 'brane.examples.pk',
             propOrSystem('brane.examples.pk', null)
+
+    // Revert integration test
+    systemProperty 'brane.anvil.revertExample.address',
+            propOrSystem('brane.anvil.revertExample.address', null)
 }
