@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# Ensure we are in the project root
+cd "$(dirname "$0")/.."
+
 # 0. Install Java 21 (Amazon Corretto) - Only on Cloudflare Pages
 if [ "${CF_PAGES:-0}" -eq 1 ]; then
   echo "Detected Cloudflare Pages environment. Installing Java 21..."

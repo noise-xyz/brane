@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 
+# Ensure we are in the project root
+cd "$(dirname "$0")/.."
+
 # Configuration
 PROJECT_NAME="brane-website"
 
@@ -15,7 +18,7 @@ echo "🚀 Starting deployment for $PROJECT_NAME..."
 
 # 1. Build
 echo "📦 Building project..."
-./cloudflare-build.sh
+./scripts/cloudflare-build.sh
 
 # 2. Deploy
 echo "☁️ Deploying to Cloudflare Pages..."
