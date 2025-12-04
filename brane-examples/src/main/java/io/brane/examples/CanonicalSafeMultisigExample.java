@@ -150,7 +150,7 @@ public final class CanonicalSafeMultisigExample {
         // See:
         // https://docs.safe.global/reference/safe-core-sdk/usage#gettransactionhash
         String raw = safe.value() + to.value().substring(2) + value.toString(16) + nonce.toString(16);
-        return Keccak256.hash(raw.getBytes());
+        return Keccak256.hash(raw.getBytes(java.nio.charset.StandardCharsets.UTF_8));
     }
 
     private record SignatureEntry(Address owner, Signature signature) {

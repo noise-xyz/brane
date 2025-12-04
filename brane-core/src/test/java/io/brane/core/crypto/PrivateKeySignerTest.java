@@ -3,6 +3,7 @@ package io.brane.core.crypto;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.brane.core.tx.LegacyTransaction;
 import io.brane.core.types.Address;
@@ -52,7 +53,6 @@ class PrivateKeySignerTest {
 
         // EIP-191 expects v to be 27 or 28
         // 0 or 1 is not valid for personal_sign
-        boolean isEthereumCompatible = sig.v() == 27 || sig.v() == 28;
-        assertEquals(true, isEthereumCompatible, "v should be 27 or 28, but was " + sig.v());
+        assertTrue(sig.v() == 27 || sig.v() == 28, "v should be 27 or 28, but was " + sig.v());
     }
 }

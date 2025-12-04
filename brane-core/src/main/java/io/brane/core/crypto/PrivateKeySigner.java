@@ -47,10 +47,9 @@ public final class PrivateKeySigner implements Signer {
         // \x19Ethereum Signed Message:\n + length + message
         byte[] prefix = ("\u0019Ethereum Signed Message:\n" + message.length)
                 .getBytes(java.nio.charset.StandardCharsets.UTF_8);
-        byte[] prefixedMessage = java.nio.ByteBuffer.allocate(prefix.length + message.length)
-                .put(prefix)
-                .put(message)
-                .array();
+        byte[] prefixedMessage = new byte[prefix.length + message.length];
+        System.arraycopy(prefix, 0, prefixedMessage, 0, prefix.length);
+        System.arraycopy(message, 0, prefixedMessage, prefix.length, message.length);
 
         Signature sig = privateKey.signFast(Keccak256.hash(prefixedMessage));
 
