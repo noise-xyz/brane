@@ -116,7 +116,7 @@ public final class CanonicalCustomSignerExample {
         BraneProvider provider = HttpBraneProvider.builder(RPC_URL).build();
         PublicClient publicClient = PublicClient.from(provider);
         WalletClient walletClient = io.brane.rpc.DefaultWalletClient.create(
-                provider, publicClient, signer, signer.address());
+                provider, publicClient, signer);
 
         System.out.println("  Sending transaction...");
 

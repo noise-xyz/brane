@@ -62,7 +62,7 @@ public final class WalletRevertTest {
         final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
         final PublicClient publicClient = PublicClient.from(provider);
         final PrivateKeySigner signer = new PrivateKeySigner(privateKey);
-        final WalletClient wallet = DefaultWalletClient.create(provider, publicClient, signer, signer.address());
+        final WalletClient wallet = DefaultWalletClient.create(provider, publicClient, signer);
 
         testWalletRevert(wallet, new Address(contractAddr));
 

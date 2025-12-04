@@ -110,8 +110,7 @@ public class RemoteSignerExample {
         WalletClient wallet = DefaultWalletClient.create(
                 provider,
                 publicClient,
-                customSigner,
-                customSigner.address());
+                customSigner);
 
         // Send a transaction
         try {

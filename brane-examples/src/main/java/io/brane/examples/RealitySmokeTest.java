@@ -58,7 +58,7 @@ public final class RealitySmokeTest {
             // For this test, we'll let WalletClient handle it (or fail if it can't, which
             // is a good test).
             final WalletClient walletClient = io.brane.rpc.DefaultWalletClient.create(
-                    provider, publicClient, signer, signer.address());
+                    provider, publicClient, signer);
 
             System.out.println("Signer: " + signer.address().value());
 
