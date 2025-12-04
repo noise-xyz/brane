@@ -11,6 +11,7 @@ import io.brane.core.model.LogEntry;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.rpc.BraneProvider;
@@ -191,16 +192,18 @@ public class SmokeApp {
 
         TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployRequest, 30_000, 1_000);
 
-        if (!receipt.status())
+        if (!receipt.status()) {
             throw new RuntimeException("Deployment failed!");
+        }
         tokenAddress = new Address(receipt.contractAddress().value()); // Convert HexData to Address
         System.out.println("  ✓ Deployed at: " + tokenAddress);
 
         // 3. Check Balance
         ReadOnlyContract contract = ReadOnlyContract.from(tokenAddress, abi, publicClient);
         BigInteger balance = contract.call("balanceOf", BigInteger.class, OWNER);
-        if (!balance.equals(initialSupply))
+        if (!balance.equals(initialSupply)) {
             throw new RuntimeException("Balance mismatch! Expected " + initialSupply + ", got " + balance);
+        }
         System.out.println("  ✓ Initial Balance Verified: " + balance);
 
         // 4. Transfer
@@ -210,14 +213,16 @@ public class SmokeApp {
 
         TransactionReceipt transferReceipt = writeContract.sendAndWait("transfer", 30_000, 1_000, RECIPIENT, amount);
 
-        if (!transferReceipt.status())
+        if (!transferReceipt.status()) {
             throw new RuntimeException("Transfer failed!");
+        }
         System.out.println("  ✓ Transfer Mined: " + transferReceipt.transactionHash());
 
         // 5. Verify Recipient Balance
         BigInteger recipientBalance = contract.call("balanceOf", BigInteger.class, RECIPIENT);
-        if (!recipientBalance.equals(amount))
+        if (!recipientBalance.equals(amount)) {
             throw new RuntimeException("Recipient balance mismatch!");
+        }
         System.out.println("  ✓ Recipient Balance Verified: " + recipientBalance);
     }
 
@@ -251,8 +256,9 @@ public class SmokeApp {
                         Optional.empty()));
 
         System.out.println("  Found " + logs.size() + " logs.");
-        if (logs.isEmpty())
+        if (logs.isEmpty()) {
             throw new RuntimeException("No logs found!");
+        }
 
         // Check for Transfer to Recipient
         // Topic 2 is 'to' (indexed)
@@ -261,8 +267,9 @@ public class SmokeApp {
         boolean foundTransfer = logs.stream().anyMatch(log -> log.topics().size() >= 3 &&
                 log.topics().get(2).value().equalsIgnoreCase(recipientTopic));
 
-        if (!foundTransfer)
+        if (!foundTransfer) {
             throw new RuntimeException("Did not find Transfer event to Recipient!");
+        }
         System.out.println("  ✓ Verified Transfer Event in logs.");
     }
 
@@ -281,21 +288,24 @@ public class SmokeApp {
         // Read
         BigInteger balance = token.balanceOf(RECIPIENT);
         System.out.println("  [Wrapper] Recipient Balance: " + balance);
-        if (!balance.equals(new BigInteger("100")))
+        if (!balance.equals(new BigInteger("100"))) {
             throw new RuntimeException("Wrapper read failed!");
+        }
 
         // Write (Transfer back 10 tokens)
         System.out.println("  [Wrapper] Transferring 10 tokens back...");
 
         TransactionReceipt receipt = token.transfer(RECIPIENT, BigInteger.TEN);
 
-        if (!receipt.status())
+        if (!receipt.status()) {
             throw new RuntimeException("Wrapper transfer failed!");
+        }
         System.out.println("  ✓ Wrapper Transfer Mined");
 
         BigInteger newBalance = token.balanceOf(RECIPIENT);
-        if (!newBalance.equals(new BigInteger("110")))
+        if (!newBalance.equals(new BigInteger("110"))) {
             throw new RuntimeException("Wrapper write verification failed!");
+        }
         System.out.println("  ✓ Final Balance Verified: " + newBalance);
     }
 
@@ -315,8 +325,9 @@ public class SmokeApp {
 
         TransactionReceipt receipt = walletClient.sendTransactionAndWait(request, 30_000, 1_000);
 
-        if (!receipt.status())
+        if (!receipt.status()) {
             throw new RuntimeException("EIP-1559 transfer failed!");
+        }
         System.out.println("  ✓ EIP-1559 Transaction Mined: " + receipt.transactionHash());
     }
 
@@ -387,14 +398,16 @@ public class SmokeApp {
 
         runSepoliaTask(() -> {
             io.brane.core.model.BlockHeader block = publicClient.getLatestBlock();
-            if (block == null || block.number() == null)
+            if (block == null || block.number() == null) {
                 throw new RuntimeException("Failed to get latest block");
+            }
             System.out.println("  ✓ Latest Block: " + block.number());
 
             if (block.number() > 0) {
                 io.brane.core.model.BlockHeader parent = publicClient.getBlockByNumber(block.number() - 1);
-                if (!parent.hash().equals(block.parentHash()))
+                if (!parent.hash().equals(block.parentHash())) {
                     throw new RuntimeException("Parent hash mismatch");
+                }
                 System.out.println("  ✓ Block Parent Hash Verified");
             }
         });
@@ -404,12 +417,14 @@ public class SmokeApp {
         System.out.println("\n[Scenario J] Wei Utilities");
 
         Wei oneEther = Wei.fromEther(java.math.BigDecimal.ONE);
-        if (!oneEther.value().equals(new BigInteger("1000000000000000000")))
+        if (!oneEther.value().equals(new BigInteger("1000000000000000000"))) {
             throw new RuntimeException("Wei.fromEther(1) failed");
+        }
 
         Wei gwei = Wei.gwei(1);
-        if (!gwei.value().equals(new BigInteger("1000000000")))
+        if (!gwei.value().equals(new BigInteger("1000000000"))) {
             throw new RuntimeException("Wei.gwei(1) failed");
+        }
 
         System.out.println("  ✓ Wei conversions verified");
     }
@@ -425,14 +440,16 @@ public class SmokeApp {
                 SmokeApp.class.getResourceAsStream("/ComplexContract.json")).readAllBytes(), StandardCharsets.UTF_8)
                 .trim();
 
-        if (!bytecode.startsWith("0x"))
+        if (!bytecode.startsWith("0x")) {
             bytecode = "0x" + bytecode;
+        }
 
         // Deploy
         TransactionRequest deployReq = TxBuilder.legacy().data(new HexData(bytecode)).build();
         TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployReq, 30_000, 1_000);
-        if (!receipt.status())
+        if (!receipt.status()) {
             throw new RuntimeException("ComplexContract deployment failed");
+        }
         complexAddress = new Address(receipt.contractAddress().value());
         System.out.println("  ✓ Deployed ComplexContract at " + complexAddress);
 
@@ -444,8 +461,9 @@ public class SmokeApp {
         @SuppressWarnings("unchecked")
         List<BigInteger> output = (List<BigInteger>) contract.call("processArray", List.class, input);
 
-        if (!output.get(0).equals(BigInteger.TWO) || !output.get(1).equals(BigInteger.valueOf(4)))
+        if (!output.get(0).equals(BigInteger.TWO) || !output.get(1).equals(BigInteger.valueOf(4))) {
             throw new RuntimeException("Array processing failed: " + output);
+        }
         System.out.println("  ✓ Array processing verified");
 
         // Test Fixed Bytes: processFixedBytes(bytes32)
@@ -453,8 +471,9 @@ public class SmokeApp {
         bytes32[0] = 0x12;
         HexData inputBytes = new HexData(io.brane.primitives.Hex.encode(bytes32));
         HexData outputBytes = contract.call("processFixedBytes", HexData.class, inputBytes);
-        if (!outputBytes.value().equals(inputBytes.value()))
+        if (!outputBytes.value().equals(inputBytes.value())) {
             throw new RuntimeException("Fixed bytes processing failed");
+        }
         System.out.println("  ✓ Fixed bytes verified");
     }
 
@@ -479,8 +498,9 @@ public class SmokeApp {
                 .build(); // No gas limit set, so it will estimate and apply buffer
 
         TransactionReceipt receipt = bufferedClient.sendTransactionAndWait(req, 30_000, 1_000);
-        if (!receipt.status())
+        if (!receipt.status()) {
             throw new RuntimeException("Buffered transaction failed");
+        }
         System.out.println("  ✓ Buffered Gas Transaction Mined");
     }
 
@@ -589,17 +609,21 @@ public class SmokeApp {
         List<List<Object>> resultInners = (List<List<Object>>) result.get(0);
         HexData resultId = (HexData) result.get(1);
 
-        if (resultInners.size() != 2)
+        if (resultInners.size() != 2) {
             throw new RuntimeException("Result inner array size mismatch");
+        }
 
         List<Object> resInner1 = resultInners.get(0);
-        if (!resInner1.get(0).equals(BigInteger.ONE))
+        if (!resInner1.get(0).equals(BigInteger.ONE)) {
             throw new RuntimeException("Inner1.a mismatch");
-        if (!resInner1.get(1).equals("inner1"))
+        }
+        if (!resInner1.get(1).equals("inner1")) {
             throw new RuntimeException("Inner1.b mismatch");
+        }
 
-        if (!resultId.value().equals(id.value()))
+        if (!resultId.value().equals(id.value())) {
             throw new RuntimeException("Outer.id mismatch");
+        }
 
         System.out.println("  ✓ Nested Struct Encoding/Decoding Verified");
     }
@@ -612,8 +636,9 @@ public class SmokeApp {
                     && (e instanceof RpcException || e.getCause() instanceof java.net.http.HttpTimeoutException)) {
                 System.out.println("  ⚠️ Sepolia Network Error (Expected on public RPC): " + e.getMessage());
             } else {
-                if (e instanceof RuntimeException)
+                if (e instanceof RuntimeException) {
                     throw (RuntimeException) e;
+                }
                 throw new RuntimeException(e);
             }
         }
