@@ -74,5 +74,21 @@ If you are an AI assistant (like Gemini) helping with this codebase, follow thes
     *   Throw `RuntimeException` on failure.
     *   Log success with `System.out.println("  ✓ ...")`.
 
-**Prompt Example**:
-> "Add a new scenario to `SmokeApp.java` that sends 50 concurrent transactions using `MyNewFeature`."
+### 4. Workflow for Agents (CRITICAL)
+
+When implementing a feature or fixing a bug, you **MUST** follow this verification order to ensure efficiency and correctness:
+
+1.  **Targeted Verification (Fastest)**:
+    *   After writing a test, run **ONLY** that test to verify your logic.
+    *   Command: `./gradlew test --tests "com.package.MyTest"`
+    *   *Do not proceed until this passes.*
+
+2.  **Layer Verification (Fast)**:
+    *   Run the full suite for that layer to ensure no regressions in related code.
+    *   Command: `./scripts/test_unit.sh` (or `test_integration.sh`).
+    *   *Do not proceed until this passes.*
+
+3.  **Full Verification (Comprehensive)**:
+    *   Run the master script to ensure the entire SDK is healthy.
+    *   Command: `./verify_all.sh`
+    *   *This is required before requesting user approval.*
