@@ -31,5 +31,16 @@ public interface Signer {
      */
     Signature signTransaction(UnsignedTransaction tx, long chainId);
 
+    /**
+     * Signs a raw message according to EIP-191 (personal_sign).
+     * <p>
+     * The implementation is responsible for prefixing the message with
+     * {@code "\u0019Ethereum Signed Message:\n" + message.length} before hashing
+     * and signing.
+     * The returned signature should have a {@code v} value of 27 or 28.
+     *
+     * @param message the raw message bytes to sign
+     * @return the EIP-191 compatible signature
+     */
     Signature signMessage(byte[] message);
 }

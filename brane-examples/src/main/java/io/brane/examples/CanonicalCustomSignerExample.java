@@ -156,13 +156,15 @@ public final class CanonicalCustomSignerExample {
         @Override
         public Signature signMessage(byte[] message) {
             // Simulate signing a message
-            // In reality, we'd hash it (EIP-191) and ask KMS to sign
             byte[] prefix = ("\u0019Ethereum Signed Message:\n" + message.length)
                     .getBytes(java.nio.charset.StandardCharsets.UTF_8);
             byte[] prefixedMessage = new byte[prefix.length + message.length];
             System.arraycopy(prefix, 0, prefixedMessage, 0, prefix.length);
             System.arraycopy(message, 0, prefixedMessage, prefix.length, message.length);
-            return kmsClient.sign(keyId, Keccak256.hash(prefixedMessage));
+
+            Signature sig = kmsClient.sign(keyId, Keccak256.hash(prefixedMessage));
+            // Adjust v to be 27 or 28 for EIP-191 compatibility
+            return new Signature(sig.r(), sig.s(), sig.v() + 27);
         }
 
         @Override
@@ -226,7 +228,9 @@ public final class CanonicalCustomSignerExample {
             System.arraycopy(prefix, 0, prefixedMessage, 0, prefix.length);
             System.arraycopy(message, 0, prefixedMessage, prefix.length, message.length);
 
-            return cluster.generateSignature(Keccak256.hash(prefixedMessage));
+            Signature sig = cluster.generateSignature(Keccak256.hash(prefixedMessage));
+            // Adjust v to be 27 or 28 for EIP-191 compatibility
+            return new Signature(sig.r(), sig.s(), sig.v() + 27);
         }
 
         @Override

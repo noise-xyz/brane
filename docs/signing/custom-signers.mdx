@@ -73,7 +73,10 @@ public class RemoteSigner implements Signer {
         byte[] hash = Keccak256.hash(prefixedMessage);
         
         // 3. Request signature for the hash
-        return service.sign(this.keyId, hash);
+        Signature sig = service.sign(this.keyId, hash);
+        
+        // Adjust v to be 27 or 28 for EIP-191 compatibility
+        return new Signature(sig.r(), sig.s(), sig.v() + 27);
     }
 }
 ```
