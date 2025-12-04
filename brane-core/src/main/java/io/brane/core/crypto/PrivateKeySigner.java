@@ -1,10 +1,7 @@
 package io.brane.core.crypto;
 
-import io.brane.core.tx.Eip1559Transaction;
-import io.brane.core.tx.LegacyTransaction;
 import io.brane.core.tx.UnsignedTransaction;
 import io.brane.core.types.Address;
-import io.brane.primitives.Hex;
 
 /**
  * Transaction signer backed by a raw private key.
