@@ -8,7 +8,7 @@ This document is the **System Prompt** for any AI agent (LLM) working on the Bra
 
 ## 1. Project Context
 *   **Name**: Brane SDK
-*   **Goal**: A modern, type-safe, zero-dependency Java SDK for Ethereum/EVM.
+*   **Goal**: A modern, type-safe Java SDK for Ethereum/EVM, with zero dependencies on other web3 libraries in its public API.
 *   **Status**: `v0.1.0-alpha`
 *   **Stack**: Java 21, Gradle, JUnit 5, Foundry (Anvil).
 
@@ -46,9 +46,21 @@ This document is the **System Prompt** for any AI agent (LLM) working on the Bra
 > [!IMPORTANT]
 > Brane vendors web3j under `io.brane.internal.web3j.*`. **web3j is an implementation detail only** and must **never** leak into Brane's public API.
 
+#### 1. Package Restrictions
+
+✅ **web3j may ONLY be referenced in:**
+- `io.brane.internal.web3j.*`
+- Small, clearly-marked adapter classes in `io.brane.internal.*`
+
+❌ **web3j is FORBIDDEN in:**
+- `io.brane.core.*`
+- `io.brane.rpc.*`
+- `io.brane.contract.*`
+- `io.brane.examples.*`
+
 **Rule of thumb:** If a package is public-facing (core/rpc/contract/examples), it must have **zero** `org.web3j.*` imports.
 
-**Type Safety in Public APIs:**
+#### 2. Type Safety in Public APIs
 Public APIs must **only** use:
 - Java standard types (`String`, `BigInteger`, `List`, etc.)
 - Brane types (`Address`, `Hash`, `HexData`, `Wei`, `Transaction`, `RpcException`, etc.)
@@ -58,6 +70,32 @@ Public APIs must **only** use:
 - `org.web3j.protocol.core.methods.response.*`
 - `org.web3j.abi.datatypes.*`
 - `org.web3j.crypto.*`
+
+#### 3. Exception Wrapping
+`org.web3j.*` exceptions must **never** bubble out of public methods.
+
+**Correct pattern:**
+```java
+public Object read(...) throws RpcException, RevertException {
+    try {
+        // web3j call inside internal adapter
+    } catch (org.web3j.protocol.exceptions.ClientConnectionException e) {
+        throw new RpcException(-32000, "Connection failed", null, e);
+    }
+}
+```
+
+#### 4. Core Module Purity
+`brane-core` (`io.brane.core.*`) **must not depend on web3j at all:**
+- No imports from `org.web3j.*`
+- No references to "web3j" in type names, method names, or Javadoc
+- Pure Brane domain: types + errors only
+
+#### 5. Review Checklist
+When adding/modifying code:
+1. ✅ File not under `io.brane.internal.*` → **no** `org.web3j.*` imports
+2. ✅ Public methods/constructors/fields → only JDK + Brane types
+3. ✅ Exceptions → wrap web3j exceptions in `RpcException`/`RevertException`
 
 ### III. Concurrency & Project Loom
 **Principle:** The "Thread-per-Request" model is back. Stop pooling threads for business logic.
@@ -91,11 +129,42 @@ Public APIs must **only** use:
 
 ---
 
-## 5. Testing Protocol (The "Targeted -> Layer -> Full" Workflow)
+## 5. Testing Protocol
 
+We adopt a layered approach to ensure robustness and efficiency.
+
+### The Pyramid of Testing
+
+| Level | Type | Scope | Script | Speed |
+| :--- | :--- | :--- | :--- | :--- |
+| **0** | **Sanity** | Environment checks (Java, Anvil, RPC). | `./scripts/test_sanity.sh` | Instant |
+| **1** | **Unit** | Logic correctness. **NO** external I/O. Mock everything. | `./scripts/test_unit.sh` | Fast (<10s) |
+| **2** | **Integration** | Component interactions & Canonical Examples. Requires Anvil. | `./scripts/test_integration.sh` | Moderate |
+| **3** | **Smoke** | End-to-end user flows (`SmokeApp`). High concurrency. | `./scripts/test_smoke.sh` | Slow |
+| **4** | **Performance** | Micro-benchmarks (`brane-benchmark`). Critical paths only. | `./scripts/test_perf.sh` | Slow |
+
+### Acceptance Criteria (Definition of Done)
+For a Pull Request to be merged, it must:
+1.  **Pass All Tests**: Run `./verify_all.sh` and ensure it exits with code 0.
+2.  **New Features**: Must include at least one **Unit Test** covering the logic.
+3.  **New Components**: Must include an **Integration Test** or be added to `SmokeApp`.
+4.  **No Regressions**: Existing tests must pass without modification (unless the change is a breaking change).
+
+### Developer Workflow
+1.  **Start Anvil**: Open a terminal and run `anvil`.
+2.  **Run Sanity**: `./scripts/test_sanity.sh` to check your setup.
+3.  **Develop**: Write code and Unit Tests.
+4.  **Targeted Test**: Run *only* your new test to iterate fast.
+    *   Unit: `./gradlew test --tests "com.package.MyTest"`
+    *   Integration: `./gradlew :brane-examples:run -PmainClass=io.brane.examples.MyExample`
+5.  **Test Loop**: Run `./scripts/test_unit.sh` to ensure no regressions.
+6.  **Verify**: Run `./scripts/test_integration.sh` before pushing.
+7.  **Final Check**: Run `./verify_all.sh` to run the full suite.
+
+### The "Targeted -> Layer -> Full" Workflow (CRITICAL)
 **You MUST follow this workflow for every change:**
 
-### Step 1: Targeted Verification (The "Single Test" Rule)
+#### Step 1: Targeted Verification (The "Single Test" Rule)
 *   **Goal**: Verify your specific change works in isolation.
 *   **Action**: Run **ONLY** the test case you just wrote or modified.
 *   **Commands**:
@@ -103,7 +172,7 @@ Public APIs must **only** use:
     *   Integration: `./gradlew :brane-examples:run -PmainClass=io.brane.examples.MyNewExample`
 *   **Rule**: If this fails, **STOP**. Fix the code. Do not run other tests.
 
-### Step 2: Layer Verification (The "Regression" Check)
+#### Step 2: Layer Verification (The "Regression" Check)
 *   **Goal**: Ensure you haven't broken other parts of the same component.
 *   **Action**: Run the full suite for the specific layer you touched.
 *   **Commands**:
@@ -111,7 +180,7 @@ Public APIs must **only** use:
     *   If you touched Integration logic: `./scripts/test_integration.sh`
 *   **Rule**: If this fails, **STOP**. You likely introduced a regression.
 
-### Step 3: Full Verification (The "Definition of Done")
+#### Step 3: Full Verification (The "Definition of Done")
 *   **Goal**: Ensure the entire SDK is healthy before requesting user review.
 *   **Action**: Run the master script.
 *   **Command**: `./verify_all.sh`
@@ -160,4 +229,4 @@ Public APIs must **only** use:
 *   **Timeout**: If tests hang, you might be waiting for a transaction that was never mined. Ensure you are using `sendTransactionAndWait`.
 *   **Gas Errors**: If you see "intrinsic gas too low", check your gas limits or use `TxBuilder`.
 *   **Hallucinating Dependencies**: Do not invent libraries. Check `build.gradle`.
-*   **Old Java Syntax**: Do not use pre-Java 17 syntax (e.g., old `switch`, verbose `try-catch`).
+*   **Old Java Syntax**: Do not use pre-Java 21 syntax (e.g., old `switch`, verbose `try-catch`).
