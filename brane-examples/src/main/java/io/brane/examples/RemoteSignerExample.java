@@ -4,12 +4,9 @@ import io.brane.core.crypto.Keccak256;
 import io.brane.core.crypto.PrivateKey;
 import io.brane.core.crypto.Signature;
 import io.brane.core.crypto.Signer;
-import io.brane.core.tx.Eip1559Transaction;
-import io.brane.core.tx.LegacyTransaction;
 import io.brane.core.tx.UnsignedTransaction;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;
-import io.brane.primitives.Hex;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
@@ -78,28 +75,13 @@ public class RemoteSignerExample {
         }
 
         @Override
-        public String signTransaction(UnsignedTransaction tx, long chainId) {
+        public Signature signTransaction(UnsignedTransaction tx, long chainId) {
             // A. Encode the transaction for signing (preimage)
             byte[] preimage = tx.encodeForSigning(chainId);
             byte[] hash = Keccak256.hash(preimage);
 
             // B. Request signature from "remote" service
-            Signature baseSig = kms.sign(keyId, hash);
-
-            // C. Adjust V value based on transaction type (EIP-155 vs EIP-1559)
-            Signature signature;
-            if (tx instanceof LegacyTransaction) {
-                int v = (int) (chainId * 2 + 35 + baseSig.v());
-                signature = new Signature(baseSig.r(), baseSig.s(), v);
-            } else if (tx instanceof Eip1559Transaction) {
-                signature = baseSig; // v is 0 or 1 (yParity)
-            } else {
-                throw new IllegalArgumentException("Unsupported tx type");
-            }
-
-            // D. Encode the signed envelope
-            byte[] envelope = tx.encodeAsEnvelope(signature);
-            return Hex.encode(envelope);
+            return kms.sign(keyId, hash);
         }
     }
 

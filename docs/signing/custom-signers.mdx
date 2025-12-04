@@ -56,16 +56,23 @@ public class RemoteSigner implements Signer {
         byte[] hash = Keccak256.hash(preimage);
 
         // 2. Request signature from external service
+        // (This is where you call Privy, AWS KMS, etc.)
         return service.sign(this.keyId, hash);
     }
 
     @Override
     public Signature signMessage(byte[] message) {
-        // 1. Hash the message according to EIP-191
-        // Note: The external service might expect the raw message or the hash.
-        // Here we assume it expects the hash of the message.
-        byte[] hash = Keccak256.hash(message);
+        // 1. Create the EIP-191 prefixed message
+        byte[] prefix = ("\u0019Ethereum Signed Message:\n" + message.length)
+                .getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        byte[] prefixedMessage = new byte[prefix.length + message.length];
+        System.arraycopy(prefix, 0, prefixedMessage, 0, prefix.length);
+        System.arraycopy(message, 0, prefixedMessage, prefix.length, message.length);
+
+        // 2. Hash the prefixed message
+        byte[] hash = Keccak256.hash(prefixedMessage);
         
+        // 3. Request signature for the hash
         return service.sign(this.keyId, hash);
     }
 }

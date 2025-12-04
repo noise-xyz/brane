@@ -1,6 +1,7 @@
 package io.brane.core.crypto;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.brane.core.tx.LegacyTransaction;
@@ -29,9 +30,11 @@ class PrivateKeySignerTest {
                 HexData.EMPTY // data
         );
 
-        String signed = signer.signTransaction(tx, 1L); // chainId = 1
-        // should be 0x-prefixed hex
-        assertEquals("0x", signed.substring(0, 2));
+        Signature signed = signer.signTransaction(tx, 1L); // chainId = 1
+        assertNotNull(signed);
+        // Verify signature components are present
+        assertNotNull(signed.r());
+        assertNotNull(signed.s());
     }
 
     @Test

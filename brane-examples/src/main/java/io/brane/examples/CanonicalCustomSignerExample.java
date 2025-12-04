@@ -8,12 +8,9 @@ import io.brane.core.crypto.Signature;
 import io.brane.core.crypto.Signer;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
-import io.brane.core.tx.Eip1559Transaction;
-import io.brane.core.tx.LegacyTransaction;
 import io.brane.core.tx.UnsignedTransaction;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;
-import io.brane.primitives.Hex;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
@@ -169,12 +166,11 @@ public final class CanonicalCustomSignerExample {
         }
 
         @Override
-        public String signTransaction(UnsignedTransaction tx, long chainId) {
+        public Signature signTransaction(UnsignedTransaction tx, long chainId) {
             System.out.println("  [KmsSigner] Requesting signature from KMS for Key ID: " + keyId);
             byte[] preimage = tx.encodeForSigning(chainId);
             byte[] messageHash = Keccak256.hash(preimage);
-            Signature baseSig = kmsClient.sign(keyId, messageHash);
-            return encodeTx(tx, baseSig, chainId);
+            return kmsClient.sign(keyId, messageHash);
         }
     }
 
@@ -234,7 +230,7 @@ public final class CanonicalCustomSignerExample {
         }
 
         @Override
-        public String signTransaction(UnsignedTransaction tx, long chainId) {
+        public Signature signTransaction(UnsignedTransaction tx, long chainId) {
             System.out
                     .println("  [MpcSigner] Transaction received. Waiting for " + cluster.threshold + " approvals...");
             try {
@@ -247,8 +243,7 @@ public final class CanonicalCustomSignerExample {
 
             byte[] preimage = tx.encodeForSigning(chainId);
             byte[] messageHash = Keccak256.hash(preimage);
-            Signature baseSig = cluster.generateSignature(messageHash);
-            return encodeTx(tx, baseSig, chainId);
+            return cluster.generateSignature(messageHash);
         }
     }
 
@@ -288,19 +283,5 @@ public final class CanonicalCustomSignerExample {
         public Signature generateSignature(byte[] digest) {
             return privateKey.signFast(digest);
         }
-    }
-
-    private static String encodeTx(UnsignedTransaction tx, Signature baseSig, long chainId) {
-        Signature signature;
-        if (tx instanceof LegacyTransaction) {
-            final int v = (int) (chainId * 2 + 35 + baseSig.v());
-            signature = new Signature(baseSig.r(), baseSig.s(), v);
-        } else if (tx instanceof Eip1559Transaction) {
-            signature = baseSig;
-        } else {
-            throw new IllegalArgumentException("Unsupported transaction type");
-        }
-        byte[] envelope = tx.encodeAsEnvelope(signature);
-        return Hex.encode(envelope);
     }
 }

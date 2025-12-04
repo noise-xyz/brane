@@ -52,7 +52,7 @@ public class GasEstimationDemo {
 
                 // Setup signer using brane-crypto
                 final Signer signer = new PrivateKeySigner(privateKey);
-                final Address signerAddress = ((PrivateKeySigner) signer).address();
+                final Address signerAddress = signer.address();
 
                 System.out.println("Sender: " + signerAddress.value());
                 System.out.println("RPC: " + rpcUrl + "\n");

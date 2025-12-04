@@ -329,12 +329,12 @@ public class SmokeApp {
             HexData.EMPTY // data
         );
         
-        String signature = signer.signTransaction(tx, 31337);
+        io.brane.core.crypto.Signature signature = signer.signTransaction(tx, 31337);
         
-        if (signature == null || !signature.startsWith("0x") || signature.length() < 130) {
-            throw new RuntimeException("Invalid signature generated: " + signature);
+        if (signature == null) {
+            throw new RuntimeException("Invalid signature generated: null");
         }
-        System.out.println("  ✓ Generated Valid Signature: " + signature.substring(0, 10) + "...");
+        System.out.println("  ✓ Generated Valid Signature: r=" + io.brane.primitives.Hex.encode(signature.r()) + "...");
     }
 
     private static void testCustomRpc() {

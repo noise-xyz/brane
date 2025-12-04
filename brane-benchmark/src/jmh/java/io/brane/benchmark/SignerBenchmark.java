@@ -57,17 +57,17 @@ public class SignerBenchmark {
     }
 
     @Benchmark
-    public String signLegacy() {
+    public io.brane.core.crypto.Signature signLegacy() {
         return signer.signTransaction(legacyTx, 31337);
     }
 
     @Benchmark
-    public String signEip1559() {
+    public io.brane.core.crypto.Signature signEip1559() {
         return signer.signTransaction(eip1559Tx, 11155111);
     }
 
     @Benchmark
-    public String signLargePayload() {
+    public io.brane.core.crypto.Signature signLargePayload() {
         return signer.signTransaction(largeTx, 31337);
     }
 }

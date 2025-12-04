@@ -144,7 +144,11 @@ public final class CanonicalSafeMultisigExample {
 
     private static byte[] computeSafeTxHash(Address safe, Address to, BigInteger value, HexData data,
             BigInteger nonce) {
-        // Simplified hash computation
+        // WARNING: This is a simplified hash for demonstration purposes only.
+        // Production Safe transaction hashing uses the EIP-712 standard, which is much
+        // more complex.
+        // See:
+        // https://docs.safe.global/reference/safe-core-sdk/usage#gettransactionhash
         String raw = safe.value() + to.value().substring(2) + value.toString(16) + nonce.toString(16);
         return Keccak256.hash(raw.getBytes());
     }

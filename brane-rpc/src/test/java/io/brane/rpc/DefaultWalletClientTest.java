@@ -503,9 +503,15 @@ class DefaultWalletClientTest {
                                 }
 
                                 @Override
-                                public String signTransaction(io.brane.core.tx.UnsignedTransaction tx, long chainId) {
+                                public io.brane.core.crypto.Signature signTransaction(
+                                                io.brane.core.tx.UnsignedTransaction tx, long chainId) {
                                         FakeSigner.this.lastTx = tx;
-                                        return "0xsigned";
+                                        // Return a dummy signature
+                                        return new io.brane.core.crypto.Signature(
+                                                        new byte[32], // r
+                                                        new byte[32], // s
+                                                        0 // v
+                                        );
                                 }
                         };
                 }

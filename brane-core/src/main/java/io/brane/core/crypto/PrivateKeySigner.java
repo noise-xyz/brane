@@ -33,7 +33,7 @@ public final class PrivateKeySigner implements Signer {
     }
 
     @Override
-    public String signTransaction(final UnsignedTransaction tx, final long chainId) {
+    public Signature signTransaction(final UnsignedTransaction tx, final long chainId) {
         // 1. Encode transaction for signing
         final byte[] preimage = tx.encodeForSigning(chainId);
 
@@ -41,37 +41,13 @@ public final class PrivateKeySigner implements Signer {
         final byte[] messageHash = Keccak256.hash(preimage);
 
         // 3. Sign the hash
-        final Signature baseSig = privateKey.signFast(messageHash);
-
-        // 4. Create appropriately encoded signature based on transaction type
-        final Signature signature;
-        if (tx instanceof LegacyTransaction) {
-            // For legacy transactions, use EIP-155 encoding: v = chainId * 2 + 35 + yParity
-            final int v = (int) (chainId * 2 + 35 + baseSig.v());
-            signature = new Signature(baseSig.r(), baseSig.s(), v);
-        } else if (tx instanceof Eip1559Transaction) {
-            // For EIP-1559, v is just yParity (0 or 1)
-            signature = baseSig;
-        } else {
-            throw new IllegalArgumentException("Unsupported transaction type: " + tx.getClass().getName());
-        }
-
-        // 5. Encode as signed envelope
-        final byte[] envelope = tx.encodeAsEnvelope(signature);
-
-        // 6. Convert to hex string
-        return Hex.encode(envelope);
+        return privateKey.signFast(messageHash);
     }
 
     @Override
     public Signature signMessage(final byte[] message) {
         // EIP-191 style signing (Ethereum Signed Message)
         // \x19Ethereum Signed Message:\n + length + message
-        // For simplicity in this core implementation, we sign the hash directly or the
-        // raw message?
-        // Usually signMessage implies EIP-191.
-        // Let's implement standard EIP-191 hashing here.
-
         byte[] prefix = ("\u0019Ethereum Signed Message:\n" + message.length)
                 .getBytes(java.nio.charset.StandardCharsets.UTF_8);
         byte[] prefixedMessage = new byte[prefix.length + message.length];

@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
+import io.brane.core.crypto.Signer;
 import java.util.concurrent.atomic.AtomicReference;
 
 /**
@@ -62,7 +63,7 @@ public final class DefaultWalletClient implements WalletClient {
 
     private final BraneProvider provider;
 
-    private final io.brane.core.crypto.Signer signer;
+    private final Signer signer;
     private final Address senderAddress;
     private final long expectedChainId;
 
@@ -224,7 +225,22 @@ public final class DefaultWalletClient implements WalletClient {
         DebugLogger.logTx(
                 LogFormatter.formatTxSend(from.value(), valueParts.to, nonce, gasLimit, valueParts.value));
 
-        final String signedHex = signer.signTransaction(unsignedTx, chainId);
+        final io.brane.core.crypto.Signature baseSig = signer.signTransaction(unsignedTx, chainId);
+
+        // Adjust V value and encode
+        final io.brane.core.crypto.Signature signature;
+        if (unsignedTx instanceof io.brane.core.tx.LegacyTransaction) {
+            // For legacy transactions, use EIP-155 encoding: v = chainId * 2 + 35 + yParity
+            final int v = (int) (chainId * 2 + 35 + baseSig.v());
+            signature = new io.brane.core.crypto.Signature(baseSig.r(), baseSig.s(), v);
+        } else {
+            // For EIP-1559, v is just yParity (0 or 1)
+            signature = baseSig;
+        }
+
+        final byte[] envelope = unsignedTx.encodeAsEnvelope(signature);
+        final String signedHex = io.brane.primitives.Hex.encode(envelope);
+
         final String txHash;
         final long start = System.nanoTime();
         try {

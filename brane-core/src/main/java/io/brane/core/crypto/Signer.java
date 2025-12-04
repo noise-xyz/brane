@@ -20,13 +20,16 @@ public interface Signer {
     Address address();
 
     /**
-     * Signs a transaction and returns the hex-encoded signed envelope.
+     * Signs a transaction and returns the raw signature.
+     * <p>
+     * The client is responsible for assembling the final signed transaction
+     * envelope.
      *
      * @param tx      the unsigned transaction to sign
      * @param chainId the chain ID for replay protection
-     * @return hex-encoded signed transaction ready for broadcast
+     * @return the raw signature of the transaction hash
      */
-    String signTransaction(UnsignedTransaction tx, long chainId);
+    Signature signTransaction(UnsignedTransaction tx, long chainId);
 
-    io.brane.core.crypto.Signature signMessage(byte[] message);
+    Signature signMessage(byte[] message);
 }
