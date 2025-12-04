@@ -36,7 +36,7 @@ import java.util.concurrent.atomic.AtomicReference;
  * <ol>
  * <li>Fills missing gas parameters via {@link SmartGasStrategy}</li>
  * <li>Fetches nonce via {@code eth_getTransactionCount} if not provided</li>
- * <li>Signs the transaction using {@link TransactionSigner}</li>
+ * <li>Signs the transaction using {@link io.brane.core.crypto.Signer}</li>
  * <li>Broadcasts via {@code eth_sendRawTransaction}</li>
  * <li>Optionally polls for receipt via {@code eth_getTransactionReceipt}</li>
  * </ol>
@@ -56,13 +56,13 @@ import java.util.concurrent.atomic.AtomicReference;
  * 
  * @see WalletClient
  * @see SmartGasStrategy
- * @see TransactionSigner
+ * @see io.brane.core.crypto.Signer
  */
 public final class DefaultWalletClient implements WalletClient {
 
     private final BraneProvider provider;
 
-    private final TransactionSigner signer;
+    private final io.brane.core.crypto.Signer signer;
     private final Address senderAddress;
     private final long expectedChainId;
 
@@ -72,7 +72,7 @@ public final class DefaultWalletClient implements WalletClient {
 
     private DefaultWalletClient(
             final BraneProvider provider,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress,
             final long expectedChainId,
             final SmartGasStrategy gasStrategy) {
@@ -88,7 +88,7 @@ public final class DefaultWalletClient implements WalletClient {
     public static DefaultWalletClient from(
             final BraneProvider provider,
             final PublicClient publicClient,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress,
             final long expectedChainId,
             final ChainProfile chainProfile) {
@@ -100,7 +100,7 @@ public final class DefaultWalletClient implements WalletClient {
     public static DefaultWalletClient from(
             final BraneProvider provider,
             final PublicClient publicClient,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress,
             final long expectedChainId,
             final ChainProfile chainProfile,
@@ -119,7 +119,7 @@ public final class DefaultWalletClient implements WalletClient {
     public static DefaultWalletClient from(
             final BraneProvider provider,
             final PublicClient publicClient,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress,
             final long expectedChainId) {
         final ChainProfile profile = ChainProfile.of(expectedChainId, null, true, Wei.of(1_000_000_000L));
@@ -129,7 +129,7 @@ public final class DefaultWalletClient implements WalletClient {
     public static DefaultWalletClient create(
             final BraneProvider provider,
             final PublicClient publicClient,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress,
             final ChainProfile chainProfile) {
         final SmartGasStrategy gasStrategy = new SmartGasStrategy(publicClient, provider, chainProfile);
@@ -140,7 +140,15 @@ public final class DefaultWalletClient implements WalletClient {
     public static DefaultWalletClient create(
             final BraneProvider provider,
             final PublicClient publicClient,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer,
+            final ChainProfile chainProfile) {
+        return create(provider, publicClient, signer, signer.address(), chainProfile);
+    }
+
+    public static DefaultWalletClient create(
+            final BraneProvider provider,
+            final PublicClient publicClient,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress) {
         return from(provider, publicClient, signer, senderAddress, 0L);
     }
@@ -148,7 +156,14 @@ public final class DefaultWalletClient implements WalletClient {
     public static DefaultWalletClient create(
             final BraneProvider provider,
             final PublicClient publicClient,
-            final TransactionSigner signer,
+            final io.brane.core.crypto.Signer signer) {
+        return create(provider, publicClient, signer, signer.address());
+    }
+
+    public static DefaultWalletClient create(
+            final BraneProvider provider,
+            final PublicClient publicClient,
+            final io.brane.core.crypto.Signer signer,
             final Address senderAddress,
             final ChainProfile chainProfile,
             final BigInteger gasLimitBufferNumerator,
@@ -209,7 +224,7 @@ public final class DefaultWalletClient implements WalletClient {
         DebugLogger.logTx(
                 LogFormatter.formatTxSend(from.value(), valueParts.to, nonce, gasLimit, valueParts.value));
 
-        final String signedHex = signer.sign(unsignedTx, chainId);
+        final String signedHex = signer.signTransaction(unsignedTx, chainId);
         final String txHash;
         final long start = System.nanoTime();
         try {

@@ -52,7 +52,7 @@ public final class Contract {
         }
     }
 
-    public String write(final Signer signer, final String functionName, final Object... args)
+    public String write(final io.brane.core.crypto.Signer signer, final String functionName, final Object... args)
             throws RpcException, RevertException {
         final Abi.FunctionCall call = abi.encodeFunction(functionName, args);
         final String data = call.data();

@@ -148,9 +148,22 @@ class DefaultWalletClientDebugTest {
             return address;
         }
 
-        TransactionSigner asSigner() {
-            return (tx, chainId) -> {
-                return "0xsigned";
+        io.brane.core.crypto.Signer asSigner() {
+            return new io.brane.core.crypto.Signer() {
+                @Override
+                public Address address() {
+                    return FakeSigner.this.address;
+                }
+
+                @Override
+                public io.brane.core.crypto.Signature signMessage(byte[] message) {
+                    return null;
+                }
+
+                @Override
+                public String signTransaction(io.brane.core.tx.UnsignedTransaction tx, long chainId) {
+                    return "0xsigned";
+                }
             };
         }
     }

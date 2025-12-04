@@ -112,10 +112,10 @@ public class Example {
 Create a `WalletClient` to sign and send transactions.
 
 ```java
+```java
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.BranePublicClient;
-import io.brane.rpc.TransactionSigner;
-import io.brane.rpc.PrivateKeyTransactionSigner;
+import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.types.Wei;
 import io.brane.core.types.Address;
 
@@ -123,14 +123,13 @@ import io.brane.core.types.Address;
 
 // 1. Create dependencies
 var publicClient = BranePublicClient.forChain(ChainProfiles.ETH_SEPOLIA).build();
-var signer = new PrivateKeyTransactionSigner(System.getenv("SEPOLIA_PRIVATE_KEY"));
+var signer = new PrivateKeySigner(System.getenv("SEPOLIA_PRIVATE_KEY"));
 
 // 2. Create Wallet
 var wallet = DefaultWalletClient.create(
     publicClient.getProvider(),
     publicClient,
     signer,
-    signer.getAddress(),
     ChainProfiles.ETH_SEPOLIA
 );
 

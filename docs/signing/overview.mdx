@@ -1,0 +1,65 @@
+---
+title: Signing Overview
+description: 'Understand how Brane handles transaction and message signing.'
+---
+
+## The Signer Interface
+
+In Brane, all signing operations are abstracted through the `Signer` interface. This provides a unified way to sign both transactions and raw messages, whether the key is held locally (e.g., a private key) or remotely (e.g., KMS, HSM, or MPC).
+
+```java
+public interface Signer {
+    /**
+     * Signs a transaction.
+     */
+    Signature signTransaction(UnsignedTransaction tx, long chainId);
+
+    /**
+     * Signs a raw message (EIP-191).
+     */
+    Signature signMessage(byte[] message);
+
+    /**
+     * Returns the address associated with this signer.
+     */
+    Address address();
+}
+```
+
+## PrivateKeySigner
+
+The most common implementation is `PrivateKeySigner`, which uses a local private key.
+
+```java
+import io.brane.core.crypto.PrivateKeySigner;
+
+// Initialize with a hex private key
+var signer = new PrivateKeySigner("0x...");
+
+// Get the address
+System.out.println("Address: " + signer.address());
+```
+
+### Signing Transactions
+
+When using `WalletClient`, the signer is handled automatically. However, you can also use it directly:
+
+```java
+var tx = UnsignedTransaction.builder()
+    .to(recipient)
+    .value(amount)
+    .build();
+
+Signature sig = signer.signTransaction(tx, 1L); // Chain ID 1 (Mainnet)
+```
+
+### Signing Messages
+
+You can sign arbitrary messages, which is useful for authentication (e.g., "Sign in with Ethereum") or off-chain approvals.
+
+```java
+String message = "Hello Brane!";
+Signature sig = signer.signMessage(message.getBytes(StandardCharsets.UTF_8));
+
+System.out.println("Signature: " + sig.toHex());
+```

@@ -8,7 +8,7 @@ import io.brane.core.types.Wei;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PrivateKeyTransactionSigner;
+import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.rpc.PublicClient;
 
 /**
@@ -28,7 +28,7 @@ public class SmartGasSanityCheck {
                 final PublicClient publicClient = PublicClient.from(provider);
 
                 // 2. Setup Signer using brane-crypto
-                final PrivateKeyTransactionSigner signer = new PrivateKeyTransactionSigner(PRIVATE_KEY);
+                final PrivateKeySigner signer = new PrivateKeySigner(PRIVATE_KEY);
                 final Address sender = signer.address();
 
                 final DefaultWalletClient wallet = DefaultWalletClient.from(

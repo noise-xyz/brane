@@ -9,12 +9,24 @@ The `WalletClient` is used for writing to the blockchain. It manages accounts, s
 ## Usage
 
 ```java
-import io.brane.rpc.BraneWalletClient;
+import io.brane.rpc.DefaultWalletClient;
+import io.brane.rpc.BranePublicClient;
 import io.brane.core.chain.ChainProfiles;
+import io.brane.core.crypto.PrivateKeySigner;
 
-WalletClient wallet = BraneWalletClient.forChain(ChainProfiles.ETH_SEPOLIA)
-    .withPrivateKey(System.getenv("SEPOLIA_PRIVATE_KEY"))
-    .build();
+// 1. Create Public Client
+var publicClient = BranePublicClient.forChain(ChainProfiles.ETH_SEPOLIA).build();
+
+// 2. Create Signer
+var signer = new PrivateKeySigner(System.getenv("SEPOLIA_PRIVATE_KEY"));
+
+// 3. Create Wallet
+WalletClient wallet = DefaultWalletClient.create(
+    publicClient.getProvider(),
+    publicClient,
+    signer,
+    ChainProfiles.ETH_SEPOLIA
+);
 ```
 
 ## Methods

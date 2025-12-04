@@ -62,4 +62,22 @@ echo "----------------------------------------------------------------"
   --console=plain -q
 
 echo ""
+echo "----------------------------------------------------------------"
+echo "Running Canonical Custom Signer Example (KMS & MPC)..."
+echo "----------------------------------------------------------------"
+./gradlew :brane-examples:run \
+  -PmainClass=io.brane.examples.CanonicalCustomSignerExample \
+  -Dbrane.examples.rpc="$RPC_URL" \
+  --console=plain -q
+
+echo ""
+echo "----------------------------------------------------------------"
+echo "Running Canonical Safe Multisig Example..."
+echo "----------------------------------------------------------------"
+./gradlew :brane-examples:run \
+  -PmainClass=io.brane.examples.CanonicalSafeMultisigExample \
+  -Dbrane.examples.rpc="$RPC_URL" \
+  --console=plain -q
+
+echo ""
 echo "✅ All examples completed successfully."

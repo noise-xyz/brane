@@ -45,6 +45,7 @@
         {
             "group": "Advanced Signing",
             "pages": [
+                "signing/overview",
                 "signing/custom-signers"
             ]
         },

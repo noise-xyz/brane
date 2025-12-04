@@ -10,8 +10,8 @@ import io.brane.core.types.Wei;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PrivateKeyTransactionSigner;
-import io.brane.rpc.TransactionSigner;
+import io.brane.core.crypto.PrivateKeySigner;
+import io.brane.core.crypto.Signer;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 import java.math.BigInteger;
@@ -51,8 +51,8 @@ public class GasEstimationDemo {
                                 16);
 
                 // Setup signer using brane-crypto
-                final TransactionSigner signer = new PrivateKeyTransactionSigner(privateKey);
-                final Address signerAddress = ((PrivateKeyTransactionSigner) signer).address();
+                final Signer signer = new PrivateKeySigner(privateKey);
+                final Address signerAddress = ((PrivateKeySigner) signer).address();
 
                 System.out.println("Sender: " + signerAddress.value());
                 System.out.println("RPC: " + rpcUrl + "\n");

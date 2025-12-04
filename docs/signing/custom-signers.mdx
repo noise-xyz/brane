@@ -3,23 +3,17 @@ title: Custom Signers
 description: 'Integrate external signers like Privy, AWS KMS, or HSMs.'
 ---
 
-Brane supports external signing via the `TransactionSigner` interface. This allows you to use keys managed by third-party services (Privy, Fireblocks, AWS KMS) or hardware wallets without exposing the private key to your application.
+Brane supports external signing via the `Signer` interface. This allows you to use keys managed by third-party services (Privy, Fireblocks, AWS KMS) or hardware wallets without exposing the private key to your application.
 
 ## The Interface
 
-The `TransactionSigner` interface has a single method: `sign`.
+To implement a custom signer, you must implement the `Signer` interface.
 
 ```java
-@FunctionalInterface
-public interface TransactionSigner {
-    /**
-     * Signs a transaction and returns the hex-encoded signed envelope.
-     * 
-     * @param tx      the unsigned transaction
-     * @param chainId the chain ID for replay protection
-     * @return hex-encoded signed transaction ready for broadcast
-     */
-    String sign(UnsignedTransaction tx, long chainId);
+public interface Signer {
+    Signature signTransaction(UnsignedTransaction tx, long chainId);
+    Signature signMessage(byte[] message);
+    Address address();
 }
 ```
 
@@ -28,41 +22,51 @@ public interface TransactionSigner {
 Here is how you might implement a signer that delegates to an external API (e.g., Privy or a backend KMS).
 
 ```java
-import io.brane.rpc.TransactionSigner;
+import io.brane.core.crypto.Signer;
+import io.brane.core.crypto.Signature;
+import io.brane.core.types.Address;
 import io.brane.core.tx.UnsignedTransaction;
 import io.brane.core.crypto.Keccak256;
-import io.brane.core.crypto.Signature;
-import io.brane.primitives.Hex;
 
 // Dummy interface for the example
 interface ExternalService {
     Signature sign(String keyId, byte[] hash);
 }
 
-public class RemoteSigner implements TransactionSigner {
+public class RemoteSigner implements Signer {
     private final String keyId;
+    private final Address address;
     private final ExternalService service;
 
-    public RemoteSigner(String keyId, ExternalService service) {
+    public RemoteSigner(String keyId, Address address, ExternalService service) {
         this.keyId = keyId;
+        this.address = address;
         this.service = service;
     }
 
     @Override
-    public String sign(UnsignedTransaction tx, long chainId) {
+    public Address address() {
+        return address;
+    }
+
+    @Override
+    public Signature signTransaction(UnsignedTransaction tx, long chainId) {
         // 1. Get the transaction hash (preimage)
         byte[] preimage = tx.encodeForSigning(chainId);
         byte[] hash = Keccak256.hash(preimage);
 
         // 2. Request signature from external service
-        // (This is where you call Privy, AWS KMS, etc.)
-        Signature sig = service.sign(this.keyId, hash);
+        return service.sign(this.keyId, hash);
+    }
 
-        // 3. Encode the signed transaction
-        byte[] signedEnvelope = tx.encodeAsEnvelope(sig);
+    @Override
+    public Signature signMessage(byte[] message) {
+        // 1. Hash the message according to EIP-191
+        // Note: The external service might expect the raw message or the hash.
+        // Here we assume it expects the hash of the message.
+        byte[] hash = Keccak256.hash(message);
         
-        // 4. Return as Hex
-        return Hex.encode(signedEnvelope);
+        return service.sign(this.keyId, hash);
     }
 }
 ```
@@ -76,20 +80,22 @@ import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.PublicClient;
 import io.brane.core.chain.ChainProfiles;
-import io.brane.core.types.Address;
 
 // Assume these are defined
 BraneProvider provider = ...;
 PublicClient publicClient = ...;
 ExternalService service = ...;
 
-TransactionSigner mySigner = new RemoteSigner("key-123", service);
+Signer mySigner = new RemoteSigner(
+    "key-123", 
+    new Address("0x..."), 
+    service
+);
 
 WalletClient wallet = DefaultWalletClient.create(
     provider,
     publicClient,
     mySigner,
-    new Address("0x..."), // The address corresponding to the remote key
     ChainProfiles.ANVIL_LOCAL
 );
 ```
