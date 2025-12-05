@@ -6,27 +6,42 @@ import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import com.fasterxml.jackson.core.JsonFactory;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
- * Ultra-high-performance WebSocket JSON-RPC provider designed to achieve 2x+ throughput vs web3j.
+ * Ultra-high-performance WebSocket JSON-RPC provider designed to achieve 2x+
+ * throughput vs web3j.
  * 
  * <h2>Key Optimizations:</h2>
  * <ul>
- *   <li><b>Zero-allocation JSON parsing</b> - Custom char[] parser, no Jackson, no intermediate objects</li>
- *   <li><b>Lock-free request tracking</b> - Array-based slot allocation instead of ConcurrentHashMap</li>
- *   <li><b>Object pooling</b> - Reusable response objects to eliminate GC pressure</li>
- *   <li><b>Inlined hot paths</b> - Critical methods are manually inlined</li>
- *   <li><b>Cache-friendly data layout</b> - Arrays instead of linked structures</li>
- *   <li><b>Minimal String allocations</b> - Work with char[] directly where possible</li>
+ * <li><b>Zero-allocation JSON parsing</b> - Custom char[] parser, no Jackson,
+ * no intermediate objects</li>
+ * <li><b>Lock-free request tracking</b> - Array-based slot allocation instead
+ * of ConcurrentHashMap</li>
+ * <li><b>Object pooling</b> - Reusable response objects to eliminate GC
+ * pressure</li>
+ * <li><b>Inlined hot paths</b> - Critical methods are manually inlined</li>
+ * <li><b>Cache-friendly data layout</b> - Arrays instead of linked
+ * structures</li>
+ * <li><b>Minimal String allocations</b> - Work with char[] directly where
+ * possible</li>
  * </ul>
  * 
  * <h2>Architecture:</h2>
+ * 
  * <pre>
  * Request Flow:
  *   sendAsync() → allocateSlot() → buildJson(char[]) → webSocket.sendText()
@@ -39,34 +54,42 @@ import java.util.function.Consumer;
  */
 public final class UltraFastWebSocketProvider implements BraneProvider, AutoCloseable {
 
+    private static final Logger log = LoggerFactory.getLogger(UltraFastWebSocketProvider.class);
+    private static final ObjectMapper mapper = new ObjectMapper();
+
     // ==================== Configuration ====================
     private static final int MAX_PENDING_REQUESTS = 16384; // Power of 2 for fast modulo
     private static final int SLOT_MASK = MAX_PENDING_REQUESTS - 1;
     private static final long DEFAULT_TIMEOUT_MS = 30_000;
     private static final int INITIAL_BUFFER_SIZE = 512;
-    
+    private static final int MAX_RECONNECT_ATTEMPTS = 5;
+    private static final long MAX_RECONNECT_DELAY_MS = 5000;
+
     // ==================== Connection State ====================
     private final String url;
     private final HttpClient httpClient;
     private volatile WebSocket webSocket;
     private final AtomicBoolean connected = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
-    
+
     // ==================== Lock-Free Request Tracking ====================
     // Instead of ConcurrentHashMap<Long, PendingRequest>, use array slots
     // This eliminates hashing, boxing, and lock contention
     @SuppressWarnings("unchecked")
-    private final CompletableFuture<JsonRpcResponse>[] slots = new CompletableFuture[MAX_PENDING_REQUESTS];
+    final CompletableFuture<JsonRpcResponse>[] slots = new CompletableFuture[MAX_PENDING_REQUESTS];
     private final long[] slotStartTimes = new long[MAX_PENDING_REQUESTS]; // nanoTime when request started
     private final AtomicLong requestIdGenerator = new AtomicLong(0);
-    
-    // ==================== Thread-Local Buffers (Zero Allocation) ====================
-    private static final ThreadLocal<char[]> REQUEST_BUFFER = ThreadLocal.withInitial(() -> new char[INITIAL_BUFFER_SIZE]);
-    private static final ThreadLocal<StringBuilder> STRING_BUILDER = ThreadLocal.withInitial(() -> new StringBuilder(256));
-    
+
+    // ==================== Thread-Local Buffers (Zero Allocation)
+    // ====================
+    private static final ThreadLocal<char[]> REQUEST_BUFFER = ThreadLocal
+            .withInitial(() -> new char[INITIAL_BUFFER_SIZE]);
+    private static final ThreadLocal<StringBuilder> STRING_BUILDER = ThreadLocal
+            .withInitial(() -> new StringBuilder(256));
+
     // ==================== Subscriptions ====================
     private final ConcurrentHashMap<String, Consumer<Object>> subscriptions = new ConcurrentHashMap<>();
-    
+
     // ==================== Timeout Handling ====================
     private final ScheduledExecutorService scheduler;
     private volatile ScheduledFuture<?> timeoutSweeperTask;
@@ -78,23 +101,38 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
     private static final char[] JSON_SUFFIX = "}".toCharArray();
     private static final char[] EMPTY_ARRAY = "[]".toCharArray();
 
-    private UltraFastWebSocketProvider(String url) {
+    /**
+     * Creates a new provider.
+     *
+     * @param url the WebSocket URL (e.g. "ws://localhost:8545")
+     */
+    public UltraFastWebSocketProvider(String url) {
+        this(url, true);
+    }
+
+    /**
+     * Visible for testing.
+     */
+    UltraFastWebSocketProvider(String url, boolean connectNow) {
         this.url = url;
-        this.httpClient = HttpClient.newBuilder()
-                .connectTimeout(Duration.ofSeconds(10))
-                .build();
+        this.httpClient = HttpClient.newHttpClient();
+
         this.scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread t = new Thread(r, "brane-ultra-scheduler");
+            Thread t = new Thread(r, "brane-timeout");
             t.setDaemon(true);
             return t;
         });
-        
+
         // Initialize slots
         Arrays.fill(slots, null);
         Arrays.fill(slotStartTimes, 0L);
-        
-        connect();
-        startTimeoutSweeper();
+
+        // Start timeout sweeper
+        this.timeoutSweeperTask = scheduler.scheduleAtFixedRate(this::checkTimeouts, 1000, 1000, TimeUnit.MILLISECONDS);
+
+        if (connectNow) {
+            connect();
+        }
     }
 
     public static UltraFastWebSocketProvider create(String url) {
@@ -107,22 +145,39 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
         if (closed.get()) {
             throw new IllegalStateException("Provider is closed");
         }
-        
-        try {
-            this.webSocket = httpClient.newWebSocketBuilder()
-                    .buildAsync(URI.create(url), new UltraFastListener())
-                    .get(10, TimeUnit.SECONDS);
-            connected.set(true);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to connect to " + url, e);
+
+        int attempt = 0;
+        long delay = 100;
+        Exception lastError = null;
+
+        while (attempt < MAX_RECONNECT_ATTEMPTS && !closed.get()) {
+            try {
+                this.webSocket = httpClient.newWebSocketBuilder()
+                        .buildAsync(URI.create(url), new UltraFastListener())
+                        .get(10, TimeUnit.SECONDS);
+                connected.set(true);
+                return;
+            } catch (Exception e) {
+                lastError = e;
+                log.warn("Connection attempt {} failed: {}", attempt + 1, e.getMessage());
+                try {
+                    Thread.sleep(delay);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                delay = Math.min(delay * 2, MAX_RECONNECT_DELAY_MS);
+                attempt++;
+            }
         }
+        throw new RuntimeException("Failed to connect to " + url + " after " + attempt + " attempts", lastError);
     }
 
     private void startTimeoutSweeper() {
         timeoutSweeperTask = scheduler.scheduleAtFixedRate(() -> {
             long now = System.nanoTime();
             long timeoutNanos = DEFAULT_TIMEOUT_MS * 1_000_000L;
-            
+
             for (int i = 0; i < MAX_PENDING_REQUESTS; i++) {
                 CompletableFuture<JsonRpcResponse> future = slots[i];
                 if (future != null && !future.isDone()) {
@@ -132,7 +187,7 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
                             slots[i] = null;
                             slotStartTimes[i] = 0;
                             future.completeExceptionally(
-                                new RpcException(-32000, "Request timed out", null, (Throwable) null));
+                                    new RpcException(-32000, "Request timed out", null, (Throwable) null));
                         }
                     }
                 }
@@ -171,21 +226,21 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
             return CompletableFuture.failedFuture(
                     new RpcException(-32000, "Not connected", null, (Throwable) null));
         }
-        
+
         // Allocate slot (lock-free)
         long id = requestIdGenerator.incrementAndGet();
         int slot = (int) (id & SLOT_MASK);
-        
+
         CompletableFuture<JsonRpcResponse> future = new CompletableFuture<>();
-        
+
         // Store in slot (atomic write)
         slotStartTimes[slot] = System.nanoTime();
         slots[slot] = future;
-        
+
         // Build and send JSON using thread-local buffer
         String json = buildRequestJsonFast(method, params, id);
         webSocket.sendText(json, true);
-        
+
         return future;
     }
 
@@ -195,37 +250,38 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
     private String buildRequestJsonFast(String method, List<?> params, long id) {
         StringBuilder sb = STRING_BUILDER.get();
         sb.setLength(0);
-        
+
         // Append pre-computed prefix: {"jsonrpc":"2.0","method":"
         sb.append(JSON_PREFIX);
-        
+
         // Append method name (no escaping needed for RPC methods)
         sb.append(method);
-        
+
         // Append params section: ","params":
         sb.append(JSON_PARAMS);
-        
+
         // Append params array
         if (params == null || params.isEmpty()) {
             sb.append(EMPTY_ARRAY);
         } else {
             appendParamsFast(sb, params);
         }
-        
+
         // Append id section: ,"id":
         sb.append(JSON_ID);
         sb.append(id);
-        
+
         // Append suffix: }
         sb.append(JSON_SUFFIX);
-        
+
         return sb.toString();
     }
 
     private void appendParamsFast(StringBuilder sb, List<?> params) {
         sb.append('[');
         for (int i = 0, size = params.size(); i < size; i++) {
-            if (i > 0) sb.append(',');
+            if (i > 0)
+                sb.append(',');
             appendValueFast(sb, params.get(i));
         }
         sb.append(']');
@@ -245,7 +301,8 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
         } else if (value instanceof List<?> list) {
             sb.append('[');
             for (int i = 0, size = list.size(); i < size; i++) {
-                if (i > 0) sb.append(',');
+                if (i > 0)
+                    sb.append(',');
                 appendValueFast(sb, list.get(i));
             }
             sb.append(']');
@@ -267,12 +324,12 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
                 break;
             }
         }
-        
+
         if (!needsEscape) {
             sb.append(s);
             return;
         }
-        
+
         // Slow path: escape special characters
         for (int i = 0; i < len; i++) {
             char c = s.charAt(i);
@@ -304,31 +361,32 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
             return CompletableFuture.failedFuture(
                     new RpcException(-32000, "Not connected", null, (Throwable) null));
         }
-        
+
         if (requests.isEmpty()) {
             return CompletableFuture.completedFuture(List.of());
         }
-        
+
         int size = requests.size();
         @SuppressWarnings("unchecked")
         CompletableFuture<JsonRpcResponse>[] futures = new CompletableFuture[size];
         long now = System.nanoTime();
-        
+
         StringBuilder sb = STRING_BUILDER.get();
         sb.setLength(0);
         sb.append('[');
-        
+
         for (int i = 0; i < size; i++) {
             BatchRequest req = requests.get(i);
             long id = requestIdGenerator.incrementAndGet();
             int slot = (int) (id & SLOT_MASK);
-            
+
             CompletableFuture<JsonRpcResponse> future = new CompletableFuture<>();
             futures[i] = future;
             slotStartTimes[slot] = now;
             slots[slot] = future;
-            
-            if (i > 0) sb.append(',');
+
+            if (i > 0)
+                sb.append(',');
             sb.append(JSON_PREFIX);
             sb.append(req.method());
             sb.append(JSON_PARAMS);
@@ -341,10 +399,10 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
             sb.append(id);
             sb.append(JSON_SUFFIX);
         }
-        
+
         sb.append(']');
         webSocket.sendText(sb.toString(), true);
-        
+
         return CompletableFuture.allOf(futures)
                 .thenApply(v -> {
                     JsonRpcResponse[] results = new JsonRpcResponse[size];
@@ -355,15 +413,25 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
                 });
     }
 
-    public record BatchRequest(String method, List<?> params) {}
+    public record BatchRequest(String method, List<?> params) {
+    }
 
     // ==================== Subscription API ====================
 
     @Override
     public String subscribe(String method, List<?> params, Consumer<Object> callback) throws RpcException {
-        JsonRpcResponse response = send(method, params);
+        // "method" here is actually the subscription type (e.g. "newHeads", "logs")
+        // We need to call "eth_subscribe" with [subscriptionType, params...]
+        List<Object> args = new ArrayList<>();
+        args.add(method);
+        if (params != null) {
+            args.addAll(params);
+        }
+
+        JsonRpcResponse response = send("eth_subscribe", args);
         if (response.hasError()) {
-            throw new RpcException(-32000, "Subscription failed: " + response.error().message(), null, (Throwable) null);
+            throw new RpcException(-32000, "Subscription failed: " + response.error().message(), null,
+                    (Throwable) null);
         }
         String subscriptionId = (String) response.result();
         subscriptions.put(subscriptionId, callback);
@@ -383,12 +451,12 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
     public void close() {
         if (closed.compareAndSet(false, true)) {
             connected.set(false);
-            
+
             if (timeoutSweeperTask != null) {
                 timeoutSweeperTask.cancel(false);
             }
             scheduler.shutdown();
-            
+
             // Fail all pending
             RpcException closeError = new RpcException(-32000, "Provider closed", null, (Throwable) null);
             for (int i = 0; i < MAX_PENDING_REQUESTS; i++) {
@@ -399,22 +467,23 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
                 slots[i] = null;
                 slotStartTimes[i] = 0;
             }
-            
+
             if (webSocket != null) {
                 try {
                     webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "Closing").get(5, TimeUnit.SECONDS);
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         }
     }
 
     // ==================== Ultra-Fast WebSocket Listener ====================
 
-    private class UltraFastListener implements WebSocket.Listener {
+    class UltraFastListener implements WebSocket.Listener {
         // Thread-local parsing buffer (avoids allocation in hot path)
         private final char[] parseBuffer = new char[8192];
         private int parseBufferLen = 0;
-        
+
         // Reusable StringBuilder for accumulating fragmented messages
         private final StringBuilder fragmentBuffer = new StringBuilder(4096);
 
@@ -456,340 +525,101 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
         }
 
         /**
-         * Zero-allocation JSON parsing.
-         * Only extracts the fields we need: id, result, error.
-         * Avoids creating any intermediate objects.
+         * Robust JSON parsing using Jackson.
          */
-        private void processMessageFast(CharSequence json) {
-            int len = json.length();
-            if (len == 0) return;
-            
-            char first = json.charAt(0);
-            if (first == '[') {
-                // Batch response
-                processBatchResponseFast(json);
-            } else if (first == '{') {
-                // Single response
-                processSingleResponseFast(json);
-            }
-        }
+        void processMessageFast(CharSequence json) {
+            try {
+                String jsonStr = json.toString();
+                JsonNode root = mapper.readTree(jsonStr);
 
-        private void processSingleResponseFast(CharSequence json) {
-            int len = json.length();
-            
-            // Parse id (look for "id": pattern)
-            long id = -1;
-            int idStart = indexOf(json, "\"id\":", 0);
-            if (idStart >= 0) {
-                idStart += 5; // Skip "id":
-                // Skip whitespace
-                while (idStart < len && json.charAt(idStart) <= ' ') idStart++;
-                id = parseLongFast(json, idStart);
-            }
-            
-            if (id < 0) {
-                // Might be a subscription notification
-                processSubscriptionNotification(json);
-                return;
-            }
-            
-            int slot = (int) (id & SLOT_MASK);
-            CompletableFuture<JsonRpcResponse> future = slots[slot];
-            if (future == null || future.isDone()) return;
-            
-            // Clear slot
-            slots[slot] = null;
-            slotStartTimes[slot] = 0;
-            
-            // Check for error
-            int errorStart = indexOf(json, "\"error\":", 0);
-            if (errorStart >= 0 && indexOf(json, "\"error\":null", 0) < 0) {
-                // Has error
-                JsonRpcError error = parseErrorFast(json, errorStart + 8);
-                future.complete(new JsonRpcResponse("2.0", null, error, String.valueOf(id)));
-                return;
-            }
-            
-            // Parse result
-            int resultStart = indexOf(json, "\"result\":", 0);
-            Object result = null;
-            if (resultStart >= 0) {
-                resultStart += 9; // Skip "result":
-                while (resultStart < len && json.charAt(resultStart) <= ' ') resultStart++;
-                result = parseValueFast(json, resultStart);
-            }
-            
-            future.complete(new JsonRpcResponse("2.0", result, null, String.valueOf(id)));
-        }
-
-        private void processBatchResponseFast(CharSequence json) {
-            int len = json.length();
-            int pos = 1; // Skip '['
-            
-            while (pos < len) {
-                // Find next '{'
-                while (pos < len && json.charAt(pos) != '{') pos++;
-                if (pos >= len) break;
-                
-                // Find matching '}'
-                int depth = 0;
-                int start = pos;
-                while (pos < len) {
-                    char c = json.charAt(pos);
-                    if (c == '{') depth++;
-                    else if (c == '}') {
-                        depth--;
-                        if (depth == 0) {
-                            pos++;
-                            break;
-                        }
-                    } else if (c == '"') {
-                        // Skip string
-                        pos++;
-                        while (pos < len && json.charAt(pos) != '"') {
-                            if (json.charAt(pos) == '\\') pos++;
-                            pos++;
-                        }
+                if (root.isArray()) {
+                    for (JsonNode node : root) {
+                        processSingleResponseNode(node);
                     }
-                    pos++;
+                } else if (root.isObject()) {
+                    processSingleResponseNode(root);
                 }
-                
-                // Process single response
-                processSingleResponseFast(json.subSequence(start, pos));
+            } catch (Exception e) {
+                log.error("Error processing WebSocket message", e);
             }
         }
 
-        private void processSubscriptionNotification(CharSequence json) {
-            // Look for "method":"eth_subscription"
-            if (indexOf(json, "\"method\":\"eth_subscription\"", 0) < 0) return;
-            
-            // Extract subscription id
-            int subIdStart = indexOf(json, "\"subscription\":\"", 0);
-            if (subIdStart < 0) return;
-            subIdStart += 16;
-            int subIdEnd = indexOf(json, "\"", subIdStart);
-            if (subIdEnd < 0) return;
-            
-            String subscriptionId = json.subSequence(subIdStart, subIdEnd).toString();
-            Consumer<Object> callback = subscriptions.get(subscriptionId);
-            if (callback == null) return;
-            
-            // Extract result
-            int resultStart = indexOf(json, "\"result\":", subIdEnd);
-            if (resultStart >= 0) {
-                resultStart += 9;
-                while (resultStart < json.length() && json.charAt(resultStart) <= ' ') resultStart++;
-                Object result = parseValueFast(json, resultStart);
+        private void processSingleResponseNode(JsonNode node) {
+            try {
+                // Check for subscription notification
+                if (node.has("method") && node.get("method").asText().endsWith("_subscription")) {
+                    processSubscriptionNotificationNode(node);
+                    return;
+                }
+
+                if (!node.has("id"))
+                    return;
+
+                JsonNode idNode = node.get("id");
+                long id = -1;
+                if (idNode.isNumber()) {
+                    id = idNode.asLong();
+                } else if (idNode.isTextual()) {
+                    try {
+                        id = Long.parseLong(idNode.asText());
+                    } catch (NumberFormatException ignored) {
+                    }
+                }
+
+                if (id == -1)
+                    return;
+
+                int slot = (int) (id & SLOT_MASK);
+                CompletableFuture<JsonRpcResponse> future = slots[slot];
+                if (future == null || future.isDone())
+                    return;
+
+                // Clear slot
+                slots[slot] = null;
+                slotStartTimes[slot] = 0;
+
+                JsonNode errorNode = node.get("error");
+                if (errorNode != null && !errorNode.isNull()) {
+                    JsonRpcError error = mapper.treeToValue(errorNode, JsonRpcError.class);
+                    future.complete(new JsonRpcResponse("2.0", null, error, String.valueOf(id)));
+                } else {
+                    Object result = null;
+                    JsonNode resultNode = node.get("result");
+                    if (resultNode != null && !resultNode.isNull()) {
+                        result = mapper.treeToValue(resultNode, Object.class);
+                    }
+                    future.complete(new JsonRpcResponse("2.0", result, null, String.valueOf(id)));
+                }
+            } catch (Exception e) {
+                log.error("Error processing response node", e);
+            }
+        }
+
+        private void processSubscriptionNotificationNode(JsonNode node) {
+            try {
+                JsonNode params = node.get("params");
+                if (params == null)
+                    return;
+
+                String subscriptionId = params.get("subscription").asText();
+                Consumer<Object> callback = subscriptions.get(subscriptionId);
+                if (callback == null)
+                    return;
+
+                Object result = mapper.treeToValue(params.get("result"), Object.class);
                 callback.accept(result);
+            } catch (Exception e) {
+                log.error("Error processing subscription notification", e);
             }
-        }
-
-        // ==================== Fast Parsing Utilities ====================
-
-        private int indexOf(CharSequence seq, String pattern, int from) {
-            int patLen = pattern.length();
-            int seqLen = seq.length();
-            outer:
-            for (int i = from; i <= seqLen - patLen; i++) {
-                for (int j = 0; j < patLen; j++) {
-                    if (seq.charAt(i + j) != pattern.charAt(j)) continue outer;
-                }
-                return i;
-            }
-            return -1;
-        }
-
-        private long parseLongFast(CharSequence seq, int start) {
-            int len = seq.length();
-            long result = 0;
-            boolean negative = false;
-            int i = start;
-            
-            if (i < len && seq.charAt(i) == '-') {
-                negative = true;
-                i++;
-            }
-            
-            while (i < len) {
-                char c = seq.charAt(i);
-                if (c >= '0' && c <= '9') {
-                    result = result * 10 + (c - '0');
-                    i++;
-                } else {
-                    break;
-                }
-            }
-            
-            return negative ? -result : result;
-        }
-
-        private Object parseValueFast(CharSequence json, int start) {
-            if (start >= json.length()) return null;
-            
-            char c = json.charAt(start);
-            
-            if (c == '"') {
-                // String
-                int end = start + 1;
-                while (end < json.length() && json.charAt(end) != '"') {
-                    if (json.charAt(end) == '\\') end++;
-                    end++;
-                }
-                return unescapeString(json, start + 1, end);
-            } else if (c == '{') {
-                // Object - return as raw string for now (parsing would allocate)
-                int depth = 0;
-                int end = start;
-                while (end < json.length()) {
-                    char ch = json.charAt(end);
-                    if (ch == '{') depth++;
-                    else if (ch == '}') {
-                        depth--;
-                        if (depth == 0) {
-                            end++;
-                            break;
-                        }
-                    } else if (ch == '"') {
-                        end++;
-                        while (end < json.length() && json.charAt(end) != '"') {
-                            if (json.charAt(end) == '\\') end++;
-                            end++;
-                        }
-                    }
-                    end++;
-                }
-                return json.subSequence(start, end).toString();
-            } else if (c == '[') {
-                // Array - return as raw string
-                int depth = 0;
-                int end = start;
-                while (end < json.length()) {
-                    char ch = json.charAt(end);
-                    if (ch == '[') depth++;
-                    else if (ch == ']') {
-                        depth--;
-                        if (depth == 0) {
-                            end++;
-                            break;
-                        }
-                    } else if (ch == '"') {
-                        end++;
-                        while (end < json.length() && json.charAt(end) != '"') {
-                            if (json.charAt(end) == '\\') end++;
-                            end++;
-                        }
-                    }
-                    end++;
-                }
-                return json.subSequence(start, end).toString();
-            } else if (c == 't') {
-                return Boolean.TRUE;
-            } else if (c == 'f') {
-                return Boolean.FALSE;
-            } else if (c == 'n') {
-                return null;
-            } else if (c == '-' || (c >= '0' && c <= '9')) {
-                // Number
-                int end = start;
-                boolean isFloat = false;
-                while (end < json.length()) {
-                    char ch = json.charAt(end);
-                    if (ch == '.' || ch == 'e' || ch == 'E') {
-                        isFloat = true;
-                        end++;
-                    } else if (ch == '-' || ch == '+' || (ch >= '0' && ch <= '9')) {
-                        end++;
-                    } else {
-                        break;
-                    }
-                }
-                String numStr = json.subSequence(start, end).toString();
-                if (isFloat) {
-                    return Double.parseDouble(numStr);
-                } else {
-                    return Long.parseLong(numStr);
-                }
-            }
-            
-            return null;
-        }
-
-        private String unescapeString(CharSequence json, int start, int end) {
-            // Fast path: no escape sequences
-            boolean hasEscape = false;
-            for (int i = start; i < end; i++) {
-                if (json.charAt(i) == '\\') {
-                    hasEscape = true;
-                    break;
-                }
-            }
-            
-            if (!hasEscape) {
-                return json.subSequence(start, end).toString();
-            }
-            
-            // Slow path: handle escapes
-            StringBuilder sb = STRING_BUILDER.get();
-            sb.setLength(0);
-            for (int i = start; i < end; i++) {
-                char c = json.charAt(i);
-                if (c == '\\' && i + 1 < end) {
-                    char next = json.charAt(++i);
-                    switch (next) {
-                        case '"' -> sb.append('"');
-                        case '\\' -> sb.append('\\');
-                        case '/' -> sb.append('/');
-                        case 'b' -> sb.append('\b');
-                        case 'f' -> sb.append('\f');
-                        case 'n' -> sb.append('\n');
-                        case 'r' -> sb.append('\r');
-                        case 't' -> sb.append('\t');
-                        case 'u' -> {
-                            if (i + 4 < end) {
-                                int code = Integer.parseInt(json.subSequence(i + 1, i + 5).toString(), 16);
-                                sb.append((char) code);
-                                i += 4;
-                            }
-                        }
-                        default -> sb.append(next);
-                    }
-                } else {
-                    sb.append(c);
-                }
-            }
-            return sb.toString();
-        }
-
-        private JsonRpcError parseErrorFast(CharSequence json, int start) {
-            // Find code
-            int codeStart = indexOf(json, "\"code\":", start);
-            int code = 0;
-            if (codeStart >= 0) {
-                codeStart += 7;
-                while (codeStart < json.length() && json.charAt(codeStart) <= ' ') codeStart++;
-                code = (int) parseLongFast(json, codeStart);
-            }
-            
-            // Find message
-            String message = null;
-            int msgStart = indexOf(json, "\"message\":\"", start);
-            if (msgStart >= 0) {
-                msgStart += 11;
-                int msgEnd = indexOf(json, "\"", msgStart);
-                if (msgEnd > msgStart) {
-                    message = unescapeString(json, msgStart, msgEnd);
-                }
-            }
-            
-            return new JsonRpcError(code, message, null);
         }
     }
 
     private void reconnect() {
-        if (closed.get()) return;
-        
+        if (closed.get())
+            return;
+
         connected.set(false);
-        
+
         scheduler.execute(() -> {
             long delay = 100;
             for (int attempt = 0; attempt < 5 && !closed.get(); attempt++) {
@@ -801,7 +631,7 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
                     delay = Math.min(delay * 2, 5000);
                 }
             }
-            
+
             // Failed - clear all pending
             RpcException error = new RpcException(-32000, "Reconnection failed", null, (Throwable) null);
             for (int i = 0; i < MAX_PENDING_REQUESTS; i++) {
@@ -820,10 +650,31 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
     public Metrics getMetrics() {
         int pending = 0;
         for (int i = 0; i < MAX_PENDING_REQUESTS; i++) {
-            if (slots[i] != null) pending++;
+            if (slots[i] != null)
+                pending++;
         }
         return new Metrics(connected.get(), pending, subscriptions.size(), requestIdGenerator.get());
     }
 
-    public record Metrics(boolean connected, int pendingRequests, int activeSubscriptions, long totalRequests) {}
+    public record Metrics(boolean connected, int pendingRequests, int activeSubscriptions, long totalRequests) {
+    }
+
+    private void checkTimeouts() {
+        long now = System.nanoTime();
+        long timeoutNanos = TimeUnit.MILLISECONDS.toNanos(DEFAULT_TIMEOUT_MS);
+
+        for (int i = 0; i < MAX_PENDING_REQUESTS; i++) {
+            CompletableFuture<JsonRpcResponse> future = slots[i];
+            if (future != null && !future.isDone()) {
+                long start = slotStartTimes[i];
+                if (start > 0 && (now - start) > timeoutNanos) {
+                    if (slots[i] == future) {
+                        slots[i] = null;
+                        slotStartTimes[i] = 0;
+                        future.completeExceptionally(new TimeoutException("Request timed out"));
+                    }
+                }
+            }
+        }
+    }
 }

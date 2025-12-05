@@ -17,27 +17,32 @@ import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Ultra high-performance WebSocket-based JSON-RPC provider.
  * 
- * <p>Performance optimizations:
+ * <p>
+ * Performance optimizations:
  * <ul>
- *   <li>Zero-copy streaming JSON parsing with Jackson's low-level JsonParser API</li>
- *   <li>Pre-allocated StringBuilder for request JSON construction</li>
- *   <li>Numeric request IDs for faster ConcurrentHashMap operations</li>
- *   <li>Request pipelining - sends requests without waiting for responses</li>
- *   <li>Batch request support for amortized network overhead</li>
- *   <li>Async-first API with CompletableFuture</li>
- *   <li>Lock-free data structures throughout</li>
+ * <li>Zero-copy streaming JSON parsing with Jackson's low-level JsonParser
+ * API</li>
+ * <li>Pre-allocated StringBuilder for request JSON construction</li>
+ * <li>Numeric request IDs for faster ConcurrentHashMap operations</li>
+ * <li>Request pipelining - sends requests without waiting for responses</li>
+ * <li>Batch request support for amortized network overhead</li>
+ * <li>Async-first API with CompletableFuture</li>
+ * <li>Lock-free data structures throughout</li>
  * </ul>
  * 
- * <p>Durability features:
+ * <p>
+ * Durability features:
  * <ul>
- *   <li>Automatic reconnection with exponential backoff</li>
- *   <li>Connection health monitoring</li>
- *   <li>Request timeout handling</li>
- *   <li>Graceful shutdown</li>
+ * <li>Automatic reconnection with exponential backoff</li>
+ * <li>Connection health monitoring</li>
+ * <li>Request timeout handling</li>
+ * <li>Graceful shutdown</li>
  * </ul>
  */
 public final class WebSocketBraneProvider implements BraneProvider, AutoCloseable {
@@ -47,34 +52,40 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
     private static final int MAX_RECONNECT_ATTEMPTS = 5;
     private static final long INITIAL_RECONNECT_DELAY_MS = 100;
     private static final long MAX_RECONNECT_DELAY_MS = 5000;
-    
+
     // JSON parsing - shared, thread-safe factory
     private static final JsonFactory JSON_FACTORY = new JsonFactory();
-    
+
     // Connection state
     private final String url;
     private final HttpClient httpClient;
     private volatile WebSocket webSocket;
     private final AtomicBoolean connected = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
-    
+
     // Request tracking
     private final ConcurrentHashMap<Long, PendingRequest> pendingRequests = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, Consumer<Object>> subscriptions = new ConcurrentHashMap<>();
     private final AtomicLong requestIdGenerator = new AtomicLong(0);
-    
+
     // Thread pool for timeouts and async operations
     private final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread t = new Thread(r, "brane-ws-scheduler");
         t.setDaemon(true);
         return t;
     });
-    
-    // Periodic timeout sweeper instead of per-request scheduling (reduces GC pressure)
+
+    private static final Logger log = LoggerFactory.getLogger(WebSocketBraneProvider.class);
+
+    // Periodic timeout sweeper instead of per-request scheduling (reduces GC
+
+    // Periodic timeout sweeper instead of per-request scheduling (reduces GC
+    // pressure)
     private volatile ScheduledFuture<?> timeoutSweeperTask;
-    
+
     // Request JSON builder - thread-local for zero contention
-    private static final ThreadLocal<StringBuilder> JSON_BUILDER = ThreadLocal.withInitial(() -> new StringBuilder(512));
+    private static final ThreadLocal<StringBuilder> JSON_BUILDER = ThreadLocal
+            .withInitial(() -> new StringBuilder(512));
 
     private WebSocketBraneProvider(String url) {
         this.url = url;
@@ -84,7 +95,7 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
         connect();
         startTimeoutSweeper();
     }
-    
+
     /**
      * Start a periodic timeout sweeper instead of scheduling per-request timeouts.
      * This dramatically reduces GC pressure and improves tail latency.
@@ -92,17 +103,19 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
     private void startTimeoutSweeper() {
         // Sweep every 500ms - good balance between responsiveness and overhead
         timeoutSweeperTask = scheduler.scheduleAtFixedRate(() -> {
-            if (pendingRequests.isEmpty()) return;
-            
+            if (pendingRequests.isEmpty())
+                return;
+
             long now = System.nanoTime();
             long timeoutNanos = DEFAULT_TIMEOUT_MS * 1_000_000L;
-            
+
             pendingRequests.forEach((id, pending) -> {
                 if (now - pending.startTimeNanos > timeoutNanos) {
                     PendingRequest removed = pendingRequests.remove(id);
                     if (removed != null && !removed.future.isDone()) {
                         removed.future.completeExceptionally(
-                                new RpcException(-32000, "Request timed out after " + DEFAULT_TIMEOUT_MS + "ms", null, (Throwable) null));
+                                new RpcException(-32000, "Request timed out after " + DEFAULT_TIMEOUT_MS + "ms", null,
+                                        (Throwable) null));
                     }
                 }
             });
@@ -119,30 +132,48 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
         if (closed.get()) {
             throw new IllegalStateException("Provider is closed");
         }
-        
-        try {
-            this.webSocket = httpClient.newWebSocketBuilder()
-                    .buildAsync(URI.create(url), new WebSocketListener())
-                    .get(10, TimeUnit.SECONDS);
-            connected.set(true);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to connect to " + url, e);
+
+        int attempt = 0;
+        long delay = 100;
+        Exception lastError = null;
+
+        while (attempt < MAX_RECONNECT_ATTEMPTS && !closed.get()) {
+            try {
+                this.webSocket = httpClient.newWebSocketBuilder()
+                        .buildAsync(URI.create(url), new WebSocketListener())
+                        .get(10, TimeUnit.SECONDS);
+                connected.set(true);
+                return;
+            } catch (Exception e) {
+                lastError = e;
+                log.warn("Connection attempt {} failed: {}", attempt + 1, e.getMessage());
+                try {
+                    Thread.sleep(delay);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    break;
+                }
+                delay = Math.min(delay * 2, MAX_RECONNECT_DELAY_MS);
+                attempt++;
+            }
         }
+        throw new RuntimeException("Failed to connect to " + url + " after " + attempt + " attempts", lastError);
     }
 
     private void reconnect() {
-        if (closed.get()) return;
-        
+        if (closed.get())
+            return;
+
         connected.set(false);
-        
+
         scheduler.execute(() -> {
             long delay = INITIAL_RECONNECT_DELAY_MS;
-            
+
             for (int attempt = 0; attempt < MAX_RECONNECT_ATTEMPTS && !closed.get(); attempt++) {
                 try {
                     Thread.sleep(delay);
                     connect();
-                    
+
                     // Re-establish subscriptions after reconnect
                     // (subscription state is maintained, just need to re-subscribe on server)
                     return;
@@ -150,7 +181,7 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
                     delay = Math.min(delay * 2, MAX_RECONNECT_DELAY_MS);
                 }
             }
-            
+
             // Failed to reconnect - fail all pending requests
             failAllPending(new RpcException(-32000, "Connection lost and reconnection failed", null, (Throwable) null));
         });
@@ -187,24 +218,26 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
      * Sends a request asynchronously without blocking.
      * This is the preferred API for high-throughput scenarios.
      * 
-     * <p>Timeout is handled by the background sweeper task (no per-request scheduling).
+     * <p>
+     * Timeout is handled by the background sweeper task (no per-request
+     * scheduling).
      */
     public CompletableFuture<JsonRpcResponse> sendAsync(String method, List<?> params) {
         if (!connected.get()) {
             return CompletableFuture.failedFuture(
                     new RpcException(-32000, "Not connected", null, (Throwable) null));
         }
-        
+
         long id = requestIdGenerator.incrementAndGet();
         CompletableFuture<JsonRpcResponse> future = new CompletableFuture<>();
-        
+
         // Store pending request - timeout handled by sweeper task
         pendingRequests.put(id, new PendingRequest(future, System.nanoTime()));
-        
+
         // Build and send JSON
         String json = buildRequestJson(method, params, id);
         webSocket.sendText(json, true);
-        
+
         return future;
     }
 
@@ -214,40 +247,42 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
      * Sends multiple requests in a single WebSocket message.
      * Significantly reduces network overhead for bulk operations.
      * 
-     * <p>Timeout is handled by the background sweeper task (no per-batch scheduling).
+     * <p>
+     * Timeout is handled by the background sweeper task (no per-batch scheduling).
      */
     public CompletableFuture<List<JsonRpcResponse>> sendBatch(List<BatchRequest> requests) {
         if (!connected.get()) {
             return CompletableFuture.failedFuture(
                     new RpcException(-32000, "Not connected", null, (Throwable) null));
         }
-        
+
         if (requests.isEmpty()) {
             return CompletableFuture.completedFuture(List.of());
         }
-        
+
         List<CompletableFuture<JsonRpcResponse>> futures = new ArrayList<>(requests.size());
         long now = System.nanoTime();
-        
+
         StringBuilder batchJson = JSON_BUILDER.get();
         batchJson.setLength(0);
         batchJson.append('[');
-        
+
         for (int i = 0; i < requests.size(); i++) {
             BatchRequest req = requests.get(i);
             long id = requestIdGenerator.incrementAndGet();
-            
+
             CompletableFuture<JsonRpcResponse> future = new CompletableFuture<>();
             futures.add(future);
             pendingRequests.put(id, new PendingRequest(future, now));
-            
-            if (i > 0) batchJson.append(',');
+
+            if (i > 0)
+                batchJson.append(',');
             appendRequestJson(batchJson, req.method(), req.params(), id);
         }
-        
+
         batchJson.append(']');
         webSocket.sendText(batchJson.toString(), true);
-        
+
         // Combine all futures
         return CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
                 .thenApply(v -> {
@@ -259,15 +294,25 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
                 });
     }
 
-    public record BatchRequest(String method, List<?> params) {}
+    public record BatchRequest(String method, List<?> params) {
+    }
 
     // ==================== Subscription API ====================
 
     @Override
     public String subscribe(String method, List<?> params, Consumer<Object> callback) throws RpcException {
-        JsonRpcResponse response = send(method, params);
+        // "method" here is actually the subscription type (e.g. "newHeads", "logs")
+        // We need to call "eth_subscribe" with [subscriptionType, params...]
+        List<Object> args = new ArrayList<>();
+        args.add(method);
+        if (params != null) {
+            args.addAll(params);
+        }
+
+        JsonRpcResponse response = send("eth_subscribe", args);
         if (response.hasError()) {
-            throw new RpcException(-32000, "Subscription failed: " + response.error().message(), null, (Throwable) null);
+            throw new RpcException(-32000, "Subscription failed: " + response.error().message(), null,
+                    (Throwable) null);
         }
         String subscriptionId = (String) response.result();
         subscriptions.put(subscriptionId, callback);
@@ -291,11 +336,11 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
                 connected.get(),
                 pendingRequests.size(),
                 subscriptions.size(),
-                requestIdGenerator.get()
-        );
+                requestIdGenerator.get());
     }
 
-    public record Metrics(boolean connected, int pendingRequests, int activeSubscriptions, long totalRequests) {}
+    public record Metrics(boolean connected, int pendingRequests, int activeSubscriptions, long totalRequests) {
+    }
 
     // ==================== Lifecycle ====================
 
@@ -303,27 +348,29 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
     public void close() {
         if (closed.compareAndSet(false, true)) {
             connected.set(false);
-            
+
             // Cancel the timeout sweeper
             if (timeoutSweeperTask != null) {
                 timeoutSweeperTask.cancel(false);
             }
-            
+
             scheduler.shutdown();
-            
+
             // Fail pending requests
             failAllPending(new RpcException(-32000, "Provider closed", null, (Throwable) null));
-            
+
             // Close WebSocket
             if (webSocket != null) {
                 try {
                     webSocket.sendClose(WebSocket.NORMAL_CLOSURE, "Closing").get(5, TimeUnit.SECONDS);
-                } catch (Exception ignored) {}
+                } catch (Exception ignored) {
+                }
             }
         }
     }
 
-    // ==================== JSON Serialization (Zero-allocation fast path) ====================
+    // ==================== JSON Serialization (Zero-allocation fast path)
+    // ====================
 
     private String buildRequestJson(String method, List<?> params, long id) {
         StringBuilder sb = JSON_BUILDER.get();
@@ -347,10 +394,11 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
             sb.append("[]");
             return;
         }
-        
+
         sb.append('[');
         for (int i = 0; i < params.size(); i++) {
-            if (i > 0) sb.append(',');
+            if (i > 0)
+                sb.append(',');
             appendValue(sb, params.get(i));
         }
         sb.append(']');
@@ -368,7 +416,8 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
         } else if (value instanceof List<?> list) {
             sb.append('[');
             for (int i = 0; i < list.size(); i++) {
-                if (i > 0) sb.append(',');
+                if (i > 0)
+                    sb.append(',');
                 appendValue(sb, list.get(i));
             }
             sb.append(']');
@@ -376,7 +425,8 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
             sb.append('{');
             boolean first = true;
             for (Map.Entry<?, ?> entry : map.entrySet()) {
-                if (!first) sb.append(',');
+                if (!first)
+                    sb.append(',');
                 first = false;
                 sb.append('"');
                 appendEscapedString(sb, entry.getKey().toString());
@@ -470,7 +520,7 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
                 }
             } catch (Exception e) {
                 // Log but don't crash
-                e.printStackTrace();
+                log.error("Error processing WebSocket message", e);
             }
         }
 
@@ -488,7 +538,8 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
                 String subscriptionId = null;
                 Object subscriptionResult = null;
 
-                if (parser.nextToken() != JsonToken.START_OBJECT) return;
+                if (parser.nextToken() != JsonToken.START_OBJECT)
+                    return;
 
                 while (parser.nextToken() != JsonToken.END_OBJECT) {
                     String field = parser.currentName();
@@ -501,7 +552,8 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
                         case "result" -> result = parseValue(parser);
                         case "error" -> error = parseError(parser);
                         case "params" -> {
-                            // Subscription notification: {"method":"eth_subscription","params":{"subscription":"0x...","result":{...}}}
+                            // Subscription notification:
+                            // {"method":"eth_subscription","params":{"subscription":"0x...","result":{...}}}
                             if (parser.currentToken() == JsonToken.START_OBJECT) {
                                 while (parser.nextToken() != JsonToken.END_OBJECT) {
                                     String paramField = parser.currentName();
@@ -539,7 +591,8 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
 
         private void processBatchResponse(String json) throws Exception {
             try (JsonParser parser = JSON_FACTORY.createParser(json)) {
-                if (parser.nextToken() != JsonToken.START_ARRAY) return;
+                if (parser.nextToken() != JsonToken.START_ARRAY)
+                    return;
 
                 while (parser.nextToken() != JsonToken.END_ARRAY) {
                     if (parser.currentToken() == JsonToken.START_OBJECT) {
@@ -623,7 +676,8 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
         }
 
         private JsonRpcError parseError(JsonParser parser) throws Exception {
-            if (parser.currentToken() != JsonToken.START_OBJECT) return null;
+            if (parser.currentToken() != JsonToken.START_OBJECT)
+                return null;
 
             int code = 0;
             String message = null;
@@ -647,5 +701,6 @@ public final class WebSocketBraneProvider implements BraneProvider, AutoCloseabl
 
     // ==================== Internal Types ====================
 
-    private record PendingRequest(CompletableFuture<JsonRpcResponse> future, long startTimeNanos) {}
+    private record PendingRequest(CompletableFuture<JsonRpcResponse> future, long startTimeNanos) {
+    }
 }

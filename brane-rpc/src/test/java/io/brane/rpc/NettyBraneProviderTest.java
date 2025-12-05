@@ -12,32 +12,6 @@ import static org.junit.jupiter.api.Assertions.*;
 public class NettyBraneProviderTest {
 
     @Test
-    void testParseIdFromByteBuf() {
-        String json = "{\"jsonrpc\":\"2.0\",\"id\":123,\"result\":\"0x1\"}";
-        ByteBuf buf = Unpooled.wrappedBuffer(json.getBytes(StandardCharsets.UTF_8));
-        assertEquals(123, NettyBraneProvider.parseIdFromByteBuf(buf));
-
-        json = "{\"id\":999999}";
-        buf = Unpooled.wrappedBuffer(json.getBytes(StandardCharsets.UTF_8));
-        assertEquals(999999, NettyBraneProvider.parseIdFromByteBuf(buf));
-
-        json = "{\"jsonrpc\":\"2.0\",\"method\":\"eth_subscription\"}";
-        buf = Unpooled.wrappedBuffer(json.getBytes(StandardCharsets.UTF_8));
-        assertEquals(-1, NettyBraneProvider.parseIdFromByteBuf(buf));
-    }
-
-    @Test
-    void testContainsSubscription() {
-        String json = "{\"jsonrpc\":\"2.0\",\"method\":\"eth_subscription\",\"params\":{...}}";
-        ByteBuf buf = Unpooled.wrappedBuffer(json.getBytes(StandardCharsets.UTF_8));
-        assertTrue(NettyBraneProvider.containsSubscription(buf));
-
-        json = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x1\"}";
-        buf = Unpooled.wrappedBuffer(json.getBytes(StandardCharsets.UTF_8));
-        assertFalse(NettyBraneProvider.containsSubscription(buf));
-    }
-
-    @Test
     void testParseResponseFromByteBuf_Primitive() {
         String json = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x123\"}";
         ByteBuf buf = Unpooled.wrappedBuffer(json.getBytes(StandardCharsets.UTF_8));
@@ -80,26 +54,5 @@ public class NettyBraneProviderTest {
         JsonRpcResponse response = NettyBraneProvider.parseResponseFromByteBuf(buf);
         assertNotNull(response.error());
         assertEquals(-32600, response.error().code());
-    }
-
-    @Test
-    void testExtractJsonValue() {
-        String json = "{\"key\":\"value\",\"obj\":{\"a\":1},\"arr\":[1,2]}";
-
-        // Extract string - start at quote
-        int strStart = json.indexOf("\"value\"");
-        assertEquals("value", NettyBraneProvider.extractJsonValue(json, strStart));
-
-        // Extract object
-        int objStart = json.indexOf("{\"a\":1}");
-        String extractedObj = NettyBraneProvider.extractJsonValue(json, objStart);
-        System.out.println("Extracted object: " + extractedObj);
-        assertEquals("{\"a\":1}", extractedObj);
-
-        // Extract array
-        int arrStart = json.indexOf("[1,2]");
-        String extractedArr = NettyBraneProvider.extractJsonValue(json, arrStart);
-        System.out.println("Extracted array: " + extractedArr);
-        assertEquals("[1,2]", extractedArr);
     }
 }

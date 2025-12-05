@@ -1,0 +1,101 @@
+> Task :brane-primitives:compileJava UP-TO-DATE
+> Task :brane-core:compileJava UP-TO-DATE
+> Task :brane-rpc:compileJava UP-TO-DATE
+> Task :brane-contract:compileJava UP-TO-DATE
+> Task :brane-benchmark:compileJava UP-TO-DATE
+> Task :brane-benchmark:processResources NO-SOURCE
+> Task :brane-benchmark:classes UP-TO-DATE
+> Task :brane-contract:processResources NO-SOURCE
+> Task :brane-contract:classes UP-TO-DATE
+> Task :brane-contract:jar UP-TO-DATE
+> Task :brane-core:processResources NO-SOURCE
+> Task :brane-core:classes UP-TO-DATE
+> Task :brane-core:jar UP-TO-DATE
+> Task :brane-primitives:processResources NO-SOURCE
+> Task :brane-primitives:classes UP-TO-DATE
+> Task :brane-primitives:jar UP-TO-DATE
+> Task :brane-rpc:processResources NO-SOURCE
+> Task :brane-rpc:classes UP-TO-DATE
+> Task :brane-rpc:jar UP-TO-DATE
+
+> Task :brane-benchmark:runManualBenchmark
+Starting Manual Benchmark...
+Warming up...
+Running Latency Test (eth_chainId)...
+Latency: 4541.09 ops/s
+Running Throughput Test (eth_blockNumber)...
+com.fasterxml.jackson.core.io.JsonEOFException: Unexpected end-of-input: was expecting closing quote for a string value
+ at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 1794]
+	at com.fasterxml.jackson.core.base.ParserMinimalBase._reportInvalidEOF(ParserMinimalBase.java:585)
+	at com.fasterxml.jackson.core.json.ReaderBasedJsonParser._skipString(ReaderBasedJsonParser.java:2237)
+	at com.fasterxml.jackson.core.json.ReaderBasedJsonParser.nextToken(ReaderBasedJsonParser.java:671)
+	at com.fasterxml.jackson.core.base.ParserMinimalBase.skipChildren(ParserMinimalBase.java:243)
+	at com.fasterxml.jackson.databind.deser.BeanDeserializer._deserializeUsingPropertyBased(BeanDeserializer.java:512)
+	at com.fasterxml.jackson.databind.deser.BeanDeserializerBase.deserializeFromObjectUsingNonDefault(BeanDeserializerBase.java:1493)
+	at com.fasterxml.jackson.databind.deser.BeanDeserializer.deserializeFromObject(BeanDeserializer.java:348)
+	at com.fasterxml.jackson.databind.deser.BeanDeserializer.deserialize(BeanDeserializer.java:185)
+	at com.fasterxml.jackson.databind.deser.DefaultDeserializationContext.readRootValue(DefaultDeserializationContext.java:342)
+	at com.fasterxml.jackson.databind.ObjectMapper._readMapAndClose(ObjectMapper.java:4905)
+	at com.fasterxml.jackson.databind.ObjectMapper.readValue(ObjectMapper.java:3848)
+	at com.fasterxml.jackson.databind.ObjectMapper.readValue(ObjectMapper.java:3816)
+	at io.brane.rpc.WebSocketBraneProvider$Listener.onText(WebSocketBraneProvider.java:99)
+	at java.net.http/jdk.internal.net.http.websocket.WebSocketImpl$ReceiveTask.processText(WebSocketImpl.java:635)
+	at java.net.http/jdk.internal.net.http.websocket.WebSocketImpl$ReceiveTask.run(WebSocketImpl.java:443)
+	at java.net.http/jdk.internal.net.http.common.SequentialScheduler$CompleteRestartableTask.run(SequentialScheduler.java:149)
+	at java.net.http/jdk.internal.net.http.common.SequentialScheduler$SchedulableTask.run(SequentialScheduler.java:207)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+com.fasterxml.jackson.core.JsonParseException: Unrecognized token 'e7e011ed77': was expecting (JSON String, Number, Array, Object or token 'null', 'true' or 'false')
+ at [Source: REDACTED (`StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION` disabled); line: 1, column: 11]
+	at com.fasterxml.jackson.core.JsonParser._constructError(JsonParser.java:2567)
+	at com.fasterxml.jackson.core.JsonParser._constructReadException(JsonParser.java:2593)
+	at com.fasterxml.jackson.core.JsonParser._constructReadException(JsonParser.java:2601)
+	at com.fasterxml.jackson.core.base.ParserMinimalBase._reportError(ParserMinimalBase.java:765)
+	at com.fasterxml.jackson.core.json.ReaderBasedJsonParser._reportInvalidToken(ReaderBasedJsonParser.java:3018)
+	at com.fasterxml.jackson.core.json.ReaderBasedJsonParser._handleOddValue(ReaderBasedJsonParser.java:2052)
+	at com.fasterxml.jackson.core.json.ReaderBasedJsonParser.nextToken(ReaderBasedJsonParser.java:780)
+	at com.fasterxml.jackson.databind.ObjectMapper._initForReading(ObjectMapper.java:4992)
+	at com.fasterxml.jackson.databind.ObjectMapper._readMapAndClose(ObjectMapper.java:4898)
+	at com.fasterxml.jackson.databind.ObjectMapper.readValue(ObjectMapper.java:3848)
+	at com.fasterxml.jackson.databind.ObjectMapper.readValue(ObjectMapper.java:3816)
+	at io.brane.rpc.WebSocketBraneProvider$Listener.onText(WebSocketBraneProvider.java:99)
+	at java.net.http/jdk.internal.net.http.websocket.WebSocketImpl$ReceiveTask.processText(WebSocketImpl.java:635)
+	at java.net.http/jdk.internal.net.http.websocket.WebSocketImpl$ReceiveTask.run(WebSocketImpl.java:443)
+	at java.net.http/jdk.internal.net.http.common.SequentialScheduler$CompleteRestartableTask.run(SequentialScheduler.java:149)
+	at java.net.http/jdk.internal.net.http.common.SequentialScheduler$TryEndDeferredCompleter.complete(SequentialScheduler.java:324)
+	at java.net.http/jdk.internal.net.http.common.SequentialScheduler$CompleteRestartableTask.run(SequentialScheduler.java:151)
+	at java.net.http/jdk.internal.net.http.common.SequentialScheduler$SchedulableTask.run(SequentialScheduler.java:207)
+	at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+	at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+	at java.base/java.lang.Thread.run(Thread.java:1583)
+Exception in thread "main" RpcException{code=-32000, message=WebSocket request failed, data=null, requestId=null}
+	at io.brane.rpc.WebSocketBraneProvider.send(WebSocketBraneProvider.java:47)
+	at io.brane.rpc.DefaultPublicClient.lambda$sendWithRetry$6(DefaultPublicClient.java:277)
+	at io.brane.rpc.RpcRetry.run(RpcRetry.java:82)
+	at io.brane.rpc.DefaultPublicClient.sendWithRetry(DefaultPublicClient.java:277)
+	at io.brane.rpc.DefaultPublicClient.getBlockByTag(DefaultPublicClient.java:188)
+	at io.brane.rpc.DefaultPublicClient.getLatestBlock(DefaultPublicClient.java:30)
+	at io.brane.benchmark.ManualBenchmark.main(ManualBenchmark.java:55)
+Caused by: java.util.concurrent.TimeoutException
+	at java.base/java.util.concurrent.CompletableFuture.timedGet(CompletableFuture.java:1960)
+	at java.base/java.util.concurrent.CompletableFuture.get(CompletableFuture.java:2095)
+	at io.brane.rpc.WebSocketBraneProvider.send(WebSocketBraneProvider.java:44)
+	... 6 more
+
+> Task :brane-benchmark:runManualBenchmark FAILED
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':brane-benchmark:runManualBenchmark'.
+> Process 'command '/opt/homebrew/Cellar/openjdk@21/21.0.9/libexec/openjdk.jdk/Contents/Home/bin/java'' finished with non-zero exit value 1
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to generate a Build Scan (powered by Develocity).
+> Get more help at https://help.gradle.org.
+
+BUILD FAILED in 31s
+10 actionable tasks: 1 executed, 9 up-to-date

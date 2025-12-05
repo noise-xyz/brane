@@ -47,9 +47,7 @@ public class HighPerformanceExample {
             long currentBlock = Long.decode(hexBlock);
 
             for (int i = 0; i < batchSize; i++) {
-                long blockNum = currentBlock - i;
-                if (blockNum < 0)
-                    blockNum = 0;
+                long blockNum = Math.max(0, currentBlock - i);
                 String hexNum = "0x" + Long.toHexString(blockNum);
 
                 // Use sendAsyncBatch for high throughput

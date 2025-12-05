@@ -122,7 +122,7 @@ final class DefaultPublicClient implements PublicClient {
                             topics,
                             blockHash != null ? new Hash(blockHash) : null,
                             txHash != null ? new Hash(txHash) : null,
-                            logIndex != null ? logIndex : 0L,
+                            requireLogIndex(logIndex, map),
                             Boolean.TRUE.equals(map.get("removed"))));
         }
         return logs;
@@ -258,7 +258,7 @@ final class DefaultPublicClient implements PublicClient {
                     topics,
                     blockHash != null ? new Hash(blockHash) : null,
                     txHash != null ? new Hash(txHash) : null,
-                    logIndex != null ? logIndex : 0L,
+                    requireLogIndex(logIndex, map),
                     Boolean.TRUE.equals(map.get("removed")));
 
             callback.accept(log);
@@ -275,5 +275,13 @@ final class DefaultPublicClient implements PublicClient {
 
     private JsonRpcResponse sendWithRetry(final String method, final List<?> params) {
         return RpcRetry.run(() -> provider.send(method, params), 3);
+    }
+
+    private Long requireLogIndex(Long logIndex, Map<String, Object> map) {
+        if (logIndex == null) {
+            throw new io.brane.core.error.RpcException(-32000, "Missing logIndex in log entry", map.toString(),
+                    (Throwable) null);
+        }
+        return logIndex;
     }
 }

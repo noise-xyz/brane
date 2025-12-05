@@ -19,14 +19,30 @@ dependencies {
 
 jmh {
     warmupIterations = 1
-    iterations = 2
+    iterations = 3
     fork = 1
     failOnError = true
     resultFormat = 'JSON'
-    includes = ['SignerBenchmark']
+    includes = ['.*latency_blockNumber']
+    excludes = ['.*WebSocketBenchmark.*', '.*BraneBenchmark.*', '.*ClientOverheadBenchmark.*']
 }
 
 tasks.withType(JavaCompile).configureEach {
     options.compilerArgs.add("-nowarn")
     options.compilerArgs.add("-Xlint:none")
+}
+
+task runManualBenchmark(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.brane.benchmark.ManualBenchmark'
+}
+
+task runRealWorldBenchmark(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.brane.benchmark.RealWorldLatencyTest'
+}
+
+task runNettyBenchmark(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.brane.benchmark.NettyBenchmark'
 }

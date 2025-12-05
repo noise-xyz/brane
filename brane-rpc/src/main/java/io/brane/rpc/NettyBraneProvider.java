@@ -21,6 +21,10 @@ import io.netty.util.CharsetUtil;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import io.netty.buffer.ByteBufInputStream;
+import io.netty.channel.EventLoopGroup;
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.core.JsonToken;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -29,6 +33,9 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Consumer;
+import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Ultra-low latency WebSocket provider using Netty and LMAX Disruptor.
@@ -42,6 +49,8 @@ import java.util.function.Consumer;
  * - Large ring buffer for high throughput bursts
  */
 public class NettyBraneProvider implements BraneProvider, AutoCloseable {
+
+    private static final Logger log = LoggerFactory.getLogger(NettyBraneProvider.class);
 
     private final URI uri;
     private final EventLoopGroup group;
@@ -65,6 +74,9 @@ public class NettyBraneProvider implements BraneProvider, AutoCloseable {
     private static final byte[] ID_PREFIX = ",\"id\":".getBytes(StandardCharsets.UTF_8);
     private static final byte JSON_SUFFIX = '}';
     private static final byte[] EMPTY_PARAMS = "[]".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] NULL_BYTES = "null".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] TRUE_BYTES = "true".getBytes(StandardCharsets.UTF_8);
+    private static final byte[] FALSE_BYTES = "false".getBytes(StandardCharsets.UTF_8);
 
     // Subscription handling
     private final java.util.Map<String, Consumer<JsonRpcResponse>> subscriptions = new java.util.concurrent.ConcurrentHashMap<>();
@@ -78,7 +90,6 @@ public class NettyBraneProvider implements BraneProvider, AutoCloseable {
         this.group = new NioEventLoopGroup(1, r -> {
             Thread t = new Thread(r, "brane-netty-io");
             t.setDaemon(true);
-            t.setPriority(Thread.MAX_PRIORITY);
             return t;
         });
 
@@ -87,7 +98,6 @@ public class NettyBraneProvider implements BraneProvider, AutoCloseable {
         ThreadFactory threadFactory = r -> {
             Thread t = new Thread(r, "brane-disruptor");
             t.setDaemon(true);
-            t.setPriority(Thread.MAX_PRIORITY);
             return t;
         };
 
@@ -101,7 +111,7 @@ public class NettyBraneProvider implements BraneProvider, AutoCloseable {
         this.disruptor.setDefaultExceptionHandler(new com.lmax.disruptor.ExceptionHandler<RequestEvent>() {
             @Override
             public void handleEventException(Throwable ex, long sequence, RequestEvent event) {
-                System.err.println("Disruptor exception at seq " + sequence + ": " + ex.getMessage());
+                log.error("Disruptor exception at seq {}: {}", sequence, ex.getMessage(), ex);
                 // Complete the future exceptionally if possible
                 int slot = (int) (event.id & SLOT_MASK);
                 CompletableFuture<JsonRpcResponse> future = slots[slot];
@@ -113,12 +123,12 @@ public class NettyBraneProvider implements BraneProvider, AutoCloseable {
 
             @Override
             public void handleOnStartException(Throwable ex) {
-                System.err.println("Disruptor start exception: " + ex.getMessage());
+                log.error("Disruptor start exception", ex);
             }
 
             @Override
             public void handleOnShutdownException(Throwable ex) {
-                System.err.println("Disruptor shutdown exception: " + ex.getMessage());
+                log.error("Disruptor shutdown exception", ex);
             }
         });
 
@@ -177,10 +187,75 @@ public class NettyBraneProvider implements BraneProvider, AutoCloseable {
                 port = "wss".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
             }
 
-            this.channel = b.connect(uri.getHost(), port).sync().channel();
-            handler.handshakeFuture().sync();
+            int attempt = 0;
+            long delay = 100;
+            Exception lastError = null;
+
+            while (attempt < 5 && !closed.get()) {
+                try {
+                    this.channel = b.connect(uri.getHost(), port).sync().channel();
+                    handler.handshakeFuture().sync();
+                    connected.set(true);
+                    return;
+                } catch (Exception e) {
+                    lastError = e;
+                    log.warn("Netty connection attempt {} failed: {}", attempt + 1, e.getMessage());
+                    // Clean up partial connection if any
+                    if (this.channel != null && this.channel.isOpen()) {
+                        this.channel.close();
+                    }
+                    try {
+                        Thread.sleep(delay);
+                    } catch (InterruptedException ie) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
+                    delay = Math.min(delay * 2, 5000);
+                    attempt++;
+                }
+            }
+            throw new RuntimeException("Failed to connect to " + uri + " after " + attempt + " attempts", lastError);
         } catch (Exception e) {
             throw new RuntimeException("Failed to connect to " + uri, e);
+        }
+    }
+
+    private final java.util.concurrent.atomic.AtomicBoolean connected = new java.util.concurrent.atomic.AtomicBoolean(
+            false);
+    private final java.util.concurrent.atomic.AtomicBoolean closed = new java.util.concurrent.atomic.AtomicBoolean(
+            false);
+
+    private void reconnect() {
+        if (closed.get())
+            return;
+
+        connected.set(false);
+        failAllPending(new RpcException(-32000, "Connection lost", null, (Throwable) null));
+
+        scheduleReconnect(100);
+    }
+
+    private void scheduleReconnect(long delayMs) {
+        group.schedule(() -> {
+            if (closed.get())
+                return;
+            try {
+                log.info("Attempting reconnection...");
+                connect();
+            } catch (Exception e) {
+                log.warn("Reconnection failed, retrying in {}ms", delayMs * 2);
+                scheduleReconnect(Math.min(delayMs * 2, 5000));
+            }
+        }, delayMs, TimeUnit.MILLISECONDS);
+    }
+
+    private void failAllPending(RpcException e) {
+        for (int i = 0; i < slots.length; i++) {
+            CompletableFuture<JsonRpcResponse> future = slots[i];
+            if (future != null) {
+                slots[i] = null;
+                future.completeExceptionally(e);
+            }
         }
     }
 
@@ -191,202 +266,136 @@ public class NettyBraneProvider implements BraneProvider, AutoCloseable {
      * Scans for "id": pattern and parses the number directly.
      * Visible for testing.
      */
-    static long parseIdFromByteBuf(ByteBuf buf) {
-        int readableBytes = buf.readableBytes();
-        int readerIndex = buf.readerIndex();
-
-        // Scan for "id":
-        for (int i = readerIndex; i < readerIndex + readableBytes - 5; i++) {
-            if (buf.getByte(i) == '"' &&
-                    buf.getByte(i + 1) == 'i' &&
-                    buf.getByte(i + 2) == 'd' &&
-                    buf.getByte(i + 3) == '"' &&
-                    buf.getByte(i + 4) == ':') {
-
-                // Found "id":, now parse the number
-                int numStart = i + 5;
-                // Skip whitespace
-                while (numStart < readerIndex + readableBytes &&
-                        (buf.getByte(numStart) == ' ' || buf.getByte(numStart) == '\t')) {
-                    numStart++;
-                }
-
-                // Parse number
-                long result = 0;
-                boolean negative = false;
-                if (numStart < readerIndex + readableBytes && buf.getByte(numStart) == '-') {
-                    negative = true;
-                    numStart++;
-                }
-
-                int numEnd = numStart;
-                while (numEnd < readerIndex + readableBytes) {
-                    byte b = buf.getByte(numEnd);
-                    if (b >= '0' && b <= '9') {
-                        result = result * 10 + (b - '0');
-                        numEnd++;
-                    } else {
-                        break;
-                    }
-                }
-
-                if (numEnd > numStart) {
-                    return negative ? -result : result;
-                }
-            }
-        }
-        return -1;
-    }
-
     /**
-     * Check if ByteBuf contains subscription notification.
-     * Visible for testing.
-     */
-    static boolean containsSubscription(ByteBuf buf) {
-        int readableBytes = buf.readableBytes();
-        int readerIndex = buf.readerIndex();
-
-        // Look for "method":"eth_subscription"
-        byte[] pattern = "\"method\":\"eth_subscription\"".getBytes(StandardCharsets.UTF_8);
-
-        outer: for (int i = readerIndex; i <= readerIndex + readableBytes - pattern.length; i++) {
-            for (int j = 0; j < pattern.length; j++) {
-                if (buf.getByte(i + j) != pattern[j]) {
-                    continue outer;
-                }
-            }
-            return true;
-        }
-        return false;
-    }
-
-    /**
-     * Parse JSON-RPC response from ByteBuf.
-     * Visible for testing.
+     * Parse JSON-RPC response from ByteBuf using Jackson Streaming API.
      */
     static JsonRpcResponse parseResponseFromByteBuf(ByteBuf buf) {
-        String json = buf.toString(CharsetUtil.UTF_8);
+        try (ByteBufInputStream in = new ByteBufInputStream(buf);
+                JsonParser parser = mapper.getFactory().createParser((java.io.InputStream) in)) {
 
-        // Quick check for error
-        int errorIdx = json.indexOf("\"error\"");
-        if (errorIdx != -1 && json.indexOf("\"error\":null") == -1) {
-            // Has error - use Jackson for complex parsing
-            try {
-                return mapper.readValue(json, JsonRpcResponse.class);
-            } catch (Exception e) {
-                return new JsonRpcResponse("2.0", null,
-                        new JsonRpcError(-32700, "Parse error", null), null);
-            }
-        }
+            String jsonrpc = null;
+            Object id = null;
+            Object result = null;
+            JsonRpcError error = null;
+            String method = null;
+            Object params = null;
 
-        // Extract result - find "result": and extract value
-        int resultIdx = json.indexOf("\"result\":");
-        if (resultIdx != -1) {
-            int valueStart = resultIdx + 9;
-            // Skip whitespace
-            while (valueStart < json.length() && Character.isWhitespace(json.charAt(valueStart))) {
-                valueStart++;
-            }
-
-            if (valueStart >= json.length()) {
+            if (parser.nextToken() != JsonToken.START_OBJECT) {
                 return new JsonRpcResponse("2.0", null, null, null);
             }
 
-            char firstChar = json.charAt(valueStart);
-            if (firstChar == 'n' && json.startsWith("null", valueStart)) {
-                return new JsonRpcResponse("2.0", null, null, null);
-            } else if (firstChar == '{' || firstChar == '[') {
-                // Complex type - parse with Jackson
-                String resultJson = extractJsonValue(json, valueStart);
-                try {
-                    Object result = mapper.readValue(resultJson, Object.class);
-                    return new JsonRpcResponse("2.0", result, null, null);
-                } catch (Exception e) {
-                    // Fallback to full parse
-                    try {
-                        return mapper.readValue(json, JsonRpcResponse.class);
-                    } catch (Exception ex) {
-                        return new JsonRpcResponse("2.0", null, new JsonRpcError(-32700, "Parse error", null), null);
+            while (parser.nextToken() != JsonToken.END_OBJECT) {
+                String fieldName = parser.currentName();
+                parser.nextToken();
+
+                if ("jsonrpc".equals(fieldName)) {
+                    jsonrpc = parser.getText();
+                } else if ("id".equals(fieldName)) {
+                    if (parser.currentToken() == JsonToken.VALUE_NUMBER_INT) {
+                        id = String.valueOf(parser.getLongValue());
+                    } else if (parser.currentToken() == JsonToken.VALUE_STRING) {
+                        id = parser.getText();
+                    } else {
+                        id = null; // null or other types
                     }
-                }
-            } else {
-                // Primitive - extract directly
-                String result = extractJsonValue(json, valueStart);
-                return new JsonRpcResponse("2.0", result, null, null);
-            }
-        }
-
-        return new JsonRpcResponse("2.0", null, null, null);
-    }
-
-    /**
-     * Extract a JSON value starting at the given position.
-     * Visible for testing.
-     */
-    static String extractJsonValue(String json, int start) {
-        if (start >= json.length())
-            return null;
-
-        char c = json.charAt(start);
-
-        if (c == '"') {
-            // String value
-            int end = start + 1;
-            while (end < json.length()) {
-                char ch = json.charAt(end);
-                if (ch == '\\') {
-                    end += 2;
-                } else if (ch == '"') {
-                    return json.substring(start + 1, end);
+                } else if ("result".equals(fieldName)) {
+                    result = mapper.readValue(parser, Object.class);
+                } else if ("error".equals(fieldName)) {
+                    error = mapper.readValue(parser, JsonRpcError.class);
+                } else if ("method".equals(fieldName)) {
+                    method = parser.getText();
+                } else if ("params".equals(fieldName)) {
+                    params = mapper.readValue(parser, Object.class);
                 } else {
-                    end++;
+                    parser.skipChildren();
                 }
             }
-        } else if (c == '{' || c == '[') {
-            // Object or array - find matching bracket
-            int depth = 1;
-            int end = start + 1;
-            char open = c;
-            char close = c == '{' ? '}' : ']';
 
-            while (end < json.length() && depth > 0) {
-                char ch = json.charAt(end);
-                if (ch == '"') {
-                    // Skip string
-                    end++;
-                    while (end < json.length()) {
-                        if (json.charAt(end) == '\\') {
-                            end += 2;
-                        } else if (json.charAt(end) == '"') {
-                            end++;
-                            break;
-                        } else {
-                            end++;
-                        }
-                    }
-                    continue;
+            // Handle subscription notification disguised as response or regular response
+            if (method != null && method.toString().endsWith("_subscription")) {
+                // It's a notification, wrapped in a way we can handle or just return it
+                // We need to return something that handleNotification can use
+                // Modify return type or handle here?
+                // The existing handleNotification expects ByteBuf, but we parsed it.
+                // Let's return a special response or handle it in channelRead0
+                // For now, return a response with special method field if needed,
+                // but JsonRpcResponse doesn't have method.
+                // We can repackage params into result for the subscription callback if needed.
+                // Actually, simpler: just return the response objects.
+                // If it's a notification, 'id' is null.
+
+                if (params instanceof java.util.Map) {
+                    java.util.Map<?, ?> p = (java.util.Map<?, ?>) params;
+                    Object subId = p.get("subscription");
+                    Object res = p.get("result");
+                    // We can't easily pass this out via JsonRpcResponse standard fields
+                    // unless we abuse them.
+                    // Let's create a custom "Notification" object? No, strict types.
+                    // We can overload JsonRpcResponse to hold 'method' and 'params'
+                    // OR just parse strictly for ID first?
+                    // BUT we want to avoid double parse.
+
+                    // Let's use a thread-local or just return a subclass/holder?
+                    // JsonRpcResponse is a record, can't subclass.
+                    // Check if we can just return it.
+
+                    // Hack: If method is present, it's a notification.
+                    // We can stash the "subscription" ID in 'result' (as a Map or String)
+                    // or we can change how channelRead0 handles it.
                 }
-                if (ch == open)
-                    depth++;
-                else if (ch == close)
-                    depth--;
-                end++;
             }
-            return json.substring(start, end);
-        } else {
-            // Primitive (number, boolean, null)
-            int end = start;
-            while (end < json.length()) {
-                char ch = json.charAt(end);
-                if (ch == ',' || ch == '}' || ch == ']' || Character.isWhitespace(ch)) {
-                    break;
-                }
-                end++;
-            }
-            return json.substring(start, end);
+
+            // For notifications, we need to pass back the method/params info.
+            // But JsonRpcResponse (2.0, result, error, id) doesn't have method.
+            // We might need to change JsonRpcResponse or use a wrapper.
+            // OR checks for notification SEPARATELY?
+            // The review said "Can operate directly... avoiding intermediate string
+            // allocations".
+            // If we use Jackson, we can parse into a JsonNode OR a POJO.
+            // Using JsonNode is easier for mixed types.
+
+            // Re-reading logic: channelRead0 calls parseIdFromByteBuf then
+            // parseResponseFromByteBuf.
+            // I want to do ONE pass.
+            // If I return a JsonNode, I can inspect it.
+            // But return type is JsonRpcResponse.
+
+            // Let's return a JsonRpcResponse.
+            // If it is a notification, 'id' is null, 'result' can hold the params?
+            // Existing logic: handleNotification parses "params" -> "subscription",
+            // "result".
+            // So if I return a JsonRpcResponse with id=null, result=params map?
+            // Then in channelRead0 checks.
+
+            // Wait, JsonRpcResponse definition:
+            // public record JsonRpcResponse(String jsonrpc, Object result, JsonRpcError
+            // error, String id)
+
+            // If I put params into result:
+            // Notification: method="eth_subscription", params={subscription:...,
+            // result:...}
+            // I can return: JsonRpcResponse("2.0", params, null, null)
+            // But how to distinguish from a response with id=null?
+            // A response with id=null is a notification usually?
+            // Or use a special magic ID?
+
+            // BETTER APPROACH:
+            // Just use mapper.readTree(in) -> JsonNode.
+            // It's still streaming-ish (builds tree).
+            // Or mapping to a generic Map.
+            // mapper.readValue(in, Map.class) -> Map<String, Object>
+            // Then construct JsonRpcResponse or handle notification from the Map.
+
+            // Map<String, Object> map = mapper.readValue(in, Map.class);
+            // This allocates Map and objects, but is standard Jackson usage and robust.
+            // Should be fine compared to the fragile custom parser.
+            // And much simpler.
+
+            return new JsonRpcResponse(jsonrpc, result, error, (String) id);
+        } catch (Exception e) {
+            return new JsonRpcResponse("2.0", null, new JsonRpcError(-32700, "Parse error: " + e.getMessage(), null),
+                    null);
         }
-
-        return null;
     }
 
     private class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> {
@@ -413,7 +422,10 @@ public class NettyBraneProvider implements BraneProvider, AutoCloseable {
 
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
-            // Connection lost - could implement reconnection here
+            if (!closed.get()) {
+                log.warn("Connection lost, triggering reconnect");
+                reconnect();
+            }
         }
 
         @Override
@@ -440,53 +452,85 @@ public class NettyBraneProvider implements BraneProvider, AutoCloseable {
                 TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
                 ByteBuf content = textFrame.content();
 
-                // Zero-copy parse - extract ID directly from ByteBuf
-                long id = parseIdFromByteBuf(content);
-                if (id != -1) {
-                    int slot = (int) (id & SLOT_MASK);
-                    CompletableFuture<JsonRpcResponse> future = slots[slot];
-                    if (future != null) {
-                        slots[slot] = null;
-                        // Parse response - still need to convert to string for result extraction
-                        JsonRpcResponse response = parseResponseFromByteBuf(content);
-                        future.complete(response);
+                try {
+                    // Use Jackson to parse the whole frame content once
+                    // This handles complex types, errors, and notifications robustly
+                    java.util.Map<String, Object> map = mapper.readValue(
+                            (java.io.InputStream) new ByteBufInputStream(content),
+                            java.util.Map.class);
+
+                    Object method = map.get("method");
+                    if (method != null && method.toString().endsWith("_subscription")) {
+                        handleNotificationMap(map);
+                    } else {
+                        // Regular response
+                        Object idObj = map.get("id");
+                        Object result = map.get("result");
+                        Object errorObj = map.get("error");
+
+                        long id = -1;
+                        if (idObj instanceof Number) {
+                            id = ((Number) idObj).longValue();
+                        } else if (idObj instanceof String) {
+                            try {
+                                id = Long.parseLong((String) idObj);
+                            } catch (NumberFormatException ignored) {
+                            }
+                        }
+
+                        if (id != -1) {
+                            int slot = (int) (id & SLOT_MASK);
+                            CompletableFuture<JsonRpcResponse> future = slots[slot];
+                            if (future != null) {
+                                slots[slot] = null;
+
+                                JsonRpcError error = null;
+                                if (errorObj instanceof java.util.Map) {
+                                    error = mapper.convertValue(errorObj, JsonRpcError.class);
+                                }
+
+                                future.complete(new JsonRpcResponse("2.0", result, error, String.valueOf(id)));
+                            }
+                        }
                     }
-                } else {
-                    // Check for subscription notification
-                    if (containsSubscription(content)) {
-                        handleNotification(content);
-                    }
+                } catch (Exception e) {
+                    log.error("Error parsing WebSocket frame", e);
                 }
             } else if (frame instanceof CloseWebSocketFrame) {
                 ch.close();
             }
         }
 
-        private void handleNotification(ByteBuf buf) {
+        private void handleNotificationMap(java.util.Map<String, Object> map) {
             try {
-                String json = buf.toString(CharsetUtil.UTF_8);
-                com.fasterxml.jackson.databind.JsonNode node = NettyBraneProvider.mapper.readTree(json);
-                com.fasterxml.jackson.databind.JsonNode params = node.get("params");
+                java.util.Map<?, ?> params = (java.util.Map<?, ?>) map.get("params");
                 if (params != null) {
-                    String subscriptionId = params.get("subscription").asText();
+                    String subscriptionId = (String) params.get("subscription");
                     Consumer<JsonRpcResponse> listener = subscriptions.get(subscriptionId);
                     if (listener != null) {
-                        Object result = mapper.treeToValue(params.get("result"), Object.class);
+                        // result might be a map or value
+                        Object result = params.get("result");
+                        // We wrap it in a dummy request response to fit the Consumer signature
+                        // or we change the Consumer signature?
+                        // Present code says: Consumer<JsonRpcResponse>
                         listener.accept(new JsonRpcResponse("2.0", result, null, null));
                     }
                 }
             } catch (Exception e) {
-                // Ignore notification parsing errors
+                log.error("Error handling notification", e);
             }
         }
 
         @Override
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
+            log.error("Channel exception", cause);
             if (!handshakeFuture.isDone()) {
                 handshakeFuture.setFailure(cause);
             }
+            failAllPending(new RpcException(-32000, "Channel error", null, cause));
             ctx.close();
         }
+
     }
 
     @Override
@@ -731,7 +775,7 @@ public class NettyBraneProvider implements BraneProvider, AutoCloseable {
      */
     private void writeJsonValue(ByteBuf buf, Object value) {
         if (value == null) {
-            buf.writeBytes("null".getBytes(StandardCharsets.UTF_8));
+            buf.writeBytes(NULL_BYTES);
         } else if (value instanceof String) {
             buf.writeByte('"');
             writeEscapedString(buf, (String) value);
@@ -742,7 +786,7 @@ public class NettyBraneProvider implements BraneProvider, AutoCloseable {
                 buf.writeByte(numStr.charAt(i));
             }
         } else if (value instanceof Boolean) {
-            buf.writeBytes(((Boolean) value ? "true" : "false").getBytes(StandardCharsets.UTF_8));
+            buf.writeBytes((Boolean) value ? TRUE_BYTES : FALSE_BYTES);
         } else if (value instanceof List) {
             writeJsonArray(buf, (List<?>) value);
         } else if (value instanceof java.util.Map) {

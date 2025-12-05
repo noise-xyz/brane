@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
+import io.brane.rpc.Subscription;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 import java.math.BigInteger;
@@ -240,7 +241,19 @@ class AbiBindingTest {
 
         @Override
         public java.math.BigInteger getBalance(io.brane.core.types.Address address) {
-            return java.math.BigInteger.ZERO;
+            return null;
+        }
+
+        @Override
+        public io.brane.rpc.Subscription subscribeToNewHeads(
+                java.util.function.Consumer<io.brane.core.model.BlockHeader> callback) {
+            return null;
+        }
+
+        @Override
+        public io.brane.rpc.Subscription subscribeToLogs(io.brane.rpc.LogFilter filter,
+                java.util.function.Consumer<io.brane.core.model.LogEntry> callback) {
+            return null;
         }
     }
 
