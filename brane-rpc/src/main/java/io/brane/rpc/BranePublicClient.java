@@ -6,6 +6,7 @@ import io.brane.core.model.LogEntry;
 import io.brane.core.model.Transaction;
 import io.brane.core.types.Hash;
 import java.util.List;
+import io.brane.rpc.Subscription;
 import java.util.Map;
 import java.util.Objects;
 
@@ -109,6 +110,17 @@ public final class BranePublicClient implements PublicClient {
     @Override
     public java.math.BigInteger getBalance(final io.brane.core.types.Address address) {
         return delegate.getBalance(address);
+    }
+
+    @Override
+    public Subscription subscribeToNewHeads(java.util.function.Consumer<io.brane.core.model.BlockHeader> callback) {
+        return delegate.subscribeToNewHeads(callback);
+    }
+
+    @Override
+    public Subscription subscribeToLogs(LogFilter filter,
+            java.util.function.Consumer<io.brane.core.model.LogEntry> callback) {
+        return delegate.subscribeToLogs(filter, callback);
     }
 
     public static final class Builder {

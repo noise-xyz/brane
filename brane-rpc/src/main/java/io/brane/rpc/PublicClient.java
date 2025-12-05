@@ -110,4 +110,21 @@ public interface PublicClient {
      * @return the balance in Wei
      */
     java.math.BigInteger getBalance(io.brane.core.types.Address address);
+
+    /**
+     * Subscribes to new block headers.
+     *
+     * @param callback the callback to invoke when a new block header is received
+     * @return the subscription handle
+     */
+    Subscription subscribeToNewHeads(java.util.function.Consumer<BlockHeader> callback);
+
+    /**
+     * Subscribes to logs matching the given filter.
+     *
+     * @param filter   the log filter criteria
+     * @param callback the callback to invoke when a log is received
+     * @return the subscription handle
+     */
+    Subscription subscribeToLogs(LogFilter filter, java.util.function.Consumer<io.brane.core.model.LogEntry> callback);
 }

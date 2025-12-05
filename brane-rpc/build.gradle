@@ -2,5 +2,7 @@ dependencies {
     api project(":brane-core")
     implementation project(":brane-primitives")
     implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    implementation "io.netty:netty-all:4.1.107.Final"
+    implementation "com.lmax:disruptor:3.4.4"
     testImplementation "ch.qos.logback:logback-classic:1.5.6"
 }

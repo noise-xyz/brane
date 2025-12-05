@@ -14,6 +14,7 @@ import io.brane.rpc.internal.RpcUtils;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import io.brane.rpc.Subscription;
 
 final class DefaultPublicClient implements PublicClient {
 
@@ -204,6 +205,72 @@ final class DefaultPublicClient implements PublicClient {
                 parentHash != null ? new Hash(parentHash) : null,
                 timestamp,
                 baseFeeHex != null ? new Wei(RpcUtils.decodeHexBigInteger(baseFeeHex)) : null);
+    }
+
+    @Override
+    public Subscription subscribeToNewHeads(java.util.function.Consumer<BlockHeader> callback) {
+        String id = provider.subscribe("newHeads", List.of(), result -> {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) mapper.convertValue(result, Map.class);
+
+            String hash = RpcUtils.stringValue(map.get("hash"));
+            String parentHash = RpcUtils.stringValue(map.get("parentHash"));
+            Long number = RpcUtils.decodeHexLong(map.get("number"));
+            Long timestamp = RpcUtils.decodeHexLong(map.get("timestamp"));
+            String baseFeeHex = RpcUtils.stringValue(map.get("baseFeePerGas"));
+
+            BlockHeader header = new BlockHeader(
+                    hash != null ? new Hash(hash) : null,
+                    number,
+                    parentHash != null ? new Hash(parentHash) : null,
+                    timestamp,
+                    baseFeeHex != null ? new Wei(RpcUtils.decodeHexBigInteger(baseFeeHex)) : null);
+
+            callback.accept(header);
+        });
+        return new SubscriptionImpl(id, provider);
+    }
+
+    @Override
+    public Subscription subscribeToLogs(LogFilter filter, java.util.function.Consumer<LogEntry> callback) {
+        Map<String, Object> params = buildLogParams(filter);
+        String id = provider.subscribe("logs", List.of(params), result -> {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> map = (Map<String, Object>) mapper.convertValue(result, Map.class);
+
+            String address = RpcUtils.stringValue(map.get("address"));
+            String data = RpcUtils.stringValue(map.get("data"));
+            String blockHash = RpcUtils.stringValue(map.get("blockHash"));
+            String txHash = RpcUtils.stringValue(map.get("transactionHash"));
+            Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
+            @SuppressWarnings("unchecked")
+            List<String> topicsHex = mapper.convertValue(map.get("topics"), List.class);
+            List<Hash> topics = new ArrayList<>();
+            if (topicsHex != null) {
+                for (String t : topicsHex) {
+                    topics.add(new Hash(t));
+                }
+            }
+
+            LogEntry log = new LogEntry(
+                    address != null ? new Address(address) : null,
+                    data != null ? new HexData(data) : HexData.EMPTY,
+                    topics,
+                    blockHash != null ? new Hash(blockHash) : null,
+                    txHash != null ? new Hash(txHash) : null,
+                    logIndex != null ? logIndex : 0L,
+                    Boolean.TRUE.equals(map.get("removed")));
+
+            callback.accept(log);
+        });
+        return new SubscriptionImpl(id, provider);
+    }
+
+    private record SubscriptionImpl(String id, BraneProvider provider) implements Subscription {
+        @Override
+        public void unsubscribe() {
+            provider.unsubscribe(id);
+        }
     }
 
     private JsonRpcResponse sendWithRetry(final String method, final List<?> params) {

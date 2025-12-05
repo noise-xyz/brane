@@ -51,4 +51,9 @@ public record Wei(BigInteger value) {
     public BigDecimal toEther() {
         return new BigDecimal(value).divide(WEI_PER_ETHER, 18, RoundingMode.DOWN);
     }
+
+    @com.fasterxml.jackson.annotation.JsonValue
+    public String toHexString() {
+        return "0x" + value.toString(16);
+    }
 }

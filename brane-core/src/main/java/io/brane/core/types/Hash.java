@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
  * <li>Must be exactly 64 hex characters long (32 bytes)</li>
  * </ul>
  */
-public record Hash(String value) {
+public record Hash(@com.fasterxml.jackson.annotation.JsonValue String value) {
     private static final Pattern HEX = Pattern.compile("^0x[0-9a-fA-F]{64}$");
 
     public Hash {

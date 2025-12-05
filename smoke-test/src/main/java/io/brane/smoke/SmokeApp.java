@@ -116,6 +116,7 @@ public class SmokeApp {
                 testDebugAndColorMode(); // Scenario M
                 testCustomErrorDecoding(); // Scenario N
                 testComplexNestedStructs(); // Scenario O
+                testWebSocket(); // Scenario P
             }
 
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
@@ -626,6 +627,54 @@ public class SmokeApp {
         }
 
         System.out.println("  ✓ Nested Struct Encoding/Decoding Verified");
+    }
+
+    private static void testWebSocket() throws Exception {
+        System.out.println("\n[Scenario P] WebSocket Transport (Real-time)");
+
+        String wsUrl = "ws://127.0.0.1:8545";
+        // Use NettyBraneProvider for high performance and better subscription support
+        try (io.brane.rpc.NettyBraneProvider wsProvider = io.brane.rpc.NettyBraneProvider.create(wsUrl)) {
+            PublicClient wsClient = PublicClient.from(wsProvider);
+
+            // 1. Subscribe to New Heads
+            java.util.concurrent.CompletableFuture<io.brane.core.model.BlockHeader> headFuture = new java.util.concurrent.CompletableFuture<>();
+            io.brane.rpc.Subscription headSub = wsClient.subscribeToNewHeads(head -> {
+                System.out.println("  ✓ [WS] New Head: " + head.number());
+                headFuture.complete(head);
+            });
+
+            // Trigger a block
+            provider.send("evm_mine", List.of());
+
+            headFuture.get(5, java.util.concurrent.TimeUnit.SECONDS);
+            headSub.unsubscribe();
+
+            // 2. Subscribe to Logs (Transfer event)
+            java.util.concurrent.CompletableFuture<LogEntry> logFuture = new java.util.concurrent.CompletableFuture<>();
+            io.brane.rpc.Subscription logSub = wsClient.subscribeToLogs(
+                    new LogFilter(Optional.empty(), Optional.empty(), Optional.of(tokenAddress), Optional.empty()),
+                    log -> {
+                        System.out.println("  ✓ [WS] Log Received: " + log.transactionHash());
+                        logFuture.complete(log);
+                    });
+
+            // Trigger a transfer
+            ReadWriteContract writeContract = ReadWriteContract.from(tokenAddress, abi, publicClient, walletClient);
+            writeContract.sendAndWait("transfer", 30_000, 1_000, RECIPIENT, BigInteger.ONE);
+
+            logFuture.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            logSub.unsubscribe();
+
+            System.out.println("  ✓ WebSocket subscriptions verified");
+        } catch (Exception e) {
+            System.out
+                    .println("  ⚠️ WebSocket test failed (ensure Anvil is running with WS support): " + e.getMessage());
+            // Don't fail the whole suite if WS is just not available/configured in
+            // environment
+            // But for this task we want to know if it works.
+            throw e;
+        }
     }
 
     private static void runSepoliaTask(Runnable task) {

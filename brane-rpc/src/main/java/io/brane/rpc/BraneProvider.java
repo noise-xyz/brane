@@ -46,6 +46,35 @@ public interface BraneProvider {
     JsonRpcResponse send(String method, List<?> params) throws RpcException;
 
     /**
+     * Subscribes to real-time events.
+     *
+     * @param method   the subscription method (e.g., "eth_subscribe")
+     * @param params   the subscription parameters (e.g., ["newHeads"])
+     * @param callback the callback to invoke when a notification is received
+     * @return the subscription ID
+     * @throws RpcException                  if the subscription fails
+     * @throws UnsupportedOperationException if the provider does not support
+     *                                       subscriptions
+     */
+    default String subscribe(String method, List<?> params, java.util.function.Consumer<Object> callback)
+            throws RpcException {
+        throw new UnsupportedOperationException("This provider does not support subscriptions");
+    }
+
+    /**
+     * Unsubscribes from a real-time event.
+     *
+     * @param subscriptionId the subscription ID
+     * @return true if unsubscribed successfully
+     * @throws RpcException                  if the unsubscription fails
+     * @throws UnsupportedOperationException if the provider does not support
+     *                                       subscriptions
+     */
+    default boolean unsubscribe(String subscriptionId) throws RpcException {
+        throw new UnsupportedOperationException("This provider does not support subscriptions");
+    }
+
+    /**
      * Creates a default HTTP provider.
      *
      * @param url the JSON-RPC endpoint URL
