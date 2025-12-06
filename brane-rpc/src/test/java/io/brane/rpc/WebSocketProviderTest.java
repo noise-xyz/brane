@@ -1,103 +1,58 @@
 package io.brane.rpc;
 
-import io.brane.core.model.BlockHeader;
-
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import io.netty.buffer.ByteBuf;
+import io.netty.buffer.Unpooled;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
-
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.util.ArrayList;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@EnabledIfSystemProperty(named = "brane.integration.tests", matches = "true")
 public class WebSocketProviderTest {
 
-    private static final String ANVIL_HTTP_URL = "http://127.0.0.1:8545";
-    private static final String ANVIL_WS_URL = "ws://127.0.0.1:8545";
-
-    private List<BraneProvider> providers = new ArrayList<>();
-    private HttpClient httpClient;
-
-    @BeforeEach
-    void setUp() throws Exception {
-        // Check if Anvil is reachable
-        httpClient = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(ANVIL_HTTP_URL))
-                .POST(HttpRequest.BodyPublishers
-                        .ofString("{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"))
-                .header("Content-Type", "application/json")
-                .build();
-
-        try {
-            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            // Skip test if Anvil is not running
-            System.out.println("Anvil not running, skipping WebSocket integration test");
-            org.junit.jupiter.api.Assumptions.assumeTrue(false, "Anvil not running");
-        }
-    }
-
-    @AfterEach
-    void tearDown() {
-        for (BraneProvider p : providers) {
-            try {
-                if (p instanceof AutoCloseable) {
-                    ((AutoCloseable) p).close();
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-        providers.clear();
+    @Test
+    void testParseResponseFromByteBuf_Primitive() {
+        String json = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":\"0x123\"}";
+        ByteBuf buf = Unpooled.wrappedBuffer(json.getBytes(StandardCharsets.UTF_8));
+        JsonRpcResponse response = WebSocketProvider.parseResponseFromByteBuf(buf);
+        assertEquals("0x123", response.result());
+        assertNull(response.error());
     }
 
     @Test
-    void testWebSocketBraneProvider_NewHeads() throws Exception {
-        runNewHeadsTest(WebSocketBraneProvider.create(ANVIL_WS_URL));
+    void testParseResponseFromByteBuf_Null() {
+        String json = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":null}";
+        ByteBuf buf = Unpooled.wrappedBuffer(json.getBytes(StandardCharsets.UTF_8));
+        JsonRpcResponse response = WebSocketProvider.parseResponseFromByteBuf(buf);
+        assertNull(response.result());
+        assertNull(response.error());
     }
 
     @Test
-    void testUltraFastWebSocketProvider_NewHeads() throws Exception {
-        runNewHeadsTest(UltraFastWebSocketProvider.create(ANVIL_WS_URL));
+    void testParseResponseFromByteBuf_Object() {
+        String json = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":{\"foo\":\"bar\"}}";
+        ByteBuf buf = Unpooled.wrappedBuffer(json.getBytes(StandardCharsets.UTF_8));
+        JsonRpcResponse response = WebSocketProvider.parseResponseFromByteBuf(buf);
+        assertTrue(response.result() instanceof Map);
+        assertEquals("bar", ((Map<?, ?>) response.result()).get("foo"));
     }
 
-    private void runNewHeadsTest(BraneProvider provider) throws Exception {
-        providers.add(provider);
-        PublicClient client = PublicClient.from(provider);
-
-        CompletableFuture<BlockHeader> received = new CompletableFuture<>();
-        Subscription sub = client.subscribeToNewHeads(received::complete);
-
-        assertNotNull(sub.id());
-
-        // Trigger a new block
-        triggerMine();
-
-        BlockHeader header = received.get(10, TimeUnit.SECONDS);
-        assertNotNull(header);
-        assertNotNull(header.hash());
-        assertNotNull(header.number());
-
-        sub.unsubscribe();
+    @Test
+    void testParseResponseFromByteBuf_Array() {
+        String json = "{\"jsonrpc\":\"2.0\",\"id\":1,\"result\":[\"a\",\"b\"]}";
+        ByteBuf buf = Unpooled.wrappedBuffer(json.getBytes(StandardCharsets.UTF_8));
+        JsonRpcResponse response = WebSocketProvider.parseResponseFromByteBuf(buf);
+        assertTrue(response.result() instanceof List);
+        assertEquals("a", ((List<?>) response.result()).get(0));
     }
 
-    private void triggerMine() throws Exception {
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(ANVIL_HTTP_URL))
-                .POST(HttpRequest.BodyPublishers
-                        .ofString("{\"jsonrpc\":\"2.0\",\"method\":\"evm_mine\",\"params\":[],\"id\":999}"))
-                .header("Content-Type", "application/json")
-                .build();
-        httpClient.send(request, HttpResponse.BodyHandlers.ofString());
+    @Test
+    void testParseResponseFromByteBuf_Error() {
+        String json = "{\"jsonrpc\":\"2.0\",\"id\":1,\"error\":{\"code\":-32600,\"message\":\"Invalid Request\"}}";
+        ByteBuf buf = Unpooled.wrappedBuffer(json.getBytes(StandardCharsets.UTF_8));
+        JsonRpcResponse response = WebSocketProvider.parseResponseFromByteBuf(buf);
+        assertNotNull(response.error());
+        assertEquals(-32600, response.error().code());
     }
 }

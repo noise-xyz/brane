@@ -1,8 +1,9 @@
+```java
 package io.brane.benchmark;
 
-import io.brane.rpc.NettyBraneProvider;
-import io.brane.rpc.UltraFastWebSocketProvider;
-import io.brane.rpc.WebSocketBraneProvider;
+import io.brane.rpc.WebSocketProvider;
+import io.brane.rpc.JsonRpcResponse;
+import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.web3j.protocol.Web3j;
@@ -41,9 +42,7 @@ public class MainnetBenchmark {
         }
     }
 
-    private UltraFastWebSocketProvider ultraProvider;
-    private NettyBraneProvider nettyProvider;
-    private WebSocketBraneProvider stdProvider;
+    private WebSocketProvider braneProvider;
     private WebSocketService web3jService;
     private Web3j web3j;
 
@@ -55,31 +54,15 @@ public class MainnetBenchmark {
         System.out.println("Connecting to " + network + " (" + url + ")...");
 
         try {
-            // 1. UltraFast
+            // 1. Brane WebSocketProvider
             try {
-                ultraProvider = UltraFastWebSocketProvider.create(url);
-                ultraProvider.send("eth_chainId", Collections.emptyList());
+                braneProvider = WebSocketProvider.create(url);
+                braneProvider.send("eth_chainId", Collections.emptyList());
             } catch (Exception e) {
-                System.err.println("UltraFast init failed: " + e.getMessage());
+                System.err.println("Brane init failed: " + e.getMessage());
             }
 
-            // 2. Netty
-            try {
-                nettyProvider = NettyBraneProvider.create(url);
-                nettyProvider.send("eth_chainId", Collections.emptyList());
-            } catch (Exception e) {
-                System.err.println("Netty init failed: " + e.getMessage());
-            }
-
-            // 3. Standard
-            try {
-                stdProvider = WebSocketBraneProvider.create(url);
-                stdProvider.send("eth_chainId", Collections.emptyList());
-            } catch (Exception e) {
-                System.err.println("Standard init failed: " + e.getMessage());
-            }
-
-            // 4. Web3j
+            // 2. Web3j
             try {
                 web3jService = new WebSocketService(url, false);
                 web3jService.connect();
@@ -100,12 +83,8 @@ public class MainnetBenchmark {
     @TearDown(Level.Trial)
     public void tearDown() {
         try {
-            if (ultraProvider != null)
-                ultraProvider.close();
-            if (nettyProvider != null)
-                nettyProvider.close();
-            if (stdProvider != null)
-                stdProvider.close();
+            if (braneProvider != null)
+                braneProvider.close();
         } catch (Exception e) {
             // Ignore close errors
         }
@@ -129,20 +108,8 @@ public class MainnetBenchmark {
 
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
-    public void ultra_chainId(Blackhole bh) throws Exception {
-        bh.consume(ultraProvider.send("eth_chainId", Collections.emptyList()));
-    }
-
-    @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    public void netty_chainId(Blackhole bh) throws Exception {
-        bh.consume(nettyProvider.send("eth_chainId", Collections.emptyList()));
-    }
-
-    @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    public void std_chainId(Blackhole bh) throws Exception {
-        bh.consume(stdProvider.send("eth_chainId", Collections.emptyList()));
+    public void brane_chainId(Blackhole bh) throws Exception {
+        bh.consume(braneProvider.send("eth_chainId", Collections.emptyList()));
     }
 
     @Benchmark
@@ -155,20 +122,8 @@ public class MainnetBenchmark {
 
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
-    public void ultra_blockNumber(Blackhole bh) throws Exception {
-        bh.consume(ultraProvider.send("eth_blockNumber", Collections.emptyList()));
-    }
-
-    @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    public void netty_blockNumber(Blackhole bh) throws Exception {
-        bh.consume(nettyProvider.send("eth_blockNumber", Collections.emptyList()));
-    }
-
-    @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    public void std_blockNumber(Blackhole bh) throws Exception {
-        bh.consume(stdProvider.send("eth_blockNumber", Collections.emptyList()));
+    public void brane_blockNumber(Blackhole bh) throws Exception {
+        bh.consume(braneProvider.send("eth_blockNumber", Collections.emptyList()));
     }
 
     @Benchmark
@@ -181,20 +136,8 @@ public class MainnetBenchmark {
 
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
-    public void ultra_getBalance(Blackhole bh) throws Exception {
-        bh.consume(ultraProvider.send("eth_getBalance", List.of(VITALIK_ADDRESS, "latest")));
-    }
-
-    @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    public void netty_getBalance(Blackhole bh) throws Exception {
-        bh.consume(nettyProvider.send("eth_getBalance", List.of(VITALIK_ADDRESS, "latest")));
-    }
-
-    @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    public void std_getBalance(Blackhole bh) throws Exception {
-        bh.consume(stdProvider.send("eth_getBalance", List.of(VITALIK_ADDRESS, "latest")));
+    public void brane_getBalance(Blackhole bh) throws Exception {
+        bh.consume(braneProvider.send("eth_getBalance", List.of(VITALIK_ADDRESS, "latest")));
     }
 
     @Benchmark
@@ -209,22 +152,8 @@ public class MainnetBenchmark {
     @Benchmark
     @BenchmarkMode({ Mode.AverageTime, Mode.SampleTime })
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
-    public void ultra_latency_blockNumber(Blackhole bh) throws Exception {
-        bh.consume(ultraProvider.send("eth_blockNumber", Collections.emptyList()));
-    }
-
-    @Benchmark
-    @BenchmarkMode({ Mode.AverageTime, Mode.SampleTime })
-    @OutputTimeUnit(TimeUnit.MILLISECONDS)
-    public void netty_latency_blockNumber(Blackhole bh) throws Exception {
-        bh.consume(nettyProvider.send("eth_blockNumber", Collections.emptyList()));
-    }
-
-    @Benchmark
-    @BenchmarkMode({ Mode.AverageTime, Mode.SampleTime })
-    @OutputTimeUnit(TimeUnit.MILLISECONDS)
-    public void std_latency_blockNumber(Blackhole bh) throws Exception {
-        bh.consume(stdProvider.send("eth_blockNumber", Collections.emptyList()));
+    public void brane_latency_blockNumber(Blackhole bh) throws Exception {
+        bh.consume(braneProvider.send("eth_blockNumber", Collections.emptyList()));
     }
 
     @Benchmark
@@ -238,61 +167,13 @@ public class MainnetBenchmark {
 
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
-    public void ultra_pipeline_5(Blackhole bh) throws Exception {
+    public void brane_pipeline_5(Blackhole bh) throws Exception {
         CompletableFuture<?>[] futures = new CompletableFuture[5];
         for (int i = 0; i < 5; i++) {
-            futures[i] = ultraProvider.sendAsync("eth_blockNumber", Collections.emptyList());
+            futures[i] = braneProvider.sendAsync("eth_blockNumber", Collections.emptyList());
         }
         for (CompletableFuture<?> f : futures) {
             bh.consume(f.get());
         }
-    }
-
-    @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    public void netty_pipeline_5(Blackhole bh) throws Exception {
-        CompletableFuture<?>[] futures = new CompletableFuture[5];
-        for (int i = 0; i < 5; i++) {
-            futures[i] = nettyProvider.sendAsync("eth_blockNumber", Collections.emptyList());
-        }
-        for (CompletableFuture<?> f : futures) {
-            bh.consume(f.get());
-        }
-    }
-
-    @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    public void std_pipeline_5(Blackhole bh) throws Exception {
-        CompletableFuture<?>[] futures = new CompletableFuture[5];
-        for (int i = 0; i < 5; i++) {
-            futures[i] = stdProvider.sendAsync("eth_blockNumber", Collections.emptyList());
-        }
-        for (CompletableFuture<?> f : futures) {
-            bh.consume(f.get());
-        }
-    }
-
-    // ==================== BATCH: 5 Requests (RPC Batch) ====================
-    // Note: NettyBraneProvider is excluded as it favors internal batching over
-    // explicit RPC batching in current impl
-
-    @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    public void ultra_batch_5(Blackhole bh) throws Exception {
-        List<UltraFastWebSocketProvider.BatchRequest> batch = new ArrayList<>(5);
-        for (int i = 0; i < 5; i++) {
-            batch.add(new UltraFastWebSocketProvider.BatchRequest("eth_blockNumber", Collections.emptyList()));
-        }
-        bh.consume(ultraProvider.sendBatch(batch).get());
-    }
-
-    @Benchmark
-    @BenchmarkMode(Mode.Throughput)
-    public void std_batch_5(Blackhole bh) throws Exception {
-        List<WebSocketBraneProvider.BatchRequest> batch = new ArrayList<>(5);
-        for (int i = 0; i < 5; i++) {
-            batch.add(new WebSocketBraneProvider.BatchRequest("eth_blockNumber", Collections.emptyList()));
-        }
-        bh.consume(stdProvider.sendBatch(batch).get());
     }
 }

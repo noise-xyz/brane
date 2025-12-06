@@ -1,7 +1,7 @@
 package io.brane.benchmark;
 
 import io.brane.rpc.PublicClient;
-import io.brane.rpc.WebSocketBraneProvider;
+import io.brane.rpc.WebSocketProvider;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.List;
@@ -16,7 +16,7 @@ public class ManualBenchmark {
     public static void main(String[] args) throws Exception {
         System.out.println("Starting Manual Benchmark...");
 
-        try (WebSocketBraneProvider provider = WebSocketBraneProvider.create(WS_URL)) {
+        try (WebSocketProvider provider = WebSocketProvider.create(WS_URL)) {
             PublicClient client = PublicClient.from(provider);
 
             // Warmup

@@ -7,16 +7,26 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import io.brane.rpc.WebSocketProvider;
+import io.brane.rpc.JsonRpcResponse;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -24,38 +34,57 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@EnabledIfSystemProperty(named = "brane.integration.tests", matches = "true")
+@org.junit.jupiter.api.Tag("integration")
 public class WebSocketIntegrationTest {
 
-    private static final String ANVIL_HTTP_URL = "http://127.0.0.1:8545";
-    private static final String ANVIL_WS_URL = "ws://127.0.0.1:8545";
+    private static final Logger log = LoggerFactory.getLogger(WebSocketIntegrationTest.class);
 
-    private NettyBraneProvider wsProvider;
+    // Use Anvil for a lightweight local node
+    static GenericContainer<?> anvil = new GenericContainer<>(
+            DockerImageName.parse("ghcr.io/foundry-rs/foundry:latest"))
+            .withCommand("anvil", "--host", "0.0.0.0", "--port", "8545", "--block-time", "1")
+            .withExposedPorts(8545)
+            .waitingFor(Wait.forLogMessage(".*Listening on 0.0.0.0:8545.*", 1));
+
+    private static String wsUrl;
+    private static String ANVIL_HTTP_URL;
+    private static boolean useLocalNode;
+
+    private WebSocketProvider wsProvider;
     private PublicClient client;
     private HttpClient httpClient;
 
-    @BeforeEach
-    void setUp() throws Exception {
-        // Ensure Anvil is running (assumed to be started by external script or user)
-        // Check if Anvil is reachable
-        httpClient = HttpClient.newHttpClient();
-        HttpRequest request = HttpRequest.newBuilder()
-                .uri(URI.create(ANVIL_HTTP_URL))
-                .POST(HttpRequest.BodyPublishers
-                        .ofString("{\"jsonrpc\":\"2.0\",\"method\":\"eth_blockNumber\",\"params\":[],\"id\":1}"))
-                .header("Content-Type", "application/json")
-                .build();
-
-        try {
-            httpClient.send(request, HttpResponse.BodyHandlers.ofString());
-        } catch (Exception e) {
-            // Skip test if Anvil is not running
-            System.out.println("Anvil not running, skipping WebSocket integration test");
-            return;
+    @BeforeAll
+    static void setUp() {
+        // Check if we should use a local node (e.g. running 'anvil' in terminal)
+        // or if Docker is not available.
+        String useLocal = System.getProperty("brane.test.useLocalNode");
+        if (Boolean.parseBoolean(useLocal)) {
+            useLocalNode = true;
+            log.info("Using local node at 127.0.0.1:8545");
+            wsUrl = "ws://127.0.0.1:8545";
+            ANVIL_HTTP_URL = "http://127.0.0.1:8545";
+        } else {
+            try {
+                anvil.start();
+                wsUrl = "ws://" + anvil.getHost() + ":" + anvil.getMappedPort(8545);
+                ANVIL_HTTP_URL = "http://" + anvil.getHost() + ":" + anvil.getMappedPort(8545);
+            } catch (Exception e) {
+                log.warn(
+                        "Failed to start Docker container. Falling back to local node (ensure 'anvil' is running!). Error: {}",
+                        e.getMessage());
+                useLocalNode = true;
+                wsUrl = "ws://127.0.0.1:8545";
+                ANVIL_HTTP_URL = "http://127.0.0.1:8545";
+            }
         }
+    }
 
-        wsProvider = NettyBraneProvider.create(ANVIL_WS_URL);
-        client = PublicClient.from(wsProvider);
+    @AfterAll
+    static void tearDownAll() {
+        if (anvil.isRunning()) {
+            anvil.stop();
+        }
     }
 
     @AfterEach

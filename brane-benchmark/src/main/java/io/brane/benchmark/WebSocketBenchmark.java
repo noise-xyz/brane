@@ -1,20 +1,20 @@
 package io.brane.benchmark;
 
-import io.brane.rpc.NettyBraneProvider;
+import io.brane.rpc.WebSocketProvider;
 import io.brane.rpc.JsonRpcResponse;
 
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 
-public class NettyBenchmark {
+public class WebSocketBenchmark {
 
     private static final String WS_URL = "ws://127.0.0.1:8545";
     private static final int ITERATIONS = 10000;
 
     public static void main(String[] args) throws Exception {
-        System.out.println("🚀 Starting Netty Provider Benchmark");
+        System.out.println("🚀 Starting WebSocket Provider Benchmark");
 
-        try (NettyBraneProvider provider = NettyBraneProvider.create(WS_URL)) {
+        try (WebSocketProvider provider = WebSocketProvider.create(WS_URL)) {
             // Warmup
             System.out.print("Warming up...");
             for (int i = 0; i < 100; i++) {

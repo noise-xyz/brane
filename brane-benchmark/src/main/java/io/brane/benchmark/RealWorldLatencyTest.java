@@ -1,6 +1,6 @@
 package io.brane.benchmark;
 
-import io.brane.rpc.UltraFastWebSocketProvider;
+import io.brane.rpc.WebSocketProvider;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.websocket.WebSocketService;
 
@@ -55,7 +55,7 @@ public class RealWorldLatencyTest {
         List<Long> braneLatencies = new ArrayList<>();
         List<Long> web3jLatencies = new ArrayList<>();
 
-        try (io.brane.rpc.NettyBraneProvider brane = io.brane.rpc.NettyBraneProvider.create(url)) {
+        try (WebSocketProvider brane = WebSocketProvider.create(url)) {
             WebSocketService wsService = new WebSocketService(url, false);
             wsService.connect();
             Web3j web3j = Web3j.build(wsService);
@@ -93,7 +93,7 @@ public class RealWorldLatencyTest {
 
     private static void runBurstComparison(String url) throws Exception {
         // Brane Burst
-        try (io.brane.rpc.NettyBraneProvider brane = io.brane.rpc.NettyBraneProvider.create(url)) {
+        try (io.brane.rpc.WebSocketProvider brane = io.brane.rpc.WebSocketProvider.create(url)) {
             brane.sendAsync("eth_chainId", Collections.emptyList()).join(); // Warmup
             Thread.sleep(SLEEP_MS);
 

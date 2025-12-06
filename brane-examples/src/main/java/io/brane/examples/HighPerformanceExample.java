@@ -1,15 +1,17 @@
 package io.brane.examples;
 
 import io.brane.rpc.JsonRpcResponse;
-import io.brane.rpc.NettyBraneProvider;
+import io.brane.rpc.JsonRpcResponse;
+import io.brane.rpc.WebSocketProvider;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Demonstrates the high-performance capabilities of the NettyBraneProvider.
+ * Demonstrates the high-performance capabilities of the WebSocketProvider.
  * <p>
  * Features shown:
  * <ul>
@@ -20,13 +22,9 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class HighPerformanceExample {
 
-    // Use a local node for best performance, or a public one for testing
-    private static final String NODE_URL = System.getProperty("brane.node.url", "ws://127.0.0.1:8545");
-
-    public static void main(String[] args) throws Exception {
-        System.out.println("Connecting to " + NODE_URL + "...");
-
-        try (NettyBraneProvider provider = NettyBraneProvider.create(NODE_URL)) {
+    public static void main(String[] args) throws ExecutionException, InterruptedException {
+        // Create high-performance provider (optimized for high throughput)
+        try (WebSocketProvider provider = WebSocketProvider.create("wss://ethereum-rpc.publicnode.com")) {
 
             // 1. Warmup
             System.out.println("Warming up...");

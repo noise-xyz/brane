@@ -633,9 +633,16 @@ public class SmokeApp {
         System.out.println("\n[Scenario P] WebSocket Transport (Real-time)");
 
         String wsUrl = "ws://127.0.0.1:8545";
-        // Use NettyBraneProvider for high performance and better subscription support
-        try (io.brane.rpc.NettyBraneProvider wsProvider = io.brane.rpc.NettyBraneProvider.create(wsUrl)) {
+        // Use WebSocketProvider for high performance and better subscription support
+        try (io.brane.rpc.WebSocketProvider wsProvider = io.brane.rpc.WebSocketProvider.create(wsUrl)) {
+            // 0. Verify Standard RPC calls work over WebSocket
+            System.out.println("  Checking standard RPC over WebSocket...");
             PublicClient wsClient = PublicClient.from(wsProvider);
+            BigInteger chainId = wsClient.getChainId();
+            if (!chainId.equals(new BigInteger("31337"))) {
+                throw new RuntimeException("WebSocket RPC getChainId failed. Expected 31337, got " + chainId);
+            }
+            System.out.println("  ✓ [WS] getChainId success: " + chainId);
 
             // 1. Subscribe to New Heads
             java.util.concurrent.CompletableFuture<io.brane.core.model.BlockHeader> headFuture = new java.util.concurrent.CompletableFuture<>();
