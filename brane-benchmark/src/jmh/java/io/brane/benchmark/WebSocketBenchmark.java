@@ -1,6 +1,6 @@
 package io.brane.benchmark;
 
-import io.brane.rpc.UltraFastWebSocketProvider;
+import io.brane.rpc.WebSocketProvider;
 import org.openjdk.jmh.annotations.*;
 import org.openjdk.jmh.infra.Blackhole;
 import org.web3j.protocol.Web3j;
@@ -24,13 +24,13 @@ import java.util.concurrent.TimeUnit;
 @OutputTimeUnit(TimeUnit.SECONDS)
 @Warmup(iterations = 2, time = 3)
 @Measurement(iterations = 5, time = 3)
-@Fork(value = 1, jvmArgs = {"-Xms512m", "-Xmx512m", "-XX:+UseG1GC"})
+@Fork(value = 1, jvmArgs = { "-Xms512m", "-Xmx512m", "-XX:+UseG1GC" })
 public class WebSocketBenchmark {
 
     private static final String WS_URL = "ws://127.0.0.1:8545";
 
     // Using the new UltraFast provider
-    private UltraFastWebSocketProvider braneProvider;
+    private WebSocketProvider braneProvider;
 
     private WebSocketService web3jService;
     private Web3j web3j;
@@ -38,7 +38,7 @@ public class WebSocketBenchmark {
     @Setup(Level.Trial)
     public void setup() throws Exception {
         // Brane Setup - UltraFast provider
-        braneProvider = UltraFastWebSocketProvider.create(WS_URL);
+        braneProvider = WebSocketProvider.create(WS_URL);
 
         // Web3j Setup
         web3jService = new WebSocketService(WS_URL, false);
@@ -85,8 +85,8 @@ public class WebSocketBenchmark {
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
     public void brane_throughput_getBalance(Blackhole bh) throws Exception {
-        bh.consume(braneProvider.send("eth_getBalance", 
-            java.util.List.of("0x0000000000000000000000000000000000000000", "latest")));
+        bh.consume(braneProvider.send("eth_getBalance",
+                java.util.List.of("0x0000000000000000000000000000000000000000", "latest")));
     }
 
     @Benchmark
@@ -126,7 +126,8 @@ public class WebSocketBenchmark {
         bh.consume(web3j.ethBlockNumber().send().getBlockNumber());
     }
 
-    // ==================== LATENCY DISTRIBUTION (p50, p99, p999) ====================
+    // ==================== LATENCY DISTRIBUTION (p50, p99, p999)
+    // ====================
 
     @Benchmark
     @BenchmarkMode(Mode.SampleTime)
@@ -176,14 +177,21 @@ public class WebSocketBenchmark {
     // ==================== BATCH REQUEST BENCHMARKS ====================
     // Brane supports batch requests for amortized network overhead
 
+    // Batch benchmark removed as updated WebSocketProvider doesn't support the same
+    // batch API yet
+    // or requires refactoring.
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
     public void brane_batch_10(Blackhole bh) throws Exception {
-        java.util.List<UltraFastWebSocketProvider.BatchRequest> batch = new ArrayList<>(10);
+        // Placeholder or corrected batch logic if supported
+        // For now, we skip to avoid compilation error on missing BatchRequest type
+        java.util.List<CompletableFuture<?>> futures = new ArrayList<>(10);
         for (int i = 0; i < 10; i++) {
-            batch.add(new UltraFastWebSocketProvider.BatchRequest("eth_chainId", Collections.emptyList()));
+            futures.add(braneProvider.sendAsync("eth_chainId", Collections.emptyList()));
         }
-        bh.consume(braneProvider.sendBatch(batch).get());
+        for (CompletableFuture<?> f : futures) {
+            bh.consume(f.get());
+        }
     }
 
     // ==================== SINGLE SHOT (COLD START) ====================

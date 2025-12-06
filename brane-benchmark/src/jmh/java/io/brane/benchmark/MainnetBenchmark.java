@@ -1,10 +1,9 @@
-```java
 package io.brane.benchmark;
 
 import io.brane.rpc.WebSocketProvider;
 import io.brane.rpc.JsonRpcResponse;
 import org.openjdk.jmh.annotations.*;
-import org.openjdk.jmh.annotations.*;
+
 import org.openjdk.jmh.infra.Blackhole;
 import org.web3j.protocol.Web3j;
 import org.web3j.protocol.websocket.WebSocketService;

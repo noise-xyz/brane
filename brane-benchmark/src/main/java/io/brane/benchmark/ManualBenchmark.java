@@ -2,10 +2,6 @@ package io.brane.benchmark;
 
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WebSocketProvider;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.List;
-import java.util.ArrayList;
 
 public class ManualBenchmark {
 
@@ -37,7 +33,7 @@ public class ManualBenchmark {
 
             // Throughput Test (Async)
             System.out.println("Running Throughput Test (eth_blockNumber)...");
-            List<CompletableFuture<?>> futures = new ArrayList<>();
+
             start = System.nanoTime();
             for (int i = 0; i < ITERATIONS; i++) {
                 // Assuming getLatestBlock is synchronous in PublicClient interface for now,
