@@ -48,16 +48,17 @@ provider.unsubscribe(subscriptionId);
 Subscribe to specific contract events:
 
 ```java
-import io.brane.rpc.LogFilter;
 import io.brane.core.types.Address;
+import java.util.List;
+import java.util.Map;
 
 // Filter for Transfer events on USDC
-var filter = LogFilter.builder()
-    .address(new Address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"))
-    .topic0("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
-    .build();
+Map<String, Object> filter = Map.of(
+    "address", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "topics", List.of("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+);
 
-String subscriptionId = provider.subscribe("logs", filter.toParams(), event -> {
+String subscriptionId = provider.subscribe("logs", List.of(filter), event -> {
     System.out.println("Transfer detected: " + event);
 });
 ```
@@ -122,6 +123,9 @@ WebSocket providers work seamlessly with `PublicClient` and `WalletClient`:
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.chain.ChainProfiles;
+import io.brane.core.builder.TxBuilder;
+import io.brane.core.types.Address;
+import io.brane.core.types.Wei;
 
 var provider = WebSocketProvider.create("wss://ethereum.publicnode.com");
 var publicClient = PublicClient.from(provider);
@@ -132,6 +136,12 @@ var wallet = DefaultWalletClient.create(
     new PrivateKeySigner("0x..."),
     ChainProfiles.ETH_MAINNET
 );
+
+// Create a transaction request
+var request = TxBuilder.eip1559()
+    .to(new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"))
+    .value(Wei.fromEther("0.01"))
+    .build();
 
 // Send transactions over WebSocket
 var receipt = wallet.sendTransactionAndWait(request, 60_000, 1_000);
