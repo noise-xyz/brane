@@ -62,6 +62,10 @@ public final class RpcException extends BraneException {
         this(code, message, data, null, cause);
     }
 
+    public RpcException(final int code, final String message, final String data) {
+        this(code, message, data, (Long) null, null);
+    }
+
     public int code() {
         return code;
     }

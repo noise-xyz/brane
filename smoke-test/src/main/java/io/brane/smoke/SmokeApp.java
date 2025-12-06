@@ -668,11 +668,9 @@ public class SmokeApp {
 
             System.out.println("  ✓ WebSocket subscriptions verified");
         } catch (Exception e) {
-            System.out
-                    .println("  ⚠️ WebSocket test failed (ensure Anvil is running with WS support): " + e.getMessage());
-            // Don't fail the whole suite if WS is just not available/configured in
-            // environment
-            // But for this task we want to know if it works.
+            System.err
+                    .println("  ⚠️ WebSocket test failed: " + e.getMessage());
+            // Log error but fail the test suite because WebSocket functionality is critical
             throw e;
         }
     }

@@ -15,8 +15,14 @@ anvil.log
 .vercel
 anvil_smoke_temp.log
 
+
 # Eclipse / Gradle IDE
 .project
 .classpath
 .settings/
 .vscode/
+.factorypath
+
+# Logs and Benchmarks
+*.txt
+benchmark_output.txt

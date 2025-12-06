@@ -27,8 +27,8 @@ import org.slf4j.LoggerFactory;
  * 
  * <h2>Key Optimizations:</h2>
  * <ul>
- * <li><b>Zero-allocation JSON parsing</b> - Custom char[] parser, no Jackson,
- * no intermediate objects</li>
+ * <li><b>Low-allocation JSON parsing</b> - Optimized parsing pipeline
+ * </li>
  * <li><b>Lock-free request tracking</b> - Array-based slot allocation instead
  * of ConcurrentHashMap</li>
  * <li><b>Object pooling</b> - Reusable response objects to eliminate GC
