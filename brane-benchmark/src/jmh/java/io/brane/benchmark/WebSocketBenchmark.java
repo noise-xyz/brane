@@ -177,17 +177,12 @@ public class WebSocketBenchmark {
     // ==================== BATCH REQUEST BENCHMARKS ====================
     // Brane supports batch requests for amortized network overhead
 
-    // Batch benchmark removed as updated WebSocketProvider doesn't support the same
-    // batch API yet
-    // or requires refactoring.
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
     public void brane_batch_10(Blackhole bh) throws Exception {
-        // Placeholder or corrected batch logic if supported
-        // For now, we skip to avoid compilation error on missing BatchRequest type
         java.util.List<CompletableFuture<?>> futures = new ArrayList<>(10);
         for (int i = 0; i < 10; i++) {
-            futures.add(braneProvider.sendAsync("eth_chainId", Collections.emptyList()));
+            futures.add(braneProvider.sendAsyncBatch("eth_chainId", Collections.emptyList()));
         }
         for (CompletableFuture<?> f : futures) {
             bh.consume(f.get());

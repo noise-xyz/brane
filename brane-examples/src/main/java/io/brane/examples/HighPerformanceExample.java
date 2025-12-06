@@ -1,7 +1,7 @@
 package io.brane.examples;
 
 import io.brane.rpc.JsonRpcResponse;
-import io.brane.rpc.JsonRpcResponse;
+
 import io.brane.rpc.WebSocketProvider;
 import java.util.ArrayList;
 import java.util.Collections;

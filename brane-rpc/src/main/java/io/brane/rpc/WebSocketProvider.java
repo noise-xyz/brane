@@ -358,6 +358,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 try {
                     id = Long.parseLong(idNode.asText());
                 } catch (Exception e) {
+                    log.warn("Could not parse text response ID '{}' as long", idNode.asText(), e);
                 }
             }
 
@@ -476,7 +477,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         try {
             JsonRpcResponse response = sendAsync("eth_subscribe", subscribeParams).join();
             if (response.error() != null) {
-                throw new RpcException(response.error().code(), response.error().message(), null);
+                throw new RpcException(response.error().code(), response.error().message(),
+                        response.error().data() != null ? response.error().data().toString() : null);
             }
             String subscriptionId = String.valueOf(response.result());
             if (subscriptionId.startsWith("\"") && subscriptionId.endsWith("\"")) {

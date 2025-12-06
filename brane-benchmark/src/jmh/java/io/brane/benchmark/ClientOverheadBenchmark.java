@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  * Micro-benchmark measuring client-side overhead ONLY (no network).
  * 
  * This directly compares JSON serialization/parsing efficiency between:
- * - Brane's zero-allocation custom parser
+ * - Brane's low-allocation custom parser
  * - web3j's Jackson-based approach
  * 
  * This is where we can demonstrate 2x+ performance difference.

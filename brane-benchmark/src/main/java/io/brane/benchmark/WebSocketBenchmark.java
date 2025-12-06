@@ -26,7 +26,7 @@ public class WebSocketBenchmark {
             CompletableFuture<?>[] futures = new CompletableFuture[ITERATIONS];
 
             for (int i = 0; i < ITERATIONS; i++) {
-                futures[i] = provider.sendAsync("eth_blockNumber", Collections.emptyList());
+                futures[i] = provider.sendAsyncBatch("eth_blockNumber", Collections.emptyList());
             }
 
             CompletableFuture.allOf(futures).join();
