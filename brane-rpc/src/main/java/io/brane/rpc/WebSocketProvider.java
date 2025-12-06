@@ -142,6 +142,16 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         connect();
     }
 
+    /**
+     * Creates a new WebSocketProvider and connects to the specified URL.
+     *
+     * <p>The provider supports both {@code ws://} and {@code wss://} schemes.
+     * SSL/TLS is automatically configured for secure connections.</p>
+     *
+     * @param url the WebSocket URL to connect to (e.g., "wss://ethereum.publicnode.com")
+     * @return a connected WebSocketProvider instance
+     * @throws RuntimeException if connection fails
+     */
     public static WebSocketProvider create(String url) {
         return new WebSocketProvider(url);
     }
@@ -393,6 +403,18 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
     }
 
+    /**
+     * Sends a synchronous JSON-RPC request and blocks until the response is received.
+     *
+     * <p>This method wraps {@link #sendAsync} and waits for completion. For better
+     * performance in high-throughput scenarios, prefer {@link #sendAsync} or
+     * {@link #sendAsyncBatch}.</p>
+     *
+     * @param method the JSON-RPC method name (e.g., "eth_blockNumber")
+     * @param params the method parameters, or null/empty for no parameters
+     * @return the JSON-RPC response
+     * @throws RpcException if the request fails or returns an error
+     */
     @Override
     public JsonRpcResponse send(String method, List<?> params) throws RpcException {
         try {
@@ -404,6 +426,19 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         }
     }
 
+    /**
+     * Sends an asynchronous JSON-RPC request.
+     *
+     * <p>The request is serialized directly to a ByteBuf with zero intermediate
+     * String allocations. The returned future completes when the response is received.</p>
+     *
+     * <p>For batch scenarios with many concurrent requests, consider using
+     * {@link #sendAsyncBatch} which uses the Disruptor for optimal batching.</p>
+     *
+     * @param method the JSON-RPC method name (e.g., "eth_chainId")
+     * @param params the method parameters, or null/empty for no parameters
+     * @return a CompletableFuture that completes with the JSON-RPC response
+     */
     public CompletableFuture<JsonRpcResponse> sendAsync(String method, List<?> params) {
         long id = idGenerator.getAndIncrement();
         int slot = (int) (id & SLOT_MASK);
@@ -444,10 +479,23 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     }
 
     /**
-     * Async send using Disruptor for high-throughput batch scenarios.
-     * Use this when sending many requests in rapid succession.
+     * Sends an asynchronous JSON-RPC request using the Disruptor ring buffer.
+     *
+     * <p>This method is optimized for high-throughput scenarios where many requests
+     * are sent in rapid succession. Requests are batched and flushed together,
+     * reducing syscall overhead.</p>
+     *
+     * <p>Use this method when:</p>
+     * <ul>
+     *   <li>Sending many requests in a tight loop</li>
+     *   <li>Maximum throughput is more important than individual request latency</li>
+     *   <li>You want automatic batching of network writes</li>
+     * </ul>
+     *
+     * @param method the JSON-RPC method name
+     * @param params the method parameters, or null/empty for no parameters
+     * @return a CompletableFuture that completes with the JSON-RPC response
      */
-
     public CompletableFuture<JsonRpcResponse> sendAsyncBatch(String method, List<?> params) {
         long id = idGenerator.getAndIncrement();
         int slot = (int) (id & SLOT_MASK);
@@ -467,6 +515,25 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         return future;
     }
 
+    /**
+     * Subscribes to a real-time event stream using {@code eth_subscribe}.
+     *
+     * <p>Supported subscription types include:</p>
+     * <ul>
+     *   <li>{@code newHeads} - new block headers</li>
+     *   <li>{@code logs} - contract event logs (with optional filter)</li>
+     *   <li>{@code newPendingTransactions} - pending transaction hashes</li>
+     * </ul>
+     *
+     * <p>The callback is invoked on the Netty I/O thread. Avoid blocking operations
+     * in the callback to prevent I/O thread starvation.</p>
+     *
+     * @param method the subscription type (e.g., "newHeads", "logs")
+     * @param params additional parameters (e.g., log filter for "logs" subscription)
+     * @param callback invoked for each notification with the event data
+     * @return the subscription ID, which can be used to {@link #unsubscribe}
+     * @throws RpcException if subscription fails
+     */
     @Override
     public String subscribe(String method, List<?> params, Consumer<Object> callback) throws RpcException {
         List<Object> subscribeParams = new java.util.ArrayList<>();
@@ -497,6 +564,13 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         }
     }
 
+    /**
+     * Unsubscribes from a previously created subscription.
+     *
+     * @param subscriptionId the subscription ID returned by {@link #subscribe}
+     * @return true if the subscription was successfully cancelled
+     * @throws RpcException if the unsubscribe request fails
+     */
     @Override
     public boolean unsubscribe(String subscriptionId) throws RpcException {
         try {
@@ -509,6 +583,19 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         }
     }
 
+    /**
+     * Closes the WebSocket connection and releases all resources.
+     *
+     * <p>This method:</p>
+     * <ul>
+     *   <li>Shuts down the Disruptor</li>
+     *   <li>Closes the WebSocket channel</li>
+     *   <li>Shuts down the Netty event loop group</li>
+     *   <li>Fails any pending requests with an exception</li>
+     * </ul>
+     *
+     * <p>After calling close(), this provider cannot be reused.</p>
+     */
     @Override
     public void close() {
         closed.set(true);
