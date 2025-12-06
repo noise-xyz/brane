@@ -43,7 +43,7 @@ import org.slf4j.LoggerFactory;
  * 
  * Optimizations:
  * - Zero-allocation JSON serialization directly to ByteBuf
- * - Zero-copy response parsing from ByteBuf
+ * - Low-allocation response parsing from ByteBuf
  * - Lock-free request ID generation
  * - Batched writes with flush on end-of-batch
  * - Optimized Netty channel options (TCP_NODELAY, etc.)

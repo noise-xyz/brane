@@ -429,11 +429,13 @@ public final class UltraFastWebSocketProvider implements BraneProvider, AutoClos
         }
 
         JsonRpcResponse response = send("eth_subscribe", args);
-        if (response.hasError()) {
-            throw new RpcException(-32000, "Subscription failed: " + response.error().message(), null,
-                    (Throwable) null);
+        if (response.error() != null) {
+            throw new RpcException(response.error().code(), response.error().message(), null);
         }
-        String subscriptionId = (String) response.result();
+        String subscriptionId = String.valueOf(response.result());
+        if (subscriptionId.startsWith("\"") && subscriptionId.endsWith("\"")) {
+            subscriptionId = subscriptionId.substring(1, subscriptionId.length() - 1);
+        }
         subscriptions.put(subscriptionId, callback);
         return subscriptionId;
     }
