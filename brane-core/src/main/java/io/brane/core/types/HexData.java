@@ -114,6 +114,7 @@ public final class HexData {
      * 
      * @return the hex string
      */
+    @com.fasterxml.jackson.annotation.JsonValue
     public String value() {
         if (value == null) {
             value = Hex.encode(raw);

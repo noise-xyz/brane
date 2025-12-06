@@ -2,5 +2,12 @@ dependencies {
     api project(":brane-core")
     implementation project(":brane-primitives")
     implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
+    implementation "io.netty:netty-handler:4.1.107.Final"
+    implementation "io.netty:netty-codec-http:4.1.107.Final"
+    implementation "com.lmax:disruptor:3.4.4"
     testImplementation "ch.qos.logback:logback-classic:1.5.6"
+    implementation "org.slf4j:slf4j-api:2.0.13"
+    testImplementation "org.junit.jupiter:junit-jupiter:5.10.2"
+    testImplementation "org.testcontainers:testcontainers:1.19.7"
+    testImplementation "org.testcontainers:junit-jupiter:1.19.7"
 }

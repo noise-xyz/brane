@@ -114,7 +114,9 @@ public final class CanonicalErc20Example {
 
     try {
       // 1. Initialize Clients
-      final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
+      final BraneProvider provider = rpcUrl.startsWith("ws")
+          ? io.brane.rpc.WebSocketProvider.create(rpcUrl)
+          : HttpBraneProvider.builder(rpcUrl).build();
       final PublicClient publicClient = PublicClient.from(provider);
       final var signer = new io.brane.core.crypto.PrivateKeySigner(privateKey);
       final WalletClient walletClient = io.brane.rpc.DefaultWalletClient.create(
