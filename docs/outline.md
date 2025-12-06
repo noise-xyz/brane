@@ -20,6 +20,7 @@
 
 ## 5. Providers & Chains
 - **Configuration**: `HttpBraneProvider` setup.
+- **WebSocket**: Real-time subscriptions with `WebSocketProvider`.
 - **Chains**: Using `ChainProfiles` (Mainnet, Sepolia, Anvil).
 
 ## 6. Advanced Signing (External Signers)
