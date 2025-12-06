@@ -216,6 +216,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
     /**
      * Parse JSON-RPC response from ByteBuf using Jackson Streaming API.
+     * Visible for testing.
      */
     static JsonRpcResponse parseResponseFromByteBuf(ByteBuf buf) {
         try (ByteBufInputStream in = new ByteBufInputStream(buf);
@@ -260,7 +261,6 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     }
 
     private class WebSocketClientHandler extends SimpleChannelInboundHandler<Object> {
-
         private final WebSocketClientHandshaker handshaker;
         private ChannelPromise handshakeFuture;
 
@@ -390,6 +390,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             failAllPending(new RpcException(-32000, "Channel error", null, cause));
             ctx.close();
         }
+
     }
 
     @Override
@@ -666,41 +667,9 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             writeEscapedString(buf, (String) value);
             buf.writeByte('"');
         } else if (value instanceof Integer) {
-            // Write integer directly without string allocation using optimized loop
-            int val = (Integer) value;
-            if (val == Integer.MIN_VALUE) {
-                buf.writeBytes("-2147483648".getBytes(StandardCharsets.UTF_8));
-                return;
-            }
-            if (val < 0) {
-                buf.writeByte('-');
-                val = -val;
-            }
-            // Fast path for small numbers common in RPC ids/params
-            if (val < 10) {
-                buf.writeByte('0' + val);
-            } else {
-                // Convert to string on stack-like logic or just use String.valueOf/toString for
-                // now
-                // as implementing full itoa here is verbose.
-                // BUT the review asked to avoid heap allocs.
-                // Let's use a standard trick or just use a helper if we had one.
-                // Given constraints, I'll fallback to toString() for now but acknowledge it.
-                // Wait, I can implement a simple writer.
-                writePositiveInt(buf, val);
-            }
+            writeInt(buf, (Integer) value);
         } else if (value instanceof Long) {
-            // Similar optimization for Long
-            long val = (Long) value;
-            if (val == Long.MIN_VALUE) {
-                buf.writeBytes("-9223372036854775808".getBytes(StandardCharsets.UTF_8));
-                return;
-            }
-            if (val < 0) {
-                buf.writeByte('-');
-                val = -val;
-            }
-            writePositiveLong(buf, val);
+            writeLong(buf, (Long) value);
         } else if (value instanceof Boolean) {
             buf.writeBytes((Boolean) value ? TRUE_BYTES : FALSE_BYTES);
         } else if (value instanceof List) {
@@ -721,7 +690,19 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         }
     }
 
-    private void writePositiveInt(ByteBuf buf, int value) {
+    private void writeInt(ByteBuf buf, int value) {
+        if (value == Integer.MIN_VALUE) {
+            buf.writeBytes("-2147483648".getBytes(StandardCharsets.UTF_8));
+            return;
+        }
+        if (value == 0) {
+            buf.writeByte('0');
+            return;
+        }
+        if (value < 0) {
+            buf.writeByte('-');
+            value = -value;
+        }
         if (value < 10) {
             buf.writeByte('0' + value);
             return;
@@ -734,21 +715,6 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             value /= 10;
         }
         buf.writeBytes(digitBuf, pos + 1, 9 - pos);
-    }
-
-    private void writePositiveLong(ByteBuf buf, long value) {
-        if (value < 10) {
-            buf.writeByte((int) ('0' + value));
-            return;
-        }
-        // Max long is 19 digits
-        byte[] digitBuf = new byte[20];
-        int pos = 19;
-        while (value > 0) {
-            digitBuf[pos--] = (byte) ('0' + (value % 10));
-            value /= 10;
-        }
-        buf.writeBytes(digitBuf, pos + 1, 19 - pos);
     }
 
     /**
@@ -774,6 +740,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * Write a long value directly to ByteBuf without String allocation.
      */
     private void writeLong(ByteBuf buf, long value) {
+        if (value == Long.MIN_VALUE) {
+            buf.writeBytes("-9223372036854775808".getBytes(StandardCharsets.UTF_8));
+            return;
+        }
         if (value == 0) {
             buf.writeByte('0');
             return;
@@ -782,6 +752,11 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         if (value < 0) {
             buf.writeByte('-');
             value = -value;
+        }
+
+        if (value < 10) {
+            buf.writeByte((int) ('0' + value));
+            return;
         }
 
         // Find number of digits

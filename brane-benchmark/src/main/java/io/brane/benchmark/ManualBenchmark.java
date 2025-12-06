@@ -41,7 +41,7 @@ public class ManualBenchmark {
                 // Since PublicClient methods are sync (blocking), this measures sequential
                 // throughput (latency-bound).
                 // To measure true throughput we need async API or multiple threads.
-                // But wait, WebSocketBraneProvider is async internally?
+                // But wait, WebSocketProvider is async internally?
                 // PublicClient methods return values, so they block.
                 // So this test is actually measuring sequential throughput, which is similar to
                 // latency.

@@ -55,7 +55,9 @@ public final class Erc20TransferLogExample {
     }
 
     final Address token = new Address(tokenAddress);
-    final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
+    final BraneProvider provider = rpcUrl.startsWith("ws")
+        ? io.brane.rpc.WebSocketProvider.create(rpcUrl)
+        : HttpBraneProvider.builder(rpcUrl).build();
     final PublicClient publicClient = PublicClient.from(provider);
 
     final Long fromBlock = fromBlockStr != null && !fromBlockStr.isBlank() ? Long.parseLong(fromBlockStr) : null;
