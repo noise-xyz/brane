@@ -79,8 +79,9 @@ task runInfuraTest(type: JavaExec) {
         def envFile = file("$rootDir/.env")
         if (envFile.exists()) {
             envFile.eachLine { line ->
-                if (line.trim() && !line.startsWith("#")) {
-                    def parts = line.split("=", 2)
+                def trimmedLine = line.trim()
+                if (trimmedLine && !trimmedLine.startsWith("#")) {
+                    def parts = trimmedLine.split("=", 2)
                     if (parts.length == 2) {
                         environment parts[0].trim(), parts[1].trim()
                     }

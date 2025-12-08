@@ -19,7 +19,7 @@ To run benchmarks against Infura (e.g., for Base Mainnet), you must:
 **Using `.env` file (Recommended):**
 ```bash
 # Assuming your .env contains INFURA_BASE_WSS_URL
-export $(cat ../.env | xargs)
+set -a && source ../.env && set +a
 ./gradlew :brane-benchmark:jmh -Dbrane.benchmark.useInfura=true
 ```
 

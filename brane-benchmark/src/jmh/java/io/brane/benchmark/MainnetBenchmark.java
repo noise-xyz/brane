@@ -37,6 +37,7 @@ public class MainnetBenchmark {
                     if (infuraUrl == null || infuraUrl.isEmpty()) {
                         infuraUrl = System.getProperty("INFURA_BASE_WSS_URL");
                     }
+
                     if (infuraUrl != null && !infuraUrl.isEmpty()) {
                         return infuraUrl;
                     }

@@ -1,6 +1,5 @@
 package io.brane.examples;
 
-import io.brane.core.model.BlockHeader;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.Subscription;
 import io.brane.rpc.WebSocketProvider;
@@ -11,7 +10,7 @@ import java.util.concurrent.TimeUnit;
 
 public class InfuraWebSocketTest {
 
-    public static void main(String[] args) throws Exception {
+    public static void main(String[] args) {
         System.out.println("=== Infura WebSocket Test (Base) ===");
 
         String wssUrl = System.getenv("INFURA_BASE_WSS_URL");
@@ -48,6 +47,9 @@ public class InfuraWebSocketTest {
         } catch (Exception e) {
             System.err.println("❌ Test Failed:");
             e.printStackTrace();
+            if (e instanceof InterruptedException) {
+                Thread.currentThread().interrupt();
+            }
             System.exit(1);
         }
     }
