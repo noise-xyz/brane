@@ -83,6 +83,7 @@ For high-throughput scenarios, use `sendAsyncBatch()` which uses an LMAX Disrupt
 
 ```java
 import java.util.concurrent.CompletableFuture;
+import java.util.List;
 
 // Fire many requests in rapid succession
 CompletableFuture<?>[] futures = new CompletableFuture[1000];
@@ -120,6 +121,8 @@ provider.close();
 WebSocket providers work seamlessly with `PublicClient` and `WalletClient`:
 
 ```java
+import io.brane.rpc.WebSocketProvider;
+import io.brane.rpc.PublicClient;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.chain.ChainProfiles;
