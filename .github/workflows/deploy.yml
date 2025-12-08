@@ -7,7 +7,7 @@ on:
       - fix/github-actions-deploy
     paths:
       - 'website/**'
-      - 'cloudflare-build.sh'
+      - 'scripts/cloudflare-build.sh'
       - '.github/workflows/deploy.yml'
   workflow_dispatch:
 
@@ -36,7 +36,7 @@ jobs:
           cache-dependency-path: website/package-lock.json
 
       - name: Build
-        run: ./cloudflare-build.sh
+        run: ./scripts/cloudflare-build.sh
 
       - name: Debug Build Output
         run: ls -R website/out
