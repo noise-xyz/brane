@@ -104,7 +104,7 @@ implements <a href="WalletClient.html" title="interface in io.brane.rpc">WalletC
  <ol>
  <li>Fills missing gas parameters via <code>SmartGasStrategy</code></li>
  <li>Fetches nonce via <code>eth_getTransactionCount</code> if not provided</li>
- <li>Signs the transaction using <a href="TransactionSigner.html" title="interface in io.brane.rpc"><code>TransactionSigner</code></a></li>
+ <li>Signs the transaction using <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto"><code>Signer</code></a></li>
  <li>Broadcasts via <code>eth_sendRawTransaction</code></li>
  <li>Optionally polls for receipt via <code>eth_getTransactionReceipt</code></li>
  </ol>
@@ -127,7 +127,7 @@ implements <a href="WalletClient.html" title="interface in io.brane.rpc">WalletC
 <ul class="tag-list">
 <li><a href="WalletClient.html" title="interface in io.brane.rpc"><code>WalletClient</code></a></li>
 <li><code>SmartGasStrategy</code></li>
-<li><a href="TransactionSigner.html" title="interface in io.brane.rpc"><code>TransactionSigner</code></a></li>
+<li><a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto"><code>Signer</code></a></li>
 </ul>
 </dd>
 </dl>
@@ -146,46 +146,57 @@ implements <a href="WalletClient.html" title="interface in io.brane.rpc">WalletC
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address)" class="member-name-link">create</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer)" class="member-name-link">create</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
  <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>&nbsp;signer,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.chain.ChainProfile)" class="member-name-link">create</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
+ <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
+ <a href="../core/chain/ChainProfile.html" title="class in io.brane.core.chain">ChainProfile</a>&nbsp;chainProfile)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address)" class="member-name-link">create</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
+ <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
  <a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;senderAddress)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,io.brane.core.chain.ChainProfile)" class="member-name-link">create</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,io.brane.core.chain.ChainProfile)" class="member-name-link">create</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
  <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>&nbsp;signer,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
  <a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;senderAddress,
  <a href="../core/chain/ChainProfile.html" title="class in io.brane.core.chain">ChainProfile</a>&nbsp;chainProfile)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)" class="member-name-link">create</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)" class="member-name-link">create</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
  <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>&nbsp;signer,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
  <a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;senderAddress,
  <a href="../core/chain/ChainProfile.html" title="class in io.brane.core.chain">ChainProfile</a>&nbsp;chainProfile,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a>&nbsp;gasLimitBufferNumerator,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a>&nbsp;gasLimitBufferDenominator)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,long)" class="member-name-link">from</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,long)" class="member-name-link">from</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
  <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>&nbsp;signer,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
  <a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;senderAddress,
  long&nbsp;expectedChainId)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile)" class="member-name-link">from</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile)" class="member-name-link">from</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
  <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>&nbsp;signer,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
  <a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;senderAddress,
  long&nbsp;expectedChainId,
  <a href="../core/chain/ChainProfile.html" title="class in io.brane.core.chain">ChainProfile</a>&nbsp;chainProfile)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)" class="member-name-link">from</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)" class="member-name-link">from</a><wbr>(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
  <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>&nbsp;signer,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
  <a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;senderAddress,
  long&nbsp;expectedChainId,
  <a href="../core/chain/ChainProfile.html" title="class in io.brane.core.chain">ChainProfile</a>&nbsp;chainProfile,
@@ -222,22 +233,22 @@ implements <a href="WalletClient.html" title="interface in io.brane.rpc">WalletC
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile)">
+<section class="detail" id="from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile)">
 <h3>from</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></span>&nbsp;<span class="element-name">from</span><wbr><span class="parameters">(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
  <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>&nbsp;signer,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
  <a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;senderAddress,
  long&nbsp;expectedChainId,
  <a href="../core/chain/ChainProfile.html" title="class in io.brane.core.chain">ChainProfile</a>&nbsp;chainProfile)</span></div>
 </section>
 </li>
 <li>
-<section class="detail" id="from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)">
+<section class="detail" id="from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)">
 <h3>from</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></span>&nbsp;<span class="element-name">from</span><wbr><span class="parameters">(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
  <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>&nbsp;signer,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
  <a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;senderAddress,
  long&nbsp;expectedChainId,
  <a href="../core/chain/ChainProfile.html" title="class in io.brane.core.chain">ChainProfile</a>&nbsp;chainProfile,
@@ -246,40 +257,57 @@ implements <a href="WalletClient.html" title="interface in io.brane.rpc">WalletC
 </section>
 </li>
 <li>
-<section class="detail" id="from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,long)">
+<section class="detail" id="from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,long)">
 <h3>from</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></span>&nbsp;<span class="element-name">from</span><wbr><span class="parameters">(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
  <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>&nbsp;signer,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
  <a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;senderAddress,
  long&nbsp;expectedChainId)</span></div>
 </section>
 </li>
 <li>
-<section class="detail" id="create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,io.brane.core.chain.ChainProfile)">
+<section class="detail" id="create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,io.brane.core.chain.ChainProfile)">
 <h3>create</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></span>&nbsp;<span class="element-name">create</span><wbr><span class="parameters">(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
  <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>&nbsp;signer,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
  <a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;senderAddress,
  <a href="../core/chain/ChainProfile.html" title="class in io.brane.core.chain">ChainProfile</a>&nbsp;chainProfile)</span></div>
 </section>
 </li>
 <li>
-<section class="detail" id="create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address)">
+<section class="detail" id="create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.chain.ChainProfile)">
 <h3>create</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></span>&nbsp;<span class="element-name">create</span><wbr><span class="parameters">(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
  <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>&nbsp;signer,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
+ <a href="../core/chain/ChainProfile.html" title="class in io.brane.core.chain">ChainProfile</a>&nbsp;chainProfile)</span></div>
+</section>
+</li>
+<li>
+<section class="detail" id="create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address)">
+<h3>create</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></span>&nbsp;<span class="element-name">create</span><wbr><span class="parameters">(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
+ <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
  <a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;senderAddress)</span></div>
 </section>
 </li>
 <li>
-<section class="detail" id="create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)">
+<section class="detail" id="create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer)">
 <h3>create</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></span>&nbsp;<span class="element-name">create</span><wbr><span class="parameters">(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
  <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>&nbsp;signer,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer)</span></div>
+</section>
+</li>
+<li>
+<section class="detail" id="create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)">
+<h3>create</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></span>&nbsp;<span class="element-name">create</span><wbr><span class="parameters">(<a href="BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>&nbsp;provider,
+ <a href="PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
+ <a href="../core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>&nbsp;signer,
  <a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;senderAddress,
  <a href="../core/chain/ChainProfile.html" title="class in io.brane.core.chain">ChainProfile</a>&nbsp;chainProfile,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a>&nbsp;gasLimitBufferNumerator,
