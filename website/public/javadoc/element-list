@@ -1,3 +1,4 @@
+io.brane.benchmark
 io.brane.contract
 io.brane.core
 io.brane.core.abi
@@ -13,3 +14,4 @@ io.brane.primitives
 io.brane.primitives.rlp
 io.brane.rpc
 io.brane.rpc.internal
+io.brane.smoke

@@ -66,3 +66,24 @@ var provider = HttpBraneProvider.builder("https://...")
 // Raw JSON-RPC call
 var response = provider.send("eth_chainId", List.of());
 ```
+
+## WebSocketProvider
+
+For real-time subscriptions and lower latency, use `WebSocketProvider`.
+
+```java
+import io.brane.rpc.WebSocketProvider;
+
+var provider = WebSocketProvider.create("wss://ethereum.publicnode.com");
+
+// Use with PublicClient
+var client = PublicClient.from(provider);
+var block = client.getLatestBlock();
+
+// Don't forget to close
+provider.close();
+```
+
+<Card title="WebSocket Guide" icon="bolt" href="/providers/websocket">
+  Learn about subscriptions, batching, and advanced WebSocket features.
+</Card>

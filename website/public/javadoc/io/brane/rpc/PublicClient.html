@@ -188,6 +188,17 @@ loadScripts(document, 'script');</script>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
 <div class="block">Retrieves a transaction by its hash.</div>
 </div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Subscription.html" title="interface in io.brane.rpc">Subscription</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#subscribeToLogs(io.brane.rpc.LogFilter,java.util.function.Consumer)" class="member-name-link">subscribeToLogs</a><wbr>(<a href="LogFilter.html" title="class in io.brane.rpc">LogFilter</a>&nbsp;filter,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../core/model/LogEntry.html" title="class in io.brane.core.model">LogEntry</a>&gt;&nbsp;callback)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Subscribes to logs matching the given filter.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="Subscription.html" title="interface in io.brane.rpc">Subscription</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#subscribeToNewHeads(java.util.function.Consumer)" class="member-name-link">subscribeToNewHeads</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../core/model/BlockHeader.html" title="class in io.brane.core.model">BlockHeader</a>&gt;&nbsp;callback)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Subscribes to new block headers.</div>
+</div>
 </div>
 </div>
 </div>
@@ -301,6 +312,34 @@ loadScripts(document, 'script');</script>
 <dd><code>address</code> - the account address</dd>
 <dt>Returns:</dt>
 <dd>the balance in Wei</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="subscribeToNewHeads(java.util.function.Consumer)">
+<h3>subscribeToNewHeads</h3>
+<div class="member-signature"><span class="return-type"><a href="Subscription.html" title="interface in io.brane.rpc">Subscription</a></span>&nbsp;<span class="element-name">subscribeToNewHeads</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../core/model/BlockHeader.html" title="class in io.brane.core.model">BlockHeader</a>&gt;&nbsp;callback)</span></div>
+<div class="block">Subscribes to new block headers.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>callback</code> - the callback to invoke when a new block header is received</dd>
+<dt>Returns:</dt>
+<dd>the subscription handle</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="subscribeToLogs(io.brane.rpc.LogFilter,java.util.function.Consumer)">
+<h3>subscribeToLogs</h3>
+<div class="member-signature"><span class="return-type"><a href="Subscription.html" title="interface in io.brane.rpc">Subscription</a></span>&nbsp;<span class="element-name">subscribeToLogs</span><wbr><span class="parameters">(<a href="LogFilter.html" title="class in io.brane.rpc">LogFilter</a>&nbsp;filter,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/function/Consumer.html" title="class or interface in java.util.function" class="external-link">Consumer</a>&lt;<a href="../core/model/LogEntry.html" title="class in io.brane.core.model">LogEntry</a>&gt;&nbsp;callback)</span></div>
+<div class="block">Subscribes to logs matching the given filter.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>filter</code> - the log filter criteria</dd>
+<dd><code>callback</code> - the callback to invoke when a log is received</dd>
+<dt>Returns:</dt>
+<dd>the subscription handle</dd>
 </dl>
 </section>
 </li>

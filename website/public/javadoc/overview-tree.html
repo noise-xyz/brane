@@ -51,6 +51,7 @@ loadScripts(document, 'script');</script>
 </div>
 <span class="package-hierarchy-label">Package Hierarchies:</span>
 <ul class="horizontal contents-list">
+<li><a href="io/brane/benchmark/package-tree.html">io.brane.benchmark</a>, </li>
 <li><a href="io/brane/contract/package-tree.html">io.brane.contract</a>, </li>
 <li><a href="io/brane/core/package-tree.html">io.brane.core</a>, </li>
 <li><a href="io/brane/core/abi/package-tree.html">io.brane.core.abi</a>, </li>
@@ -65,7 +66,8 @@ loadScripts(document, 'script');</script>
 <li><a href="io/brane/primitives/package-tree.html">io.brane.primitives</a>, </li>
 <li><a href="io/brane/primitives/rlp/package-tree.html">io.brane.primitives.rlp</a>, </li>
 <li><a href="io/brane/rpc/package-tree.html">io.brane.rpc</a>, </li>
-<li><a href="io/brane/rpc/internal/package-tree.html">io.brane.rpc.internal</a></li>
+<li><a href="io/brane/rpc/internal/package-tree.html">io.brane.rpc.internal</a>, </li>
+<li><a href="io/brane/smoke/package-tree.html">io.brane.smoke</a></li>
 </ul>
 <section class="hierarchy">
 <h2 title="Class Hierarchy">Class Hierarchy</h2>
@@ -82,6 +84,7 @@ loadScripts(document, 'script');</script>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/BranePublicClient.Builder.html" class="type-name-link" title="class in io.brane.rpc">BranePublicClient.Builder</a></li>
 <li class="circle">io.brane.core.chain.<a href="io/brane/core/chain/ChainProfiles.html" class="type-name-link" title="class in io.brane.core.chain">ChainProfiles</a></li>
 <li class="circle">io.brane.core.model.<a href="io/brane/core/model/Chains.html" class="type-name-link" title="class in io.brane.core.model">Chains</a></li>
+<li class="circle">io.brane.benchmark.<a href="io/brane/benchmark/ComprehensiveBenchmark.html" class="type-name-link" title="class in io.brane.benchmark">ComprehensiveBenchmark</a></li>
 <li class="circle">io.brane.contract.<a href="io/brane/contract/Contract.html" class="type-name-link" title="class in io.brane.contract">Contract</a></li>
 <li class="circle">io.brane.core.<a href="io/brane/core/DebugLogger.html" class="type-name-link" title="class in io.brane.core">DebugLogger</a></li>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" class="type-name-link" title="class in io.brane.rpc">DefaultWalletClient</a> (implements io.brane.rpc.<a href="io/brane/rpc/WalletClient.html" title="interface in io.brane.rpc">WalletClient</a>)</li>
@@ -97,20 +100,22 @@ loadScripts(document, 'script');</script>
 <li class="circle">io.brane.core.builder.<a href="io/brane/core/builder/LegacyBuilder.html" class="type-name-link" title="class in io.brane.core.builder">LegacyBuilder</a> (implements io.brane.core.builder.<a href="io/brane/core/builder/TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;T&gt;)</li>
 <li class="circle">io.brane.core.<a href="io/brane/core/LogFormatter.html" class="type-name-link" title="class in io.brane.core">LogFormatter</a></li>
 <li class="circle">io.brane.core.<a href="io/brane/core/LogSanitizer.html" class="type-name-link" title="class in io.brane.core">LogSanitizer</a></li>
+<li class="circle">io.brane.benchmark.<a href="io/brane/benchmark/ManualBenchmark.html" class="type-name-link" title="class in io.brane.benchmark">ManualBenchmark</a></li>
 <li class="circle">io.brane.core.abi.<a href="io/brane/core/abi/PackedSizeCalculator.html" class="type-name-link" title="class in io.brane.core.abi">PackedSizeCalculator</a></li>
 <li class="circle">io.brane.core.crypto.<a href="io/brane/core/crypto/PrivateKey.html" class="type-name-link" title="class in io.brane.core.crypto">PrivateKey</a></li>
-<li class="circle">io.brane.contract.<a href="io/brane/contract/PrivateKeySigner.html" class="type-name-link" title="class in io.brane.contract">PrivateKeySigner</a> (implements io.brane.contract.<a href="io/brane/contract/Signer.html" title="interface in io.brane.contract">Signer</a>)</li>
-<li class="circle">io.brane.rpc.<a href="io/brane/rpc/PrivateKeyTransactionSigner.html" class="type-name-link" title="class in io.brane.rpc">PrivateKeyTransactionSigner</a> (implements io.brane.rpc.<a href="io/brane/rpc/TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a>)</li>
+<li class="circle">io.brane.core.crypto.<a href="io/brane/core/crypto/PrivateKeySigner.html" class="type-name-link" title="class in io.brane.core.crypto">PrivateKeySigner</a> (implements io.brane.core.crypto.<a href="io/brane/core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a>)</li>
 <li class="circle">io.brane.contract.<a href="io/brane/contract/ReadOnlyContract.html" class="type-name-link" title="class in io.brane.contract">ReadOnlyContract</a>
 <ul>
 <li class="circle">io.brane.contract.<a href="io/brane/contract/ReadWriteContract.html" class="type-name-link" title="class in io.brane.contract">ReadWriteContract</a></li>
 </ul>
 </li>
+<li class="circle">io.brane.benchmark.<a href="io/brane/benchmark/RealWorldLatencyTest.html" class="type-name-link" title="class in io.brane.benchmark">RealWorldLatencyTest</a></li>
 <li class="circle">io.brane.core.<a href="io/brane/core/RevertDecoder.html" class="type-name-link" title="class in io.brane.core">RevertDecoder</a></li>
 <li class="circle">io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/Rlp.html" class="type-name-link" title="class in io.brane.primitives.rlp">Rlp</a></li>
 <li class="circle">io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/RlpNumeric.html" class="type-name-link" title="class in io.brane.primitives.rlp">RlpNumeric</a></li>
 <li class="circle">io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/RlpString.html" class="type-name-link" title="class in io.brane.primitives.rlp">RlpString</a> (implements io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/RlpItem.html" title="interface in io.brane.primitives.rlp">RlpItem</a>)</li>
 <li class="circle">io.brane.rpc.internal.<a href="io/brane/rpc/internal/RpcUtils.html" class="type-name-link" title="class in io.brane.rpc.internal">RpcUtils</a></li>
+<li class="circle">io.brane.smoke.<a href="io/brane/smoke/SmokeApp.html" class="type-name-link" title="class in io.brane.smoke">SmokeApp</a></li>
 <li class="circle">java.lang.<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Throwable.html" class="type-name-link external-link" title="class or interface in java.lang">Throwable</a> (implements java.io.<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a>)
 <ul>
 <li class="circle">java.lang.<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Exception.html" class="type-name-link external-link" title="class or interface in java.lang">Exception</a>
@@ -139,6 +144,9 @@ loadScripts(document, 'script');</script>
 </ul>
 </li>
 <li class="circle">io.brane.core.utils.<a href="io/brane/core/utils/Topics.html" class="type-name-link" title="class in io.brane.core.utils">Topics</a></li>
+<li class="circle">io.brane.benchmark.<a href="io/brane/benchmark/WebSocketBenchmark.html" class="type-name-link" title="class in io.brane.benchmark">WebSocketBenchmark</a></li>
+<li class="circle">io.brane.rpc.<a href="io/brane/rpc/WebSocketProvider.html" class="type-name-link" title="class in io.brane.rpc">WebSocketProvider</a> (implements java.lang.<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/AutoCloseable.html" title="class or interface in java.lang" class="external-link">AutoCloseable</a>, io.brane.rpc.<a href="io/brane/rpc/BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a>)</li>
+<li class="circle">io.brane.rpc.<a href="io/brane/rpc/WebSocketProvider.RequestEvent.html" class="type-name-link" title="class in io.brane.rpc">WebSocketProvider.RequestEvent</a></li>
 </ul>
 </li>
 </ul>
@@ -153,8 +161,9 @@ loadScripts(document, 'script');</script>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/Client.html" class="type-name-link" title="interface in io.brane.rpc">Client</a></li>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/PublicClient.html" class="type-name-link" title="interface in io.brane.rpc">PublicClient</a></li>
 <li class="circle">io.brane.primitives.rlp.<a href="io/brane/primitives/rlp/RlpItem.html" class="type-name-link" title="interface in io.brane.primitives.rlp">RlpItem</a></li>
-<li class="circle">io.brane.contract.<a href="io/brane/contract/Signer.html" class="type-name-link" title="interface in io.brane.contract">Signer</a></li>
-<li class="circle">io.brane.rpc.<a href="io/brane/rpc/TransactionSigner.html" class="type-name-link" title="interface in io.brane.rpc">TransactionSigner</a></li>
+<li class="circle">io.brane.core.crypto.<a href="io/brane/core/crypto/Signer.html" class="type-name-link" title="interface in io.brane.core.crypto">Signer</a></li>
+<li class="circle">io.brane.smoke.<a href="io/brane/smoke/SmokeApp.Erc20.html" class="type-name-link" title="interface in io.brane.smoke">SmokeApp.Erc20</a></li>
+<li class="circle">io.brane.rpc.<a href="io/brane/rpc/Subscription.html" class="type-name-link" title="interface in io.brane.rpc">Subscription</a></li>
 <li class="circle">io.brane.core.builder.<a href="io/brane/core/builder/TxBuilder.html" class="type-name-link" title="interface in io.brane.core.builder">TxBuilder</a>&lt;T&gt;</li>
 <li class="circle">io.brane.core.abi.<a href="io/brane/core/abi/TypeSchema.html" class="type-name-link" title="interface in io.brane.core.abi">TypeSchema</a></li>
 <li class="circle">io.brane.core.tx.<a href="io/brane/core/tx/UnsignedTransaction.html" class="type-name-link" title="interface in io.brane.core.tx">UnsignedTransaction</a></li>
@@ -195,6 +204,7 @@ loadScripts(document, 'script');</script>
 <li class="circle">io.brane.core.types.<a href="io/brane/core/types/Hash.html" class="type-name-link" title="class in io.brane.core.types">Hash</a></li>
 <li class="circle">io.brane.core.abi.<a href="io/brane/core/abi/Int.html" class="type-name-link" title="class in io.brane.core.abi">Int</a> (implements io.brane.core.abi.<a href="io/brane/core/abi/AbiType.html" title="interface in io.brane.core.abi">AbiType</a>)</li>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/JsonRpcError.html" class="type-name-link" title="class in io.brane.rpc">JsonRpcError</a></li>
+<li class="circle">io.brane.rpc.<a href="io/brane/rpc/JsonRpcNotification.html" class="type-name-link" title="class in io.brane.rpc">JsonRpcNotification</a></li>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/JsonRpcRequest.html" class="type-name-link" title="class in io.brane.rpc">JsonRpcRequest</a></li>
 <li class="circle">io.brane.rpc.<a href="io/brane/rpc/JsonRpcResponse.html" class="type-name-link" title="class in io.brane.rpc">JsonRpcResponse</a></li>
 <li class="circle">io.brane.core.tx.<a href="io/brane/core/tx/LegacyTransaction.html" class="type-name-link" title="class in io.brane.core.tx">LegacyTransaction</a> (implements io.brane.core.tx.<a href="io/brane/core/tx/UnsignedTransaction.html" title="interface in io.brane.core.tx">UnsignedTransaction</a>)</li>

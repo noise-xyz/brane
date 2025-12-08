@@ -39,7 +39,8 @@
         {
             "group": "Providers & Chains",
             "pages": [
-                "providers/configuration"
+                "providers/configuration",
+                "providers/websocket"
             ]
         },
         {

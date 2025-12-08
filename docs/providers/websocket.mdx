@@ -1,0 +1,161 @@
+---
+title: WebSocket Provider
+description: 'Real-time blockchain communication with WebSocket.'
+---
+
+Brane's `WebSocketProvider` enables persistent connections for real-time subscriptions and lower-latency RPC calls.
+
+## Basic Usage
+
+```java
+import io.brane.rpc.WebSocketProvider;
+import io.brane.rpc.PublicClient;
+
+// Connect to a WebSocket endpoint
+var provider = WebSocketProvider.create("wss://ethereum.publicnode.com");
+var client = PublicClient.from(provider);
+
+// Use like any other provider
+var blockNumber = client.getBlockNumber();
+
+// Always close when done
+provider.close();
+```
+
+<Tip>
+Use `wss://` for secure connections. The provider automatically handles SSL/TLS.
+</Tip>
+
+## Subscriptions
+
+WebSocket enables real-time event subscriptions via `eth_subscribe`.
+
+### New Block Headers
+
+Subscribe to new blocks as they are mined:
+
+```java
+String subscriptionId = provider.subscribe("newHeads", null, event -> {
+    System.out.println("New block: " + event);
+});
+
+// Later, unsubscribe
+provider.unsubscribe(subscriptionId);
+```
+
+### Contract Event Logs
+
+Subscribe to specific contract events:
+
+```java
+import io.brane.core.types.Address;
+import java.util.List;
+import java.util.Map;
+
+// Filter for Transfer events on USDC
+Map<String, Object> filter = Map.of(
+    "address", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "topics", List.of("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+);
+
+String subscriptionId = provider.subscribe("logs", List.of(filter), event -> {
+    System.out.println("Transfer detected: " + event);
+});
+```
+
+### Pending Transactions
+
+Monitor the mempool for new pending transactions:
+
+```java
+String subscriptionId = provider.subscribe("newPendingTransactions", null, event -> {
+    System.out.println("Pending tx: " + event);
+});
+```
+
+<Warning>
+Callbacks are invoked on the Netty I/O thread. Avoid blocking operations in callbacks to prevent I/O starvation.
+</Warning>
+
+## High-Performance Batching
+
+For high-throughput scenarios, use `sendAsyncBatch()` which uses an LMAX Disruptor ring buffer for optimal batching:
+
+```java
+import java.util.concurrent.CompletableFuture;
+import java.util.List;
+
+// Fire many requests in rapid succession
+CompletableFuture<?>[] futures = new CompletableFuture[1000];
+for (int i = 0; i < 1000; i++) {
+    futures[i] = provider.sendAsyncBatch("eth_blockNumber", List.of());
+}
+
+// Wait for all responses
+CompletableFuture.allOf(futures).join();
+```
+
+This batches network writes together, reducing syscall overhead.
+
+## Async vs Batch Methods
+
+| Method | Use Case | Latency | Throughput |
+|--------|----------|---------|------------|
+| `sendAsync()` | Individual requests | ✅ Optimal | Good |
+| `sendAsyncBatch()` | Bulk requests | Good | ✅ Optimal |
+
+## Connection Handling
+
+The provider includes built-in reconnection logic:
+
+```java
+// Automatic reconnection on disconnect (built-in)
+var provider = WebSocketProvider.create("wss://...");
+
+// Manual close
+provider.close();
+```
+
+## Integration with Clients
+
+WebSocket providers work seamlessly with `PublicClient` and `WalletClient`:
+
+```java
+import io.brane.rpc.WebSocketProvider;
+import io.brane.rpc.PublicClient;
+import io.brane.rpc.DefaultWalletClient;
+import io.brane.core.crypto.PrivateKeySigner;
+import io.brane.core.chain.ChainProfiles;
+import io.brane.core.builder.TxBuilder;
+import io.brane.core.types.Address;
+import io.brane.core.types.Wei;
+
+var provider = WebSocketProvider.create("wss://ethereum.publicnode.com");
+var publicClient = PublicClient.from(provider);
+
+var wallet = DefaultWalletClient.create(
+    provider,
+    publicClient,
+    new PrivateKeySigner("0x..."),
+    ChainProfiles.ETH_MAINNET
+);
+
+// Create a transaction request
+var request = TxBuilder.eip1559()
+    .to(new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"))
+    .value(Wei.fromEther("0.01"))
+    .build();
+
+// Send transactions over WebSocket
+var receipt = wallet.sendTransactionAndWait(request, 60_000, 1_000);
+```
+
+## When to Use WebSocket
+
+| Scenario | Recommended |
+|----------|-------------|
+| Real-time subscriptions | ✅ WebSocket |
+| High-frequency trading | ✅ WebSocket |
+| Simple read operations | HTTP or WebSocket |
+| Serverless/Lambda | HTTP |
+| Long-running services | ✅ WebSocket |

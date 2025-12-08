@@ -115,12 +115,14 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/error/ChainMismatchException.html#actual()" class="member-name-link">actual()</a> - Method in exception class io.brane.core.error.<a href="io/brane/core/error/ChainMismatchException.html" title="class in io.brane.core.error">ChainMismatchException</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/brane/contract/PrivateKeySigner.html#address()" class="member-name-link">address()</a> - Method in class io.brane.contract.<a href="io/brane/contract/PrivateKeySigner.html" title="class in io.brane.contract">PrivateKeySigner</a></dt>
-<dd>&nbsp;</dd>
 <dt><a href="io/brane/contract/ReadOnlyContract.html#address()" class="member-name-link">address()</a> - Method in class io.brane.contract.<a href="io/brane/contract/ReadOnlyContract.html" title="class in io.brane.contract">ReadOnlyContract</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/brane/contract/Signer.html#address()" class="member-name-link">address()</a> - Method in interface io.brane.contract.<a href="io/brane/contract/Signer.html" title="interface in io.brane.contract">Signer</a></dt>
+<dt><a href="io/brane/core/crypto/PrivateKeySigner.html#address()" class="member-name-link">address()</a> - Method in class io.brane.core.crypto.<a href="io/brane/core/crypto/PrivateKeySigner.html" title="class in io.brane.core.crypto">PrivateKeySigner</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/core/crypto/Signer.html#address()" class="member-name-link">address()</a> - Method in interface io.brane.core.crypto.<a href="io/brane/core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a></dt>
+<dd>
+<div class="block">Returns the address associated with this signer.</div>
+</dd>
 <dt><a href="io/brane/core/model/AccessListEntry.html#address()" class="member-name-link">address()</a> - Method in class io.brane.core.model.<a href="io/brane/core/model/AccessListEntry.html" title="class in io.brane.core.model">AccessListEntry</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/model/LogEntry.html#address()" class="member-name-link">address()</a> - Method in record class io.brane.core.model.<a href="io/brane/core/model/LogEntry.html" title="class in io.brane.core.model">LogEntry</a></dt>
@@ -130,10 +132,6 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/brane/rpc/LogFilter.html#address()" class="member-name-link">address()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/LogFilter.html" title="class in io.brane.rpc">LogFilter</a></dt>
 <dd>
 <div class="block">Returns the value of the <a href="./io/brane/rpc/LogFilter.html#param-address"><code>address</code></a> record component.</div>
-</dd>
-<dt><a href="io/brane/rpc/PrivateKeyTransactionSigner.html#address()" class="member-name-link">address()</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/PrivateKeyTransactionSigner.html" title="class in io.brane.rpc">PrivateKeyTransactionSigner</a></dt>
-<dd>
-<div class="block">Returns the Ethereum address for this signer.</div>
 </dd>
 <dt><a href="io/brane/core/types/Address.html" class="type-name-link" title="class in io.brane.core.types">Address</a> - Record Class in <a href="io/brane/core/types/package-summary.html">io.brane.core.types</a></dt>
 <dd>
@@ -194,6 +192,8 @@ loadScripts(document, 'script');</script>
 </dl>
 <h2 class="title" id="I:B">B</h2>
 <dl class="index">
+<dt><a href="io/brane/smoke/SmokeApp.Erc20.html#balanceOf(io.brane.core.types.Address)" class="member-name-link">balanceOf(Address)</a> - Method in interface io.brane.smoke.<a href="io/brane/smoke/SmokeApp.Erc20.html" title="interface in io.brane.smoke">SmokeApp.Erc20</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/core/chain/ChainProfiles.html#BASE" class="member-name-link">BASE</a> - Static variable in class io.brane.core.chain.<a href="io/brane/core/chain/ChainProfiles.html" title="class in io.brane.core.chain">ChainProfiles</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/chain/ChainProfiles.html#BASE_SEPOLIA" class="member-name-link">BASE_SEPOLIA</a> - Static variable in class io.brane.core.chain.<a href="io/brane/core/chain/ChainProfiles.html" title="class in io.brane.core.chain">ChainProfiles</a></dt>
@@ -405,8 +405,14 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Remove a <code>0x</code> prefix from the given string if present.</div>
 </dd>
+<dt><a href="io/brane/rpc/WebSocketProvider.RequestEvent.html#clear()" class="member-name-link">clear()</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/WebSocketProvider.RequestEvent.html" title="class in io.brane.rpc">WebSocketProvider.RequestEvent</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/Client.html" class="type-name-link" title="interface in io.brane.rpc">Client</a> - Interface in <a href="io/brane/rpc/package-summary.html">io.brane.rpc</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/WebSocketProvider.html#close()" class="member-name-link">close()</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/WebSocketProvider.html" title="class in io.brane.rpc">WebSocketProvider</a></dt>
+<dd>
+<div class="block">Closes the WebSocket connection and releases all resources.</div>
+</dd>
 <dt><a href="io/brane/core/error/RpcException.html#code()" class="member-name-link">code()</a> - Method in exception class io.brane.core.error.<a href="io/brane/core/error/RpcException.html" title="class in io.brane.core.error">RpcException</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/JsonRpcError.html#code()" class="member-name-link">code()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcError.html" title="class in io.brane.rpc">JsonRpcError</a></dt>
@@ -423,6 +429,12 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns the value of the <code>components</code> record component.</div>
 </dd>
+<dt><a href="io/brane/benchmark/ComprehensiveBenchmark.html" class="type-name-link" title="class in io.brane.benchmark">ComprehensiveBenchmark</a> - Class in <a href="io/brane/benchmark/package-summary.html">io.brane.benchmark</a></dt>
+<dd>
+<div class="block">Comprehensive benchmark comparing Brane WebSocketProvider vs Web3j.</div>
+</dd>
+<dt><a href="io/brane/benchmark/ComprehensiveBenchmark.html#%3Cinit%3E()" class="member-name-link">ComprehensiveBenchmark()</a> - Constructor for class io.brane.benchmark.<a href="io/brane/benchmark/ComprehensiveBenchmark.html" title="class in io.brane.benchmark">ComprehensiveBenchmark</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/RpcConfig.html#connectTimeout()" class="member-name-link">connectTimeout()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/RpcConfig.html" title="class in io.brane.rpc">RpcConfig</a></dt>
 <dd>
 <div class="block">Returns the value of the <code>connectTimeout</code> record component.</div>
@@ -453,12 +465,20 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Soft coral color - used for error indicators (replaces traditional red)</div>
 </dd>
-<dt><a href="io/brane/rpc/DefaultWalletClient.html#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address)" class="member-name-link">create(BraneProvider, PublicClient, TransactionSigner, Address)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
+<dt><a href="io/brane/rpc/DefaultWalletClient.html#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer)" class="member-name-link">create(BraneProvider, PublicClient, Signer)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/brane/rpc/DefaultWalletClient.html#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,io.brane.core.chain.ChainProfile)" class="member-name-link">create(BraneProvider, PublicClient, TransactionSigner, Address, ChainProfile)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
+<dt><a href="io/brane/rpc/DefaultWalletClient.html#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.chain.ChainProfile)" class="member-name-link">create(BraneProvider, PublicClient, Signer, ChainProfile)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/brane/rpc/DefaultWalletClient.html#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)" class="member-name-link">create(BraneProvider, PublicClient, TransactionSigner, Address, ChainProfile, BigInteger, BigInteger)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
+<dt><a href="io/brane/rpc/DefaultWalletClient.html#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address)" class="member-name-link">create(BraneProvider, PublicClient, Signer, Address)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/DefaultWalletClient.html#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,io.brane.core.chain.ChainProfile)" class="member-name-link">create(BraneProvider, PublicClient, Signer, Address, ChainProfile)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/DefaultWalletClient.html#create(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)" class="member-name-link">create(BraneProvider, PublicClient, Signer, Address, ChainProfile, BigInteger, BigInteger)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/WebSocketProvider.html#create(java.lang.String)" class="member-name-link">create(String)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/WebSocketProvider.html" title="class in io.brane.rpc">WebSocketProvider</a></dt>
+<dd>
+<div class="block">Creates a new WebSocketProvider and connects to the specified URL.</div>
+</dd>
 <dt><a href="io/brane/core/model/TransactionReceipt.html#cumulativeGasUsed()" class="member-name-link">cumulativeGasUsed()</a> - Method in record class io.brane.core.model.<a href="io/brane/core/model/TransactionReceipt.html" title="class in io.brane.core.model">TransactionReceipt</a></dt>
 <dd>
 <div class="block">Returns the value of the <a href="./io/brane/core/model/TransactionReceipt.html#param-cumulativeGasUsed"><code>cumulativeGasUsed</code></a> record component.</div>
@@ -882,6 +902,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Indicates whether some other object is "equal to" this one.</div>
 </dd>
+<dt><a href="io/brane/rpc/JsonRpcNotification.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcNotification.html" title="class in io.brane.rpc">JsonRpcNotification</a></dt>
+<dd>
+<div class="block">Indicates whether some other object is "equal to" this one.</div>
+</dd>
 <dt><a href="io/brane/rpc/JsonRpcRequest.html#equals(java.lang.Object)" class="member-name-link">equals(Object)</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcRequest.html" title="class in io.brane.rpc">JsonRpcRequest</a></dt>
 <dd>
 <div class="block">Indicates whether some other object is "equal to" this one.</div>
@@ -1025,11 +1049,11 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Creates a new <a href="io/brane/rpc/PublicClient.html" title="interface in io.brane.rpc"><code>PublicClient</code></a> using the given provider.</div>
 </dd>
-<dt><a href="io/brane/rpc/DefaultWalletClient.html#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,long)" class="member-name-link">from(BraneProvider, PublicClient, TransactionSigner, Address, long)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
+<dt><a href="io/brane/rpc/DefaultWalletClient.html#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,long)" class="member-name-link">from(BraneProvider, PublicClient, Signer, Address, long)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/brane/rpc/DefaultWalletClient.html#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile)" class="member-name-link">from(BraneProvider, PublicClient, TransactionSigner, Address, long, ChainProfile)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
+<dt><a href="io/brane/rpc/DefaultWalletClient.html#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile)" class="member-name-link">from(BraneProvider, PublicClient, Signer, Address, long, ChainProfile)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/brane/rpc/DefaultWalletClient.html#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.rpc.TransactionSigner,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)" class="member-name-link">from(BraneProvider, PublicClient, TransactionSigner, Address, long, ChainProfile, BigInteger, BigInteger)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
+<dt><a href="io/brane/rpc/DefaultWalletClient.html#from(io.brane.rpc.BraneProvider,io.brane.rpc.PublicClient,io.brane.core.crypto.Signer,io.brane.core.types.Address,long,io.brane.core.chain.ChainProfile,java.math.BigInteger,java.math.BigInteger)" class="member-name-link">from(BraneProvider, PublicClient, Signer, Address, long, ChainProfile, BigInteger, BigInteger)</a> - Static method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/utils/Topics.html#fromAddress(io.brane.core.types.Address)" class="member-name-link">fromAddress(Address)</a> - Static method in class io.brane.core.utils.<a href="io/brane/core/utils/Topics.html" title="class in io.brane.core.utils">Topics</a></dt>
 <dd>
@@ -1327,6 +1351,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns a hash code value for this object.</div>
 </dd>
+<dt><a href="io/brane/rpc/JsonRpcNotification.html#hashCode()" class="member-name-link">hashCode()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcNotification.html" title="class in io.brane.rpc">JsonRpcNotification</a></dt>
+<dd>
+<div class="block">Returns a hash code value for this object.</div>
+</dd>
 <dt><a href="io/brane/rpc/JsonRpcRequest.html#hashCode()" class="member-name-link">hashCode()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcRequest.html" title="class in io.brane.rpc">JsonRpcRequest</a></dt>
 <dd>
 <div class="block">Returns a hash code value for this object.</div>
@@ -1395,6 +1423,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns the value of the <code>id</code> record component.</div>
 </dd>
+<dt><a href="io/brane/rpc/Subscription.html#id()" class="member-name-link">id()</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/Subscription.html" title="interface in io.brane.rpc">Subscription</a></dt>
+<dd>
+<div class="block">Returns the unique identifier for this subscription.</div>
+</dd>
 <dt><a href="io/brane/core/AnsiColors.html#INDIGO" class="member-name-link">INDIGO</a> - Static variable in class io.brane.core.<a href="io/brane/core/AnsiColors.html" title="class in io.brane.core">AnsiColors</a></dt>
 <dd>
 <div class="block">Indigo color - used for informational messages (replaces traditional blue)</div>
@@ -1427,6 +1459,8 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/error/InvalidSenderException.html#%3Cinit%3E(java.lang.String,java.lang.Throwable)" class="member-name-link">InvalidSenderException(String, Throwable)</a> - Constructor for exception class io.brane.core.error.<a href="io/brane/core/error/InvalidSenderException.html" title="class in io.brane.core.error">InvalidSenderException</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/benchmark/package-summary.html">io.brane.benchmark</a> - package io.brane.benchmark</dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/contract/package-summary.html">io.brane.contract</a> - package io.brane.contract</dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/package-summary.html">io.brane.core</a> - package io.brane.core</dt>
@@ -1456,6 +1490,8 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/brane/rpc/package-summary.html">io.brane.rpc</a> - package io.brane.rpc</dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/internal/package-summary.html">io.brane.rpc.internal</a> - package io.brane.rpc.internal</dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/smoke/package-summary.html">io.brane.smoke</a> - package io.brane.smoke</dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/error/RpcException.html#isBlockRangeTooLarge()" class="member-name-link">isBlockRangeTooLarge()</a> - Method in exception class io.brane.core.error.<a href="io/brane/core/error/RpcException.html" title="class in io.brane.core.error">RpcException</a></dt>
 <dd>&nbsp;</dd>
@@ -1534,6 +1570,10 @@ loadScripts(document, 'script');</script>
 </dl>
 <h2 class="title" id="I:J">J</h2>
 <dl class="index">
+<dt><a href="io/brane/rpc/JsonRpcNotification.html#jsonrpc()" class="member-name-link">jsonrpc()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcNotification.html" title="class in io.brane.rpc">JsonRpcNotification</a></dt>
+<dd>
+<div class="block">Returns the value of the <code>jsonrpc</code> record component.</div>
+</dd>
 <dt><a href="io/brane/rpc/JsonRpcRequest.html#jsonrpc()" class="member-name-link">jsonrpc()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcRequest.html" title="class in io.brane.rpc">JsonRpcRequest</a></dt>
 <dd>
 <div class="block">Returns the value of the <code>jsonrpc</code> record component.</div>
@@ -1547,6 +1587,14 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/brane/rpc/JsonRpcError.html#%3Cinit%3E(int,java.lang.String,java.lang.Object)" class="member-name-link">JsonRpcError(int, String, Object)</a> - Constructor for record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcError.html" title="class in io.brane.rpc">JsonRpcError</a></dt>
 <dd>
 <div class="block">Creates an instance of a <code>JsonRpcError</code> record class.</div>
+</dd>
+<dt><a href="io/brane/rpc/JsonRpcNotification.html" class="type-name-link" title="class in io.brane.rpc">JsonRpcNotification</a> - Record Class in <a href="io/brane/rpc/package-summary.html">io.brane.rpc</a></dt>
+<dd>
+<div class="block">Represents a JSON-RPC notification (a request without an ID).</div>
+</dd>
+<dt><a href="io/brane/rpc/JsonRpcNotification.html#%3Cinit%3E(java.lang.String,java.lang.String,java.lang.Object)" class="member-name-link">JsonRpcNotification(String, String, Object)</a> - Constructor for record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcNotification.html" title="class in io.brane.rpc">JsonRpcNotification</a></dt>
+<dd>
+<div class="block">Creates an instance of a <code>JsonRpcNotification</code> record class.</div>
 </dd>
 <dt><a href="io/brane/rpc/JsonRpcRequest.html" class="type-name-link" title="class in io.brane.rpc">JsonRpcRequest</a> - Record Class in <a href="io/brane/rpc/package-summary.html">io.brane.rpc</a></dt>
 <dd>&nbsp;</dd>
@@ -1643,7 +1691,21 @@ loadScripts(document, 'script');</script>
 </dl>
 <h2 class="title" id="I:M">M</h2>
 <dl class="index">
+<dt><a href="io/brane/benchmark/ComprehensiveBenchmark.html#main(java.lang.String%5B%5D)" class="member-name-link">main(String[])</a> - Static method in class io.brane.benchmark.<a href="io/brane/benchmark/ComprehensiveBenchmark.html" title="class in io.brane.benchmark">ComprehensiveBenchmark</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/benchmark/ManualBenchmark.html#main(java.lang.String%5B%5D)" class="member-name-link">main(String[])</a> - Static method in class io.brane.benchmark.<a href="io/brane/benchmark/ManualBenchmark.html" title="class in io.brane.benchmark">ManualBenchmark</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/benchmark/RealWorldLatencyTest.html#main(java.lang.String%5B%5D)" class="member-name-link">main(String[])</a> - Static method in class io.brane.benchmark.<a href="io/brane/benchmark/RealWorldLatencyTest.html" title="class in io.brane.benchmark">RealWorldLatencyTest</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/benchmark/WebSocketBenchmark.html#main(java.lang.String%5B%5D)" class="member-name-link">main(String[])</a> - Static method in class io.brane.benchmark.<a href="io/brane/benchmark/WebSocketBenchmark.html" title="class in io.brane.benchmark">WebSocketBenchmark</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/smoke/SmokeApp.html#main(java.lang.String%5B%5D)" class="member-name-link">main(String[])</a> - Static method in class io.brane.smoke.<a href="io/brane/smoke/SmokeApp.html" title="class in io.brane.smoke">SmokeApp</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/core/model/Chains.html#MAINNET" class="member-name-link">MAINNET</a> - Static variable in class io.brane.core.model.<a href="io/brane/core/model/Chains.html" title="class in io.brane.core.model">Chains</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/benchmark/ManualBenchmark.html" class="type-name-link" title="class in io.brane.benchmark">ManualBenchmark</a> - Class in <a href="io/brane/benchmark/package-summary.html">io.brane.benchmark</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/benchmark/ManualBenchmark.html#%3Cinit%3E()" class="member-name-link">ManualBenchmark()</a> - Constructor for class io.brane.benchmark.<a href="io/brane/benchmark/ManualBenchmark.html" title="class in io.brane.benchmark">ManualBenchmark</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/model/TransactionRequest.html#maxFeePerGas()" class="member-name-link">maxFeePerGas()</a> - Method in record class io.brane.core.model.<a href="io/brane/core/model/TransactionRequest.html" title="class in io.brane.core.model">TransactionRequest</a></dt>
 <dd>
@@ -1672,6 +1734,10 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/brane/rpc/JsonRpcError.html#message()" class="member-name-link">message()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcError.html" title="class in io.brane.rpc">JsonRpcError</a></dt>
 <dd>
 <div class="block">Returns the value of the <code>message</code> record component.</div>
+</dd>
+<dt><a href="io/brane/rpc/JsonRpcNotification.html#method()" class="member-name-link">method()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcNotification.html" title="class in io.brane.rpc">JsonRpcNotification</a></dt>
+<dd>
+<div class="block">Returns the value of the <code>method</code> record component.</div>
 </dd>
 <dt><a href="io/brane/rpc/JsonRpcRequest.html#method()" class="member-name-link">method()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcRequest.html" title="class in io.brane.rpc">JsonRpcRequest</a></dt>
 <dd>
@@ -1793,6 +1859,10 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="io/brane/core/RevertDecoder.RevertKind.html#PANIC" class="member-name-link">PANIC</a> - Enum constant in enum class io.brane.core.<a href="io/brane/core/RevertDecoder.RevertKind.html" title="enum class in io.brane.core">RevertDecoder.RevertKind</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/JsonRpcNotification.html#params()" class="member-name-link">params()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcNotification.html" title="class in io.brane.rpc">JsonRpcNotification</a></dt>
+<dd>
+<div class="block">Returns the value of the <code>params</code> record component.</div>
+</dd>
 <dt><a href="io/brane/rpc/JsonRpcRequest.html#params()" class="member-name-link">params()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcRequest.html" title="class in io.brane.rpc">JsonRpcRequest</a></dt>
 <dd>
 <div class="block">Returns the value of the <code>params</code> record component.</div>
@@ -1805,15 +1875,11 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Ethereum private key with secp256k1 signing capabilities.</div>
 </dd>
-<dt><a href="io/brane/contract/PrivateKeySigner.html" class="type-name-link" title="class in io.brane.contract">PrivateKeySigner</a> - Class in <a href="io/brane/contract/package-summary.html">io.brane.contract</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="io/brane/contract/PrivateKeySigner.html#%3Cinit%3E(java.lang.String)" class="member-name-link">PrivateKeySigner(String)</a> - Constructor for class io.brane.contract.<a href="io/brane/contract/PrivateKeySigner.html" title="class in io.brane.contract">PrivateKeySigner</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="io/brane/rpc/PrivateKeyTransactionSigner.html" class="type-name-link" title="class in io.brane.rpc">PrivateKeyTransactionSigner</a> - Class in <a href="io/brane/rpc/package-summary.html">io.brane.rpc</a></dt>
+<dt><a href="io/brane/core/crypto/PrivateKeySigner.html" class="type-name-link" title="class in io.brane.core.crypto">PrivateKeySigner</a> - Class in <a href="io/brane/core/crypto/package-summary.html">io.brane.core.crypto</a></dt>
 <dd>
 <div class="block">Transaction signer backed by a raw private key.</div>
 </dd>
-<dt><a href="io/brane/rpc/PrivateKeyTransactionSigner.html#%3Cinit%3E(java.lang.String)" class="member-name-link">PrivateKeyTransactionSigner(String)</a> - Constructor for class io.brane.rpc.<a href="io/brane/rpc/PrivateKeyTransactionSigner.html" title="class in io.brane.rpc">PrivateKeyTransactionSigner</a></dt>
+<dt><a href="io/brane/core/crypto/PrivateKeySigner.html#%3Cinit%3E(java.lang.String)" class="member-name-link">PrivateKeySigner(String)</a> - Constructor for class io.brane.core.crypto.<a href="io/brane/core/crypto/PrivateKeySigner.html" title="class in io.brane.core.crypto">PrivateKeySigner</a></dt>
 <dd>
 <div class="block">Creates a signer from a hex-encoded private key.</div>
 </dd>
@@ -1858,6 +1924,10 @@ loadScripts(document, 'script');</script>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/contract/ReadWriteContract.html" class="type-name-link" title="class in io.brane.contract">ReadWriteContract</a> - Class in <a href="io/brane/contract/package-summary.html">io.brane.contract</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/benchmark/RealWorldLatencyTest.html" class="type-name-link" title="class in io.brane.benchmark">RealWorldLatencyTest</a> - Class in <a href="io/brane/benchmark/package-summary.html">io.brane.benchmark</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/benchmark/RealWorldLatencyTest.html#%3Cinit%3E()" class="member-name-link">RealWorldLatencyTest()</a> - Constructor for class io.brane.benchmark.<a href="io/brane/benchmark/RealWorldLatencyTest.html" title="class in io.brane.benchmark">RealWorldLatencyTest</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/core/RevertDecoder.Decoded.html#reason()" class="member-name-link">reason()</a> - Method in record class io.brane.core.<a href="io/brane/core/RevertDecoder.Decoded.html" title="class in io.brane.core">RevertDecoder.Decoded</a></dt>
 <dd>
 <div class="block">Returns the value of the <code>reason</code> record component.</div>
@@ -1870,6 +1940,8 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns the value of the <a href="./io/brane/core/model/LogEntry.html#param-removed"><code>removed</code></a> record component.</div>
 </dd>
+<dt><a href="io/brane/rpc/WebSocketProvider.RequestEvent.html#%3Cinit%3E()" class="member-name-link">RequestEvent()</a> - Constructor for class io.brane.rpc.<a href="io/brane/rpc/WebSocketProvider.RequestEvent.html" title="class in io.brane.rpc">WebSocketProvider.RequestEvent</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/core/error/RpcException.html#requestId()" class="member-name-link">requestId()</a> - Method in exception class io.brane.core.error.<a href="io/brane/core/error/RpcException.html" title="class in io.brane.core.error">RpcException</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/AnsiColors.html#RESET" class="member-name-link">RESET</a> - Static variable in class io.brane.core.<a href="io/brane/core/AnsiColors.html" title="class in io.brane.core">AnsiColors</a></dt>
@@ -1936,6 +2008,8 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Exception thrown when a JSON-RPC request to an Ethereum node fails.</div>
 </dd>
+<dt><a href="io/brane/core/error/RpcException.html#%3Cinit%3E(int,java.lang.String,java.lang.String)" class="member-name-link">RpcException(int, String, String)</a> - Constructor for exception class io.brane.core.error.<a href="io/brane/core/error/RpcException.html" title="class in io.brane.core.error">RpcException</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/core/error/RpcException.html#%3Cinit%3E(int,java.lang.String,java.lang.String,java.lang.Long)" class="member-name-link">RpcException(int, String, String, Long)</a> - Constructor for exception class io.brane.core.error.<a href="io/brane/core/error/RpcException.html" title="class in io.brane.core.error">RpcException</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/error/RpcException.html#%3Cinit%3E(int,java.lang.String,java.lang.String,java.lang.Long,java.lang.Throwable)" class="member-name-link">RpcException(int, String, String, Long, Throwable)</a> - Constructor for exception class io.brane.core.error.<a href="io/brane/core/error/RpcException.html" title="class in io.brane.core.error">RpcException</a></dt>
@@ -1965,8 +2039,20 @@ loadScripts(document, 'script');</script>
 </dd>
 <dt><a href="io/brane/rpc/HttpBraneProvider.html#send(java.lang.String,java.util.List)" class="member-name-link">send(String, List&lt;?&gt;)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/HttpBraneProvider.html" title="class in io.brane.rpc">HttpBraneProvider</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/WebSocketProvider.html#send(java.lang.String,java.util.List)" class="member-name-link">send(String, List&lt;?&gt;)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/WebSocketProvider.html" title="class in io.brane.rpc">WebSocketProvider</a></dt>
+<dd>
+<div class="block">Sends a synchronous JSON-RPC request and blocks until the response is received.</div>
+</dd>
 <dt><a href="io/brane/contract/ReadWriteContract.html#sendAndWait(java.lang.String,long,long,java.lang.Object...)" class="member-name-link">sendAndWait(String, long, long, Object...)</a> - Method in class io.brane.contract.<a href="io/brane/contract/ReadWriteContract.html" title="class in io.brane.contract">ReadWriteContract</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/WebSocketProvider.html#sendAsync(java.lang.String,java.util.List)" class="member-name-link">sendAsync(String, List&lt;?&gt;)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/WebSocketProvider.html" title="class in io.brane.rpc">WebSocketProvider</a></dt>
+<dd>
+<div class="block">Sends an asynchronous JSON-RPC request.</div>
+</dd>
+<dt><a href="io/brane/rpc/WebSocketProvider.html#sendAsyncBatch(java.lang.String,java.util.List)" class="member-name-link">sendAsyncBatch(String, List&lt;?&gt;)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/WebSocketProvider.html" title="class in io.brane.rpc">WebSocketProvider</a></dt>
+<dd>
+<div class="block">Sends an asynchronous JSON-RPC request using the Disruptor ring buffer.</div>
+</dd>
 <dt><a href="io/brane/rpc/DefaultWalletClient.html#sendTransaction(io.brane.core.model.TransactionRequest)" class="member-name-link">sendTransaction(TransactionRequest)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/DefaultWalletClient.html" title="class in io.brane.rpc">DefaultWalletClient</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/WalletClient.html#sendTransaction(io.brane.core.model.TransactionRequest)" class="member-name-link">sendTransaction(TransactionRequest)</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/WalletClient.html" title="interface in io.brane.rpc">WalletClient</a></dt>
@@ -1980,6 +2066,8 @@ loadScripts(document, 'script');</script>
 <div class="block">Submits a transaction and waits for it to be confirmed in a block.</div>
 </dd>
 <dt><a href="io/brane/core/model/Chains.html#SEPOLIA" class="member-name-link">SEPOLIA</a> - Static variable in class io.brane.core.model.<a href="io/brane/core/model/Chains.html" title="class in io.brane.core.model">Chains</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/WebSocketProvider.RequestEvent.html#set(java.lang.String,java.util.List,long)" class="member-name-link">set(String, List&lt;?&gt;, long)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/WebSocketProvider.RequestEvent.html" title="class in io.brane.rpc">WebSocketProvider.RequestEvent</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/BraneDebug.html#setEnabled(boolean)" class="member-name-link">setEnabled(boolean)</a> - Static method in class io.brane.core.<a href="io/brane/core/BraneDebug.html" title="class in io.brane.core">BraneDebug</a></dt>
 <dd>&nbsp;</dd>
@@ -1995,12 +2083,6 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Signs a message hash and returns the signature with recovery ID.</div>
 </dd>
-<dt><a href="io/brane/rpc/PrivateKeyTransactionSigner.html#sign(io.brane.core.tx.UnsignedTransaction,long)" class="member-name-link">sign(UnsignedTransaction, long)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/PrivateKeyTransactionSigner.html" title="class in io.brane.rpc">PrivateKeyTransactionSigner</a></dt>
-<dd>&nbsp;</dd>
-<dt><a href="io/brane/rpc/TransactionSigner.html#sign(io.brane.core.tx.UnsignedTransaction,long)" class="member-name-link">sign(UnsignedTransaction, long)</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/TransactionSigner.html" title="interface in io.brane.rpc">TransactionSigner</a></dt>
-<dd>
-<div class="block">Signs a transaction and returns the hex-encoded signed envelope.</div>
-</dd>
 <dt><a href="io/brane/core/crypto/Signature.html" class="type-name-link" title="class in io.brane.core.crypto">Signature</a> - Record Class in <a href="io/brane/core/crypto/package-summary.html">io.brane.core.crypto</a></dt>
 <dd>
 <div class="block">ECDSA signature for Ethereum transactions.</div>
@@ -2009,18 +2091,26 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Creates an instance of a <code>Signature</code> record class.</div>
 </dd>
-<dt><a href="io/brane/rpc/PrivateKeyTransactionSigner.html#signature-encoding-heading" class="search-tag-link">Signature Encoding</a> - Search tag in class io.brane.rpc.PrivateKeyTransactionSigner</dt>
-<dd>Section</dd>
-<dt><a href="io/brane/contract/Signer.html" class="type-name-link" title="interface in io.brane.contract">Signer</a> - Interface in <a href="io/brane/contract/package-summary.html">io.brane.contract</a></dt>
-<dd>&nbsp;</dd>
+<dt><a href="io/brane/core/crypto/Signer.html" class="type-name-link" title="interface in io.brane.core.crypto">Signer</a> - Interface in <a href="io/brane/core/crypto/package-summary.html">io.brane.core.crypto</a></dt>
+<dd>
+<div class="block">Defines a signer capable of signing transactions and providing its address.</div>
+</dd>
 <dt><a href="io/brane/core/crypto/PrivateKey.html#signFast(byte%5B%5D)" class="member-name-link">signFast(byte[])</a> - Method in class io.brane.core.crypto.<a href="io/brane/core/crypto/PrivateKey.html" title="class in io.brane.core.crypto">PrivateKey</a></dt>
 <dd>
 <div class="block">Optimized signing that avoids public key recovery.</div>
 </dd>
-<dt><a href="io/brane/contract/PrivateKeySigner.html#signTransaction(io.brane.core.tx.UnsignedTransaction,long)" class="member-name-link">signTransaction(UnsignedTransaction, long)</a> - Method in class io.brane.contract.<a href="io/brane/contract/PrivateKeySigner.html" title="class in io.brane.contract">PrivateKeySigner</a></dt>
+<dt><a href="io/brane/core/crypto/PrivateKeySigner.html#signMessage(byte%5B%5D)" class="member-name-link">signMessage(byte[])</a> - Method in class io.brane.core.crypto.<a href="io/brane/core/crypto/PrivateKeySigner.html" title="class in io.brane.core.crypto">PrivateKeySigner</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/brane/contract/Signer.html#signTransaction(io.brane.core.tx.UnsignedTransaction,long)" class="member-name-link">signTransaction(UnsignedTransaction, long)</a> - Method in interface io.brane.contract.<a href="io/brane/contract/Signer.html" title="interface in io.brane.contract">Signer</a></dt>
+<dt><a href="io/brane/core/crypto/Signer.html#signMessage(byte%5B%5D)" class="member-name-link">signMessage(byte[])</a> - Method in interface io.brane.core.crypto.<a href="io/brane/core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a></dt>
+<dd>
+<div class="block">Signs a raw message according to EIP-191 (personal_sign).</div>
+</dd>
+<dt><a href="io/brane/core/crypto/PrivateKeySigner.html#signTransaction(io.brane.core.tx.UnsignedTransaction,long)" class="member-name-link">signTransaction(UnsignedTransaction, long)</a> - Method in class io.brane.core.crypto.<a href="io/brane/core/crypto/PrivateKeySigner.html" title="class in io.brane.core.crypto">PrivateKeySigner</a></dt>
 <dd>&nbsp;</dd>
+<dt><a href="io/brane/core/crypto/Signer.html#signTransaction(io.brane.core.tx.UnsignedTransaction,long)" class="member-name-link">signTransaction(UnsignedTransaction, long)</a> - Method in interface io.brane.core.crypto.<a href="io/brane/core/crypto/Signer.html" title="interface in io.brane.core.crypto">Signer</a></dt>
+<dd>
+<div class="block">Signs a transaction and returns the raw signature.</div>
+</dd>
 <dt><a href="io/brane/core/AnsiColors.html#SKY" class="member-name-link">SKY</a> - Static variable in class io.brane.core.<a href="io/brane/core/AnsiColors.html" title="class in io.brane.core">AnsiColors</a></dt>
 <dd>
 <div class="block">Sky blue color - used for accent elements like IDs</div>
@@ -2029,6 +2119,12 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Balanced slate gray - used for metadata and secondary information</div>
 </dd>
+<dt><a href="io/brane/smoke/SmokeApp.html" class="type-name-link" title="class in io.brane.smoke">SmokeApp</a> - Class in <a href="io/brane/smoke/package-summary.html">io.brane.smoke</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/smoke/SmokeApp.html#%3Cinit%3E()" class="member-name-link">SmokeApp()</a> - Constructor for class io.brane.smoke.<a href="io/brane/smoke/SmokeApp.html" title="class in io.brane.smoke">SmokeApp</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/smoke/SmokeApp.Erc20.html" class="type-name-link" title="interface in io.brane.smoke">SmokeApp.Erc20</a> - Interface in <a href="io/brane/smoke/package-summary.html">io.brane.smoke</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/contract/Abi.FunctionMetadata.html#stateMutability()" class="member-name-link">stateMutability()</a> - Method in record class io.brane.contract.<a href="io/brane/contract/Abi.FunctionMetadata.html" title="class in io.brane.contract">Abi.FunctionMetadata</a></dt>
 <dd>
 <div class="block">Returns the value of the <code>stateMutability</code> record component.</div>
@@ -2046,6 +2142,30 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/brane/rpc/internal/RpcUtils.html#stringValue(java.lang.Object)" class="member-name-link">stringValue(Object)</a> - Static method in class io.brane.rpc.internal.<a href="io/brane/rpc/internal/RpcUtils.html" title="class in io.brane.rpc.internal">RpcUtils</a></dt>
 <dd>
 <div class="block">Safely converts object to string, returning null for null inputs.</div>
+</dd>
+<dt><a href="io/brane/rpc/BraneProvider.html#subscribe(java.lang.String,java.util.List,java.util.function.Consumer)" class="member-name-link">subscribe(String, List&lt;?&gt;, Consumer&lt;Object&gt;)</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a></dt>
+<dd>
+<div class="block">Subscribes to real-time events.</div>
+</dd>
+<dt><a href="io/brane/rpc/WebSocketProvider.html#subscribe(java.lang.String,java.util.List,java.util.function.Consumer)" class="member-name-link">subscribe(String, List&lt;?&gt;, Consumer&lt;Object&gt;)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/WebSocketProvider.html" title="class in io.brane.rpc">WebSocketProvider</a></dt>
+<dd>
+<div class="block">Subscribes to a real-time event stream using <code>eth_subscribe</code>.</div>
+</dd>
+<dt><a href="io/brane/rpc/BranePublicClient.html#subscribeToLogs(io.brane.rpc.LogFilter,java.util.function.Consumer)" class="member-name-link">subscribeToLogs(LogFilter, Consumer&lt;LogEntry&gt;)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/BranePublicClient.html" title="class in io.brane.rpc">BranePublicClient</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/PublicClient.html#subscribeToLogs(io.brane.rpc.LogFilter,java.util.function.Consumer)" class="member-name-link">subscribeToLogs(LogFilter, Consumer&lt;LogEntry&gt;)</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/PublicClient.html" title="interface in io.brane.rpc">PublicClient</a></dt>
+<dd>
+<div class="block">Subscribes to logs matching the given filter.</div>
+</dd>
+<dt><a href="io/brane/rpc/BranePublicClient.html#subscribeToNewHeads(java.util.function.Consumer)" class="member-name-link">subscribeToNewHeads(Consumer&lt;BlockHeader&gt;)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/BranePublicClient.html" title="class in io.brane.rpc">BranePublicClient</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/PublicClient.html#subscribeToNewHeads(java.util.function.Consumer)" class="member-name-link">subscribeToNewHeads(Consumer&lt;BlockHeader&gt;)</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/PublicClient.html" title="interface in io.brane.rpc">PublicClient</a></dt>
+<dd>
+<div class="block">Subscribes to new block headers.</div>
+</dd>
+<dt><a href="io/brane/rpc/Subscription.html" class="type-name-link" title="interface in io.brane.rpc">Subscription</a> - Interface in <a href="io/brane/rpc/package-summary.html">io.brane.rpc</a></dt>
+<dd>
+<div class="block">Represents an active subscription to a real-time event stream.</div>
 </dd>
 <dt><a href="io/brane/core/AnsiColors.html#success(java.lang.String)" class="member-name-link">success(String)</a> - Static method in class io.brane.core.<a href="io/brane/core/AnsiColors.html" title="class in io.brane.core">AnsiColors</a></dt>
 <dd>
@@ -2120,6 +2240,8 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Converts Long block number to hex string with "0x" prefix, handling null.</div>
 </dd>
+<dt><a href="io/brane/core/types/Wei.html#toHexString()" class="member-name-link">toHexString()</a> - Method in record class io.brane.core.types.<a href="io/brane/core/types/Wei.html" title="class in io.brane.core.types">Wei</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/core/model/TransactionRequest.html#toOpt()" class="member-name-link">toOpt()</a> - Method in record class io.brane.core.model.<a href="io/brane/core/model/TransactionRequest.html" title="class in io.brane.core.model">TransactionRequest</a></dt>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/core/model/LogEntry.html#topics()" class="member-name-link">topics()</a> - Method in record class io.brane.core.model.<a href="io/brane/core/model/LogEntry.html" title="class in io.brane.core.model">LogEntry</a></dt>
@@ -2284,6 +2406,10 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Returns a string representation of this record class.</div>
 </dd>
+<dt><a href="io/brane/rpc/JsonRpcNotification.html#toString()" class="member-name-link">toString()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcNotification.html" title="class in io.brane.rpc">JsonRpcNotification</a></dt>
+<dd>
+<div class="block">Returns a string representation of this record class.</div>
+</dd>
 <dt><a href="io/brane/rpc/JsonRpcRequest.html#toString()" class="member-name-link">toString()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/JsonRpcRequest.html" title="class in io.brane.rpc">JsonRpcRequest</a></dt>
 <dd>
 <div class="block">Returns a string representation of this record class.</div>
@@ -2337,10 +2463,8 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Creates an instance of a <code>TransactionRequest</code> record class.</div>
 </dd>
-<dt><a href="io/brane/rpc/TransactionSigner.html" class="type-name-link" title="interface in io.brane.rpc">TransactionSigner</a> - Interface in <a href="io/brane/rpc/package-summary.html">io.brane.rpc</a></dt>
-<dd>
-<div class="block">Signs transactions for submission to the Ethereum network.</div>
-</dd>
+<dt><a href="io/brane/smoke/SmokeApp.Erc20.html#transfer(io.brane.core.types.Address,java.math.BigInteger)" class="member-name-link">transfer(Address, BigInteger)</a> - Method in interface io.brane.smoke.<a href="io/brane/smoke/SmokeApp.Erc20.html" title="interface in io.brane.smoke">SmokeApp.Erc20</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/core/abi/Tuple.html" class="type-name-link" title="class in io.brane.core.abi">Tuple</a> - Record Class in <a href="io/brane/core/abi/package-summary.html">io.brane.core.abi</a></dt>
 <dd>
 <div class="block">Represents a Solidity tuple (sequence of types).</div>
@@ -2428,6 +2552,18 @@ loadScripts(document, 'script');</script>
 <dd>
 <div class="block">Unsigned Ethereum transaction.</div>
 </dd>
+<dt><a href="io/brane/rpc/Subscription.html#unsubscribe()" class="member-name-link">unsubscribe()</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/Subscription.html" title="interface in io.brane.rpc">Subscription</a></dt>
+<dd>
+<div class="block">Unsubscribes from the event stream.</div>
+</dd>
+<dt><a href="io/brane/rpc/BraneProvider.html#unsubscribe(java.lang.String)" class="member-name-link">unsubscribe(String)</a> - Method in interface io.brane.rpc.<a href="io/brane/rpc/BraneProvider.html" title="interface in io.brane.rpc">BraneProvider</a></dt>
+<dd>
+<div class="block">Unsubscribes from a real-time event.</div>
+</dd>
+<dt><a href="io/brane/rpc/WebSocketProvider.html#unsubscribe(java.lang.String)" class="member-name-link">unsubscribe(String)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/WebSocketProvider.html" title="class in io.brane.rpc">WebSocketProvider</a></dt>
+<dd>
+<div class="block">Unsubscribes from a previously created subscription.</div>
+</dd>
 <dt><a href="io/brane/rpc/RpcConfig.html#url()" class="member-name-link">url()</a> - Method in record class io.brane.rpc.<a href="io/brane/rpc/RpcConfig.html" title="class in io.brane.rpc">RpcConfig</a></dt>
 <dd>
 <div class="block">Returns the value of the <code>url</code> record component.</div>
@@ -2445,10 +2581,6 @@ loadScripts(document, 'script');</script>
 <dt><a href="io/brane/core/crypto/Keccak256.html#usage-example-heading" class="search-tag-link">Usage Example</a> - Search tag in class io.brane.core.crypto.Keccak256</dt>
 <dd>Section</dd>
 <dt><a href="io/brane/core/crypto/PrivateKey.html#usage-example-heading" class="search-tag-link">Usage Example</a> - Search tag in class io.brane.core.crypto.PrivateKey</dt>
-<dd>Section</dd>
-<dt><a href="io/brane/rpc/PrivateKeyTransactionSigner.html#usage-example-heading" class="search-tag-link">Usage Example</a> - Search tag in class io.brane.rpc.PrivateKeyTransactionSigner</dt>
-<dd>Section</dd>
-<dt><a href="io/brane/rpc/TransactionSigner.html#usage-example-heading" class="search-tag-link">Usage Example</a> - Search tag in interface io.brane.rpc.TransactionSigner</dt>
 <dd>Section</dd>
 <dt><a href="io/brane/core/tx/Eip1559Transaction.html#usage-example-heading" class="search-tag-link">Usage Example</a> - Search tag in record class io.brane.core.tx.Eip1559Transaction</dt>
 <dd>Section</dd>
@@ -2555,6 +2687,16 @@ the order they are declared.</div>
 <dd>
 <div class="block">A client for signing and sending transactions.</div>
 </dd>
+<dt><a href="io/brane/benchmark/WebSocketBenchmark.html" class="type-name-link" title="class in io.brane.benchmark">WebSocketBenchmark</a> - Class in <a href="io/brane/benchmark/package-summary.html">io.brane.benchmark</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/benchmark/WebSocketBenchmark.html#%3Cinit%3E()" class="member-name-link">WebSocketBenchmark()</a> - Constructor for class io.brane.benchmark.<a href="io/brane/benchmark/WebSocketBenchmark.html" title="class in io.brane.benchmark">WebSocketBenchmark</a></dt>
+<dd>&nbsp;</dd>
+<dt><a href="io/brane/rpc/WebSocketProvider.html" class="type-name-link" title="class in io.brane.rpc">WebSocketProvider</a> - Class in <a href="io/brane/rpc/package-summary.html">io.brane.rpc</a></dt>
+<dd>
+<div class="block">Ultra-low latency WebSocket provider using Netty and LMAX Disruptor.</div>
+</dd>
+<dt><a href="io/brane/rpc/WebSocketProvider.RequestEvent.html" class="type-name-link" title="class in io.brane.rpc">WebSocketProvider.RequestEvent</a> - Class in <a href="io/brane/rpc/package-summary.html">io.brane.rpc</a></dt>
+<dd>&nbsp;</dd>
 <dt><a href="io/brane/core/types/Wei.html" class="type-name-link" title="class in io.brane.core.types">Wei</a> - Record Class in <a href="io/brane/core/types/package-summary.html">io.brane.core.types</a></dt>
 <dd>
 <div class="block">Represents a quantity in Wei (10^-18 Ether).</div>
@@ -2583,7 +2725,7 @@ the order they are declared.</div>
 <dd>&nbsp;</dd>
 <dt><a href="io/brane/rpc/BranePublicClient.Builder.html#withRpcUrl(java.lang.String)" class="member-name-link">withRpcUrl(String)</a> - Method in class io.brane.rpc.<a href="io/brane/rpc/BranePublicClient.Builder.html" title="class in io.brane.rpc">BranePublicClient.Builder</a></dt>
 <dd>&nbsp;</dd>
-<dt><a href="io/brane/contract/Contract.html#write(io.brane.contract.Signer,java.lang.String,java.lang.Object...)" class="member-name-link">write(Signer, String, Object...)</a> - Method in class io.brane.contract.<a href="io/brane/contract/Contract.html" title="class in io.brane.contract">Contract</a></dt>
+<dt><a href="io/brane/contract/Contract.html#write(io.brane.core.crypto.Signer,java.lang.String,java.lang.Object...)" class="member-name-link">write(Signer, String, Object...)</a> - Method in class io.brane.contract.<a href="io/brane/contract/Contract.html" title="class in io.brane.contract">Contract</a></dt>
 <dd>&nbsp;</dd>
 </dl>
 <a href="#I:A">A</a>&nbsp;<a href="#I:B">B</a>&nbsp;<a href="#I:C">C</a>&nbsp;<a href="#I:D">D</a>&nbsp;<a href="#I:E">E</a>&nbsp;<a href="#I:F">F</a>&nbsp;<a href="#I:G">G</a>&nbsp;<a href="#I:H">H</a>&nbsp;<a href="#I:I">I</a>&nbsp;<a href="#I:J">J</a>&nbsp;<a href="#I:K">K</a>&nbsp;<a href="#I:L">L</a>&nbsp;<a href="#I:M">M</a>&nbsp;<a href="#I:N">N</a>&nbsp;<a href="#I:O">O</a>&nbsp;<a href="#I:P">P</a>&nbsp;<a href="#I:R">R</a>&nbsp;<a href="#I:S">S</a>&nbsp;<a href="#I:T">T</a>&nbsp;<a href="#I:U">U</a>&nbsp;<a href="#I:V">V</a>&nbsp;<a href="#I:W">W</a>&nbsp;<br><a href="allclasses-index.html">All&nbsp;Classes&nbsp;and&nbsp;Interfaces</a><span class="vertical-separator">|</span><a href="allpackages-index.html">All&nbsp;Packages</a><span class="vertical-separator">|</span><a href="serialized-form.html">Serialized&nbsp;Form</a></main>
