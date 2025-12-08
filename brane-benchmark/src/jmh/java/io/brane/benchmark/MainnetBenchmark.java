@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 1, jvmArgs = { "-Xms1G", "-Xmx1G", "-XX:+UseG1GC" })
 public class MainnetBenchmark {
 
-    @Param({ "Ethereum", "Base", "Arbitrum" })
+    @Param({ /* "Ethereum", */ "Base"/* , "Arbitrum" */ })
     private String network;
 
     private String getUrl() {
@@ -31,6 +31,18 @@ public class MainnetBenchmark {
             case "Ethereum":
                 return "wss://ethereum-rpc.publicnode.com";
             case "Base":
+                String useInfura = System.getProperty("brane.benchmark.useInfura");
+                if ("true".equalsIgnoreCase(useInfura)) {
+                    String infuraUrl = System.getenv("INFURA_BASE_WSS_URL");
+                    if (infuraUrl == null || infuraUrl.isEmpty()) {
+                        infuraUrl = System.getProperty("INFURA_BASE_WSS_URL");
+                    }
+                    if (infuraUrl != null && !infuraUrl.isEmpty()) {
+                        return infuraUrl;
+                    }
+                    System.err.println(
+                            "Warning: brane.benchmark.useInfura=true but INFURA_BASE_WSS_URL not set. Falling back to public node.");
+                }
                 return "wss://base-rpc.publicnode.com";
             case "Arbitrum":
                 return "wss://arbitrum-one-rpc.publicnode.com";
