@@ -83,7 +83,12 @@ task runInfuraTest(type: JavaExec) {
                 if (trimmedLine && !trimmedLine.startsWith("#")) {
                     def parts = trimmedLine.split("=", 2)
                     if (parts.length == 2) {
-                        environment parts[0].trim(), parts[1].trim()
+                        def key = parts[0].trim()
+                        def value = parts[1].trim()
+                        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                            value = value.substring(1, value.length() - 1)
+                        }
+                        environment key, value
                     }
                 }
             }

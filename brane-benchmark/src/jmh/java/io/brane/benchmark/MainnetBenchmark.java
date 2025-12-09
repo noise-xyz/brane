@@ -23,7 +23,7 @@ import java.util.concurrent.TimeUnit;
 @Fork(value = 1, jvmArgs = { "-Xms1G", "-Xmx1G", "-XX:+UseG1GC" })
 public class MainnetBenchmark {
 
-    @Param({ /* "Ethereum", */ "Base"/* , "Arbitrum" */ })
+    @Param({ "Ethereum", "Base", "Arbitrum" })
     private String network;
 
     private String getUrl() {
