@@ -96,7 +96,7 @@
 
 **Goal:** No user callback runs on the `brane-netty-io` event loop by default.
 
-- [ ] Add a configurable subscription executor to `WebSocketProvider`:
+- [x] Add a configurable subscription executor to `WebSocketProvider`:
 
   ```java
   private volatile Executor subscriptionExecutor =
@@ -107,7 +107,7 @@
   }
   ```
 
-- [ ] Update `handleNotificationNode`:
+- [x] Update `handleNotificationNode`:
 
   ```java
   Consumer<JsonRpcResponse> listener = subscriptions.get(subId);
@@ -117,9 +117,9 @@
   }
   ```
 
-- [ ] Add tests:
+- [x] Add tests:
 
-  - [ ] Callback thread name is **not** `brane-netty-io`.
+  - [x] Callback thread name is **not** `brane-netty-io`.
   - [ ] Custom executor via `setSubscriptionExecutor(...)` is respected.
 
 - [ ] Update docs:
