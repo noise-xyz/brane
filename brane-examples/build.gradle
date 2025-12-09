@@ -67,3 +67,33 @@ tasks.named('run') {
     systemProperty 'brane.anvil.revertExample.address',
             propOrSystem('brane.anvil.revertExample.address', null)
 }
+
+task runInfuraTest(type: JavaExec) {
+    group = "Execution"
+    description = "Run Infura WebSocket Test"
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = "io.brane.examples.InfuraWebSocketTest"
+
+    // Load .env file manually since we don't have a dotenv plugin configured
+    doFirst {
+        def envFile = file("$rootDir/.env")
+        if (envFile.exists()) {
+            envFile.eachLine { line ->
+                def trimmedLine = line.trim()
+                if (trimmedLine && !trimmedLine.startsWith("#")) {
+                    def parts = trimmedLine.split("=", 2)
+                    if (parts.length == 2) {
+                        def key = parts[0].trim()
+                        def value = parts[1].trim()
+                        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+                            value = value.substring(1, value.length() - 1)
+                        }
+                        environment key, value
+                    }
+                }
+            }
+        } else {
+            println "Warning: .env file not found at $envFile"
+        }
+    }
+}

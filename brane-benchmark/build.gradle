@@ -23,8 +23,13 @@ jmh {
     fork = 1
     failOnError = true
     resultFormat = 'JSON'
-    includes = ['.*latency_blockNumber']
-    excludes = ['.*WebSocketBenchmark.*', '.*BraneBenchmark.*', '.*ClientOverheadBenchmark.*']
+    includes = ['io.brane.benchmark.MainnetBenchmark']
+    excludes = []
+    
+    // Pass the system property to the forked JVM
+    if (System.getProperty('brane.benchmark.useInfura') != null) {
+        jvmArgsAppend = ["-Dbrane.benchmark.useInfura=" + System.getProperty('brane.benchmark.useInfura')]
+    }
 }
 
 tasks.withType(JavaCompile).configureEach {

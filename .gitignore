@@ -26,3 +26,6 @@ anvil_smoke_temp.log
 # Logs and Benchmarks
 *.txt
 benchmark_output.txt
+
+# Security
+.env
