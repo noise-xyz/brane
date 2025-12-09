@@ -120,6 +120,22 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     }
 
     // ==================== Metrics ====================
+    private volatile BraneMetrics metrics = BraneMetrics.noop();
+
+    /**
+     * Sets a custom metrics collector for observability.
+     *
+     * <p>
+     * Use this to integrate with monitoring systems like Micrometer, Prometheus,
+     * or custom metrics collectors.
+     *
+     * @param metrics the metrics collector (must not be null)
+     * @throws NullPointerException if metrics is null
+     */
+    public void setMetrics(BraneMetrics metrics) {
+        this.metrics = Objects.requireNonNull(metrics, "metrics");
+    }
+
     private final LongAdder totalRequests = new LongAdder();
     private final LongAdder totalResponses = new LongAdder();
     private final LongAdder totalErrors = new LongAdder();
@@ -555,6 +571,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         // Backpressure: fail fast if slot is occupied (too many in-flight requests)
         CompletableFuture<JsonRpcResponse> existing = slots[slot];
         if (existing != null && !existing.isDone()) {
+            metrics.onBackpressure();
             CompletableFuture<JsonRpcResponse> failed = new CompletableFuture<>();
             failed.completeExceptionally(new io.brane.core.error.RpcException(
                     -32000,
@@ -573,6 +590,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 ch.eventLoop().schedule(() -> {
                     if (!future.isDone()) {
                         slots[slot] = null; // Clear slot
+                        metrics.onRequestTimeout(method);
                         future.completeExceptionally(new io.brane.core.error.RpcException(
                                 -32000,
                                 "Request timed out after " + timeout.toMillis() + "ms (method: " + method + ")",
