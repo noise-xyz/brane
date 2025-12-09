@@ -1,6 +1,8 @@
 package io.brane.rpc;
 
+import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.RingBuffer;
+import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
@@ -63,10 +65,14 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private static final ObjectMapper mapper = new ObjectMapper();
 
     // ==================== Configuration ====================
-    static final int MAX_PENDING_REQUESTS = 65536; // Power of 2
-    static final int SLOT_MASK = MAX_PENDING_REQUESTS - 1;
+    private static final int DEFAULT_MAX_PENDING_REQUESTS = 65536; // Power of 2
     private static final long DEFAULT_TIMEOUT_MS = 60_000;
     private static final long RESPONSE_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB
+
+    // Instance configuration (from WebSocketConfig or defaults)
+    private final int maxPendingRequests;
+    private final int slotMask;
+    private final Duration defaultRequestTimeout;
 
     // ==================== Connection State ====================
     private final String url;
@@ -78,8 +84,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
     // ==================== Request Tracking ====================
-    @SuppressWarnings("unchecked")
-    private final CompletableFuture<JsonRpcResponse>[] slots = new CompletableFuture[MAX_PENDING_REQUESTS];
+    private final CompletableFuture<JsonRpcResponse>[] slots;
 
     // ==================== Subscriptions ====================
     private final ConcurrentHashMap<String, Consumer<JsonRpcResponse>> subscriptions = new ConcurrentHashMap<>();
@@ -137,23 +142,31 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private static final byte[] FALSE_BYTES = "false".getBytes(StandardCharsets.UTF_8);
 
     @SuppressWarnings("unchecked")
-    private WebSocketProvider(String url) {
-        this.url = url;
-        this.uri = URI.create(url);
+    private WebSocketProvider(WebSocketConfig config) {
+        this.url = config.url();
+        this.uri = URI.create(config.url());
+        this.maxPendingRequests = config.maxPendingRequests();
+        this.slotMask = maxPendingRequests - 1;
+        this.defaultRequestTimeout = config.defaultRequestTimeout();
+        this.slots = new CompletableFuture[maxPendingRequests];
+
         this.handler = new WebSocketClientHandler(
                 WebSocketClientHandshakerFactory.newHandshaker(
                         uri, WebSocketVersion.V13, null, false, new DefaultHttpHeaders()));
 
-        // Single IO thread for minimum context switching
-        this.group = new NioEventLoopGroup(1, r -> {
+        // Configurable IO threads (default: 1 for minimum context switching)
+        this.group = new NioEventLoopGroup(config.ioThreads(), r -> {
             Thread t = new Thread(r, "brane-netty-io");
             t.setDaemon(true);
             return t;
         });
 
-        // Initialize Disruptor with YieldingWaitStrategy for low latency
-        // (busy-spin/yield)
-        // rather than BlockingWaitStrategy (locks)
+        // Configurable wait strategy
+        WaitStrategy waitStrategy = switch (config.waitStrategy()) {
+            case BLOCKING -> new BlockingWaitStrategy();
+            case YIELDING -> new YieldingWaitStrategy();
+        };
+
         ThreadFactory threadFactory = r -> {
             Thread t = new Thread(r, "brane-disruptor");
             t.setDaemon(true);
@@ -162,18 +175,47 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
         this.disruptor = new Disruptor<>(
                 RequestEvent::new,
-                4096,
+                config.ringBufferSize(),
                 threadFactory,
                 ProducerType.MULTI,
-                new YieldingWaitStrategy()); // Optimizing for Low Latency over CPU
-
-        // ... (exception handler unchanged)
+                waitStrategy);
 
         this.disruptor.handleEventsWith(this::handleEvent);
         this.disruptor.start();
         this.ringBuffer = disruptor.getRingBuffer();
 
         connect();
+    }
+
+    /**
+     * Backward-compatible constructor using defaults.
+     */
+    @SuppressWarnings("unchecked")
+    private WebSocketProvider(String url) {
+        this(WebSocketConfig.withDefaults(url));
+    }
+
+    /**
+     * Creates a new WebSocketProvider with the specified configuration.
+     *
+     * <p>
+     * Use this method for full control over provider settings including:
+     * <ul>
+     * <li>Max pending requests (backpressure limit)</li>
+     * <li>Disruptor ring buffer size</li>
+     * <li>Wait strategy (YIELDING for low latency, BLOCKING for CPU
+     * efficiency)</li>
+     * <li>Default request timeout</li>
+     * <li>Number of I/O threads</li>
+     * </ul>
+     *
+     * @param config the WebSocket configuration
+     * @return a connected WebSocketProvider instance
+     * @throws RuntimeException if connection fails
+     * @see WebSocketConfig#builder(String)
+     */
+    public static WebSocketProvider create(WebSocketConfig config) {
+        return new WebSocketProvider(config);
     }
 
     /**
@@ -412,7 +454,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             }
 
             if (id != -1) {
-                int slot = (int) (id & SLOT_MASK);
+                int slot = (int) (id & slotMask);
                 CompletableFuture<JsonRpcResponse> future = slots[slot];
                 if (future != null) {
                     slots[slot] = null;
@@ -508,7 +550,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      */
     public CompletableFuture<JsonRpcResponse> sendAsync(String method, List<?> params, Duration timeout) {
         long id = idGenerator.getAndIncrement();
-        int slot = (int) (id & SLOT_MASK);
+        int slot = (int) (id & slotMask);
 
         // Backpressure: fail fast if slot is occupied (too many in-flight requests)
         CompletableFuture<JsonRpcResponse> existing = slots[slot];
@@ -516,7 +558,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             CompletableFuture<JsonRpcResponse> failed = new CompletableFuture<>();
             failed.completeExceptionally(new io.brane.core.error.RpcException(
                     -32000,
-                    "Too many pending requests (" + MAX_PENDING_REQUESTS + " limit reached, slot " + slot + " in use)",
+                    "Too many pending requests (" + maxPendingRequests + " limit reached, slot " + slot + " in use)",
                     null));
             return failed;
         }
@@ -593,7 +635,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      */
     public CompletableFuture<JsonRpcResponse> sendAsyncBatch(String method, List<?> params) {
         long id = idGenerator.getAndIncrement();
-        int slot = (int) (id & SLOT_MASK);
+        int slot = (int) (id & slotMask);
 
         // Backpressure: fail fast if slot is occupied (too many in-flight requests)
         CompletableFuture<JsonRpcResponse> existing = slots[slot];
@@ -601,7 +643,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             CompletableFuture<JsonRpcResponse> failed = new CompletableFuture<>();
             failed.completeExceptionally(new io.brane.core.error.RpcException(
                     -32000,
-                    "Too many pending requests (" + MAX_PENDING_REQUESTS + " limit reached, slot " + slot + " in use)",
+                    "Too many pending requests (" + maxPendingRequests + " limit reached, slot " + slot + " in use)",
                     null));
             return failed;
         }
@@ -777,7 +819,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 ch.write(new TextWebSocketFrame(buffer));
             } catch (Exception e) {
                 buffer.release();
-                int slot = (int) (event.id & SLOT_MASK);
+                int slot = (int) (event.id & slotMask);
                 CompletableFuture<JsonRpcResponse> future = slots[slot];
                 if (future != null) {
                     slots[slot] = null;
@@ -791,7 +833,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             }
         } else {
             // Channel not active - fail the request
-            int slot = (int) (event.id & SLOT_MASK);
+            int slot = (int) (event.id & slotMask);
             CompletableFuture<JsonRpcResponse> future = slots[slot];
             if (future != null) {
                 slots[slot] = null;
