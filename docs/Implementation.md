@@ -133,7 +133,7 @@
 
 ### 3.1 Configurable Pending Request Limit
 
-- [ ] Make `MAX_PENDING_REQUESTS` configurable via `RpcConfig` / `WebSocketConfig`:
+- [x] Make `MAX_PENDING_REQUESTS` configurable via `RpcConfig` / `WebSocketConfig`:
 
   ```java
   public final class WebSocketConfig {
@@ -143,9 +143,9 @@
   }
   ```
 
-- [ ] Replace hard-coded `MAX_PENDING_REQUESTS` with config.
+- [x] Replace hard-coded `MAX_PENDING_REQUESTS` with config.
 
-- [ ] When choosing a slot:
+- [x] When choosing a slot:
 
   ```java
   int slot = (int) (id & SLOT_MASK);
@@ -170,8 +170,8 @@
 
 ### 3.2 Configurable Ring Buffer Size
 
-- [ ] Surface ring buffer size (currently 4096) via config.
-- [ ] Ensure Disruptor is initialized using the configurable size.
+- [x] Surface ring buffer size (currently 4096) via config.
+- [x] Ensure Disruptor is initialized using the configurable size.
 - [ ] Add tests for:
 
   - [ ] Small ring buffer (sanity).
@@ -185,7 +185,7 @@
 
 ### 4.1 Async API with Timeout
 
-- [ ] Add overload to `WebSocketProvider`:
+- [x] Add overload to `WebSocketProvider`:
 
   ```java
   public CompletableFuture<JsonRpcResponse> sendAsync(
@@ -195,7 +195,7 @@
   )
   ```
 
-- [ ] Implementation outline:
+- [x] Implementation outline:
 
   - [ ] Create `CompletableFuture<JsonRpcResponse> future`.
   - [ ] Store in `slots[slot]`.
@@ -209,7 +209,7 @@
     - [ ] Clear slot.
     - [ ] Optionally record metrics.
 
-- [ ] Add a default timeout in config (e.g. `Optional<Duration> defaultRequestTimeout`).
+- [x] Add a default timeout in config (e.g. `Optional<Duration> defaultRequestTimeout`).
 
 - [ ] Ensure `send()` uses the default timeout when appropriate, or leave as "no timeout" and document that the user should decide.
 
@@ -271,7 +271,7 @@
 
 ### 6.1 `BraneAsyncClient` Facade
 
-- [ ] Create a small async wrapper around `BraneProvider`:
+- [x] Create a small async wrapper around `BraneProvider`:
 
   ```java
   public final class BraneAsyncClient {
@@ -292,7 +292,7 @@
   }
   ```
 
-- [ ] If `provider` is an instance of `WebSocketProvider`, consider delegating to its native `sendAsync` for efficiency:
+- [x] If `provider` is an instance of `WebSocketProvider`, consider delegating to its native `sendAsync` for efficiency:
 
   - [ ] But keep this an implementation detail to avoid tight coupling.
 
@@ -307,7 +307,7 @@
 
 ### 7.1 Configurable Disruptor Wait Strategy
 
-- [ ] Introduce a configurable wait strategy field:
+- [x] Introduce a configurable wait strategy field:
 
   ```java
   public enum WaitStrategyType {
@@ -317,13 +317,13 @@
   }
   ```
 
-- [ ] In `WebSocketConfig`, add:
+- [x] In `WebSocketConfig`, add:
 
   ```java
   WaitStrategyType waitStrategyType = WaitStrategyType.YIELDING;
   ```
 
-- [ ] Switch Disruptor initialization:
+- [x] Switch Disruptor initialization:
 
   ```java
   WaitStrategy waitStrategy =
@@ -347,7 +347,7 @@
 
 ### 7.2 EventLoopGroup Ownership
 
-- [ ] Add optional `EventLoopGroup` parameter to `WebSocketProvider` factory:
+- [x] Add optional `EventLoopGroup` parameter to `WebSocketProvider` factory:
 
   - [ ] Default: single-threaded `NioEventLoopGroup(1, ...)`.
   - [ ] Advanced users: can plug in their own group.
@@ -363,7 +363,7 @@
 
 ### 8.1 Metrics Hooks
 
-- [ ] Define a simple metrics interface:
+- [x] Define a simple metrics interface:
 
   ```java
   public interface BraneMetrics {
@@ -375,7 +375,7 @@
   }
   ```
 
-- [ ] Allow injecting a `BraneMetrics` instance into `WebSocketProvider`.
+- [x] Allow injecting a `BraneMetrics` instance into `WebSocketProvider`.
 
 - [ ] Instrument:
 

@@ -170,12 +170,16 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 WebSocketClientHandshakerFactory.newHandshaker(
                         uri, WebSocketVersion.V13, null, false, new DefaultHttpHeaders()));
 
-        // Configurable IO threads (default: 1 for minimum context switching)
-        this.group = new NioEventLoopGroup(config.ioThreads(), r -> {
-            Thread t = new Thread(r, "brane-netty-io");
-            t.setDaemon(true);
-            return t;
-        });
+        // Use provided EventLoopGroup or create default
+        if (config.eventLoopGroup() != null) {
+            this.group = config.eventLoopGroup();
+        } else {
+            this.group = new NioEventLoopGroup(config.ioThreads(), r -> {
+                Thread t = new Thread(r, "brane-netty-io");
+                t.setDaemon(true);
+                return t;
+            });
+        }
 
         // Configurable wait strategy
         WaitStrategy waitStrategy = switch (config.waitStrategy()) {

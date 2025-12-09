@@ -1,5 +1,6 @@
 package io.brane.rpc;
 
+import io.netty.channel.EventLoopGroup;
 import java.time.Duration;
 import java.util.Objects;
 
@@ -51,7 +52,8 @@ public record WebSocketConfig(
         WaitStrategyType waitStrategy,
         Duration defaultRequestTimeout,
         Duration connectTimeout,
-        int ioThreads) {
+        int ioThreads,
+        EventLoopGroup eventLoopGroup) {
 
     /**
      * Disruptor wait strategy types.
@@ -115,7 +117,7 @@ public record WebSocketConfig(
      * @return a new WebSocketConfig with default settings
      */
     public static WebSocketConfig withDefaults(String url) {
-        return new WebSocketConfig(url, 0, 0, null, null, null, 0);
+        return new WebSocketConfig(url, 0, 0, null, null, null, 0, null);
     }
 
     /**
@@ -139,6 +141,7 @@ public record WebSocketConfig(
         private Duration defaultRequestTimeout = null;
         private Duration connectTimeout = null;
         private int ioThreads = 0;
+        private EventLoopGroup eventLoopGroup = null;
 
         private Builder(String url) {
             this.url = Objects.requireNonNull(url, "url");
@@ -192,9 +195,21 @@ public record WebSocketConfig(
         /**
          * Sets the number of Netty I/O threads.
          * Default: 1 (minimal context switching).
+         * Ignored if eventLoopGroup is provided.
          */
         public Builder ioThreads(int ioThreads) {
             this.ioThreads = ioThreads;
+            return this;
+        }
+
+        /**
+         * Sets a custom Netty EventLoopGroup.
+         * For advanced users integrating with existing Netty infrastructure.
+         * When set, ioThreads is ignored.
+         * The caller is responsible for shutting down this group.
+         */
+        public Builder eventLoopGroup(EventLoopGroup group) {
+            this.eventLoopGroup = group;
             return this;
         }
 
@@ -211,7 +226,8 @@ public record WebSocketConfig(
                     waitStrategy,
                     defaultRequestTimeout,
                     connectTimeout,
-                    ioThreads);
+                    ioThreads,
+                    eventLoopGroup);
         }
     }
 }
