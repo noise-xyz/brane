@@ -122,6 +122,32 @@ public class WebSocketIntegrationTest {
     }
 
     @Test
+    void testSubscriptionCallbackNotOnNettyThread() throws Exception {
+        AtomicReference<String> callbackThreadName = new AtomicReference<>();
+        CompletableFuture<String> received = new CompletableFuture<>();
+
+        Subscription sub = client.subscribeToNewHeads(header -> {
+            callbackThreadName.set(Thread.currentThread().getName());
+            received.complete(Thread.currentThread().getName());
+        });
+
+        assertNotNull(sub.id());
+
+        // Trigger a new block
+        triggerMine();
+
+        // Wait for callback
+        String threadName = received.get(10, TimeUnit.SECONDS);
+
+        // Callback should NOT run on the Netty I/O thread
+        assertFalse(threadName.contains("brane-netty-io"),
+                "Subscription callback ran on Netty I/O thread (" + threadName + "). " +
+                        "This is a bug - callbacks should run on the subscription executor.");
+
+        sub.unsubscribe();
+    }
+
+    @Test
     void testSubscribeToLogs() throws Exception {
         // Use pre-deployed Token contract from integration script, or skip if not set
         String contractAddrStr = System.getProperty("brane.examples.erc20.contract");
