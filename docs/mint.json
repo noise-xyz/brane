@@ -28,7 +28,9 @@
         {
             "group": "Wallet Client",
             "pages": [
-                "wallet-client/api"
+                "wallet-client/api",
+                "wallet-client/signers",
+                "wallet-client/custom-signers"
             ]
         },
         {
@@ -49,13 +51,6 @@
             "group": "Chains",
             "pages": [
                 "chains/profiles"
-            ]
-        },
-        {
-            "group": "Advanced Signing",
-            "pages": [
-                "signing/overview",
-                "signing/custom-signers"
             ]
         },
         {
