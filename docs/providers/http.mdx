@@ -1,0 +1,190 @@
+---
+title: HTTP Provider
+description: 'Simple, Loom-native HTTP transport for Ethereum RPC.'
+---
+
+The `HttpBraneProvider` is the default provider for most use cases. It uses Java 21's virtual threads for efficient concurrent I/O.
+
+## Basic Usage
+
+```java
+import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.PublicClient;
+
+var provider = HttpBraneProvider.builder("https://eth.llamarpc.com")
+    .build();
+
+var client = PublicClient.from(provider);
+var block = client.getLatestBlock();
+System.out.println("Block #" + block.number());
+```
+
+---
+
+## Why Loom (Virtual Threads)?
+
+Brane's HTTP provider is built from the ground up for Java 21's virtual threads:
+
+```java
+// Under the hood, HttpBraneProvider uses virtual threads
+// Each HTTP request runs on a lightweight virtual thread
+// that parks efficiently during I/O wait
+
+try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
+    // 10,000 concurrent requests? No problem.
+    for (int i = 0; i < 10_000; i++) {
+        exec.submit(() -> provider.send("eth_blockNumber", List.of()));
+    }
+}
+```
+
+### Virtual Threads vs Platform Threads
+
+| Aspect | Platform Threads | Virtual Threads (Loom) |
+|--------|------------------|------------------------|
+| Memory per thread | ~1MB stack | ~1KB |
+| Max concurrent | Hundreds to low thousands | **Millions** |
+| I/O blocking | Ties up OS thread | Parks cheaply |
+| Best for | CPU-bound work | **I/O-bound work** |
+
+<Tip>
+Brane was designed for Loom from day one. web3j predates virtual threads and requires more ceremony for high-concurrency use cases.
+</Tip>
+
+---
+
+## Builder Options
+
+```java
+var provider = HttpBraneProvider.builder("https://eth.llamarpc.com")
+    .build();
+```
+
+The builder provides a clean fluent API for configuration. Currently, the main configuration is the RPC URL.
+
+---
+
+## Raw JSON-RPC Access
+
+For low-level access to any Ethereum RPC method:
+
+```java
+import io.brane.rpc.JsonRpcResponse;
+import java.util.List;
+
+// Any standard JSON-RPC method
+JsonRpcResponse response = provider.send("eth_chainId", List.of());
+System.out.println("Chain ID: " + response.result());
+
+// With parameters
+JsonRpcResponse balance = provider.send("eth_getBalance", 
+    List.of("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "latest"));
+```
+
+---
+
+## Parallel Requests
+
+For maximum throughput, fire requests in parallel:
+
+```java
+import io.brane.rpc.BraneExecutors;
+import java.util.concurrent.Future;
+import java.util.ArrayList;
+
+try (var exec = BraneExecutors.newIoBoundExecutor()) {
+    var futures = new ArrayList<Future<?>>();
+    
+    for (int i = 0; i < 100; i++) {
+        futures.add(exec.submit(() -> 
+            provider.send("eth_blockNumber", List.of())
+        ));
+    }
+    
+    for (var f : futures) {
+        f.get(); // Process results
+    }
+}
+```
+
+<Tip>
+Use `BraneExecutors.newIoBoundExecutor()` for I/O-bound work. See [Threading & Executors](/utilities/threading) for details.
+</Tip>
+
+---
+
+## HTTP vs WebSocket
+
+| Use Case | Recommended |
+|----------|-------------|
+| Serverless / Lambda | ✅ HTTP |
+| Mobile apps (battery) | ✅ HTTP |
+| Simple scripts | ✅ HTTP |
+| Low request volume (<100/s) | ✅ HTTP |
+| Real-time subscriptions | WebSocket |
+| High-frequency trading | WebSocket |
+| Persistent connections | WebSocket |
+
+<Card title="WebSocket Provider" icon="bolt" href="/providers/websocket">
+  For real-time subscriptions and maximum throughput.
+</Card>
+
+---
+
+## Integration with Clients
+
+HTTP providers work seamlessly with all Brane clients:
+
+```java
+import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.PublicClient;
+import io.brane.rpc.DefaultWalletClient;
+import io.brane.core.crypto.PrivateKeySigner;
+import io.brane.core.chain.ChainProfiles;
+
+var provider = HttpBraneProvider.builder("https://eth.llamarpc.com").build();
+var publicClient = PublicClient.from(provider);
+
+// Read blockchain state
+var balance = publicClient.getBalance(new Address("0x..."));
+
+// Send transactions
+var wallet = DefaultWalletClient.create(
+    provider,
+    publicClient,
+    new PrivateKeySigner("0x..."),
+    ChainProfiles.ETH_MAINNET
+);
+```
+
+---
+
+## Error Handling
+
+HTTP transport errors are wrapped in `RpcException`:
+
+```java
+import io.brane.core.error.RpcException;
+
+try {
+    var response = provider.send("eth_call", params);
+} catch (RpcException e) {
+    System.err.println("RPC Error: " + e.getMessage());
+    System.err.println("Error Code: " + e.code());
+}
+```
+
+---
+
+## When to Use HTTP
+
+✅ **Use HTTP when:**
+- You don't need real-time subscriptions
+- Your application is serverless or short-lived
+- You want simple, stateless connections
+- Battery efficiency matters (mobile)
+
+❌ **Consider WebSocket when:**
+- You need `eth_subscribe` for blocks/logs
+- You're building MEV or HFT systems
+- You want persistent connections with lower per-request overhead
