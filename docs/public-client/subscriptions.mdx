@@ -224,10 +224,15 @@ If the WebSocket connection drops, subscriptions are lost. Re-subscribe after re
 ```java
 // The provider handles reconnection automatically,
 // but you need to re-subscribe
+Consumer<BlockHeader> callback = header -> {
+    System.out.println("New block: " + header.number());
+};
+
 try {
     var sub = client.subscribeToNewHeads(callback);
 } catch (RpcException e) {
-    // Retry logic
+    // Handle error, implement retry logic
+    System.err.println("Subscription failed: " + e.getMessage());
 }
 ```
 

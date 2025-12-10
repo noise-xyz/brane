@@ -106,5 +106,5 @@ LogFilter simpleFilter = LogFilter.byContract(tokenAddress, List.of(
     new Hash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
 ));
 
-List<LogEntry> logs = client.getLogs(filter);
+List<LogEntry> logs = client.getLogs(simpleFilter);
 ```

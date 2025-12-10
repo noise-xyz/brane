@@ -35,12 +35,12 @@ var local = ChainProfiles.ANVIL_LOCAL;
 Override the default RPC for any built-in chain:
 
 ```java
-import io.brane.rpc.BranePublicClient;
+import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.PublicClient;
 import io.brane.core.chain.ChainProfiles;
 
-var client = BranePublicClient.forChain(ChainProfiles.ETH_MAINNET)
-    .withRpcUrl("https://eth-mainnet.g.alchemy.com/v2/YOUR-API-KEY")
-    .build();
+var provider = HttpBraneProvider.builder("https://eth-mainnet.g.alchemy.com/v2/YOUR-API-KEY").build();
+var client = PublicClient.from(provider);
 ```
 
 <Tip>
@@ -64,7 +64,8 @@ ChainProfile myChain = ChainProfile.of(
     Wei.gwei(1)                        // Default gas price (fallback)
 );
 
-var client = BranePublicClient.forChain(myChain).build();
+var provider = HttpBraneProvider.builder("https://arb1.arbitrum.io/rpc").build();
+var client = PublicClient.from(provider);
 ```
 
 ### ChainProfile Parameters
@@ -115,20 +116,17 @@ Some L2s have different transaction types or gas mechanics. Test thoroughly befo
 Chain profiles integrate with all Brane clients:
 
 ```java
-import io.brane.rpc.BranePublicClient;
 import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.PublicClient;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.chain.ChainProfiles;
 
-// PublicClient with chain profile
-var publicClient = BranePublicClient.forChain(ChainProfiles.ETH_MAINNET)
-    .withRpcUrl("https://...")
-    .build();
-
-// WalletClient needs provider + publicClient + signer + chain
-// Create provider separately for WalletClient
+// Create provider and clients
 var provider = HttpBraneProvider.builder("https://...").build();
+var publicClient = PublicClient.from(provider);
+
+// WalletClient uses provider + publicClient + signer + chain
 var wallet = DefaultWalletClient.create(
     provider,
     publicClient,
