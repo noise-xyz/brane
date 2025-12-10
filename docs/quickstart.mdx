@@ -136,7 +136,7 @@ import io.brane.core.builder.TxBuilder;
 
 var request = TxBuilder.eip1559()
     .to(new Address("0x..."))
-    .value(Wei.fromEther("0.01"))
+    .value(Wei.fromEther(new java.math.BigDecimal("0.01")))
     .build();
 
 var receipt = wallet.sendTransactionAndWait(
