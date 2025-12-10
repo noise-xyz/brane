@@ -14,7 +14,8 @@
         {
             "group": "Get Started",
             "pages": [
-                "quickstart"
+                "quickstart",
+                "performance"
             ]
         },
         {
@@ -55,7 +56,9 @@
             "pages": [
                 "utilities/types",
                 "utilities/abi",
-                "utilities/errors"
+                "utilities/errors",
+                "utilities/threading",
+                "utilities/metrics"
             ]
         }
     ],
