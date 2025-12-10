@@ -110,6 +110,10 @@ When a request times out, the slot is freed but the request may still complete o
 
 WebSocket enables real-time event subscriptions via `eth_subscribe`.
 
+<Tip>
+For **type-safe subscriptions**, use [`PublicClient.subscribeToNewHeads()`](/public-client/subscriptions) and [`subscribeToLogs()`](/public-client/subscriptions) instead of the raw provider API shown below.
+</Tip>
+
 ### New Block Headers
 
 Subscribe to new blocks as they are mined:

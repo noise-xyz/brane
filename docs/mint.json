@@ -21,7 +21,8 @@
         {
             "group": "Public Client",
             "pages": [
-                "public-client/api"
+                "public-client/api",
+                "public-client/subscriptions"
             ]
         },
         {
