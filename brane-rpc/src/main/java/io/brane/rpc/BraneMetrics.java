@@ -89,6 +89,20 @@ public interface BraneMetrics {
     }
 
     /**
+     * Called when the Disruptor ring buffer is nearing saturation.
+     *
+     * <p>
+     * This is triggered when the ring buffer's remaining capacity falls below
+     * a threshold (e.g., 10% remaining). This is a leading indicator of potential
+     * backpressure issues.
+     *
+     * @param remainingCapacity the number of slots remaining in the ring buffer
+     * @param bufferSize        the total ring buffer size
+     */
+    default void onRingBufferSaturation(long remainingCapacity, int bufferSize) {
+    }
+
+    /**
      * Returns a no-op metrics implementation that does nothing.
      *
      * @return a no-op BraneMetrics instance

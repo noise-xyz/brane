@@ -249,7 +249,7 @@
 
 - [x] Identify CPU-heavy components (e.g. crypto, RLP, heavy JSON parsing). *(Documented in README)*
 
-- [ ] Create a `CpuExecutor` helper: *(Deferred: not critical for v1)*
+- [x] Create a `CpuExecutor` helper:
 
   ```java
   public final class BraneExecutors {
@@ -382,7 +382,7 @@
   - [x] Request start/end. *(BraneMetrics interface has hooks)*
   - [x] Timeouts. *(metrics.onRequestTimeout implemented)*
   - [x] Backpressure rejections. *(metrics.onBackpressure implemented)*
-  - [ ] Ring buffer saturation (if detectable). *(Deferred: complex to detect)*
+  - [x] Ring buffer saturation (if detectable). *(onRingBufferSaturation added)*
 
 - [x] Add basic in-memory implementation for tests / examples. *(NoopMetrics.INSTANCE provided)*
 
@@ -392,22 +392,22 @@
 
 ### 9.1 Fix a Baseline Benchmark Suite
 
-- [ ] Create a small `brane-benchmarks` module (JMH or harness-based) that:
+- [x] Create a small `brane-benchmarks` module (JMH or harness-based) that:
 
-  - [ ] Compares:
+  - [x] Compares:
 
     - `HttpBraneProvider` (Loom)
     - `WebSocketProvider` with `sendAsync`
     - `WebSocketProvider` with `sendAsyncBatch`
     - web3j baseline
-  - [ ] Runs against a local devnet (Anvil/Hardhat).
+  - [x] Runs against a local devnet (Anvil/Hardhat).
 
-- [ ] Track:
+- [x] Track:
 
-  - [ ] Ops/s for simple RPC (e.g., `eth_blockNumber`, `eth_getBalance`).
-  - [ ] Tail latency distribution if feasible.
+  - [x] Ops/s for simple RPC (e.g., `eth_blockNumber`, `eth_getBalance`).
+  - [x] Tail latency distribution if feasible.
 
-- [ ] Document current numbers in `/docs/perf.md`.
+- [x] Document current numbers in `/docs/perf.md`.
 
 ---
 
