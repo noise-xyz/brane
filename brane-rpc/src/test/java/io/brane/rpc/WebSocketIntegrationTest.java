@@ -219,6 +219,72 @@ public class WebSocketIntegrationTest {
         }
     }
 
+    @Test
+    void testCustomSubscriptionExecutor() throws Exception {
+        // Create a custom executor that tracks its thread name
+        java.util.concurrent.Executor customExecutor = runnable -> {
+            Thread t = new Thread(runnable, "test-custom-executor");
+            t.start();
+        };
+        wsProvider.setSubscriptionExecutor(customExecutor);
+
+        CompletableFuture<String> received = new CompletableFuture<>();
+
+        Subscription sub = client.subscribeToNewHeads(header -> {
+            received.complete(Thread.currentThread().getName());
+        });
+
+        assertNotNull(sub.id());
+
+        // Trigger a new block
+        triggerMine();
+
+        // Wait for callback and verify it ran on our custom executor
+        String threadName = received.get(10, TimeUnit.SECONDS);
+        assertEquals("test-custom-executor", threadName,
+                "Callback should run on custom executor thread");
+
+        sub.unsubscribe();
+    }
+
+    @Test
+    void testSendRunsOnCallerThread() throws Exception {
+        // Record the calling thread
+        String callerThread = Thread.currentThread().getName();
+
+        // Make a synchronous call
+        JsonRpcResponse response = wsProvider.send("eth_blockNumber", List.of());
+
+        // Verify the call completed (we're still on the same thread)
+        assertNotNull(response);
+        assertNull(response.error());
+
+        // Verify we're still on the caller thread (send() should block, not switch
+        // threads)
+        assertEquals(callerThread, Thread.currentThread().getName(),
+                "send() should block on the caller thread, not switch threads");
+    }
+
+    @Test
+    void testRequestTimeoutWithShortDuration() throws Exception {
+        // Send a request with a very short timeout to a non-existent method
+        // that would normally hang forever
+        CompletableFuture<JsonRpcResponse> future = wsProvider.sendAsync(
+                "brane_nonExistentMethodThatWillNeverRespond",
+                List.of(),
+                Duration.ofMillis(100) // Very short timeout
+        );
+
+        // The request should timeout
+        try {
+            future.get(5, TimeUnit.SECONDS);
+            fail("Expected timeout exception");
+        } catch (java.util.concurrent.ExecutionException e) {
+            assertTrue(e.getCause() instanceof io.brane.core.error.RpcException);
+            assertTrue(e.getCause().getMessage().contains("timed out"));
+        }
+    }
+
     private void triggerMine() throws Exception {
         HttpRequest request = HttpRequest.newBuilder()
                 .uri(URI.create(ANVIL_HTTP_URL))

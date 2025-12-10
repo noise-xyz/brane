@@ -102,6 +102,62 @@ String deployData = bytecode + encodedArgs.value().substring(2);
 *   **Zero-Codegen**: Runtime binding of interfaces (`BraneContract.bind`) speeds up iteration.
 *   **Clean API**: Minimal surface area. Zero dependency on web3j (native crypto & RLP).
 
+## Concurrency & Async
+
+Brane is designed to be **Loom-native** (Java 21 virtual threads) for blocking operations while keeping WebSocket paths ultra-low latency via Netty/Disruptor.
+
+### HTTP Provider with Virtual Threads (Loom)
+```java
+// HTTP provider is already Loom-friendly - just use virtual threads
+try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
+    var provider = HttpBraneProvider.create(config);
+    
+    for (int i = 0; i < 10_000; i++) {
+        exec.submit(() -> provider.send("eth_getBlockByNumber", List.of("latest", false)));
+    }
+}
+```
+
+### WebSocket Async & Batching
+```java
+// Direct async for single request
+WebSocketProvider ws = WebSocketProvider.create("wss://eth.example.com");
+CompletableFuture<JsonRpcResponse> future = ws.sendAsync("eth_blockNumber", List.of());
+
+// Batched async for high throughput (auto-batches network writes)
+List<CompletableFuture<JsonRpcResponse>> futures = new ArrayList<>();
+for (int i = 0; i < 1000; i++) {
+    futures.add(ws.sendAsyncBatch("eth_blockNumber", List.of()));
+}
+```
+
+### Custom Timeout per Request
+```java
+// Override default 60s timeout
+CompletableFuture<JsonRpcResponse> future = ws.sendAsync(
+    "eth_estimateGas",
+    List.of(txParams),
+    Duration.ofSeconds(5)  // Custom timeout
+);
+```
+
+### Safe Subscription Callbacks
+Subscription callbacks run on virtual threads by default, not the Netty I/O thread:
+```java
+client.subscribeToNewHeads(header -> {
+    // Safe to do blocking work here - runs on virtual thread
+    database.save(header);
+});
+```
+
+### Async Facade
+For users who prefer futures:
+```java
+BraneAsyncClient asyncClient = new BraneAsyncClient(httpProvider);
+asyncClient.sendAsync("eth_chainId", List.of())
+    .thenAccept(res -> System.out.println(res.result()));
+```
+
 ## Project Structure
 
 *   `brane-core`: Core types (`Address`, `Wei`, `HexData`), native ABI system (`io.brane.core.abi`), error model, and chain profiles.
