@@ -24,6 +24,8 @@ import java.time.Duration;
  * <strong>Thread Safety:</strong> Implementations must be thread-safe as
  * methods
  * may be called from multiple threads concurrently.
+ *
+ * @since 0.2.0
  */
 public interface BraneMetrics {
 
@@ -108,13 +110,16 @@ public interface BraneMetrics {
      * @return a no-op BraneMetrics instance
      */
     static BraneMetrics noop() {
-        return NoopMetrics.INSTANCE;
+        return Noop.INSTANCE;
     }
-}
 
-/**
- * Internal no-op implementation of BraneMetrics.
- */
-enum NoopMetrics implements BraneMetrics {
-    INSTANCE
+    /**
+     * Private no-op implementation of BraneMetrics.
+     */
+    final class Noop implements BraneMetrics {
+        static final Noop INSTANCE = new Noop();
+
+        private Noop() {
+        }
+    }
 }

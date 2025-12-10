@@ -2,6 +2,7 @@ package io.brane.rpc;
 
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Factory methods for creating executors optimized for different workloads.
@@ -41,8 +42,15 @@ import java.util.concurrent.Executors;
  * tasks,
  * having more threads than CPU cores just adds scheduling overhead. Use
  * {@link #newCpuBoundExecutor()} for such workloads.
+ *
+ * @since 0.2.0
  */
 public final class BraneExecutors {
+
+    /**
+     * Counter for unique CPU worker thread names.
+     */
+    private static final AtomicInteger CPU_THREAD_ID = new AtomicInteger(0);
 
     private BraneExecutors() {
         // Utility class
@@ -85,11 +93,7 @@ public final class BraneExecutors {
      */
     public static ExecutorService newCpuBoundExecutor() {
         int cores = Runtime.getRuntime().availableProcessors();
-        return Executors.newFixedThreadPool(cores, r -> {
-            Thread t = new Thread(r, "brane-cpu-worker");
-            t.setDaemon(true);
-            return t;
-        });
+        return newCpuBoundExecutor(cores);
     }
 
     /**
@@ -108,7 +112,7 @@ public final class BraneExecutors {
             throw new IllegalArgumentException("threads must be at least 1, got: " + threads);
         }
         return Executors.newFixedThreadPool(threads, r -> {
-            Thread t = new Thread(r, "brane-cpu-worker");
+            Thread t = new Thread(r, "brane-cpu-worker-" + CPU_THREAD_ID.getAndIncrement());
             t.setDaemon(true);
             return t;
         });

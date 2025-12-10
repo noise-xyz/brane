@@ -673,6 +673,14 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         CompletableFuture<JsonRpcResponse> future = new CompletableFuture<>();
         slots[slot] = future;
 
+        // Check ring buffer saturation before publishing (metrics hook for early
+        // warning)
+        int bufferSize = ringBuffer.getBufferSize();
+        long remainingCapacity = ringBuffer.remainingCapacity();
+        if (remainingCapacity < bufferSize * 0.1) { // 10% threshold
+            metrics.onRingBufferSaturation(remainingCapacity, bufferSize);
+        }
+
         // Publish to disruptor for batched processing
         long sequence = ringBuffer.next();
         try {

@@ -36,6 +36,13 @@ import java.util.concurrent.Executors;
  */
 public final class BraneAsyncClient {
 
+    /**
+     * Shared default executor for async operations.
+     * Virtual thread executors are lightweight, but sharing avoids unnecessary
+     * object creation.
+     */
+    private static final Executor DEFAULT_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
+
     private final BraneProvider provider;
     private final Executor executor;
 
@@ -45,7 +52,7 @@ public final class BraneAsyncClient {
      * @param provider the underlying RPC provider
      */
     public BraneAsyncClient(BraneProvider provider) {
-        this(provider, Executors.newVirtualThreadPerTaskExecutor());
+        this(provider, DEFAULT_EXECUTOR);
     }
 
     /**
