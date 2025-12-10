@@ -72,9 +72,9 @@ var client = BranePublicClient.forChain(myChain).build();
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `chainId` | `long` | Network chain ID |
-| `rpcUrl` | `String` | JSON-RPC endpoint |
+| `defaultRpcUrl` | `String` | JSON-RPC endpoint |
 | `supportsEip1559` | `boolean` | Use EIP-1559 gas pricing? |
-| `defaultGasPrice` | `Wei` | Fallback gas price |
+| `defaultPriorityFeePerGas` | `Wei` | Default priority fee (for EIP-1559) |
 
 ---
 
@@ -116,17 +116,21 @@ Chain profiles integrate with all Brane clients:
 
 ```java
 import io.brane.rpc.BranePublicClient;
+import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.core.crypto.PrivateKeySigner;
+import io.brane.core.chain.ChainProfiles;
 
 // PublicClient with chain profile
 var publicClient = BranePublicClient.forChain(ChainProfiles.ETH_MAINNET)
     .withRpcUrl("https://...")
     .build();
 
-// WalletClient needs the chain for transaction signing
+// WalletClient needs provider + publicClient + signer + chain
+// Create provider separately for WalletClient
+var provider = HttpBraneProvider.builder("https://...").build();
 var wallet = DefaultWalletClient.create(
-    publicClient.getProvider(),
+    provider,
     publicClient,
     new PrivateKeySigner("0x..."),
     ChainProfiles.ETH_MAINNET  // Used for chain ID in signatures
