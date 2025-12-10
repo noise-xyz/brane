@@ -25,9 +25,10 @@ Represents a monetary value in Wei (10^-18 Ether). It wraps `BigInteger` to prev
 
 ```java
 import io.brane.core.types.Wei;
+import java.math.BigDecimal;
 
-// From Ether (String or BigDecimal)
-Wei value = Wei.fromEther("1.5");
+// From Ether (BigDecimal)
+Wei value = Wei.fromEther(new BigDecimal("1.5"));
 
 // From Gwei
 Wei gasPrice = Wei.gwei(20);

@@ -21,13 +21,16 @@
         {
             "group": "Public Client",
             "pages": [
-                "public-client/api"
+                "public-client/api",
+                "public-client/subscriptions"
             ]
         },
         {
             "group": "Wallet Client",
             "pages": [
-                "wallet-client/api"
+                "wallet-client/api",
+                "wallet-client/signers",
+                "wallet-client/custom-signers"
             ]
         },
         {
@@ -38,17 +41,16 @@
             ]
         },
         {
-            "group": "Providers & Chains",
+            "group": "Providers",
             "pages": [
-                "providers/configuration",
+                "providers/http",
                 "providers/websocket"
             ]
         },
         {
-            "group": "Advanced Signing",
+            "group": "Chains",
             "pages": [
-                "signing/overview",
-                "signing/custom-signers"
+                "chains/profiles"
             ]
         },
         {

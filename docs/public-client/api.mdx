@@ -82,22 +82,29 @@ Returns an array of all logs matching a given filter object.
 ```java
 import io.brane.rpc.LogFilter;
 import io.brane.core.model.LogEntry;
+import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
 import java.util.List;
 import java.util.Optional;
-import java.math.BigInteger;
 
 long blockNumber = 12345678L;
 Address tokenAddress = new Address("0x...");
 
 // Filter for Transfer(address,address,uint256)
+// With block range
 LogFilter filter = new LogFilter(
     Optional.of(blockNumber), // fromBlock
     Optional.of(blockNumber), // toBlock
     Optional.of(tokenAddress), // address
     Optional.of(List.of(      // topics
-        new HexData("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef") // Transfer topic
+        new Hash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef") // Transfer topic
     ))
 );
 
-List<LogEntry> logs = client.getLogs(filter);
+// Or use the simpler factory method (no block range)
+LogFilter simpleFilter = LogFilter.byContract(tokenAddress, List.of(
+    new Hash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+));
+
+List<LogEntry> logs = client.getLogs(simpleFilter);
 ```
