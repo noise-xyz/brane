@@ -51,3 +51,9 @@ task runWebSocketBenchmark(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'io.brane.benchmark.WebSocketBenchmark'
 }
+
+task runQuickBenchmark(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.brane.benchmark.QuickProviderBenchmark'
+}
+
