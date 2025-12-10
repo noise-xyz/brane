@@ -33,6 +33,8 @@ import java.util.concurrent.Executors;
  * <p>
  * <strong>Thread Safety:</strong> This class is thread-safe and can be shared
  * across multiple threads.
+ *
+ * @since 0.2.0
  */
 public final class BraneAsyncClient {
 

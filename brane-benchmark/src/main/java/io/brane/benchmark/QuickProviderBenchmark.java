@@ -6,7 +6,35 @@ import java.util.concurrent.*;
 
 /**
  * Quick benchmark to measure all provider types against local Anvil.
- * Run: ./gradlew :brane-benchmark:runQuickBenchmark
+ *
+ * <p>
+ * This benchmark provides a fast way to compare HTTP (Loom) vs WebSocket
+ * providers
+ * without the overhead of full JMH. Results are printed to stdout for quick
+ * analysis.
+ *
+ * <p>
+ * <strong>Prerequisites:</strong>
+ * <ul>
+ * <li>Anvil running on localhost: {@code anvil --host 0.0.0.0 --port 8545}</li>
+ * </ul>
+ *
+ * <p>
+ * <strong>Usage:</strong>
+ * 
+ * <pre>{@code
+ * ./gradlew :brane-benchmark:runQuickBenchmark
+ * }</pre>
+ *
+ * <p>
+ * <strong>Output Metrics:</strong>
+ * <ul>
+ * <li><strong>ops/s</strong> - Operations per second (higher is better)</li>
+ * <li><strong>ms/op</strong> - Milliseconds per operation (lower is
+ * better)</li>
+ * </ul>
+ *
+ * @since 0.2.0
  */
 public class QuickProviderBenchmark {
     private static final String HTTP_URL = "http://127.0.0.1:8545";

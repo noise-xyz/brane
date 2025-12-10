@@ -44,6 +44,7 @@ import java.util.Objects;
  * @param connectTimeout        connection establishment timeout
  * @param ioThreads             number of Netty I/O threads (typically 1 for
  *                              minimal context switching)
+ * @since 0.2.0
  */
 public record WebSocketConfig(
         String url,
