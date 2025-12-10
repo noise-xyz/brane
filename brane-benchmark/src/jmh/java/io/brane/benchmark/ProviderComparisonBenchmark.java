@@ -6,6 +6,8 @@ import org.openjdk.jmh.annotations.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -105,8 +107,8 @@ public class ProviderComparisonBenchmark {
     @OperationsPerInvocation(100)
     public void http_batch100_blockNumber() throws Exception {
         // Using virtual threads for HTTP parallelism
-        try (var exec = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
-            List<java.util.concurrent.Future<JsonRpcResponse>> futures = new ArrayList<>(100);
+        try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
+            List<Future<JsonRpcResponse>> futures = new ArrayList<>(100);
             for (int i = 0; i < 100; i++) {
                 futures.add(exec.submit(() -> httpProvider.send("eth_blockNumber", List.of())));
             }

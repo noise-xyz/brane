@@ -549,7 +549,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * @return a CompletableFuture that completes with the JSON-RPC response
      */
     public CompletableFuture<JsonRpcResponse> sendAsync(String method, List<?> params) {
-        return sendAsync(method, params, Duration.ofMillis(DEFAULT_TIMEOUT_MS));
+        return sendAsync(method, params, defaultRequestTimeout);
     }
 
     /**
