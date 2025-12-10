@@ -114,6 +114,40 @@ Use `BraneExecutors.newIoBoundExecutor()` for I/O-bound work. See [Threading & E
 
 ---
 
+## Async Facade
+
+For users who prefer `CompletableFuture`-based APIs, wrap any provider with `BraneAsyncClient`:
+
+```java
+import io.brane.rpc.BraneAsyncClient;
+import io.brane.rpc.HttpBraneProvider;
+
+var provider = HttpBraneProvider.builder("https://eth.llamarpc.com").build();
+var asyncClient = new BraneAsyncClient(provider);
+
+asyncClient.sendAsync("eth_chainId", List.of())
+    .thenAccept(res -> System.out.println("Chain ID: " + res.result()));
+```
+
+### Custom Executor
+
+By default, `BraneAsyncClient` uses virtual threads. You can supply a custom executor:
+
+```java
+import java.util.concurrent.Executors;
+
+var asyncClient = new BraneAsyncClient(
+    provider,
+    Executors.newFixedThreadPool(8)
+);
+```
+
+<Tip>
+When wrapping a `WebSocketProvider`, `BraneAsyncClient` delegates directly to its native `sendAsync()` for optimal performance—no executor overhead.
+</Tip>
+
+---
+
 ## HTTP vs WebSocket
 
 | Use Case | Recommended |
