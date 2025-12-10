@@ -94,7 +94,7 @@ import java.util.concurrent.Future;
 import java.util.ArrayList;
 
 try (var exec = BraneExecutors.newIoBoundExecutor()) {
-    var futures = new ArrayList<Future<?>>();
+    var futures = new ArrayList<>();
     
     for (int i = 0; i < 100; i++) {
         futures.add(exec.submit(() -> 
