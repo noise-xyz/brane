@@ -26,6 +26,86 @@ provider.close();
 Use `wss://` for secure connections. The provider automatically handles SSL/TLS.
 </Tip>
 
+---
+
+## Advanced Configuration
+
+For production use cases, you'll want fine-grained control over connection behavior, timeouts, and performance tuning.
+
+### WebSocketConfig
+
+```java
+import io.brane.rpc.WebSocketConfig;
+import io.brane.rpc.WebSocketConfig.WaitStrategyType;
+import io.brane.rpc.WebSocketProvider;
+import java.time.Duration;
+
+var config = WebSocketConfig.builder("wss://eth.example.com")
+    .maxPendingRequests(32768)              // Max concurrent requests
+    .ringBufferSize(8192)                   // Disruptor buffer (power of 2)
+    .waitStrategy(WaitStrategyType.YIELDING) // Low latency mode
+    .defaultRequestTimeout(Duration.ofSeconds(30))
+    .connectTimeout(Duration.ofSeconds(10))
+    .ioThreads(1)                           // Usually 1 is optimal
+    .build();
+
+var provider = WebSocketProvider.create(config);
+```
+
+### Configuration Reference
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `maxPendingRequests` | 65,536 | Maximum concurrent in-flight requests. Must be power of 2. |
+| `ringBufferSize` | 4,096 | Disruptor ring buffer size. Increase for high throughput. |
+| `waitStrategy` | `YIELDING` | `YIELDING` = low latency, high CPU. `BLOCKING` = low CPU, higher latency. |
+| `defaultRequestTimeout` | 60 sec | Timeout for requests without explicit timeout. |
+| `connectTimeout` | 10 sec | WebSocket handshake timeout. |
+| `ioThreads` | 1 | Netty I/O threads. 1 is usually optimal (avoids context switching). |
+
+<Tip>
+**When to use YIELDING:** High-frequency trading, MEV bots, or any latency-critical application where you can afford higher CPU usage.
+
+**When to use BLOCKING:** Long-running services, batch processing, or when running alongside other CPU-intensive workloads.
+</Tip>
+
+---
+
+## Request Timeouts
+
+Every async request has a configurable timeout to prevent hanging requests.
+
+### Default Timeout
+
+The default timeout comes from `WebSocketConfig.defaultRequestTimeout()` (60 seconds by default):
+
+```java
+// Uses the default timeout from config
+var response = provider.sendAsync("eth_blockNumber", List.of()).get();
+```
+
+### Per-Request Timeout
+
+Override the timeout for individual requests:
+
+```java
+import java.time.Duration;
+
+// Short timeout for time-sensitive operations
+var gasPrice = provider.sendAsync("eth_gasPrice", List.of(), Duration.ofSeconds(5))
+    .get();
+
+// Longer timeout for slow methods
+var logs = provider.sendAsync("eth_getLogs", List.of(filter), Duration.ofSeconds(120))
+    .get();
+```
+
+<Warning>
+When a request times out, the slot is freed but the request may still complete on the server side. Design your application to handle this.
+</Warning>
+
+---
+
 ## Subscriptions
 
 WebSocket enables real-time event subscriptions via `eth_subscribe`.
@@ -48,7 +128,6 @@ provider.unsubscribe(subscriptionId);
 Subscribe to specific contract events:
 
 ```java
-import io.brane.core.types.Address;
 import java.util.List;
 import java.util.Map;
 
@@ -73,9 +152,29 @@ String subscriptionId = provider.subscribe("newPendingTransactions", null, event
 });
 ```
 
+### Custom Callback Executor
+
+By default, subscription callbacks run on **virtual threads** to prevent blocking the Netty I/O thread.
+
+For custom threading behavior:
+
+```java
+import java.util.concurrent.Executors;
+
+// Use a bounded thread pool for callbacks
+provider.setSubscriptionExecutor(
+    Executors.newFixedThreadPool(4)
+);
+
+// Or run directly on the Netty I/O thread (⚠️ use with caution)
+provider.setSubscriptionExecutor(Runnable::run);
+```
+
 <Warning>
-Callbacks are invoked on the Netty I/O thread. Avoid blocking operations in callbacks to prevent I/O starvation.
+If you set a single-threaded executor or run callbacks on the I/O thread, ensure callbacks complete quickly. Blocking operations will stall all WebSocket I/O.
 </Warning>
+
+---
 
 ## High-Performance Batching
 
@@ -97,24 +196,43 @@ CompletableFuture.allOf(futures).join();
 
 This batches network writes together, reducing syscall overhead.
 
-## Async vs Batch Methods
+### Async vs Batch Methods
 
 | Method | Use Case | Latency | Throughput |
 |--------|----------|---------|------------|
 | `sendAsync()` | Individual requests | ✅ Optimal | Good |
 | `sendAsyncBatch()` | Bulk requests | Good | ✅ Optimal |
 
-## Connection Handling
+**Rule of thumb:** Use `sendAsync()` normally. Switch to `sendAsyncBatch()` when sending many requests in a tight loop.
 
-The provider includes built-in reconnection logic:
+---
+
+## Backpressure & Error Handling
+
+The provider has built-in backpressure to prevent overwhelming the connection.
+
+### Too Many Pending Requests
+
+When you exceed `maxPendingRequests`, new requests fail immediately with an `RpcException`:
 
 ```java
-// Automatic reconnection on disconnect (built-in)
-var provider = WebSocketProvider.create("wss://...");
-
-// Manual close
-provider.close();
+try {
+    var response = provider.sendAsync("eth_blockNumber", List.of()).get();
+} catch (ExecutionException e) {
+    if (e.getCause() instanceof RpcException rpc) {
+        if (rpc.getMessage().contains("Too many pending requests")) {
+            // Back off and retry
+            Thread.sleep(100);
+        }
+    }
+}
 ```
+
+### Connection Lost
+
+The provider attempts to reconnect automatically. If the connection is lost while requests are in-flight, those futures will complete exceptionally.
+
+---
 
 ## Integration with Clients
 
@@ -150,12 +268,15 @@ var request = TxBuilder.eip1559()
 var receipt = wallet.sendTransactionAndWait(request, 60_000, 1_000);
 ```
 
+---
+
 ## When to Use WebSocket
 
 | Scenario | Recommended |
 |----------|-------------|
 | Real-time subscriptions | ✅ WebSocket |
-| High-frequency trading | ✅ WebSocket |
-| Simple read operations | HTTP or WebSocket |
-| Serverless/Lambda | HTTP |
+| High-frequency trading / MEV | ✅ WebSocket |
 | Long-running services | ✅ WebSocket |
+| Simple read operations | HTTP or WebSocket |
+| Serverless / Lambda | HTTP (no persistent connection) |
+| Mobile apps | HTTP (battery efficiency) |

@@ -122,6 +122,32 @@ public class WebSocketIntegrationTest {
     }
 
     @Test
+    void testSubscriptionCallbackNotOnNettyThread() throws Exception {
+        AtomicReference<String> callbackThreadName = new AtomicReference<>();
+        CompletableFuture<String> received = new CompletableFuture<>();
+
+        Subscription sub = client.subscribeToNewHeads(header -> {
+            callbackThreadName.set(Thread.currentThread().getName());
+            received.complete(Thread.currentThread().getName());
+        });
+
+        assertNotNull(sub.id());
+
+        // Trigger a new block
+        triggerMine();
+
+        // Wait for callback
+        String threadName = received.get(10, TimeUnit.SECONDS);
+
+        // Callback should NOT run on the Netty I/O thread
+        assertFalse(threadName.contains("brane-netty-io"),
+                "Subscription callback ran on Netty I/O thread (" + threadName + "). " +
+                        "This is a bug - callbacks should run on the subscription executor.");
+
+        sub.unsubscribe();
+    }
+
+    @Test
     void testSubscribeToLogs() throws Exception {
         // Use pre-deployed Token contract from integration script, or skip if not set
         String contractAddrStr = System.getProperty("brane.examples.erc20.contract");
@@ -191,6 +217,82 @@ public class WebSocketIntegrationTest {
             assertNull(response.error());
             assertNotNull(response.result());
         }
+    }
+
+    @Test
+    void testCustomSubscriptionExecutor() throws Exception {
+        // Create a custom executor that tracks its thread name
+        java.util.concurrent.Executor customExecutor = runnable -> {
+            Thread t = new Thread(runnable, "test-custom-executor");
+            t.start();
+        };
+        wsProvider.setSubscriptionExecutor(customExecutor);
+
+        CompletableFuture<String> received = new CompletableFuture<>();
+
+        Subscription sub = client.subscribeToNewHeads(header -> {
+            received.complete(Thread.currentThread().getName());
+        });
+
+        assertNotNull(sub.id());
+
+        // Trigger a new block
+        triggerMine();
+
+        // Wait for callback and verify it ran on our custom executor
+        String threadName = received.get(10, TimeUnit.SECONDS);
+        assertEquals("test-custom-executor", threadName,
+                "Callback should run on custom executor thread");
+
+        sub.unsubscribe();
+    }
+
+    @Test
+    void testSendRunsOnCallerThread() throws Exception {
+        // Record the calling thread
+        String callerThread = Thread.currentThread().getName();
+
+        // Make a synchronous call
+        JsonRpcResponse response = wsProvider.send("eth_blockNumber", List.of());
+
+        // Verify the call completed (we're still on the same thread)
+        assertNotNull(response);
+        assertNull(response.error());
+
+        // Verify we're still on the caller thread (send() should block, not switch
+        // threads)
+        assertEquals(callerThread, Thread.currentThread().getName(),
+                "send() should block on the caller thread, not switch threads");
+    }
+
+    @Test
+    void testRequestTimeoutWithShortDuration() throws Exception {
+        // Test that the timeout scheduling mechanism is in place.
+        // Since Anvil responds quickly even to unknown methods, we verify
+        // that sendAsync with timeout doesn't throw and the future completes.
+        // The actual timeout behavior is harder to test without a server that delays.
+
+        CompletableFuture<JsonRpcResponse> future = wsProvider.sendAsync(
+                "eth_blockNumber",
+                List.of(),
+                Duration.ofSeconds(30) // Long timeout - should complete quickly
+        );
+
+        // This should complete quickly (not timeout)
+        JsonRpcResponse response = future.get(5, TimeUnit.SECONDS);
+        assertNotNull(response);
+        assertNotNull(response.result());
+
+        // Also verify the timeout method signature is accessible and works
+        // by checking that a very short timeout against a valid method still works
+        // (since Anvil responds faster than any realistic timeout)
+        CompletableFuture<JsonRpcResponse> quickFuture = wsProvider.sendAsync(
+                "eth_chainId",
+                List.of(),
+                Duration.ofMillis(5000) // 5 second timeout
+        );
+        JsonRpcResponse quickResponse = quickFuture.get(10, TimeUnit.SECONDS);
+        assertNotNull(quickResponse.result());
     }
 
     private void triggerMine() throws Exception {

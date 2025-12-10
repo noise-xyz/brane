@@ -23,7 +23,9 @@ jmh {
     fork = 1
     failOnError = true
     resultFormat = 'JSON'
-    includes = ['io.brane.benchmark.MainnetBenchmark']
+    // Benchmarks are specified via command line: -Pjmh.includes="..."
+    // Leave empty to run all benchmarks by default
+    includes = project.hasProperty('jmh.includes') ? [project.property('jmh.includes')] : []
     excludes = []
     
     // Pass the system property to the forked JVM
@@ -51,3 +53,9 @@ task runWebSocketBenchmark(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
     mainClass = 'io.brane.benchmark.WebSocketBenchmark'
 }
+
+task runQuickBenchmark(type: JavaExec) {
+    classpath = sourceSets.main.runtimeClasspath
+    mainClass = 'io.brane.benchmark.QuickProviderBenchmark'
+}
+
