@@ -16,7 +16,8 @@ var provider = WebSocketProvider.create("wss://ethereum.publicnode.com");
 var client = PublicClient.from(provider);
 
 // Use like any other provider
-var blockNumber = client.getBlockNumber();
+var latestBlock = client.getLatestBlock();
+System.out.println("Block #" + latestBlock.number());
 
 // Always close when done
 provider.close();
@@ -265,7 +266,7 @@ var wallet = DefaultWalletClient.create(
 // Create a transaction request
 var request = TxBuilder.eip1559()
     .to(new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"))
-    .value(Wei.fromEther("0.01"))
+    .value(Wei.fromEther(new java.math.BigDecimal("0.01")))
     .build();
 
 // Send transactions over WebSocket
