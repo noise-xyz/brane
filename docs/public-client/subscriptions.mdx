@@ -35,7 +35,7 @@ Subscription subscription = client.subscribeToNewHeads(header -> {
     System.out.println("  Timestamp: " + header.timestamp());
     
     if (header.baseFeePerGas() != null) {
-        System.out.println("  Base Fee: " + header.baseFeePerGas().toGwei() + " gwei");
+        System.out.println("  Base Fee: " + header.baseFeePerGas().value() + " wei");
     }
 });
 
@@ -68,6 +68,7 @@ import io.brane.rpc.Subscription;
 import io.brane.core.model.LogEntry;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
+import java.util.List;
 
 // USDC contract on Ethereum mainnet
 Address usdc = new Address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
@@ -75,10 +76,8 @@ Address usdc = new Address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
 // Transfer(address,address,uint256) event signature
 Hash transferTopic = new Hash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef");
 
-LogFilter filter = LogFilter.builder()
-    .address(usdc)
-    .topics(List.of(transferTopic))
-    .build();
+// Use the byContract factory method
+LogFilter filter = LogFilter.byContract(usdc, List.of(transferTopic));
 
 Subscription subscription = client.subscribeToLogs(filter, log -> {
     System.out.println("Transfer detected!");
