@@ -58,7 +58,7 @@ var provider = WebSocketProvider.create(config);
 |--------|---------|-------------|
 | `maxPendingRequests` | 65,536 | Maximum concurrent in-flight requests. Must be power of 2. |
 | `ringBufferSize` | 4,096 | Disruptor ring buffer size. Increase for high throughput. |
-| `waitStrategy` | `BLOCKING` | `YIELDING` = low latency, high CPU. `BLOCKING` = low CPU, higher latency. |
+| `waitStrategy` | `YIELDING` | `YIELDING` = low latency, high CPU. `BLOCKING` = low CPU, higher latency. |
 | `defaultRequestTimeout` | 60 sec | Timeout for requests without explicit timeout. |
 | `connectTimeout` | 10 sec | WebSocket handshake timeout. |
 | `ioThreads` | 1 | Netty I/O threads. 1 is usually optimal (avoids context switching). |

@@ -133,15 +133,18 @@ public class QuickProviderBenchmark {
         int batches = 10;
 
         long start = System.nanoTime();
-        for (int b = 0; b < batches; b++) {
-            if (useWs) {
+        if (useWs) {
+            for (int b = 0; b < batches; b++) {
                 List<CompletableFuture<JsonRpcResponse>> futures = new ArrayList<>();
                 for (int i = 0; i < batchSize; i++) {
                     futures.add(ws.sendAsyncBatch("eth_blockNumber", List.of()));
                 }
                 CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
-            } else {
-                try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
+            }
+        } else {
+            // Create executor once outside the loop to avoid overhead per batch
+            try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
+                for (int b = 0; b < batches; b++) {
                     List<Future<?>> futures = new ArrayList<>();
                     for (int i = 0; i < batchSize; i++) {
                         futures.add(exec.submit(() -> http.send("eth_blockNumber", List.of())));

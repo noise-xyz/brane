@@ -531,6 +531,27 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     }
 
     /**
+     * Allocates a slot for a new request with backpressure handling.
+     * 
+     * @param id the request ID
+     * @return the allocated future, or a failed future if backpressure is triggered
+     */
+    private CompletableFuture<JsonRpcResponse> allocateSlot(long id) {
+        int slot = (int) (id & slotMask);
+        CompletableFuture<JsonRpcResponse> existing = slots[slot];
+        if (existing != null && !existing.isDone()) {
+            metrics.onBackpressure();
+            return CompletableFuture.failedFuture(new io.brane.core.error.RpcException(
+                    -32000,
+                    "Too many pending requests (" + maxPendingRequests + " limit reached, slot " + slot + " in use)",
+                    null));
+        }
+        CompletableFuture<JsonRpcResponse> future = new CompletableFuture<>();
+        slots[slot] = future;
+        return future;
+    }
+
+    /**
      * Sends an asynchronous JSON-RPC request.
      *
      * <p>
@@ -572,20 +593,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         long id = idGenerator.getAndIncrement();
         int slot = (int) (id & slotMask);
 
-        // Backpressure: fail fast if slot is occupied (too many in-flight requests)
-        CompletableFuture<JsonRpcResponse> existing = slots[slot];
-        if (existing != null && !existing.isDone()) {
-            metrics.onBackpressure();
-            CompletableFuture<JsonRpcResponse> failed = new CompletableFuture<>();
-            failed.completeExceptionally(new io.brane.core.error.RpcException(
-                    -32000,
-                    "Too many pending requests (" + maxPendingRequests + " limit reached, slot " + slot + " in use)",
-                    null));
-            return failed;
+        CompletableFuture<JsonRpcResponse> future = allocateSlot(id);
+        if (future.isCompletedExceptionally()) {
+            return future; // Backpressure triggered
         }
-
-        CompletableFuture<JsonRpcResponse> future = new CompletableFuture<>();
-        slots[slot] = future;
 
         Channel ch = this.channel;
         if (ch != null && ch.isActive()) {
@@ -659,19 +670,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         long id = idGenerator.getAndIncrement();
         int slot = (int) (id & slotMask);
 
-        // Backpressure: fail fast if slot is occupied (too many in-flight requests)
-        CompletableFuture<JsonRpcResponse> existing = slots[slot];
-        if (existing != null && !existing.isDone()) {
-            CompletableFuture<JsonRpcResponse> failed = new CompletableFuture<>();
-            failed.completeExceptionally(new io.brane.core.error.RpcException(
-                    -32000,
-                    "Too many pending requests (" + maxPendingRequests + " limit reached, slot " + slot + " in use)",
-                    null));
-            return failed;
+        CompletableFuture<JsonRpcResponse> future = allocateSlot(id);
+        if (future.isCompletedExceptionally()) {
+            return future; // Backpressure triggered
         }
-
-        CompletableFuture<JsonRpcResponse> future = new CompletableFuture<>();
-        slots[slot] = future;
 
         // Check ring buffer saturation before publishing (metrics hook for early
         // warning)
