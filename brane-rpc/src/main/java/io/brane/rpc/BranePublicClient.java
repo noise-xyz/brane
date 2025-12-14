@@ -1,9 +1,11 @@
 package io.brane.rpc;
 
 import io.brane.core.chain.ChainProfile;
+import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.LogEntry;
 import io.brane.core.model.Transaction;
+import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Hash;
 import java.util.List;
 import io.brane.rpc.Subscription;
@@ -121,6 +123,11 @@ public final class BranePublicClient implements PublicClient {
     public Subscription subscribeToLogs(LogFilter filter,
             java.util.function.Consumer<io.brane.core.model.LogEntry> callback) {
         return delegate.subscribeToLogs(filter, callback);
+    }
+
+    @Override
+    public AccessListWithGas createAccessList(final TransactionRequest request) {
+        return delegate.createAccessList(request);
     }
 
     public static final class Builder {

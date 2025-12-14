@@ -1,7 +1,9 @@
 package io.brane.rpc;
 
+import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.Transaction;
+import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Hash;
 import java.util.Map;
 import java.util.List;
@@ -127,4 +129,39 @@ public interface PublicClient {
      * @return the subscription handle
      */
     Subscription subscribeToLogs(LogFilter filter, java.util.function.Consumer<io.brane.core.model.LogEntry> callback);
+
+    /**
+     * Creates an access list for the given transaction request.
+     * 
+     * <p>
+     * This method simulates the transaction and returns the storage slots it
+     * would access along with the gas that would be consumed. The access list can
+     * be used to optimize gas costs by pre-declaring storage access (EIP-2930).
+     * 
+     * <p>
+     * <strong>Example:</strong>
+     * 
+     * <pre>{@code
+     * TransactionRequest request = new TransactionRequest(
+     *         fromAddress,
+     *         contractAddress,
+     *         null, // value
+     *         null, // gasLimit
+     *         null, // gasPrice
+     *         null, // maxPriorityFeePerGas
+     *         null, // maxFeePerGas
+     *         null, // nonce
+     *         encodedData,
+     *         true, // isEip1559
+     *         null  // accessList
+     * );
+     * 
+     * AccessListWithGas result = client.createAccessList(request);
+     * // Use result.accessList() in your transaction
+     * }</pre>
+     * 
+     * @param request the transaction request to analyze
+     * @return the access list and gas used
+     */
+    AccessListWithGas createAccessList(TransactionRequest request);
 }
