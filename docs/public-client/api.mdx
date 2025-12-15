@@ -108,3 +108,41 @@ LogFilter simpleFilter = LogFilter.byContract(tokenAddress, List.of(
 
 List<LogEntry> logs = client.getLogs(simpleFilter);
 ```
+
+### createAccessList
+
+Generates an **EIP-2930 access list** for a transaction request.  
+This allows you to see which storage slots a transaction will touch and how much gas it would consume **without actually sending it**.
+Useful for gas optimization and preparing transactions that conform to EIP-2930.
+
+```java
+import io.brane.core.model.TransactionRequest;
+import io.brane.core.model.AccessListWithGas;
+import io.brane.core.model.AccessListEntry;
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
+import java.math.BigInteger;
+import java.util.List;
+
+// Build a transaction request
+TransactionRequest txRequest = new TransactionRequest(
+    new Address("0xYourFromAddress"),
+    new Address("0xRecipientAddress"),
+    null, // value
+    null, // gas
+    null, // gasPrice
+    null, // maxFeePerGas
+    null, // maxPriorityFeePerGas
+    null, // nonce
+    new HexData("0xdeadbeef"), // data
+    true,
+    null
+);
+
+AccessListWithGas result = client.createAccessList(txRequest);
+
+System.out.println("Gas used: " + result.gasUsed());
+for (AccessListEntry entry : result.accessList()) {
+    System.out.println("Address: " + entry.address().value());
+    System.out.println("Storage slots: " + entry.storageKeys().size());
+}
