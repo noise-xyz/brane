@@ -1,6 +1,7 @@
 package io.brane.rpc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.brane.core.DebugLogger;
 import io.brane.core.LogFormatter;
 import io.brane.core.model.AccessListEntry;
@@ -168,30 +169,32 @@ final class DefaultPublicClient implements PublicClient {
                     (Throwable) null);
         }
 
-        @SuppressWarnings("unchecked")
-        final var map = (Map<String, Object>) mapper.convertValue(result, Map.class);
+        final Map<String, Object> map = mapper.convertValue(result, new TypeReference<Map<String, Object>>() {
+        });
 
         final String gasUsedHex = RpcUtils.stringValue(map.get("gasUsed"));
         final BigInteger gasUsed = gasUsedHex != null
                 ? RpcUtils.decodeHexBigInteger(gasUsedHex)
                 : BigInteger.ZERO;
 
-        @SuppressWarnings("unchecked")
-        final var accessListRaw = (List<Map<String, Object>>) map.get("accessList");
+        final List<Map<String, Object>> accessListRaw = mapper.convertValue(
+                map.get("accessList"),
+                new TypeReference<List<Map<String, Object>>>() {
+                });
         final List<AccessListEntry> accessList = new ArrayList<>();
         if (accessListRaw != null) {
             for (Map<String, Object> entryMap : accessListRaw) {
                 final String addressHex = RpcUtils.stringValue(entryMap.get("address"));
-                @SuppressWarnings("unchecked")
-                final List<String> storageKeysHex = mapper.convertValue(entryMap.get("storageKeys"), List.class);
-                final List<Hash> storageKeys = new ArrayList<>();
-                if (storageKeysHex != null) {
-                    for (String keyHex : storageKeysHex) {
-                        if (keyHex != null) {
-                            storageKeys.add(new Hash(keyHex));
-                        }
-                    }
-                }
+                final List<String> storageKeysHex = mapper.convertValue(
+                        entryMap.get("storageKeys"),
+                        new TypeReference<List<String>>() {
+                        });
+                final List<Hash> storageKeys = (storageKeysHex == null)
+                        ? List.of()
+                        : storageKeysHex.stream()
+                                .filter(java.util.Objects::nonNull)
+                                .map(Hash::new)
+                                .toList();
                 if (addressHex != null) {
                     accessList.add(new AccessListEntry(new Address(addressHex), storageKeys));
                 }
