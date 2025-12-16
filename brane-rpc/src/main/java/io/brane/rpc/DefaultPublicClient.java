@@ -102,8 +102,10 @@ final class DefaultPublicClient implements PublicClient {
             return List.of();
         }
 
-        @SuppressWarnings("unchecked")
-        final var raw = (List<Map<String, Object>>) mapper.convertValue(result, List.class);
+        final List<Map<String, Object>> raw = mapper.convertValue(
+            result,
+            new TypeReference<List<Map<String, Object>>>() {}
+        );        
         final List<LogEntry> logs = new ArrayList<>(raw.size());
         for (Map<String, Object> map : raw) {
             final String address = RpcUtils.stringValue(map.get("address"));
@@ -111,8 +113,10 @@ final class DefaultPublicClient implements PublicClient {
             final String blockHash = RpcUtils.stringValue(map.get("blockHash"));
             final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
             final Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
-            @SuppressWarnings("unchecked")
-            final List<String> topicsHex = mapper.convertValue(map.get("topics"), List.class);
+            final List<String> topicsHex = mapper.convertValue(
+                map.get("topics"),
+                new TypeReference<List<String>>() {}
+            );
             final List<Hash> topics = new ArrayList<>();
             if (topicsHex != null) {
                 for (String t : topicsHex) {
@@ -276,8 +280,10 @@ final class DefaultPublicClient implements PublicClient {
             return null;
         }
 
-        @SuppressWarnings("unchecked")
-        final var map = (Map<String, Object>) mapper.convertValue(result, Map.class);
+        final Map<String, Object> map = mapper.convertValue(
+            result, new TypeReference<Map<String, Object>>() {}
+        );
+
         final String hash = RpcUtils.stringValue(map.get("hash"));
         final String parentHash = RpcUtils.stringValue(map.get("parentHash"));
         final Long number = RpcUtils.decodeHexLong(map.get("number"));
@@ -295,8 +301,9 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public Subscription subscribeToNewHeads(java.util.function.Consumer<BlockHeader> callback) {
         String id = provider.subscribe("newHeads", List.of(), result -> {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> map = (Map<String, Object>) mapper.convertValue(result, Map.class);
+            Map<String, Object> map = mapper.convertValue(
+                result, new TypeReference<Map<String, Object>>() {}
+            );
 
             String hash = RpcUtils.stringValue(map.get("hash"));
             String parentHash = RpcUtils.stringValue(map.get("parentHash"));
@@ -320,16 +327,19 @@ final class DefaultPublicClient implements PublicClient {
     public Subscription subscribeToLogs(LogFilter filter, java.util.function.Consumer<LogEntry> callback) {
         Map<String, Object> params = buildLogParams(filter);
         String id = provider.subscribe("logs", List.of(params), result -> {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> map = (Map<String, Object>) mapper.convertValue(result, Map.class);
+            Map<String, Object> map = mapper.convertValue(
+                result, new TypeReference<Map<String, Object>>() {}
+            );
 
             String address = RpcUtils.stringValue(map.get("address"));
             String data = RpcUtils.stringValue(map.get("data"));
             String blockHash = RpcUtils.stringValue(map.get("blockHash"));
             String txHash = RpcUtils.stringValue(map.get("transactionHash"));
             Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
-            @SuppressWarnings("unchecked")
-            List<String> topicsHex = mapper.convertValue(map.get("topics"), List.class);
+            List<String> topicsHex = mapper.convertValue(
+                map.get("topics"),
+                new TypeReference<List<String>>() {}
+            );
             List<Hash> topics = new ArrayList<>();
             if (topicsHex != null) {
                 for (String t : topicsHex) {
