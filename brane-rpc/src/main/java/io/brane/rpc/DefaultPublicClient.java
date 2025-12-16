@@ -20,6 +20,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 final class DefaultPublicClient implements PublicClient {
 
@@ -49,8 +50,7 @@ final class DefaultPublicClient implements PublicClient {
             return null;
         }
 
-        @SuppressWarnings("unchecked")
-        final var map = (Map<String, Object>) mapper.convertValue(result, Map.class);
+        final var map = mapper.convertValue(result, new TypeReference<Map<String, Object>>() {});
 
         final String hashHex = RpcUtils.stringValue(map.get("hash"));
         final String fromHex = RpcUtils.stringValue(map.get("from"));
@@ -63,7 +63,7 @@ final class DefaultPublicClient implements PublicClient {
         return new Transaction(
                 hashHex != null ? new Hash(hashHex) : null,
                 fromHex != null ? new Address(fromHex) : null,
-                toHex != null ? new Address(toHex) : null,
+                Optional.ofNullable(toHex).map(Address::new),
                 inputHex != null ? new HexData(inputHex) : HexData.EMPTY,
                 valueHex != null ? new Wei(RpcUtils.decodeHexBigInteger(valueHex)) : null,
                 nonce,
