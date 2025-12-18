@@ -54,3 +54,28 @@ HexData fromBytes = new HexData(new byte[]{0x12, 0x34});
 HexData empty = HexData.EMPTY;
 ```
 
+## AccessListWithGas
+
+Result of `createAccessList()`, containing the generated EIP-2930 access list and estimated gas.
+
+```java
+import io.brane.core.model.AccessListWithGas;
+
+AccessListWithGas result = client.createAccessList(request);
+System.out.println("Gas used: " + result.gasUsed());
+System.out.println("Entries: " + result.accessList().size());
+```
+
+## AccessListEntry
+
+An entry in an EIP-2930 access list, representing a contract address and its accessed storage slots.
+
+```java
+import io.brane.core.model.AccessListEntry;
+
+for (AccessListEntry entry : result.accessList()) {
+    System.out.println("Contract: " + entry.address());
+    System.out.println("Storage slots: " + entry.storageKeys());
+}
+```
+

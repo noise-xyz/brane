@@ -104,3 +104,39 @@ The `WalletClient` automatically handles gas estimation and fee calculation.
 *   **Gas Limit**: Estimated via `eth_estimateGas` if not provided.
 *   **Fees (EIP-1559)**: `maxFeePerGas` and `maxPriorityFeePerGas` are fetched from the network.
 *   **Buffering**: A `SmartGasStrategy` can be configured to add safety buffers to estimates.
+
+## Using Access Lists for Gas Optimization
+
+Generate an EIP-2930 access list and include it in your transaction for 10-20% gas savings on complex contract interactions:
+
+```java
+import io.brane.core.model.AccessListWithGas;
+import io.brane.core.builder.TxBuilder;
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
+
+Address contractAddress = new Address("0x...");
+HexData encodedCall = new HexData("0x..."); // ABI-encoded function call
+
+// 1. Build initial request (without access list)
+TransactionRequest initial = TxBuilder.eip1559()
+    .from(wallet.getAddress())
+    .to(contractAddress)
+    .data(encodedCall)
+    .build();
+
+// 2. Generate access list via eth_createAccessList
+AccessListWithGas result = publicClient.createAccessList(initial);
+System.out.println("Estimated gas: " + result.gasUsed());
+
+// 3. Rebuild transaction with access list included
+TransactionRequest optimized = TxBuilder.eip1559()
+    .from(wallet.getAddress())
+    .to(contractAddress)
+    .data(encodedCall)
+    .accessList(result.accessList())
+    .build();
+
+// 4. Send optimized transaction
+TransactionReceipt receipt = wallet.sendTransactionAndWait(optimized, 60_000, 1_000);
+```
