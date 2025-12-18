@@ -222,6 +222,11 @@ class DefaultWalletClientDebugTest {
                 java.util.function.Consumer<io.brane.core.model.LogEntry> callback) {
             return null;
         }
+
+        @Override
+        public io.brane.core.model.AccessListWithGas createAccessList(io.brane.core.model.TransactionRequest request) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     private static final class FakeBraneProvider implements BraneProvider {

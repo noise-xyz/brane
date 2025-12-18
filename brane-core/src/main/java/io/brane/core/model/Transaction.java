@@ -5,6 +5,8 @@ import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 
+import java.util.Optional; 
+
 /**
  * Represents a blockchain transaction.
  *
@@ -19,7 +21,7 @@ import io.brane.core.types.Wei;
 public record Transaction(
         Hash hash,
         Address from,
-        Address to,
+        Optional<Address> to,
         HexData input,
         Wei value,
         Long nonce,

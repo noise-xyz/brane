@@ -1,19 +1,26 @@
 package io.brane.rpc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
 import io.brane.core.DebugLogger;
 import io.brane.core.LogFormatter;
+import io.brane.core.model.AccessListEntry;
+import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
-import io.brane.core.model.Transaction;
 import io.brane.core.model.LogEntry;
+import io.brane.core.model.Transaction;
+import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.rpc.internal.RpcUtils;
+import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 final class DefaultPublicClient implements PublicClient {
 
@@ -43,8 +50,7 @@ final class DefaultPublicClient implements PublicClient {
             return null;
         }
 
-        @SuppressWarnings("unchecked")
-        final var map = (Map<String, Object>) mapper.convertValue(result, Map.class);
+        final var map = mapper.convertValue(result, new TypeReference<Map<String, Object>>() {});
 
         final String hashHex = RpcUtils.stringValue(map.get("hash"));
         final String fromHex = RpcUtils.stringValue(map.get("from"));
@@ -57,7 +63,7 @@ final class DefaultPublicClient implements PublicClient {
         return new Transaction(
                 hashHex != null ? new Hash(hashHex) : null,
                 fromHex != null ? new Address(fromHex) : null,
-                toHex != null ? new Address(toHex) : null,
+                Optional.ofNullable(toHex).map(Address::new),
                 inputHex != null ? new HexData(inputHex) : HexData.EMPTY,
                 valueHex != null ? new Wei(RpcUtils.decodeHexBigInteger(valueHex)) : null,
                 nonce,
@@ -96,8 +102,10 @@ final class DefaultPublicClient implements PublicClient {
             return List.of();
         }
 
-        @SuppressWarnings("unchecked")
-        final var raw = (List<Map<String, Object>>) mapper.convertValue(result, List.class);
+        final List<Map<String, Object>> raw = mapper.convertValue(
+            result,
+            new TypeReference<List<Map<String, Object>>>() {}
+        );        
         final List<LogEntry> logs = new ArrayList<>(raw.size());
         for (Map<String, Object> map : raw) {
             final String address = RpcUtils.stringValue(map.get("address"));
@@ -105,8 +113,10 @@ final class DefaultPublicClient implements PublicClient {
             final String blockHash = RpcUtils.stringValue(map.get("blockHash"));
             final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
             final Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
-            @SuppressWarnings("unchecked")
-            final List<String> topicsHex = mapper.convertValue(map.get("topics"), List.class);
+            final List<String> topicsHex = mapper.convertValue(
+                map.get("topics"),
+                new TypeReference<List<String>>() {}
+            );
             final List<Hash> topics = new ArrayList<>();
             if (topicsHex != null) {
                 for (String t : topicsHex) {
@@ -146,6 +156,86 @@ final class DefaultPublicClient implements PublicClient {
                     (Throwable) null);
         }
         return RpcUtils.decodeHexBigInteger(result.toString());
+    }
+
+    @Override
+    public AccessListWithGas createAccessList(final TransactionRequest request) {
+        final Map<String, Object> txObject = buildTxObject(request);
+        final var response = sendWithRetry("eth_createAccessList", List.of(txObject, "latest"));
+        if (response.hasError()) {
+            final JsonRpcError err = response.error();
+            throw new io.brane.core.error.RpcException(
+                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+        }
+        final Object result = response.result();
+        if (result == null) {
+            throw new io.brane.core.error.RpcException(0, "eth_createAccessList returned null", (String) null,
+                    (Throwable) null);
+        }
+
+        final Map<String, Object> map = mapper.convertValue(result, new TypeReference<Map<String, Object>>() {
+        });
+
+        final String gasUsedHex = RpcUtils.stringValue(map.get("gasUsed"));
+        final BigInteger gasUsed = gasUsedHex != null
+                ? RpcUtils.decodeHexBigInteger(gasUsedHex)
+                : BigInteger.ZERO;
+
+        final List<Map<String, Object>> accessListRaw = mapper.convertValue(
+                map.get("accessList"),
+                new TypeReference<List<Map<String, Object>>>() {
+                });
+        final List<AccessListEntry> accessList = new ArrayList<>();
+        if (accessListRaw != null) {
+            for (Map<String, Object> entryMap : accessListRaw) {
+                final String addressHex = RpcUtils.stringValue(entryMap.get("address"));
+                final List<String> storageKeysHex = mapper.convertValue(
+                        entryMap.get("storageKeys"),
+                        new TypeReference<List<String>>() {
+                        });
+                final List<Hash> storageKeys = (storageKeysHex == null)
+                        ? List.of()
+                        : storageKeysHex.stream()
+                                .filter(java.util.Objects::nonNull)
+                                .map(Hash::new)
+                                .toList();
+                if (addressHex != null) {
+                    accessList.add(new AccessListEntry(new Address(addressHex), storageKeys));
+                }
+            }
+        }
+
+        return new AccessListWithGas(accessList, gasUsed);
+    }
+
+    private Map<String, Object> buildTxObject(final TransactionRequest request) {
+        final Map<String, Object> tx = new LinkedHashMap<>();
+        if (request.from() != null) {
+            tx.put("from", request.from().value());
+        }
+        request.toOpt().ifPresent(address -> tx.put("to", address.value()));
+        request.valueOpt().ifPresent(v -> tx.put("value", RpcUtils.toQuantityHex(v.value())));
+        if (request.data() != null) {
+            tx.put("data", request.data().value());
+        }
+        if (request.accessList() != null && !request.accessList().isEmpty()) {
+            tx.put("accessList", toJsonAccessList(request.accessList()));
+        }
+        return tx;
+    }
+
+    private List<Map<String, Object>> toJsonAccessList(final List<AccessListEntry> entries) {
+        return entries.stream()
+                .map(
+                        entry -> {
+                            final Map<String, Object> map = new LinkedHashMap<>();
+                            map.put("address", entry.address().value());
+                            map.put(
+                                    "storageKeys",
+                                    entry.storageKeys().stream().map(Hash::value).toList());
+                            return map;
+                        })
+                .toList();
     }
 
     private Map<String, Object> buildLogParams(final LogFilter filter) {
@@ -190,8 +280,10 @@ final class DefaultPublicClient implements PublicClient {
             return null;
         }
 
-        @SuppressWarnings("unchecked")
-        final var map = (Map<String, Object>) mapper.convertValue(result, Map.class);
+        final Map<String, Object> map = mapper.convertValue(
+            result, new TypeReference<Map<String, Object>>() {}
+        );
+
         final String hash = RpcUtils.stringValue(map.get("hash"));
         final String parentHash = RpcUtils.stringValue(map.get("parentHash"));
         final Long number = RpcUtils.decodeHexLong(map.get("number"));
@@ -209,8 +301,9 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public Subscription subscribeToNewHeads(java.util.function.Consumer<BlockHeader> callback) {
         String id = provider.subscribe("newHeads", List.of(), result -> {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> map = (Map<String, Object>) mapper.convertValue(result, Map.class);
+            Map<String, Object> map = mapper.convertValue(
+                result, new TypeReference<Map<String, Object>>() {}
+            );
 
             String hash = RpcUtils.stringValue(map.get("hash"));
             String parentHash = RpcUtils.stringValue(map.get("parentHash"));
@@ -234,16 +327,19 @@ final class DefaultPublicClient implements PublicClient {
     public Subscription subscribeToLogs(LogFilter filter, java.util.function.Consumer<LogEntry> callback) {
         Map<String, Object> params = buildLogParams(filter);
         String id = provider.subscribe("logs", List.of(params), result -> {
-            @SuppressWarnings("unchecked")
-            Map<String, Object> map = (Map<String, Object>) mapper.convertValue(result, Map.class);
+            Map<String, Object> map = mapper.convertValue(
+                result, new TypeReference<Map<String, Object>>() {}
+            );
 
             String address = RpcUtils.stringValue(map.get("address"));
             String data = RpcUtils.stringValue(map.get("data"));
             String blockHash = RpcUtils.stringValue(map.get("blockHash"));
             String txHash = RpcUtils.stringValue(map.get("transactionHash"));
             Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
-            @SuppressWarnings("unchecked")
-            List<String> topicsHex = mapper.convertValue(map.get("topics"), List.class);
+            List<String> topicsHex = mapper.convertValue(
+                map.get("topics"),
+                new TypeReference<List<String>>() {}
+            );
             List<Hash> topics = new ArrayList<>();
             if (topicsHex != null) {
                 for (String t : topicsHex) {
