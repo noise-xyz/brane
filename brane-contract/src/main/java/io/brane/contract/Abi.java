@@ -129,6 +129,17 @@ public interface Abi {
     }
 
     /**
+     * Decodes the return value of a Multicall3 aggregate3 call.
+     * The expected format is (bool success, bytes returnData)[]
+     * 
+     * @param hex the raw hex data from the RPC response (with or without 0x prefix)
+     * @return a list of MulticallResult records
+     */
+    static List<io.brane.core.model.MulticallResult> decodeMulticallResults(String hex) {
+        return InternalAbi.decodeMulticallResults(hex);
+    }
+
+    /**
      * Encodes a function call with arguments into calldata.
      * 
      * @param name the function name
