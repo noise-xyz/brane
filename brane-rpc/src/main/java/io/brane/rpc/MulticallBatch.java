@@ -22,14 +22,17 @@ import java.util.Objects;
  * This class captures multiple contract calls and bundles them into a single
  * {@code eth_call} using the Multicall3 contract.
  * 
- * @implNote This class is not thread-safe. While individual calls can be
- *           recorded concurrently from different threads using the same proxy,
- *           the batch instance should be managed and executed by a single
- *           thread to ensure consistent results.
+ * @implNote This class is <strong>not thread-safe</strong>. A batch instance
+ *           must be used from a single thread only. The recording pattern uses
+ *           ThreadLocal to temporarily store call metadata between the proxy
+ *           call and the subsequent {@code add()} call.
  */
 public final class MulticallBatch {
 
-    private static final String MULTICALL_ABI = "[{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"allowFailure\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"callData\",\"type\":\"bytes\"}],\"internalType\":\"struct Multicall3.Call3[]\",\"name\":\"calls\",\"type\":\"tuple[]\"}],\"name\":\"aggregate3\",\"outputs\":[{\"components\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"returnData\",\"type\":\"bytes\"}],\"internalType\":\"struct Multicall3.Result[]\",\"name\":\"returnData\",\"type\":\"tuple[]\"}],\"stateMutability\":\"payable\",\"type\":\"function\"}]";
+    private static final String MULTICALL_ABI_JSON = "[{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"allowFailure\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"callData\",\"type\":\"bytes\"}],\"internalType\":\"struct Multicall3.Call3[]\",\"name\":\"calls\",\"type\":\"tuple[]\"}],\"name\":\"aggregate3\",\"outputs\":[{\"components\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"returnData\",\"type\":\"bytes\"}],\"internalType\":\"struct Multicall3.Result[]\",\"name\":\"returnData\",\"type\":\"tuple[]\"}],\"stateMutability\":\"payable\",\"type\":\"function\"}]";
+
+    /** Cached parsed ABI to avoid JSON parsing on each chunk execution. */
+    private static final Abi MULTICALL_ABI = Abi.fromJson(MULTICALL_ABI_JSON);
 
     /**
      * Default Multicall3 address.
@@ -37,12 +40,25 @@ public final class MulticallBatch {
      * <p>
      * TODO: Replace with MulticallRegistry to support chain-specific overrides.
      * Currently hardcoded to the deterministic deployment address (0xcA11...),
-     * which works on 100+ public EVM chains but may fail on custom/private networks.
+     * which works on 100+ public EVM chains but may fail on custom/private
+     * networks.
      *
      * @see <a href="https://github.com/mds1/multicall">Multicall3 Deployments</a>
      */
     private static final Address MULTICALL_ADDRESS = new Address("0xca11bde05977b3631167028862be2a173976ca11");
+
+    /**
+     * Default chunk size for batching. 500 balances RPC payload size with
+     * efficiency.
+     * Most RPC providers support payloads up to 1MB; 500 calls typically stays well
+     * under.
+     */
     private static final int DEFAULT_CHUNK_SIZE = 500;
+
+    /**
+     * Maximum allowed chunk size. 1000 calls approaches RPC provider limits for
+     * most endpoints and risks timeouts or payload size errors.
+     */
     private static final int MAX_CHUNK_SIZE = 1000;
 
     private final PublicClient publicClient;
@@ -105,8 +121,12 @@ public final class MulticallBatch {
      * @param abiJson           the contract ABI in JSON format
      * @return a recording proxy instance
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("unchecked") // Safe: Proxy creates correct type for contractInterface
     public <T> T bind(final Class<T> contractInterface, final Address address, final String abiJson) {
+        Objects.requireNonNull(contractInterface, "contractInterface");
+        Objects.requireNonNull(address, "address");
+        Objects.requireNonNull(abiJson, "abiJson");
+
         final Abi abi = Abi.fromJson(abiJson);
         final AbiBinding binding = new AbiBinding(abi, contractInterface);
         final MulticallInvocationHandler handler = new MulticallInvocationHandler(address, abi, binding, this);
@@ -119,9 +139,22 @@ public final class MulticallBatch {
 
     /**
      * Internal method used by recording proxies to record a call.
+     * 
+     * <p>
+     * <strong>Important:</strong> Every call to this method must be followed by
+     * a call to {@link #add(Object)} to consume the pending call and prevent
+     * ThreadLocal leaks. The recording proxy pattern ensures this by design.
      */
     <T> void recordCall(final Address target, final Abi.FunctionCall call, final Class<T> returnType) {
-        this.pendingCall.set(new CallContext<>(target, call, returnType, null));
+        // Fail fast if user forgot to call add() after a previous proxy call
+        // Throw BEFORE removing state so catch blocks can still see what was recorded
+        if (pendingCall.get() != null) {
+            throw new IllegalStateException(
+                    "A call was already recorded but not added to the batch. " +
+                            "You must call batch.add() after each proxy method call. " +
+                            "Call pendingCall.remove() to clear the orphaned call if continuing.");
+        }
+        pendingCall.set(new CallContext<>(target, call, returnType, null));
     }
 
     /**
@@ -132,7 +165,7 @@ public final class MulticallBatch {
      * @return a handle to the eventual result
      * @throws IllegalStateException if no call was recorded prior to calling add
      */
-    @SuppressWarnings("unchecked")
+    @SuppressWarnings("unchecked") // Safe: pendingCall always set with matching type from recordCall()
     public <T> BatchHandle<T> add(T ignore) {
         final CallContext<T> pending = (CallContext<T>) pendingCall.get();
         if (pending == null) {
@@ -159,6 +192,8 @@ public final class MulticallBatch {
      * @throws IllegalStateException if this batch has already been executed
      */
     public void execute() {
+        // Take a snapshot of calls under lock to ensure consistency
+        final List<CallContext<?>> callsSnapshot;
         synchronized (calls) {
             if (executed) {
                 throw new IllegalStateException(
@@ -169,11 +204,14 @@ public final class MulticallBatch {
                 return;
             }
             executed = true;
+            // Take immutable snapshot to avoid concurrent modification issues
+            callsSnapshot = List.copyOf(calls);
         }
 
-        for (int i = 0; i < calls.size(); i += chunkSize) {
-            final int end = Math.min(i + chunkSize, calls.size());
-            final List<CallContext<?>> chunk = calls.subList(i, end);
+        // Execute chunks outside the synchronized block for better concurrency
+        for (int i = 0; i < callsSnapshot.size(); i += chunkSize) {
+            final int end = Math.min(i + chunkSize, callsSnapshot.size());
+            final List<CallContext<?>> chunk = callsSnapshot.subList(i, end);
             executeChunk(chunk);
         }
     }
@@ -183,7 +221,9 @@ public final class MulticallBatch {
         final List<Object> call3List = new ArrayList<>(chunk.size());
         for (final CallContext<?> call : chunk) {
             final Call3 call3 = call.toCall3(globalAllowFailure);
-            // Each Call3 is a tuple (address, bool, bytes)
+            // Each Call3 is a tuple (address string, bool, HexData callData)
+            // Note: address is extracted as string, but callData stays as HexData for ABI
+            // encoding
             call3List.add(List.of(
                     call3.target().value(),
                     call3.allowFailure(),
@@ -191,8 +231,7 @@ public final class MulticallBatch {
         }
 
         // 2. Encode aggregate3 call
-        final Abi abi = Abi.fromJson(MULTICALL_ABI);
-        final Abi.FunctionCall aggregate3Call = abi.encodeFunction("aggregate3", call3List);
+        final Abi.FunctionCall aggregate3Call = MULTICALL_ABI.encodeFunction("aggregate3", call3List);
 
         // 3. Send eth_call
         final Map<String, Object> callObject = Map.of(
@@ -233,22 +272,34 @@ public final class MulticallBatch {
 
             T data = null;
             String revertReason = null;
+            boolean success = result.success();
 
-            if (result.success()) {
+            // Handle edge case: success=true but empty returnData (call to address with no
+            // code)
+            final HexData rd = result.returnData();
+            final String returnData = (rd != null) ? rd.value() : null;
+            final boolean isEmpty = returnData == null || returnData.equals("0x") || returnData.isEmpty();
+
+            if (success && isEmpty) {
+                // Multicall3 returns success=true with empty data for calls to non-existent
+                // contracts
+                success = false;
+                revertReason = "Call returned empty data (target may not be a contract)";
+            } else if (success) {
                 try {
-                    data = call().decode(result.returnData().value(), returnType());
+                    data = call().decode(returnData, returnType());
                 } catch (ClassCastException e) {
                     throw new AbiDecodingException("Return type mismatch for function: expected " + returnType(), e);
                 }
             } else {
-                final RevertDecoder.Decoded decoded = RevertDecoder.decode(result.returnData().value());
+                final RevertDecoder.Decoded decoded = RevertDecoder.decode(returnData);
                 revertReason = decoded.kind() != RevertDecoder.RevertKind.UNKNOWN
                         ? decoded.reason()
-                        : "Reverted (raw: " + result.returnData().value() + ")";
+                        : "Reverted (raw: " + returnData + ")";
             }
 
-            handle().complete(new BatchResult<>(data, result.success(), revertReason));
+            handle().complete(new BatchResult<>(data, success, revertReason));
         }
+
     }
 }
-
