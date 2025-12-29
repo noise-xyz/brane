@@ -119,15 +119,16 @@ import io.brane.rpc.PublicClient;
 import java.math.BigInteger;
 
 public class MulticallExample {
+
+    // Contract interface (must be declared outside the method)
+    public interface Erc20 {
+        BigInteger balanceOf(Address account);
+        String symbol();
+        BigInteger totalSupply();
+    }
+
     public static void main(String[] args) {
         PublicClient publicClient = // ... your client
-        
-        // Define contract interface
-        public interface Erc20 {
-            BigInteger balanceOf(Address account);
-            String symbol();
-            BigInteger totalSupply();
-        }
         
         // Create batch
         MulticallBatch batch = publicClient.createBatch();
@@ -228,7 +229,7 @@ NftContract nft = batch.bind(NftContract.class, nftAddress, nftAbiJson);
 // Mix calls from different contracts
 BatchHandle<BigInteger> balance1 = batch.add(token1.balanceOf(user));
 BatchHandle<BigInteger> balance2 = batch.add(token2.balanceOf(user));
-BatchHandle<Integer> tokenCount = batch.add(nft.balanceOf(user));
+BatchHandle<BigInteger> tokenCount = batch.add(nft.balanceOf(user));
 
 batch.execute();
 

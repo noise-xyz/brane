@@ -12,6 +12,7 @@ import io.brane.core.types.HexData;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -49,6 +50,7 @@ public final class MulticallBatch {
     private final ThreadLocal<CallContext<?>> pendingCall = new ThreadLocal<>();
     private boolean globalAllowFailure = true;
     private int chunkSize = DEFAULT_CHUNK_SIZE;
+    private boolean executed = false;
 
     private MulticallBatch(final PublicClient publicClient) {
         this.publicClient = Objects.requireNonNull(publicClient, "publicClient");
@@ -153,20 +155,25 @@ public final class MulticallBatch {
     /**
      * Executes the batch of calls in one or more RPC requests (depending on chunk
      * size).
+     *
+     * @throws IllegalStateException if this batch has already been executed
      */
     public void execute() {
-        final List<CallContext<?>> callsToExecute;
         synchronized (calls) {
+            if (executed) {
+                throw new IllegalStateException(
+                        "Batch has already been executed. Create a new batch for additional calls.");
+            }
             if (calls.isEmpty()) {
                 DebugLogger.log("MulticallBatch.execute() called with no calls — skipping RPC request");
                 return;
             }
-            callsToExecute = new ArrayList<>(calls);
+            executed = true;
         }
 
-        for (int i = 0; i < callsToExecute.size(); i += chunkSize) {
-            final int end = Math.min(i + chunkSize, callsToExecute.size());
-            final List<CallContext<?>> chunk = callsToExecute.subList(i, end);
+        for (int i = 0; i < calls.size(); i += chunkSize) {
+            final int end = Math.min(i + chunkSize, calls.size());
+            final List<CallContext<?>> chunk = calls.subList(i, end);
             executeChunk(chunk);
         }
     }
@@ -188,9 +195,9 @@ public final class MulticallBatch {
         final Abi.FunctionCall aggregate3Call = abi.encodeFunction("aggregate3", call3List);
 
         // 3. Send eth_call
-        final java.util.Map<String, Object> callObject = new java.util.HashMap<>();
-        callObject.put("to", MULTICALL_ADDRESS.value());
-        callObject.put("data", aggregate3Call.data());
+        final Map<String, Object> callObject = Map.of(
+                "to", MULTICALL_ADDRESS.value(),
+                "data", aggregate3Call.data());
 
         final String resultHex = publicClient.call(callObject, "latest");
 

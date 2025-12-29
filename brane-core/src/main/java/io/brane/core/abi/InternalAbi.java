@@ -974,12 +974,13 @@ final class InternalAbi implements Abi {
 
     static List<MulticallResult> decodeMulticallResults(final String hex) {
         if (hex == null || hex.isBlank()) {
-            return Collections.emptyList();
+            throw new AbiDecodingException("Multicall3 returned an empty or null result. This usually indicates an RPC provider error or a call to a non-existent contract.");
         }
 
         final byte[] data = Hex.decode(hex);
         if (data.length == 0) {
-            return Collections.emptyList();
+            throw new AbiDecodingException(
+                    "Multicall3 returned empty data (0x). This usually indicates the Multicall3 contract is not deployed at the target address.");
         }
 
         // Schema for (bool success, bytes returnData)[]
@@ -996,12 +997,16 @@ final class InternalAbi implements Abi {
             }
 
             final List<MulticallResult> results = new ArrayList<>(array.values().size());
-            for (Object item : array.values()) {
-                if (item instanceof Tuple tuple && tuple.components().size() == 2) {
-                    final Boolean success = ((Bool) tuple.components().get(0)).value();
-                    final HexData returnData = ((Bytes) tuple.components().get(1)).value();
-                    results.add(new MulticallResult(success, returnData));
+            for (int i = 0; i < array.values().size(); i++) {
+                final Object item = array.values().get(i);
+                if (!(item instanceof Tuple tuple) || tuple.components().size() != 2) {
+                    throw new AbiDecodingException(
+                            "Multicall3 result[" + i + "] has unexpected format: expected (bool, bytes) tuple, got "
+                                    + (item == null ? "null" : item.getClass().getSimpleName()));
                 }
+                final Boolean success = ((Bool) tuple.components().get(0)).value();
+                final HexData returnData = ((Bytes) tuple.components().get(1)).value();
+                results.add(new MulticallResult(success, returnData));
             }
             return results;
         } catch (Exception e) {
