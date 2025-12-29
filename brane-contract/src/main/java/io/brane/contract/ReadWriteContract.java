@@ -1,6 +1,7 @@
 package io.brane.contract;
 
 import io.brane.core.builder.TxBuilder;
+import io.brane.core.abi.Abi;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;

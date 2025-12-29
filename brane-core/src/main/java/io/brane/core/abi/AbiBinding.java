@@ -1,16 +1,16 @@
-package io.brane.contract;
+package io.brane.core.abi;
 
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-final class AbiBinding {
+public final class AbiBinding {
 
     private final Abi abi;
     private final Map<Method, Abi.FunctionMetadata> cache;
 
-    AbiBinding(final Abi abi, final Class<?> contractInterface) {
+    public AbiBinding(final Abi abi, final Class<?> contractInterface) {
         this.abi = Objects.requireNonNull(abi, "abi");
         Objects.requireNonNull(contractInterface, "contractInterface");
         this.cache = new HashMap<>();
@@ -24,7 +24,7 @@ final class AbiBinding {
         }
     }
 
-    Abi.FunctionMetadata resolve(final Method method) {
+    public Abi.FunctionMetadata resolve(final Method method) {
         final Abi.FunctionMetadata metadata = cache.get(method);
         if (metadata == null) {
             throw new IllegalArgumentException("No ABI binding found for method " + method.getName());
@@ -57,3 +57,4 @@ final class AbiBinding {
         return method.getDeclaringClass() == Object.class;
     }
 }
+

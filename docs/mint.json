@@ -37,7 +37,8 @@
             "group": "Smart Contracts",
             "pages": [
                 "contracts/interaction",
-                "contracts/bindings"
+                "contracts/bindings",
+                "contracts/multicall"
             ]
         },
         {

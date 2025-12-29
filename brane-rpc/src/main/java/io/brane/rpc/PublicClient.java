@@ -164,4 +164,11 @@ public interface PublicClient {
      * @return the access list and gas used
      */
     AccessListWithGas createAccessList(TransactionRequest request);
+
+    /**
+     * Creates a new multicall batch for bundling multiple read operations.
+     * 
+     * @return a new MulticallBatch instance
+     */
+    MulticallBatch createBatch();
 }

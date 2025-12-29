@@ -1,6 +1,8 @@
 package io.brane.contract;
 
 import io.brane.core.model.TransactionReceipt;
+import io.brane.core.abi.Abi;
+import io.brane.core.abi.AbiBinding;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.rpc.PublicClient;

@@ -1,6 +1,6 @@
 package io.brane.examples;
 
-import io.brane.contract.Abi;
+import io.brane.core.abi.Abi;
 import io.brane.contract.BraneContract;
 import io.brane.core.AnsiColors;
 import io.brane.core.BraneDebug;

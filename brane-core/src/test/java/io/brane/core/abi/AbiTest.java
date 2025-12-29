@@ -1,4 +1,4 @@
-package io.brane.contract;
+package io.brane.core.abi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -57,3 +57,4 @@ class AbiTest {
         assertThrows(AbiEncodingException.class, () -> Abi.fromJson(abiJson));
     }
 }
+

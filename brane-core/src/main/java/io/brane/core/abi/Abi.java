@@ -1,4 +1,4 @@
-package io.brane.contract;
+package io.brane.core.abi;
 
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
@@ -63,7 +63,6 @@ import java.util.Optional;
  * Boolean success = call.decode(returnHex, Boolean.class);
  * }</pre>
  * 
- * @see BraneContract
  * @see InternalAbi
  */
 public interface Abi {
@@ -129,6 +128,17 @@ public interface Abi {
     }
 
     /**
+     * Decodes the return value of a Multicall3 aggregate3 call.
+     * The expected format is (bool success, bytes returnData)[]
+     * 
+     * @param hex the raw hex data from the RPC response (with or without 0x prefix)
+     * @return a list of MulticallResult records
+     */
+    static List<io.brane.core.model.MulticallResult> decodeMulticallResults(String hex) {
+        return InternalAbi.decodeMulticallResults(hex);
+    }
+
+    /**
      * Encodes a function call with arguments into calldata.
      * 
      * @param name the function name
@@ -169,3 +179,4 @@ public interface Abi {
         <T> T decode(String output, Class<T> returnType);
     }
 }
+

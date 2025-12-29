@@ -1,4 +1,4 @@
-package io.brane.contract;
+package io.brane.core.abi;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -88,31 +88,31 @@ class AbiEncodingDecodingTest {
 
                 // uint256(42)
                 String uintRaw = io.brane.primitives.Hex.encode(
-                                io.brane.core.abi.AbiEncoder.encode(
-                                                java.util.List.of(new io.brane.core.abi.UInt(256,
+                                AbiEncoder.encode(
+                                                java.util.List.of(new UInt(256,
                                                                 BigInteger.valueOf(42)))));
                 BigInteger decodedUint = abi.encodeFunction("getNumber").decode(uintRaw, BigInteger.class);
                 assertEquals(BigInteger.valueOf(42), decodedUint);
 
                 // bool(true)
                 String boolRaw = io.brane.primitives.Hex.encode(
-                                io.brane.core.abi.AbiEncoder.encode(
-                                                java.util.List.of(new io.brane.core.abi.Bool(true))));
+                                AbiEncoder.encode(
+                                                java.util.List.of(new Bool(true))));
                 Boolean decodedBool = abi.encodeFunction("isActive").decode(boolRaw, Boolean.class);
                 assertTrue(decodedBool);
 
                 // address
                 Address expected = new Address("0x" + "2".repeat(40));
                 String addressRaw = io.brane.primitives.Hex.encode(
-                                io.brane.core.abi.AbiEncoder.encode(
-                                                java.util.List.of(new io.brane.core.abi.AddressType(expected))));
+                                AbiEncoder.encode(
+                                                java.util.List.of(new AddressType(expected))));
                 Address decodedAddress = abi.encodeFunction("owner").decode(addressRaw, Address.class);
                 assertEquals(expected, decodedAddress);
 
                 // string("hello")
                 String stringRaw = io.brane.primitives.Hex.encode(
-                                io.brane.core.abi.AbiEncoder.encode(
-                                                java.util.List.of(new io.brane.core.abi.Utf8String("hello"))));
+                                AbiEncoder.encode(
+                                                java.util.List.of(new Utf8String("hello"))));
                 String decodedString = abi.encodeFunction("greeting").decode(stringRaw, String.class);
                 assertEquals("hello", decodedString);
         }
@@ -128,3 +128,4 @@ class AbiEncodingDecodingTest {
                 assertEquals("0x095ea7b3", approvalSelector.value());
         }
 }
+

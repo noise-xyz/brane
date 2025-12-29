@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 import io.brane.core.model.LogEntry;
+import io.brane.core.abi.Abi;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;

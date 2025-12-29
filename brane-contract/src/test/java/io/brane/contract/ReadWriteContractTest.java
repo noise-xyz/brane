@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.brane.core.error.ChainMismatchException;
+import io.brane.core.abi.Abi;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
@@ -168,6 +169,11 @@ class ReadWriteContractTest {
 
         @Override
         public io.brane.core.model.AccessListWithGas createAccessList(io.brane.core.model.TransactionRequest request) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public io.brane.rpc.MulticallBatch createBatch() {
             throw new UnsupportedOperationException();
         }
     }

@@ -1,20 +1,10 @@
-package io.brane.contract;
+package io.brane.core.abi;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 
-import io.brane.core.abi.AbiDecoder;
-import io.brane.core.abi.AbiType;
-import io.brane.core.abi.AddressType;
-import io.brane.core.abi.Array;
-import io.brane.core.abi.Bool;
-import io.brane.core.abi.Bytes;
-import io.brane.core.abi.Int;
-import io.brane.core.abi.Tuple;
-import io.brane.core.abi.TypeSchema;
-import io.brane.core.abi.UInt;
-import io.brane.core.abi.Utf8String;
+import io.brane.core.model.MulticallResult;
 import io.brane.core.error.AbiDecodingException;
 import io.brane.core.error.AbiEncodingException;
 import io.brane.core.types.Address;
@@ -982,6 +972,48 @@ final class InternalAbi implements Abi {
         return decoded;
     }
 
+    static List<MulticallResult> decodeMulticallResults(final String hex) {
+        if (hex == null || hex.isBlank()) {
+            throw new AbiDecodingException("Multicall3 returned an empty or null result. This usually indicates an RPC provider error or a call to a non-existent contract.");
+        }
+
+        final byte[] data = Hex.decode(hex);
+        if (data.length == 0) {
+            throw new AbiDecodingException(
+                    "Multicall3 returned empty data (0x). This usually indicates the Multicall3 contract is not deployed at the target address.");
+        }
+
+        // Schema for (bool success, bytes returnData)[]
+        final TypeSchema multicallResultSchema = new TypeSchema.ArraySchema(
+                new TypeSchema.TupleSchema(List.of(
+                        new TypeSchema.BoolSchema(),
+                        new TypeSchema.BytesSchema(true))),
+                -1);
+
+        try {
+            final List<AbiType> decoded = AbiDecoder.decode(data, List.of(multicallResultSchema));
+            if (decoded.isEmpty() || !(decoded.get(0) instanceof Array<?> array)) {
+                return Collections.emptyList();
+            }
+
+            final List<MulticallResult> results = new ArrayList<>(array.values().size());
+            for (int i = 0; i < array.values().size(); i++) {
+                final Object item = array.values().get(i);
+                if (!(item instanceof Tuple tuple) || tuple.components().size() != 2) {
+                    throw new AbiDecodingException(
+                            "Multicall3 result[" + i + "] has unexpected format: expected (bool, bytes) tuple, got "
+                                    + (item == null ? "null" : item.getClass().getSimpleName()));
+                }
+                final Boolean success = ((Bool) tuple.components().get(0)).value();
+                final HexData returnData = ((Bytes) tuple.components().get(1)).value();
+                results.add(new MulticallResult(success, returnData));
+            }
+            return results;
+        } catch (Exception e) {
+            throw new AbiDecodingException("Failed to decode Multicall3 results", e);
+        }
+    }
+
     private boolean matchesEvent(final AbiEvent event, final io.brane.core.model.LogEntry log) {
         if (log.topics() == null || log.topics().isEmpty()) {
             return false;
@@ -1257,3 +1289,4 @@ final class InternalAbi implements Abi {
         }
     }
 }
+
