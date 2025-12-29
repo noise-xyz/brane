@@ -15,6 +15,7 @@ import org.junit.jupiter.api.Test;
 
 class MulticallBatchTest {
 
+    private BraneProvider provider;
     private PublicClient publicClient;
     private MulticallBatch batch;
     private final Address contractAddress = new Address("0x" + "1".repeat(40));
@@ -63,10 +64,10 @@ class MulticallBatchTest {
 
     @BeforeEach
     void setUp() {
-        publicClient = mock(PublicClient.class);
-        // Using the new API from SPEC.md
-        batch = MulticallBatch.create(publicClient);
-        when(publicClient.createBatch()).thenReturn(batch);
+        provider = mock(BraneProvider.class);
+        publicClient = new DefaultPublicClient(provider);
+        // Using the official API to get our batch
+        batch = publicClient.createBatch();
     }
 
     @Test
@@ -151,7 +152,8 @@ class MulticallBatchTest {
                 "0000000000000000000000000000000000000000000000000000000000000020" + // bytes length 32
                 "0000000000000000000000000000000000000000000000000000000000000064"; // balance=100
 
-        when(publicClient.call(any(), eq("latest"))).thenReturn(mockResponseHex);
+        when(provider.send(eq("eth_call"), any()))
+                .thenReturn(new JsonRpcResponse("2.0", mockResponseHex, null, "1"));
 
         batch.execute();
 
@@ -177,12 +179,13 @@ class MulticallBatchTest {
                 "0000000000000000000000000000000000000000000000000000000000000020" +
                 "0000000000000000000000000000000000000000000000000000000000000064";
 
-        when(publicClient.call(any(), eq("latest"))).thenReturn(mockResponseHex);
+        when(provider.send(eq("eth_call"), any()))
+                .thenReturn(new JsonRpcResponse("2.0", mockResponseHex, null, "1"));
 
         batch.execute();
 
-        // Verify publicClient.call was called twice (once per chunk)
-        verify(publicClient, times(2)).call(any(), eq("latest"));
+        // Verify provider.send was called twice (once per chunk)
+        verify(provider, times(2)).send(eq("eth_call"), any());
 
         assertTrue(handle1.result().success());
         assertTrue(handle2.result().success());
@@ -222,12 +225,38 @@ class MulticallBatchTest {
                 "0000000000000000000000000000000000000000000000000000000000000064" + // bytes length 100 (0x64)
                 revertData.substring(2); // data (already padded)
 
-        when(publicClient.call(any(), eq("latest"))).thenReturn(mockResponseHex);
+        when(provider.send(eq("eth_call"), any()))
+                .thenReturn(new JsonRpcResponse("2.0", mockResponseHex, null, "1"));
 
         batch.execute();
 
         assertFalse(symbolHandle.result().success());
         assertEquals("Unauthorized", symbolHandle.result().revertReason());
+    }
+
+    @Test
+    void throwsOnReturnTypeMismatch() {
+        interface MismatchedContract {
+            String balanceOf(Address owner); // ABI says uint256 (BigInteger)
+        }
+
+        MismatchedContract proxy = batch.bind(MismatchedContract.class, contractAddress, abiJson);
+        batch.add(proxy.balanceOf(new Address("0x" + "2".repeat(40))));
+
+        // Mock response for uint256=100
+        String mockResponseHex = "0x" +
+                "0000000000000000000000000000000000000000000000000000000000000020" +
+                "0000000000000000000000000000000000000000000000000000000000000001" +
+                "0000000000000000000000000000000000000000000000000000000000000020" +
+                "0000000000000000000000000000000000000000000000000000000000000001" +
+                "0000000000000000000000000000000000000000000000000000000000000040" +
+                "0000000000000000000000000000000000000000000000000000000000000020" +
+                "0000000000000000000000000000000000000000000000000000000000000064";
+
+        when(provider.send(eq("eth_call"), any()))
+                .thenReturn(new JsonRpcResponse("2.0", mockResponseHex, null, "1"));
+
+        assertThrows(io.brane.core.error.AbiDecodingException.class, batch::execute);
     }
 }
 

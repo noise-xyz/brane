@@ -6,6 +6,7 @@ import io.brane.core.abi.AbiBinding;
 import io.brane.core.model.Call3;
 import io.brane.core.model.MulticallResult;
 import io.brane.core.RevertDecoder;
+import io.brane.core.error.AbiDecodingException;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import java.lang.reflect.Proxy;
@@ -19,6 +20,11 @@ import java.util.Objects;
  * <p>
  * This class captures multiple contract calls and bundles them into a single
  * {@code eth_call} using the Multicall3 contract.
+ * 
+ * @implNote This class is not thread-safe. While individual calls can be
+ *           recorded concurrently from different threads using the same proxy,
+ *           the batch instance should be managed and executed by a single
+ *           thread to ensure consistent results.
  */
 public final class MulticallBatch {
 
@@ -40,7 +46,7 @@ public final class MulticallBatch {
 
     private final PublicClient publicClient;
     private final List<CallContext<?>> calls = new ArrayList<>();
-    private CallContext<?> pendingCall;
+    private final ThreadLocal<CallContext<?>> pendingCall = new ThreadLocal<>();
     private boolean globalAllowFailure = true;
     private int chunkSize = DEFAULT_CHUNK_SIZE;
 
@@ -54,7 +60,7 @@ public final class MulticallBatch {
      * @param publicClient the public client to use for execution
      * @return a new batch instance
      */
-    public static MulticallBatch create(final PublicClient publicClient) {
+    static MulticallBatch create(final PublicClient publicClient) {
         return new MulticallBatch(publicClient);
     }
 
@@ -113,7 +119,7 @@ public final class MulticallBatch {
      * Internal method used by recording proxies to record a call.
      */
     <T> void recordCall(final Address target, final Abi.FunctionCall call, final Class<T> returnType) {
-        this.pendingCall = new CallContext<>(target, call, returnType);
+        this.pendingCall.set(new CallContext<>(target, call, returnType, null));
     }
 
     /**
@@ -126,14 +132,21 @@ public final class MulticallBatch {
      */
     @SuppressWarnings("unchecked")
     public <T> BatchHandle<T> add(T ignore) {
-        if (pendingCall == null) {
+        final CallContext<T> pending = (CallContext<T>) pendingCall.get();
+        if (pending == null) {
             throw new IllegalStateException("No call was recorded. Call a method on a recording proxy first.");
         }
-        final CallContext<T> call = (CallContext<T>) pendingCall;
-        pendingCall = null;
-        calls.add(call);
+        pendingCall.remove();
+
         final BatchHandle<T> handle = new BatchHandle<>();
-        call.setHandle(handle);
+        final CallContext<T> call = new CallContext<>(
+                pending.target(),
+                pending.call(),
+                pending.returnType(),
+                handle);
+        synchronized (calls) {
+            calls.add(call);
+        }
         return handle;
     }
 
@@ -142,14 +155,18 @@ public final class MulticallBatch {
      * size).
      */
     public void execute() {
-        if (calls.isEmpty()) {
-            DebugLogger.log("MulticallBatch.execute() called with no calls — skipping RPC request");
-            return;
+        final List<CallContext<?>> callsToExecute;
+        synchronized (calls) {
+            if (calls.isEmpty()) {
+                DebugLogger.log("MulticallBatch.execute() called with no calls — skipping RPC request");
+                return;
+            }
+            callsToExecute = new ArrayList<>(calls);
         }
 
-        for (int i = 0; i < calls.size(); i += chunkSize) {
-            final int end = Math.min(i + chunkSize, calls.size());
-            final List<CallContext<?>> chunk = calls.subList(i, end);
+        for (int i = 0; i < callsToExecute.size(); i += chunkSize) {
+            final int end = Math.min(i + chunkSize, callsToExecute.size());
+            final List<CallContext<?>> chunk = callsToExecute.subList(i, end);
             executeChunk(chunk);
         }
     }
@@ -193,35 +210,29 @@ public final class MulticallBatch {
     /**
      * Context for an individual call in the batch.
      */
-    static final class CallContext<T> {
-        private final Address target;
-        private final Abi.FunctionCall call;
-        private final Class<T> returnType;
-        private BatchHandle<T> handle;
-
-        CallContext(final Address target, final Abi.FunctionCall call, final Class<T> returnType) {
-            this.target = target;
-            this.call = call;
-            this.returnType = returnType;
-        }
-
-        void setHandle(BatchHandle<T> handle) {
-            this.handle = handle;
-        }
+    record CallContext<T>(
+            Address target,
+            Abi.FunctionCall call,
+            Class<T> returnType,
+            BatchHandle<T> handle) {
 
         Call3 toCall3(boolean allowFailure) {
-            return new Call3(target, allowFailure, new HexData(call.data()));
+            return new Call3(target(), allowFailure, new HexData(call().data()));
         }
 
         void complete(MulticallResult result) {
-            if (handle == null)
+            if (handle() == null)
                 return;
 
             T data = null;
             String revertReason = null;
 
             if (result.success()) {
-                data = call.decode(result.returnData().value(), returnType);
+                try {
+                    data = call().decode(result.returnData().value(), returnType());
+                } catch (ClassCastException e) {
+                    throw new AbiDecodingException("Return type mismatch for function: expected " + returnType(), e);
+                }
             } else {
                 final RevertDecoder.Decoded decoded = RevertDecoder.decode(result.returnData().value());
                 revertReason = decoded.kind() != RevertDecoder.RevertKind.UNKNOWN
@@ -229,7 +240,7 @@ public final class MulticallBatch {
                         : "Reverted (raw: " + result.returnData().value() + ")";
             }
 
-            handle.complete(new BatchResult<>(data, result.success(), revertReason));
+            handle().complete(new BatchResult<>(data, result.success(), revertReason));
         }
     }
 }
