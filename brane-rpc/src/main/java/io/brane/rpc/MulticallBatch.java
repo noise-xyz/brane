@@ -1,5 +1,6 @@
 package io.brane.rpc;
 
+import io.brane.core.DebugLogger;
 import io.brane.core.abi.Abi;
 import io.brane.core.abi.AbiBinding;
 import io.brane.core.model.Call3;
@@ -22,8 +23,20 @@ import java.util.Objects;
 public final class MulticallBatch {
 
     private static final String MULTICALL_ABI = "[{\"inputs\":[{\"components\":[{\"internalType\":\"address\",\"name\":\"target\",\"type\":\"address\"},{\"internalType\":\"bool\",\"name\":\"allowFailure\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"callData\",\"type\":\"bytes\"}],\"internalType\":\"struct Multicall3.Call3[]\",\"name\":\"calls\",\"type\":\"tuple[]\"}],\"name\":\"aggregate3\",\"outputs\":[{\"components\":[{\"internalType\":\"bool\",\"name\":\"success\",\"type\":\"bool\"},{\"internalType\":\"bytes\",\"name\":\"returnData\",\"type\":\"bytes\"}],\"internalType\":\"struct Multicall3.Result[]\",\"name\":\"returnData\",\"type\":\"tuple[]\"}],\"stateMutability\":\"payable\",\"type\":\"function\"}]";
+
+    /**
+     * Default Multicall3 address.
+     *
+     * <p>
+     * TODO: Replace with MulticallRegistry to support chain-specific overrides.
+     * Currently hardcoded to the deterministic deployment address (0xcA11...),
+     * which works on 100+ public EVM chains but may fail on custom/private networks.
+     *
+     * @see <a href="https://github.com/mds1/multicall">Multicall3 Deployments</a>
+     */
     private static final Address MULTICALL_ADDRESS = new Address("0xca11bde05977b3631167028862be2a173976ca11");
     private static final int DEFAULT_CHUNK_SIZE = 500;
+    private static final int MAX_CHUNK_SIZE = 1000;
 
     private final PublicClient publicClient;
     private final List<CallContext<?>> calls = new ArrayList<>();
@@ -67,6 +80,9 @@ public final class MulticallBatch {
     public MulticallBatch chunkSize(int chunkSize) {
         if (chunkSize <= 0) {
             throw new IllegalArgumentException("chunkSize must be greater than 0");
+        }
+        if (chunkSize > MAX_CHUNK_SIZE) {
+            throw new IllegalArgumentException("chunkSize cannot exceed " + MAX_CHUNK_SIZE);
         }
         this.chunkSize = chunkSize;
         return this;
@@ -127,6 +143,7 @@ public final class MulticallBatch {
      */
     public void execute() {
         if (calls.isEmpty()) {
+            DebugLogger.log("MulticallBatch.execute() called with no calls — skipping RPC request");
             return;
         }
 

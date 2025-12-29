@@ -191,6 +191,12 @@ class MulticallBatchTest {
     }
 
     @Test
+    void throwsOnExcessiveChunkSize() {
+        assertThrows(IllegalArgumentException.class, () -> batch.chunkSize(1001),
+                "Should throw if chunkSize exceeds 1000");
+    }
+
+    @Test
     void decodesRevertReasons() {
         TestContract proxy = batch.bind(TestContract.class, contractAddress, abiJson);
 

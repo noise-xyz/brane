@@ -15,19 +15,14 @@ Brane will implement an **Explicit Batcher** (similar to Alloy's Multicall Build
 
 ## 🛠️ 2. Core Components
 
-### A. The Registry (`MulticallRegistry`)
-A central utility to resolve the Multicall3 address for a given `chainId`.
-- **Pre-populated**: Standard address for Ethereum, Polygon, Arbitrum, Optimism, Base, BSC, and common local development chains (Anvil/Hardhat).
-- **Extensible**: Support for registering custom addresses for private networks.
-
-### B. The Batch Orchestrator (`MulticallBatch`)
+### A. The Batch Orchestrator (`MulticallBatch`)
 Handles the lifecycle of a batched request:
 1. **Creation**: Initialized via `publicClient.createBatch()`.
 2. **Collection**: Aggregates `CallContext` objects containing everything needed to encode and decode individual calls.
 3. **Execution**: Performs the single RPC `eth_call` to the resolved Multicall3 address.
 4. **Distribution**: Dispatches results back to the individual handles.
 
-### C. Result Mapping (`BatchResult<T>`)
+### B. Result Mapping (`BatchResult<T>`)
 A container for individual call results, acknowledging that in a batch, some calls may fail while others succeed.
 
 ```java
