@@ -1,6 +1,6 @@
 package io.brane.benchmark;
 
-import io.brane.contract.Abi;
+import io.brane.core.abi.Abi;
 import io.brane.core.types.HexData;
 import org.openjdk.jmh.annotations.*;
 

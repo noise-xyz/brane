@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import io.brane.core.error.RevertException;
+import io.brane.core.abi.Abi;
 import io.brane.core.error.RpcException;
 import io.brane.core.types.Address;
 import io.brane.rpc.Client;

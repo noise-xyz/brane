@@ -2,6 +2,8 @@ package io.brane.contract;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.brane.core.abi.Abi;
+import io.brane.core.abi.AbiBinding;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
 import io.brane.rpc.Subscription;
@@ -258,6 +260,11 @@ class AbiBindingTest {
 
         @Override
         public io.brane.core.model.AccessListWithGas createAccessList(io.brane.core.model.TransactionRequest request) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public io.brane.rpc.MulticallBatch createBatch() {
             throw new UnsupportedOperationException();
         }
     }

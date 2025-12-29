@@ -1,6 +1,6 @@
 package io.brane.examples;
 
-import io.brane.contract.Abi;
+import io.brane.core.abi.Abi;
 import io.brane.contract.ReadWriteContract;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;

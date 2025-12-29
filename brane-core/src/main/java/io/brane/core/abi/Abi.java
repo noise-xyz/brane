@@ -1,4 +1,4 @@
-package io.brane.contract;
+package io.brane.core.abi;
 
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
@@ -63,7 +63,6 @@ import java.util.Optional;
  * Boolean success = call.decode(returnHex, Boolean.class);
  * }</pre>
  * 
- * @see BraneContract
  * @see InternalAbi
  */
 public interface Abi {
@@ -180,3 +179,4 @@ public interface Abi {
         <T> T decode(String output, Class<T> returnType);
     }
 }
+

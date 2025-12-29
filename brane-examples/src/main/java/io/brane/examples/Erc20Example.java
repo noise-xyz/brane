@@ -1,6 +1,6 @@
 package io.brane.examples;
 
-import io.brane.contract.Abi;
+import io.brane.core.abi.Abi;
 import io.brane.contract.Contract;
 import io.brane.contract.ReadOnlyContract;
 import io.brane.core.error.AbiDecodingException;

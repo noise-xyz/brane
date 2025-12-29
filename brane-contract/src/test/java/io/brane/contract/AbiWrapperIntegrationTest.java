@@ -3,6 +3,7 @@ package io.brane.contract;
 import static org.junit.jupiter.api.Assertions.*;
 
 import io.brane.core.builder.TxBuilder;
+import io.brane.core.abi.Abi;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;

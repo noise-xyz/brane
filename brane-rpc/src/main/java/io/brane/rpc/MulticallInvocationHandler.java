@@ -1,5 +1,7 @@
-package io.brane.contract;
+package io.brane.rpc;
 
+import io.brane.core.abi.Abi;
+import io.brane.core.abi.AbiBinding;
 import io.brane.core.types.Address;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;

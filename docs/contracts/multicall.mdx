@@ -20,7 +20,7 @@ You can batch them into a single request:
 
 ```java
 // ✅ Efficient: 1 RPC call for all reads
-MulticallBatch batch = MulticallBatch.create(publicClient);
+MulticallBatch batch = publicClient.createBatch();
 Erc20 token1Proxy = batch.bind(Erc20.class, token1Address, abiJson);
 Erc20 token2Proxy = batch.bind(Erc20.class, token2Address, abiJson);
 Erc20 tokenProxy = batch.bind(Erc20.class, tokenAddress, abiJson);
@@ -41,10 +41,10 @@ String symbol = symbolHandle.result().data();
 ### 1. Create a Batch
 
 ```java
-import io.brane.contract.MulticallBatch;
+import io.brane.rpc.MulticallBatch;
 import io.brane.rpc.PublicClient;
 
-MulticallBatch batch = MulticallBatch.create(publicClient);
+MulticallBatch batch = publicClient.createBatch();
 ```
 
 ### 2. Bind Contract Interfaces
@@ -111,9 +111,9 @@ if (balanceResult.success()) {
 ## Complete Example
 
 ```java
-import io.brane.contract.MulticallBatch;
-import io.brane.contract.BatchHandle;
-import io.brane.contract.BatchResult;
+import io.brane.rpc.MulticallBatch;
+import io.brane.rpc.BatchHandle;
+import io.brane.rpc.BatchResult;
 import io.brane.core.types.Address;
 import io.brane.rpc.PublicClient;
 import java.math.BigInteger;
@@ -130,7 +130,7 @@ public class MulticallExample {
         }
         
         // Create batch
-        MulticallBatch batch = MulticallBatch.create(publicClient);
+        MulticallBatch batch = publicClient.createBatch();
         
         // Bind contracts
         Address tokenAddress = new Address("0x...");
@@ -218,7 +218,7 @@ This is especially useful when:
 You can batch calls across multiple contracts in a single batch:
 
 ```java
-MulticallBatch batch = MulticallBatch.create(publicClient);
+MulticallBatch batch = publicClient.createBatch();
 
 // Bind multiple contracts
 Erc20 token1 = batch.bind(Erc20.class, token1Address, abiJson);
@@ -269,13 +269,13 @@ BigInteger balance = handle.result().data();
 Each batch is designed for a single execution cycle. After `execute()`, create a new batch for additional calls.
 
 ```java
-MulticallBatch batch = MulticallBatch.create(publicClient);
+MulticallBatch batch = publicClient.createBatch();
 // ... add calls ...
 batch.execute();
 // ... use results ...
 
 // For more calls, create a new batch
-MulticallBatch batch2 = MulticallBatch.create(publicClient);
+MulticallBatch batch2 = publicClient.createBatch();
 // ... add new calls ...
 ```
 

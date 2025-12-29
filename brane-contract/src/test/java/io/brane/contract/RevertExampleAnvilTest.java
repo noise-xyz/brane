@@ -1,5 +1,6 @@
 package io.brane.contract;
 
+import io.brane.core.abi.Abi;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.core.types.Address;

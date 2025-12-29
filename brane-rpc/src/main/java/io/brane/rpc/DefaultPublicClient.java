@@ -208,6 +208,11 @@ final class DefaultPublicClient implements PublicClient {
         return new AccessListWithGas(accessList, gasUsed);
     }
 
+    @Override
+    public MulticallBatch createBatch() {
+        return MulticallBatch.create(this);
+    }
+
     private Map<String, Object> buildTxObject(final TransactionRequest request) {
         final Map<String, Object> tx = new LinkedHashMap<>();
         if (request.from() != null) {

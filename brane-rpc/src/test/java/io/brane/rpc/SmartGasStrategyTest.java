@@ -111,5 +111,10 @@ class SmartGasStrategyTest {
         public io.brane.core.model.AccessListWithGas createAccessList(io.brane.core.model.TransactionRequest request) {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public io.brane.rpc.MulticallBatch createBatch() {
+            throw new UnsupportedOperationException();
+        }
     }
 }

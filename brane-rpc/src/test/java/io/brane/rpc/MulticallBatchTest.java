@@ -1,4 +1,4 @@
-package io.brane.contract;
+package io.brane.rpc;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import io.brane.core.types.Address;
-import io.brane.rpc.PublicClient;
 import java.math.BigInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,7 +64,9 @@ class MulticallBatchTest {
     @BeforeEach
     void setUp() {
         publicClient = mock(PublicClient.class);
+        // Using the new API from SPEC.md
         batch = MulticallBatch.create(publicClient);
+        when(publicClient.createBatch()).thenReturn(batch);
     }
 
     @Test

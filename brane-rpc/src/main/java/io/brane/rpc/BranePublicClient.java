@@ -130,6 +130,11 @@ public final class BranePublicClient implements PublicClient {
         return delegate.createAccessList(request);
     }
 
+    @Override
+    public MulticallBatch createBatch() {
+        return delegate.createBatch();
+    }
+
     public static final class Builder {
         private final ChainProfile profile;
         private String rpcUrlOverride;

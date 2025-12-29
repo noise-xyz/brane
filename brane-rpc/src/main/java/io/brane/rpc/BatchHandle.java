@@ -1,4 +1,4 @@
-package io.brane.contract;
+package io.brane.rpc;
 
 import java.util.Objects;
 

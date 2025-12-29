@@ -1,6 +1,6 @@
 package io.brane.examples;
 
-import io.brane.contract.Abi;
+import io.brane.core.abi.Abi;
 import io.brane.core.RevertDecoder;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.error.RevertException;

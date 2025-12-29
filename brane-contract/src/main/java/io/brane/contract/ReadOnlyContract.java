@@ -1,6 +1,7 @@
 package io.brane.contract;
 
 import io.brane.core.RevertDecoder;
+import io.brane.core.abi.Abi;
 import io.brane.core.error.AbiDecodingException;
 import io.brane.core.error.AbiEncodingException;
 import io.brane.core.error.RevertException;

@@ -1,6 +1,6 @@
 package io.brane.smoke;
 
-import io.brane.contract.Abi;
+import io.brane.core.abi.Abi;
 import io.brane.contract.BraneContract;
 import io.brane.contract.ReadOnlyContract;
 import io.brane.contract.ReadWriteContract;

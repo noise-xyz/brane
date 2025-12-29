@@ -1,4 +1,4 @@
-package io.brane.contract;
+package io.brane.rpc;
 
 /**
  * The result of an individual call within a multicall batch.
