@@ -107,7 +107,26 @@ import java.util.regex.Pattern;
  * <strong>Implementation:</strong> Uses Java's {@link Proxy} API with
  * {@link ContractInvocationHandler}
  * to intercept method calls and translate them to RPC calls.
- * 
+ *
+ * <p>
+ * <strong>Runtime Exceptions from Proxy Methods:</strong>
+ * Methods on the bound contract proxy may throw these exceptions at runtime:
+ * <ul>
+ * <li><strong>View/Pure functions:</strong>
+ *   <ul>
+ *   <li>{@link io.brane.rpc.RpcException} - RPC communication failures</li>
+ *   <li>{@link io.brane.core.RevertException} - Contract reverted (includes revert reason if available)</li>
+ *   <li>{@link io.brane.core.error.AbiDecodingException} - Failed to decode return value</li>
+ *   </ul>
+ * </li>
+ * <li><strong>State-changing functions:</strong>
+ *   <ul>
+ *   <li>{@link io.brane.rpc.RpcException} - RPC communication failures or transaction rejection</li>
+ *   <li>{@link io.brane.core.error.AbiEncodingException} - Failed to encode function parameters</li>
+ *   </ul>
+ * </li>
+ * </ul>
+ *
  * @see Abi
  * @see ContractInvocationHandler
  * @see PublicClient
