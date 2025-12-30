@@ -13,6 +13,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * Dynamic proxy-based contract binding system that maps Java interfaces to
@@ -113,6 +114,9 @@ import java.util.Objects;
  * @see WalletClient
  */
 public final class BraneContract {
+
+    /** Pattern to match array types: type[] (dynamic) or type[N] (fixed-size). */
+    private static final Pattern ARRAY_PATTERN = Pattern.compile(".*\\[\\d*]$");
 
     private BraneContract() {
     }
@@ -400,7 +404,8 @@ public final class BraneContract {
 
     private static boolean isSupportedParameterType(
             final String solidityType, final Class<?> parameterType) {
-        if (solidityType.endsWith("[]")) {
+        // Handle both dynamic arrays (type[]) and fixed-size arrays (type[N])
+        if (ARRAY_PATTERN.matcher(solidityType).matches()) {
             return parameterType.isArray() || List.class.isAssignableFrom(parameterType);
         }
 
