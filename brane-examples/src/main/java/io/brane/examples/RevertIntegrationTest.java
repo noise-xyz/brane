@@ -1,14 +1,12 @@
 package io.brane.examples;
 
-import io.brane.core.abi.Abi;
-import io.brane.contract.Contract;
+import io.brane.contract.ReadOnlyContract;
 import io.brane.core.RevertDecoder;
+import io.brane.core.abi.Abi;
 import io.brane.core.error.RevertException;
 import io.brane.core.types.Address;
-import io.brane.rpc.Client;
-import io.brane.rpc.HttpClient;
-
-import java.net.URI;
+import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.PublicClient;
 
 public final class RevertIntegrationTest {
 
@@ -37,9 +35,11 @@ public final class RevertIntegrationTest {
         System.out.println("RPC: " + rpcUrl);
         System.out.println("Contract: " + contractAddr);
 
-        final Client client = new HttpClient(URI.create(rpcUrl));
+        final PublicClient publicClient =
+                PublicClient.from(HttpBraneProvider.builder(rpcUrl).build());
         final Abi abi = Abi.fromJson(ABI_JSON);
-        final Contract contract = new Contract(new Address(contractAddr), abi, client);
+        final ReadOnlyContract contract =
+                ReadOnlyContract.from(new Address(contractAddr), abi, publicClient);
 
         testErrorString(contract);
         testPanic(contract);
@@ -47,10 +47,10 @@ public final class RevertIntegrationTest {
         System.out.println("Revert Integration Tests Passed!");
     }
 
-    private static void testErrorString(Contract contract) {
+    private static void testErrorString(final ReadOnlyContract contract) {
         System.out.println("[Test] Error(string)...");
         try {
-            contract.read("alwaysRevert", Void.class);
+            contract.call("alwaysRevert", Void.class);
             throw new RuntimeException("Expected RevertException but call succeeded");
         } catch (RevertException e) {
             if (e.kind() != RevertDecoder.RevertKind.ERROR_STRING) {
@@ -63,10 +63,10 @@ public final class RevertIntegrationTest {
         }
     }
 
-    private static void testPanic(Contract contract) {
+    private static void testPanic(final ReadOnlyContract contract) {
         System.out.println("[Test] Panic(uint256)...");
         try {
-            contract.read("triggerPanic", Void.class);
+            contract.call("triggerPanic", Void.class);
             throw new RuntimeException("Expected RevertException but call succeeded");
         } catch (RevertException e) {
             if (e.kind() != RevertDecoder.RevertKind.PANIC) {

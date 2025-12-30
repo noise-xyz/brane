@@ -1,14 +1,13 @@
 package io.brane.examples;
 
+import io.brane.contract.ReadOnlyContract;
 import io.brane.core.abi.Abi;
-import io.brane.contract.Contract;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.core.types.Address;
-import io.brane.rpc.Client;
-import io.brane.rpc.HttpClient;
+import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.PublicClient;
 import java.math.BigInteger;
-import java.net.URI;
 
 public final class Main {
 
@@ -37,11 +36,13 @@ public final class Main {
     private Main() {}
 
     public static void main(final String[] args) {
-        final Client client = new HttpClient(URI.create(RPC_URL));
+        final PublicClient publicClient =
+                PublicClient.from(HttpBraneProvider.builder(RPC_URL).build());
         final Abi abi = Abi.fromJson(ABI_JSON);
-        final Contract contract = new Contract(new Address(CONTRACT_ADDRESS), abi, client);
+        final ReadOnlyContract contract =
+                ReadOnlyContract.from(new Address(CONTRACT_ADDRESS), abi, publicClient);
         try {
-            final BigInteger value = contract.read("echo", BigInteger.class, BigInteger.valueOf(42));
+            final BigInteger value = contract.call("echo", BigInteger.class, BigInteger.valueOf(42));
             System.out.println("echo(42) = " + value);
         } catch (RevertException e) {
             System.err.println("Contract reverted: " + e.revertReason());
