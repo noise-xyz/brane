@@ -55,18 +55,23 @@ import io.brane.rpc.WalletClient;
 public final class ReadWriteContract extends ReadOnlyContract {
 
     private final WalletClient walletClient;
+    private final ContractOptions options;
 
     private ReadWriteContract(
             final Address address,
             final Abi abi,
             final PublicClient publicClient,
-            final WalletClient walletClient) {
+            final WalletClient walletClient,
+            final ContractOptions options) {
         super(address, abi, publicClient);
         this.walletClient = Objects.requireNonNull(walletClient, "walletClient must not be null");
+        this.options = Objects.requireNonNull(options, "options must not be null");
     }
 
     /**
-     * Creates a new ReadWriteContract for the specified contract.
+     * Creates a new ReadWriteContract for the specified contract with default options.
+     *
+     * <p>Uses {@link ContractOptions#defaults()} for transaction configuration.
      *
      * @param address      the deployed contract address
      * @param abi          the contract ABI
@@ -80,7 +85,36 @@ public final class ReadWriteContract extends ReadOnlyContract {
             final Abi abi,
             final PublicClient publicClient,
             final WalletClient walletClient) {
-        return new ReadWriteContract(address, abi, publicClient, walletClient);
+        return from(address, abi, publicClient, walletClient, ContractOptions.defaults());
+    }
+
+    /**
+     * Creates a new ReadWriteContract for the specified contract with custom options.
+     *
+     * <p>The options control transaction configuration including:
+     * <ul>
+     *   <li>{@link ContractOptions#gasLimit()} - gas limit for transactions</li>
+     *   <li>{@link ContractOptions#transactionType()} - EIP-1559 or legacy transactions</li>
+     *   <li>{@link ContractOptions#maxPriorityFee()} - priority fee for EIP-1559 transactions</li>
+     *   <li>{@link ContractOptions#timeout()} - timeout for {@link #sendAndWait} methods</li>
+     *   <li>{@link ContractOptions#pollInterval()} - poll interval for {@link #sendAndWait} methods</li>
+     * </ul>
+     *
+     * @param address      the deployed contract address
+     * @param abi          the contract ABI
+     * @param publicClient the public client for read operations
+     * @param walletClient the wallet client for write operations
+     * @param options      the contract options for transaction configuration
+     * @return a new ReadWriteContract instance
+     * @throws NullPointerException if any parameter is null
+     */
+    public static ReadWriteContract from(
+            final Address address,
+            final Abi abi,
+            final PublicClient publicClient,
+            final WalletClient walletClient,
+            final ContractOptions options) {
+        return new ReadWriteContract(address, abi, publicClient, walletClient, options);
     }
 
     /**
@@ -107,6 +141,9 @@ public final class ReadWriteContract extends ReadOnlyContract {
      *
      * <p>Use this method for payable functions that require sending ETH.
      *
+     * <p>Transaction configuration (gas limit, transaction type, priority fee)
+     * is controlled by the {@link ContractOptions} provided at construction time.
+     *
      * @param functionName the contract function name
      * @param value        the ETH value to send with the transaction
      * @param args         the function arguments
@@ -116,12 +153,7 @@ public final class ReadWriteContract extends ReadOnlyContract {
     public Hash send(final String functionName, final Wei value, final Object... args) {
         Objects.requireNonNull(value, "value must not be null");
         final Abi.FunctionCall fnCall = abi().encodeFunction(functionName, args);
-        final TransactionRequest request =
-                TxBuilder.eip1559()
-                        .to(address())
-                        .value(value)
-                        .data(new HexData(fnCall.data()))
-                        .build();
+        final TransactionRequest request = buildTransactionRequest(fnCall, value);
         return walletClient.sendTransaction(request);
     }
 
@@ -171,12 +203,26 @@ public final class ReadWriteContract extends ReadOnlyContract {
             final Object... args) {
         Objects.requireNonNull(value, "value must not be null");
         final Abi.FunctionCall fnCall = abi().encodeFunction(functionName, args);
-        final TransactionRequest request =
-                TxBuilder.eip1559()
-                        .to(address())
-                        .value(value)
-                        .data(new HexData(fnCall.data()))
-                        .build();
+        final TransactionRequest request = buildTransactionRequest(fnCall, value);
         return walletClient.sendTransactionAndWait(request, timeoutMillis, pollIntervalMillis);
+    }
+
+    private TransactionRequest buildTransactionRequest(
+            final Abi.FunctionCall call, final Wei value) {
+        if (options.transactionType() == ContractOptions.TransactionType.LEGACY) {
+            return TxBuilder.legacy()
+                    .to(address())
+                    .data(new HexData(call.data()))
+                    .value(value)
+                    .gasLimit(options.gasLimit())
+                    .build();
+        }
+        return TxBuilder.eip1559()
+                .to(address())
+                .data(new HexData(call.data()))
+                .value(value)
+                .gasLimit(options.gasLimit())
+                .maxPriorityFeePerGas(options.maxPriorityFee())
+                .build();
     }
 }

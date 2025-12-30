@@ -66,12 +66,12 @@ public Hash send(final String functionName, final Wei value, final Object... arg
 **Impact:** Users of `ReadWriteContract` cannot configure gas limits, priority fees, or use legacy transactions, leading to potential gas estimation issues or transaction failures on non-EIP-1559 chains.
 
 **Acceptance Criteria:**
-- [ ] Add `ContractOptions` parameter to `ReadWriteContract.from()` factory method
-- [ ] Apply `transactionType` option (LEGACY vs EIP-1559) in `send()`/`sendAndWait()`
-- [ ] Apply `gasLimit` option to transaction requests
-- [ ] Apply `maxPriorityFee` option for EIP-1559 transactions
-- [ ] Add tests verifying options are applied correctly
-- [ ] Update Javadoc to document options support
+- [x] Add `ContractOptions` parameter to `ReadWriteContract.from()` factory method
+- [x] Apply `transactionType` option (LEGACY vs EIP-1559) in `send()`/`sendAndWait()`
+- [x] Apply `gasLimit` option to transaction requests
+- [x] Apply `maxPriorityFee` option for EIP-1559 transactions
+- [x] Add tests verifying options are applied correctly
+- [x] Update Javadoc to document options support
 
 **Proposed Fix:**
 ```java
@@ -292,7 +292,7 @@ private static boolean isObjectMethod(final Method method) {
 | # | Issue | Severity | Type | Status |
 |---|-------|----------|------|--------|
 | 1 | AbiBinding non-thread-safe HashMap | MEDIUM | Thread Safety | OPEN |
-| 2 | ReadWriteContract ignores ContractOptions | MEDIUM | API Inconsistency | OPEN |
+| 2 | ReadWriteContract ignores ContractOptions | MEDIUM | API Inconsistency | FIXED |
 | 3 | deployRequest() missing constructor validation | MEDIUM | Validation | OPEN |
 | 4 | Missing tuple/struct return type support | LOW | Feature Gap | OPEN |
 | 5 | @Payable silent fallback to zero | LOW | Defensive Programming | OPEN |
