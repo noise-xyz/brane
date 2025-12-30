@@ -372,6 +372,11 @@ public final class BraneContract {
                 return;
             }
 
+            if (returnType == String.class) {
+                requireSingleOutput(method, outputs, BraneContract::isStringType);
+                return;
+            }
+
             throw new IllegalArgumentException(
                     "Unsupported return type for view function "
                             + method.getName()
@@ -448,5 +453,9 @@ public final class BraneContract {
 
     private static boolean isBoolType(final String solidityType) {
         return "bool".equals(solidityType.toLowerCase(Locale.ROOT));
+    }
+
+    private static boolean isStringType(final String solidityType) {
+        return "string".equals(solidityType.toLowerCase(Locale.ROOT));
     }
 }

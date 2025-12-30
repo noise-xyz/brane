@@ -175,6 +175,51 @@ class ContractInvocationHandlerTest {
     }
 
     @Test
+    void viewMethodReturnsStringCorrectly() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "name",
+                        "stateMutability": "view",
+                        "inputs": [],
+                        "outputs": [{"name": "", "type": "string"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            String name();
+        }
+
+        // Encoded "TestToken" string:
+        // offset (32) + length (9) + "TestToken" padded
+        String encodedString = "0x"
+                + "0000000000000000000000000000000000000000000000000000000000000020"  // offset
+                + "0000000000000000000000000000000000000000000000000000000000000009"  // length=9
+                + "54657374546f6b656e0000000000000000000000000000000000000000000000"; // "TestToken"
+
+        PublicClient publicClient = new FakePublicClient() {
+            @Override
+            public String call(Map<String, Object> callObject, String blockTag) {
+                return encodedString;
+            }
+        };
+
+        WalletClient walletClient = new FakeWalletClient() {};
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class);
+
+        String result = contract.name();
+        assertEquals("TestToken", result);
+    }
+
+    @Test
     void viewMethodDecodesRevertReason() {
         String json = """
                 [

@@ -179,6 +179,57 @@ class AbiBindingTest {
     }
 
     @Test
+    void allowsStringReturnTypeForStringOutput() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "name",
+                        "stateMutability": "view",
+                        "inputs": [],
+                        "outputs": [{"name": "", "type": "string"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            String name();
+        }
+
+        Abi abi = Abi.fromJson(json);
+        assertDoesNotThrow(() -> new AbiBinding(abi, TestContract.class));
+    }
+
+    @Test
+    void rejectsStringReturnTypeForNonStringOutput() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "getValue",
+                        "stateMutability": "view",
+                        "inputs": [],
+                        "outputs": [{"name": "", "type": "uint256"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            String getValue();  // Wrong - should be BigInteger for uint256
+        }
+
+        PublicClient fakePublic = new FakePublicClient() {};
+        WalletClient fakeWallet = new FakeWalletClient() {};
+
+        assertThrows(IllegalArgumentException.class, () -> BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                fakePublic,
+                fakeWallet,
+                TestContract.class));
+    }
+
+    @Test
     void allowsVoidAndTransactionReceiptForWrites() {
         String json = """
                 [
