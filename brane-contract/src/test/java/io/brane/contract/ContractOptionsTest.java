@@ -99,13 +99,15 @@ class ContractOptionsTest {
     }
 
     @Test
-    void zeroTimeoutIsAllowed() {
-        // Per Issue #6 in TODO.md, this should eventually be rejected
-        // but current behavior allows it
-        ContractOptions options = ContractOptions.builder()
-                .timeout(Duration.ZERO)
-                .build();
-        assertEquals(Duration.ZERO, options.timeout());
+    void zeroTimeoutThrows() {
+        assertThrows(IllegalArgumentException.class, () ->
+                ContractOptions.builder().timeout(Duration.ZERO));
+    }
+
+    @Test
+    void negativeTimeoutThrows() {
+        assertThrows(IllegalArgumentException.class, () ->
+                ContractOptions.builder().timeout(Duration.ofSeconds(-1)));
     }
 
     @Test

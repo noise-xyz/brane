@@ -227,9 +227,9 @@ public Builder timeout(final Duration timeout) {
 **Impact:** Users setting `timeout(Duration.ZERO)` would get confusing behavior where transactions are sent but never waited for.
 
 **Acceptance Criteria:**
-- [ ] Either reject zero timeout: `if (timeout.isNegative() || timeout.isZero())`, OR
-- [ ] Document that zero timeout means "no waiting" with explicit behavior
-- [ ] Add test for zero timeout behavior
+- [x] Reject zero timeout: `if (timeout.isNegative() || timeout.isZero())`
+- [ ] ~~Document that zero timeout means "no waiting"~~ (not needed - rejected)
+- [x] Add test for zero timeout behavior
 
 ---
 
@@ -296,7 +296,7 @@ private static boolean isObjectMethod(final Method method) {
 | 3 | deployRequest() missing constructor validation | MEDIUM | Validation | FIXED |
 | 4 | Missing tuple/struct return type support | LOW | Feature Gap | OPEN |
 | 5 | @Payable silent fallback to zero | LOW | Defensive Programming | OPEN |
-| 6 | Zero timeout allowed | LOW | Validation | OPEN |
+| 6 | Zero timeout allowed | LOW | Validation | FIXED |
 | 7 | Missing equals/hashCode in ContractOptions | LOW | API Design | FIXED |
 | 8 | Duplicate isObjectMethod() | LOW | Code Duplication | OPEN |
 

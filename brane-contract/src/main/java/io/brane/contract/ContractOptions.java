@@ -217,15 +217,15 @@ public final class ContractOptions {
         /**
          * Sets the timeout for waiting on transaction receipts.
          *
-         * @param timeout the timeout duration (must not be null or negative)
+         * @param timeout the timeout duration (must be positive)
          * @return this builder
          * @throws NullPointerException if timeout is null
-         * @throws IllegalArgumentException if timeout is negative
+         * @throws IllegalArgumentException if timeout is zero or negative
          */
         public Builder timeout(final Duration timeout) {
             Objects.requireNonNull(timeout, "timeout must not be null");
-            if (timeout.isNegative()) {
-                throw new IllegalArgumentException("timeout must not be negative");
+            if (timeout.isNegative() || timeout.isZero()) {
+                throw new IllegalArgumentException("timeout must be positive");
             }
             this.timeout = timeout;
             return this;
