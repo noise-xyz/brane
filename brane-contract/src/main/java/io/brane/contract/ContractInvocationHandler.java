@@ -1,8 +1,11 @@
 package io.brane.contract;
 
+import io.brane.core.RevertDecoder;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.abi.Abi;
 import io.brane.core.abi.AbiBinding;
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
@@ -77,11 +80,20 @@ final class ContractInvocationHandler implements InvocationHandler {
         callObject.put("to", address.value());
         callObject.put("data", call.data());
 
-        final String output = publicClient.call(callObject, "latest");
-        if (method.getReturnType() == void.class || method.getReturnType() == Void.class) {
-            return null;
+        try {
+            final String output = publicClient.call(callObject, "latest");
+            if (output == null || output.isBlank()) {
+                throw new AbiDecodingException(
+                        "eth_call returned empty result for function call");
+            }
+            if (method.getReturnType() == void.class || method.getReturnType() == Void.class) {
+                return null;
+            }
+            return call.decode(output, method.getReturnType());
+        } catch (RpcException e) {
+            RevertDecoder.throwIfRevert(e);
+            throw e;
         }
-        return call.decode(output, method.getReturnType());
     }
 
     private Object invokeWrite(final Method method, final Abi.FunctionCall call, final Wei value) {

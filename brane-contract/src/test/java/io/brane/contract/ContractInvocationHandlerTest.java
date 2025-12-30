@@ -2,6 +2,9 @@ package io.brane.contract;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
 import io.brane.rpc.Subscription;
@@ -169,6 +172,132 @@ class ContractInvocationHandlerTest {
         assertTrue(contract.toString().contains("BraneContractProxy"));
         assertEquals(contract, contract);
         assertNotEquals(contract, new Object());
+    }
+
+    @Test
+    void viewMethodDecodesRevertReason() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "balanceOf",
+                        "stateMutability": "view",
+                        "inputs": [{"name": "owner", "type": "address"}],
+                        "outputs": [{"name": "", "type": "uint256"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            BigInteger balanceOf(Address owner);
+        }
+
+        // Error(string) selector + "Insufficient balance" encoded
+        String revertData = "0x08c379a0"
+                + "0000000000000000000000000000000000000000000000000000000000000020"
+                + "0000000000000000000000000000000000000000000000000000000000000014"
+                + "496e73756666696369656e742062616c616e6365000000000000000000000000";
+
+        PublicClient publicClient = new FakePublicClient() {
+            @Override
+            public String call(Map<String, Object> callObject, String blockTag) {
+                throw new RpcException(-32000, "execution reverted", revertData);
+            }
+        };
+
+        WalletClient walletClient = new FakeWalletClient() {};
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class);
+
+        RevertException ex = assertThrows(RevertException.class, () ->
+                contract.balanceOf(new Address("0x" + "2".repeat(40))));
+
+        assertEquals("Insufficient balance", ex.revertReason());
+    }
+
+    @Test
+    void viewMethodThrowsOnEmptyResponse() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "balanceOf",
+                        "stateMutability": "view",
+                        "inputs": [{"name": "owner", "type": "address"}],
+                        "outputs": [{"name": "", "type": "uint256"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            BigInteger balanceOf(Address owner);
+        }
+
+        PublicClient publicClient = new FakePublicClient() {
+            @Override
+            public String call(Map<String, Object> callObject, String blockTag) {
+                return "";  // Empty response
+            }
+        };
+
+        WalletClient walletClient = new FakeWalletClient() {};
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class);
+
+        AbiDecodingException ex = assertThrows(AbiDecodingException.class, () ->
+                contract.balanceOf(new Address("0x" + "2".repeat(40))));
+
+        assertTrue(ex.getMessage().contains("empty result"));
+    }
+
+    @Test
+    void viewMethodThrowsOnNullResponse() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "balanceOf",
+                        "stateMutability": "view",
+                        "inputs": [{"name": "owner", "type": "address"}],
+                        "outputs": [{"name": "", "type": "uint256"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            BigInteger balanceOf(Address owner);
+        }
+
+        PublicClient publicClient = new FakePublicClient() {
+            @Override
+            public String call(Map<String, Object> callObject, String blockTag) {
+                return null;  // Null response
+            }
+        };
+
+        WalletClient walletClient = new FakeWalletClient() {};
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class);
+
+        AbiDecodingException ex = assertThrows(AbiDecodingException.class, () ->
+                contract.balanceOf(new Address("0x" + "2".repeat(40))));
+
+        assertTrue(ex.getMessage().contains("empty result"));
     }
 
     // Minimal fake implementations
