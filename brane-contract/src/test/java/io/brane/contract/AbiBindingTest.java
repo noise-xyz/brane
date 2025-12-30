@@ -237,6 +237,57 @@ class AbiBindingTest {
     }
 
     @Test
+    void allowsBytesReturnTypeForBytesOutput() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "getData",
+                        "stateMutability": "view",
+                        "inputs": [],
+                        "outputs": [{"name": "", "type": "bytes"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            byte[] getData();
+        }
+
+        Abi abi = Abi.fromJson(json);
+        assertDoesNotThrow(() -> new AbiBinding(abi, TestContract.class));
+    }
+
+    @Test
+    void allowsHexDataReturnTypeForBytes32Output() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "getHash",
+                        "stateMutability": "view",
+                        "inputs": [],
+                        "outputs": [{"name": "", "type": "bytes32"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            io.brane.core.types.HexData getHash();
+        }
+
+        PublicClient fakePublic = new FakePublicClient() {};
+        WalletClient fakeWallet = new FakeWalletClient() {};
+
+        assertDoesNotThrow(() -> BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                fakePublic,
+                fakeWallet,
+                TestContract.class));
+    }
+
+    @Test
     void rejectsPayableAnnotationOnNonPayableFunction() {
         String json = """
                 [

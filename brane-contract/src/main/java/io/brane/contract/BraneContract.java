@@ -387,6 +387,11 @@ public final class BraneContract {
                 return;
             }
 
+            if (returnType == byte[].class || returnType == HexData.class) {
+                requireSingleOutput(method, outputs, BraneContract::isBytesType);
+                return;
+            }
+
             throw new IllegalArgumentException(
                     "Unsupported return type for view function "
                             + method.getName()
@@ -467,5 +472,11 @@ public final class BraneContract {
 
     private static boolean isStringType(final String solidityType) {
         return "string".equals(solidityType.toLowerCase(Locale.ROOT));
+    }
+
+    private static boolean isBytesType(final String solidityType) {
+        final String normalized = solidityType.toLowerCase(Locale.ROOT);
+        // Match "bytes" (dynamic) or "bytesN" (fixed-size like bytes32)
+        return normalized.equals("bytes") || normalized.matches("bytes\\d+");
     }
 }
