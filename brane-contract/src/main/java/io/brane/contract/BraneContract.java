@@ -263,7 +263,7 @@ public final class BraneContract {
             deployData += encodedArgs.value().substring(2);
         }
 
-        return io.brane.core.builder.TxBuilder.legacy()
+        return io.brane.core.builder.TxBuilder.eip1559()
                 .data(new HexData(deployData))
                 .build();
     }
