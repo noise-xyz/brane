@@ -110,10 +110,10 @@ public static io.brane.core.model.TransactionRequest deployRequest(
 **Impact:** Users passing wrong argument types or counts get unhelpful error messages from the encoding layer rather than clear validation errors.
 
 **Acceptance Criteria:**
-- [ ] Validate argument count matches ABI constructor input count
-- [ ] Provide clear error message on argument count mismatch
-- [ ] Add test for constructor argument validation
-- [ ] Error message MUST include expected vs actual argument count
+- [x] Validate argument count matches ABI constructor input count (already in encodeConstructor)
+- [x] Provide clear error message on argument count mismatch (already in encodeConstructor)
+- [x] Add test for constructor argument validation
+- [x] Error message MUST include expected vs actual argument count (already in encodeConstructor)
 
 **Proposed Fix:**
 ```java
@@ -293,7 +293,7 @@ private static boolean isObjectMethod(final Method method) {
 |---|-------|----------|------|--------|
 | 1 | AbiBinding non-thread-safe HashMap | MEDIUM | Thread Safety | OPEN |
 | 2 | ReadWriteContract ignores ContractOptions | MEDIUM | API Inconsistency | FIXED |
-| 3 | deployRequest() missing constructor validation | MEDIUM | Validation | OPEN |
+| 3 | deployRequest() missing constructor validation | MEDIUM | Validation | FIXED |
 | 4 | Missing tuple/struct return type support | LOW | Feature Gap | OPEN |
 | 5 | @Payable silent fallback to zero | LOW | Defensive Programming | OPEN |
 | 6 | Zero timeout allowed | LOW | Validation | OPEN |
