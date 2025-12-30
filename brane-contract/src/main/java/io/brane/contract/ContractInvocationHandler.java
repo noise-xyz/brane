@@ -18,26 +18,26 @@ import java.util.Objects;
 
 final class ContractInvocationHandler implements InvocationHandler {
 
-    private static final long DEFAULT_TIMEOUT_MILLIS = 10_000L;
-    private static final long DEFAULT_POLL_INTERVAL_MILLIS = 500L;
-
     private final Address address;
     private final Abi abi;
     private final AbiBinding binding;
     private final PublicClient publicClient;
     private final WalletClient walletClient;
+    private final ContractOptions options;
 
     ContractInvocationHandler(
             final Address address,
             final Abi abi,
             final AbiBinding binding,
             final PublicClient publicClient,
-            final WalletClient walletClient) {
+            final WalletClient walletClient,
+            final ContractOptions options) {
         this.address = Objects.requireNonNull(address, "address");
         this.abi = Objects.requireNonNull(abi, "abi");
         this.binding = Objects.requireNonNull(binding, "binding");
         this.publicClient = Objects.requireNonNull(publicClient, "publicClient");
         this.walletClient = Objects.requireNonNull(walletClient, "walletClient");
+        this.options = Objects.requireNonNull(options, "options");
     }
 
     @Override
@@ -79,7 +79,7 @@ final class ContractInvocationHandler implements InvocationHandler {
 
         final TransactionReceipt receipt =
                 walletClient.sendTransactionAndWait(
-                        request, DEFAULT_TIMEOUT_MILLIS, DEFAULT_POLL_INTERVAL_MILLIS);
+                        request, options.timeoutMillis(), options.pollIntervalMillis());
         if (method.getReturnType() == void.class || method.getReturnType() == Void.class) {
             return null;
         }

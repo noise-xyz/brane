@@ -118,8 +118,8 @@ public final class BraneContract {
     }
 
     /**
-     * Binds a Java interface to a deployed smart contract using dynamic proxy.
-     * 
+     * Binds a Java interface to a deployed smart contract using dynamic proxy with default options.
+     *
      * <p>
      * Creates a type-safe proxy instance that implements the specified interface.
      * Method calls on the proxy are translated to contract function calls:
@@ -128,7 +128,7 @@ public final class BraneContract {
      * <li>State-changing functions → {@code eth_sendTransaction} via
      * {@link WalletClient}</li>
      * </ul>
-     * 
+     *
      * <p>
      * <strong>Interface Requirements:</strong>
      * <ul>
@@ -137,7 +137,7 @@ public final class BraneContract {
      * <li>Parameter types must match Solidity types</li>
      * <li>Return types must be compatible with function mutability</li>
      * </ul>
-     * 
+     *
      * @param <T>               the contract interface type
      * @param address           the deployed contract address
      * @param abiJson           the contract ABI in JSON format (array of
@@ -156,11 +156,69 @@ public final class BraneContract {
             final PublicClient publicClient,
             final WalletClient walletClient,
             final Class<T> contractInterface) {
+        return bind(address, abiJson, publicClient, walletClient, contractInterface, ContractOptions.defaults());
+    }
+
+    /**
+     * Binds a Java interface to a deployed smart contract using dynamic proxy with custom options.
+     *
+     * <p>
+     * Creates a type-safe proxy instance that implements the specified interface.
+     * Method calls on the proxy are translated to contract function calls:
+     * <ul>
+     * <li>View/pure functions → {@code eth_call} via {@link PublicClient}</li>
+     * <li>State-changing functions → {@code eth_sendTransaction} via
+     * {@link WalletClient}</li>
+     * </ul>
+     *
+     * <p>
+     * <strong>Interface Requirements:</strong>
+     * <ul>
+     * <li>Must be an interface (not a class)</li>
+     * <li>Method names must exactly match ABI function names</li>
+     * <li>Parameter types must match Solidity types</li>
+     * <li>Return types must be compatible with function mutability</li>
+     * </ul>
+     *
+     * <p>
+     * <strong>Example with custom options:</strong>
+     * <pre>{@code
+     * var options = ContractOptions.builder()
+     *     .gasLimit(500_000L)
+     *     .timeout(Duration.ofSeconds(30))
+     *     .pollInterval(Duration.ofMillis(100))
+     *     .build();
+     *
+     * Erc20Contract usdc = BraneContract.bind(
+     *         address, abiJson, publicClient, walletClient, Erc20Contract.class, options);
+     * }</pre>
+     *
+     * @param <T>               the contract interface type
+     * @param address           the deployed contract address
+     * @param abiJson           the contract ABI in JSON format (array of
+     *                          function/event definitions)
+     * @param publicClient      the client for view function calls
+     * @param walletClient      the client for state-changing function calls
+     * @param contractInterface the Java interface class representing the contract
+     * @param options           the contract options for gas limit, timeouts, etc.
+     * @return a proxy instance implementing the contract interface
+     * @throws IllegalArgumentException if validation fails (method not in ABI, type
+     *                                  mismatch, etc.)
+     * @throws NullPointerException     if any parameter is null
+     */
+    public static <T> T bind(
+            final Address address,
+            final String abiJson,
+            final PublicClient publicClient,
+            final WalletClient walletClient,
+            final Class<T> contractInterface,
+            final ContractOptions options) {
         Objects.requireNonNull(address, "address");
         Objects.requireNonNull(abiJson, "abiJson");
         Objects.requireNonNull(publicClient, "publicClient");
         Objects.requireNonNull(walletClient, "walletClient");
         Objects.requireNonNull(contractInterface, "contractInterface");
+        Objects.requireNonNull(options, "options");
 
         if (!contractInterface.isInterface()) {
             throw new IllegalArgumentException("contractInterface must be an interface");
@@ -170,8 +228,8 @@ public final class BraneContract {
         validateMethods(contractInterface, abi);
 
         final AbiBinding binding = new AbiBinding(abi, contractInterface);
-        final ContractInvocationHandler handler = new ContractInvocationHandler(address, abi, binding, publicClient,
-                walletClient);
+        final ContractInvocationHandler handler = new ContractInvocationHandler(
+                address, abi, binding, publicClient, walletClient, options);
         final Object proxy = Proxy.newProxyInstance(
                 contractInterface.getClassLoader(), new Class<?>[] { contractInterface }, handler);
         return contractInterface.cast(proxy);

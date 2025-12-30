@@ -13,20 +13,39 @@ import io.brane.rpc.internal.RpcUtils;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import io.brane.primitives.Hex;
+import java.util.Objects;
 
 public final class Contract {
-
-    private static final BigInteger DEFAULT_GAS_LIMIT = BigInteger.valueOf(300_000L);
 
     private final Address address;
     private final Abi abi;
     private final Client client;
+    private final ContractOptions options;
 
+    /**
+     * Creates a new Contract with default options.
+     *
+     * @param address the contract address
+     * @param abi the contract ABI
+     * @param client the RPC client
+     */
     public Contract(final Address address, final Abi abi, final Client client) {
-        this.address = address;
-        this.abi = abi;
-        this.client = client;
+        this(address, abi, client, ContractOptions.defaults());
+    }
+
+    /**
+     * Creates a new Contract with custom options.
+     *
+     * @param address the contract address
+     * @param abi the contract ABI
+     * @param client the RPC client
+     * @param options the contract options for gas limit, timeouts, etc.
+     */
+    public Contract(final Address address, final Abi abi, final Client client, final ContractOptions options) {
+        this.address = Objects.requireNonNull(address, "address must not be null");
+        this.abi = Objects.requireNonNull(abi, "abi must not be null");
+        this.client = Objects.requireNonNull(client, "client must not be null");
+        this.options = Objects.requireNonNull(options, "options must not be null");
     }
 
     public <T> T read(final String fn, final Class<T> returnType, final Object... args)
@@ -72,7 +91,7 @@ public final class Contract {
         final LegacyTransaction tx = new LegacyTransaction(
                 nonce.longValue(),
                 Wei.of(gasPrice),
-                DEFAULT_GAS_LIMIT.longValue(),
+                options.gasLimit(),
                 address,
                 Wei.of(0),
                 new HexData(data));
