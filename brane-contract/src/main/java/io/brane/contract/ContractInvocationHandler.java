@@ -91,13 +91,14 @@ final class ContractInvocationHandler implements InvocationHandler {
     }
 
     private Object handleObjectMethod(
-            final Object proxy, final Method method, final Object[] args) throws Throwable {
+            final Object proxy, final Method method, final Object[] args) {
         return switch (method.getName()) {
         case "toString" ->
                     "BraneContractProxy{" + "address=" + address.value() + "}";
             case "hashCode" -> System.identityHashCode(proxy);
             case "equals" -> proxy == (args == null || args.length == 0 ? null : args[0]);
-            default -> method.invoke(proxy, args);
+            default -> throw new UnsupportedOperationException(
+                    "Object method not supported: " + method.getName());
         };
     }
 }
