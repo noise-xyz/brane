@@ -155,6 +155,37 @@ public final class ContractOptions {
         return maxPriorityFee;
     }
 
+    @Override
+    public boolean equals(final Object obj) {
+        if (this == obj) {
+            return true;
+        }
+        if (!(obj instanceof ContractOptions other)) {
+            return false;
+        }
+        return gasLimit == other.gasLimit
+                && Objects.equals(timeout, other.timeout)
+                && Objects.equals(pollInterval, other.pollInterval)
+                && transactionType == other.transactionType
+                && Objects.equals(maxPriorityFee, other.maxPriorityFee);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(gasLimit, timeout, pollInterval, transactionType, maxPriorityFee);
+    }
+
+    @Override
+    public String toString() {
+        return "ContractOptions{"
+                + "gasLimit=" + gasLimit
+                + ", timeout=" + timeout
+                + ", pollInterval=" + pollInterval
+                + ", transactionType=" + transactionType
+                + ", maxPriorityFee=" + maxPriorityFee
+                + '}';
+    }
+
     /**
      * Builder for creating ContractOptions instances.
      */

@@ -252,10 +252,10 @@ public final class ContractOptions {
 **Impact:** Users cannot reliably compare or use `ContractOptions` in collections that rely on value equality.
 
 **Acceptance Criteria:**
-- [ ] Convert to a record (resolves this automatically), OR
-- [ ] Implement `equals()` and `hashCode()` based on all field values, OR
-- [ ] Document explicitly that reference equality is intentional
-- [ ] Add test for equality behavior (whichever approach chosen)
+- [ ] ~~Convert to a record~~ (not chosen - would require breaking changes)
+- [x] Implement `equals()` and `hashCode()` based on all field values
+- [ ] ~~Document explicitly that reference equality is intentional~~ (not needed)
+- [x] Add test for equality behavior
 
 **Note:** This is related to the deferred Issue #10 from Round 1 (ContractOptions should be a record).
 
@@ -297,7 +297,7 @@ private static boolean isObjectMethod(final Method method) {
 | 4 | Missing tuple/struct return type support | LOW | Feature Gap | OPEN |
 | 5 | @Payable silent fallback to zero | LOW | Defensive Programming | OPEN |
 | 6 | Zero timeout allowed | LOW | Validation | OPEN |
-| 7 | Missing equals/hashCode in ContractOptions | LOW | API Design | OPEN |
+| 7 | Missing equals/hashCode in ContractOptions | LOW | API Design | FIXED |
 | 8 | Duplicate isObjectMethod() | LOW | Code Duplication | OPEN |
 
 ---
