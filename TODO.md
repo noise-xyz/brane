@@ -1,221 +1,289 @@
 # TODO: brane-contract Module Issues
 
-This document captures all issues identified in the brane-contract module code review, with full context, acceptance criteria, and proposed fixes.
+This document captures issues identified in the brane-contract module code review (Round 2), with full context, acceptance criteria, and proposed fixes.
 
----
-
-## HIGH PRIORITY
-
-### 1. ContractOptions Fields Silently Ignored - COMPLETED
-
-**Status:** Fixed in commit `fix: apply ContractOptions fields to transactions`
-
-**Problem:**
-`ContractOptions` allows users to configure `gasLimit`, `transactionType`, and `maxPriorityFee`, but these values are **never applied** to transactions. Users configure these expecting them to work, but they have zero effect.
-
-**Resolution:**
-Added `buildTransactionRequest()` method in `ContractInvocationHandler` that:
-- Uses `TxBuilder.legacy()` when `transactionType` is LEGACY
-- Uses `TxBuilder.eip1559()` otherwise
-- Applies `gasLimit` from options
-- Applies `maxPriorityFee` for EIP-1559 transactions
-
-**Acceptance Criteria:**
-- [x] When `gasLimit` is set in `ContractOptions`, it MUST be applied to the `TransactionRequest`
-- [x] When `transactionType` is `LEGACY`, MUST use `TxBuilder.legacy()` instead of `TxBuilder.eip1559()`
-- [x] When `maxPriorityFee` is set, MUST call `.maxPriorityFeePerGas()` on the builder
-- [x] Add tests verifying each option is applied to the transaction
-
----
-
-### 2. ReadWriteContract Cannot Send ETH with Transactions - COMPLETED
-
-**Status:** Fixed in commit `feat: add payable support to ReadWriteContract`
-
-**Problem:**
-`ReadWriteContract.send()` and `sendAndWait()` hardcode `Wei.of(0)`, making it impossible to call payable functions that require ETH value.
-
-**Resolution:**
-Added overloaded methods that accept `Wei value` parameter:
-- `send(String functionName, Wei value, Object... args)`
-- `sendAndWait(String functionName, Wei value, long timeoutMillis, long pollIntervalMillis, Object... args)`
-
-**Acceptance Criteria:**
-- [x] `ReadWriteContract` MUST support sending ETH value with transactions
-- [x] Either add `sendWithValue(String functionName, Wei value, Object... args)` methods
-- [x] Or accept `Wei` as first argument in varargs (consistent with `@Payable` pattern)
-- [x] Add tests for payable function calls through `ReadWriteContract`
-
----
-
-### 3. Missing Revert Handling in ContractInvocationHandler - COMPLETED
-
-**Status:** Fixed in commit `fix: add revert handling to ContractInvocationHandler.invokeView()`
-
-**Problem:**
-`ContractInvocationHandler.invokeView()` does not catch `RpcException` or use `RevertDecoder`, while `ReadOnlyContract.call()` does. This creates inconsistent error handling where proxy-based calls get raw RPC exceptions instead of decoded `RevertException`.
-
-**Resolution:**
-Updated `invokeView()` to:
-- Wrap RPC call in try-catch
-- Check for null/blank response before decoding
-- Call `RevertDecoder.throwIfRevert(e)` on `RpcException`
-
-**Acceptance Criteria:**
-- [x] `ContractInvocationHandler.invokeView()` MUST wrap call in try-catch
-- [x] MUST call `RevertDecoder.throwIfRevert(e)` on `RpcException`
-- [x] MUST check for null/blank response before decoding
-- [x] Add tests verifying revert reasons are decoded through proxy binding
-
----
-
-### 4. Missing String Return Type Support in BraneContract - COMPLETED
-
-**Status:** Fixed in commit `feat: add String return type support in BraneContract`
-
-**Problem:**
-`BraneContract.validateReturnType()` does not support `String.class`, even though the ABI encoding/decoding layer fully supports strings. This blocks common ERC-20/ERC-721 view functions like `name()` and `symbol()`.
-
-**Resolution:**
-Added `String.class` support in `validateReturnType()` with `isStringType()` helper method.
-
-**Acceptance Criteria:**
-- [x] `validateReturnType()` MUST accept `String.class` for view functions
-- [x] MUST validate that ABI output type is "string"
-- [x] Add tests for `String` return type binding (e.g., ERC-20 `name()`)
+**Previous Review:** Round 1 identified 11 issues, of which 10 were fixed and 1 deferred. This round found 8 new issues.
 
 ---
 
 ## MEDIUM PRIORITY
 
-### 5. Missing ABI Payable Validation for @Payable Annotation - COMPLETED
+### 1. AbiBinding Uses Non-Thread-Safe HashMap
 
-**Status:** Fixed in commit `fix: validate @Payable against ABI stateMutability`
+**Files:**
+- `brane-core/src/main/java/io/brane/core/abi/AbiBinding.java:11-24`
 
 **Problem:**
-`@Payable` annotation validates that the method is not a view function, but does NOT verify that the ABI declares `stateMutability: "payable"`. Users can mark a non-payable function with `@Payable`, causing runtime failures.
+The `AbiBinding` class uses a plain `HashMap` for caching method-to-metadata mappings. While this cache is populated entirely during construction, the class is used by `ContractInvocationHandler` which may be invoked from multiple threads (the proxy instance could be shared). Although the cache is read-only after construction, `HashMap` does not guarantee safe publication without explicit synchronization or using a thread-safe collection.
 
-**Resolution:**
-- Added `isPayable()` method to `Abi.FunctionMetadata` record
-- Added validation in `BraneContract.validateMethod()` to check ABI stateMutability
-- Moved parameter count validation from `AbiBinding` to `BraneContract` for @Payable awareness
+**Evidence:**
+```java
+private final Map<Method, Abi.FunctionMetadata> cache;
+
+public AbiBinding(final Abi abi, final Class<?> contractInterface) {
+    // ...
+    this.cache = new HashMap<>();
+    // ... populates cache
+}
+```
+
+**Impact:** While unlikely to cause issues in practice (since the cache is fully populated before any reads), the JMM does not guarantee safe publication of HashMap contents without synchronization. A reader thread could theoretically see a partially constructed HashMap.
 
 **Acceptance Criteria:**
-- [x] When `@Payable` is present, MUST verify ABI function has `stateMutability: "payable"`
-- [x] Throw `IllegalArgumentException` if ABI function is `nonpayable`
-- [x] Add test for mismatched @Payable annotation vs ABI stateMutability
+- [ ] Cache MUST be safely published for concurrent read access
+- [ ] Use `Map.copyOf()` after population to create an immutable snapshot, OR
+- [ ] Use `Collections.unmodifiableMap()` wrapper, OR
+- [ ] Initialize with `ConcurrentHashMap`
+- [ ] Add test demonstrating thread-safe access pattern
 
 ---
 
-### 6. Null Check Missing in ContractInvocationHandler.invokeView() - COMPLETED
+### 2. ReadWriteContract Ignores ContractOptions
 
-**Status:** Fixed as part of Issue #3
+**Files:**
+- `brane-contract/src/main/java/io/brane/contract/ReadWriteContract.java:116-126, 166-181`
 
 **Problem:**
-If `publicClient.call()` returns null, the result is passed directly to `call.decode()`, causing NPE or confusing errors.
+`ReadWriteContract.send()` and `sendAndWait()` always use EIP-1559 transactions (`TxBuilder.eip1559()`) and do not apply any `ContractOptions` like gas limit or max priority fee. In contrast, `ContractInvocationHandler.buildTransactionRequest()` properly respects `ContractOptions` for transaction type, gas limit, and max priority fee.
 
-**Resolution:**
-The null/blank check was added as part of the revert handling fix in Issue #3.
+This creates an API inconsistency: users who use `BraneContract.bind()` get configurable transaction options, but users who use `ReadWriteContract.from()` get hardcoded defaults.
+
+**Evidence:**
+```java
+// ReadWriteContract.send() - no options support
+public Hash send(final String functionName, final Wei value, final Object... args) {
+    // ...
+    final TransactionRequest request =
+            TxBuilder.eip1559()  // Always EIP-1559, no legacy option
+                    .to(address())
+                    .value(value)
+                    .data(new HexData(fnCall.data()))
+                    .build();  // No gasLimit, no maxPriorityFee
+    return walletClient.sendTransaction(request);
+}
+```
+
+**Impact:** Users of `ReadWriteContract` cannot configure gas limits, priority fees, or use legacy transactions, leading to potential gas estimation issues or transaction failures on non-EIP-1559 chains.
 
 **Acceptance Criteria:**
-- [x] MUST check if `output` is null or blank before decoding
-- [x] MUST throw `AbiDecodingException` with clear message for empty responses
-- [x] Add test for null/empty RPC response handling
+- [ ] Add `ContractOptions` parameter to `ReadWriteContract.from()` factory method
+- [ ] Apply `transactionType` option (LEGACY vs EIP-1559) in `send()`/`sendAndWait()`
+- [ ] Apply `gasLimit` option to transaction requests
+- [ ] Apply `maxPriorityFee` option for EIP-1559 transactions
+- [ ] Add tests verifying options are applied correctly
+- [ ] Update Javadoc to document options support
+
+**Proposed Fix:**
+```java
+public static ReadWriteContract from(
+        final Address address,
+        final String abiJson,
+        final PublicClient publicClient,
+        final WalletClient walletClient,
+        final ContractOptions options) {  // New parameter
+    // ... store options and use in send/sendAndWait
+}
+```
 
 ---
 
-### 7. Missing byte[]/HexData Return Type Support - COMPLETED
+### 3. deployRequest() Missing Constructor Validation
 
-**Status:** Fixed in commit `feat: add byte[]/HexData return type support for bytes outputs`
-
-**Problem:**
-`validateReturnType()` does not support `byte[]` or `HexData` return types, even though ABI layer supports them. Functions returning `bytes` or `bytesN` cannot be bound.
-
-**Resolution:**
-Added `byte[].class` and `HexData.class` support in `validateReturnType()` with `isBytesType()` helper that matches both dynamic "bytes" and fixed-size "bytesN" patterns.
-
-**Acceptance Criteria:**
-- [x] `validateReturnType()` MUST accept `byte[].class` and `HexData.class`
-- [x] MUST validate ABI output is "bytes" or "bytesN" pattern
-- [x] Add tests for bytes return type binding
-
----
-
-### 8. Inconsistent API Behaviors Across Contract Facades - COMPLETED
-
-**Status:** Fixed as part of Issue #3
+**Files:**
+- `brane-contract/src/main/java/io/brane/contract/BraneContract.java:268-292`
 
 **Problem:**
-Three contract APIs have different capabilities, creating confusion:
+The `deployRequest()` method does not validate that the provided arguments match the constructor parameters in the ABI. It simply passes arguments to `abi.encodeConstructor(args)` which may throw a cryptic error or produce incorrect encoding if types don't match.
 
-| Feature | BraneContract.bind() | ReadOnlyContract | ReadWriteContract |
-|---------|---------------------|------------------|-------------------|
-| Revert decoding | NO | YES | Delegated |
-| Null check | NO | YES | Delegated |
+**Evidence:**
+```java
+public static io.brane.core.model.TransactionRequest deployRequest(
+        final String abiJson,
+        final String bytecode,
+        final Object... args) {
+    // ... no validation of args against ABI constructor
+    final HexData encodedArgs = abi.encodeConstructor(args);
+    // ...
+}
+```
 
-**Resolution:**
-Issue #3 fix added revert handling and null checks to `ContractInvocationHandler`, making behavior consistent.
-
-**Acceptance Criteria:**
-- [x] All contract APIs MUST have consistent error handling (revert decoding)
-- [x] Document differences in Javadoc if intentional
-- [ ] Consider unifying implementations via shared helper methods (deferred - not strictly necessary)
-
----
-
-### 9. Missing Array/List Return Type Support - COMPLETED
-
-**Status:** Fixed in commit `feat: add List/array return type support for array outputs`
-
-**Problem:**
-`validateReturnType()` does not handle functions returning arrays. The ABI layer supports array decoding to `List<T>`, but validation rejects it.
-
-**Resolution:**
-Added `List.class` and array type support in `validateReturnType()` with `isArrayType()` helper using existing `ARRAY_PATTERN`.
-
-**Note:** Fixed-size array support (e.g., `uint256[3]`) is limited by a pre-existing issue in `brane-core`'s ABI parser. Dynamic arrays (e.g., `address[]`) work correctly.
+**Impact:** Users passing wrong argument types or counts get unhelpful error messages from the encoding layer rather than clear validation errors.
 
 **Acceptance Criteria:**
-- [x] `validateReturnType()` MUST accept `List.class` and array types
-- [x] MUST validate ABI output is array type
-- [x] Add tests for array return type binding
+- [ ] Validate argument count matches ABI constructor input count
+- [ ] Provide clear error message on argument count mismatch
+- [ ] Add test for constructor argument validation
+- [ ] Error message MUST include expected vs actual argument count
+
+**Proposed Fix:**
+```java
+public static TransactionRequest deployRequest(
+        final String abiJson,
+        final String bytecode,
+        final Object... args) {
+    final Abi abi = Abi.fromJson(abiJson);
+
+    // Get constructor metadata and validate
+    final var constructor = abi.getConstructor();
+    if (constructor.isPresent()) {
+        final int expected = constructor.get().inputs().size();
+        if (args.length != expected) {
+            throw new IllegalArgumentException(
+                    "Constructor expects " + expected + " arguments but got " + args.length);
+        }
+    } else if (args.length > 0) {
+        throw new IllegalArgumentException(
+                "Contract has no constructor but " + args.length + " arguments provided");
+    }
+
+    final HexData encodedArgs = abi.encodeConstructor(args);
+    // ...
+}
+```
 
 ---
 
 ## LOW PRIORITY
 
-### 10. ContractOptions Should Be a Record - DEFERRED
+### 4. Missing Tuple/Struct Return Type Support
 
-**Status:** Not implemented (low priority, optional)
+**Files:**
+- `brane-contract/src/main/java/io/brane/contract/BraneContract.java:358-424`
 
 **Problem:**
-`ContractOptions` is 263 lines of boilerplate for 5 immutable fields. Java 16+ records provide cleaner implementation.
+The `validateReturnType()` method does not handle tuple/struct return types, which are common in Solidity contracts. If a user creates an interface method that returns a custom record type to match a tuple ABI output, validation will fail with "Unsupported return type" even though the underlying ABI decoder might support it.
+
+**Evidence:**
+```java
+private static void validateReturnType(final Method method, final Abi.FunctionMetadata metadata) {
+    // ... handles BigInteger, Address, Boolean, String, byte[], HexData, List, arrays
+    // But no handling for tuple types or custom record classes
+    throw new IllegalArgumentException(
+            "Unsupported return type for view function "
+                    + method.getName()
+                    + ": "
+                    + returnType.getSimpleName());
+}
+```
+
+**Impact:** Functions returning structs/tuples cannot be bound through the proxy API, limiting usability for complex contracts.
 
 **Acceptance Criteria:**
-- [ ] Consider converting to record with compact constructor for validation
-- [ ] Maintain builder pattern for ergonomic construction
-- [ ] No functional change required
-
-**Note:** This is a style improvement, not a bug. Deferred as it doesn't affect functionality.
+- [ ] Either add validation for record types mapping to tuple outputs, OR
+- [ ] Document this limitation explicitly in class Javadoc
+- [ ] If implementing: validate record component count matches tuple output count
+- [ ] Add test for tuple return type (if implemented)
 
 ---
 
-### 11. Missing Javadoc for Thrown Exceptions on Proxy Methods - COMPLETED
+### 5. @Payable Silently Falls Back to Zero Value
 
-**Status:** Fixed in commit `docs: document runtime exceptions thrown by proxy methods`
+**Files:**
+- `brane-contract/src/main/java/io/brane/contract/ContractInvocationHandler.java:61-67`
 
 **Problem:**
-`BraneContract.bind()` documents its own exceptions, but doesn't mention that invoked proxy methods can throw `RpcException`, `RevertException`, `AbiEncodingException`, or `AbiDecodingException`.
+The payable handling logic silently falls back to `Wei.of(0)` if a method is annotated with `@Payable` but invoked without a `Wei` argument. While bind-time validation should catch interface mismatches, runtime invocation through reflection could bypass this.
 
-**Resolution:**
-Added "Runtime Exceptions from Proxy Methods" section to class Javadoc documenting:
-- View/Pure functions: `RpcException`, `RevertException`, `AbiDecodingException`
-- State-changing functions: `RpcException`, `AbiEncodingException`
+**Evidence:**
+```java
+if (isPayable && invocationArgs.length > 0 && invocationArgs[0] instanceof Wei) {
+    value = (Wei) invocationArgs[0];
+    contractArgs = Arrays.copyOfRange(invocationArgs, 1, invocationArgs.length);
+} else {
+    value = Wei.of(0);  // Silent fallback - no warning or error
+    contractArgs = invocationArgs;
+}
+```
+
+**Impact:** Minor - validation at bind time should prevent this, but defense-in-depth would be better.
 
 **Acceptance Criteria:**
-- [x] Add Javadoc section describing exceptions thrown by bound methods
-- [x] Document that view methods may throw `RpcException`, `RevertException`
-- [x] Document that write methods may throw `RpcException`
+- [ ] Either throw `IllegalArgumentException` at runtime if `@Payable` method invoked without Wei argument, OR
+- [ ] Document explicitly that bind-time validation is relied upon
+- [ ] Add test verifying behavior when @Payable method called without Wei
+
+---
+
+### 6. ContractOptions.Builder Allows Zero Timeout
+
+**Files:**
+- `brane-contract/src/main/java/io/brane/contract/ContractOptions.java:194-200`
+
+**Problem:**
+The `Builder.timeout()` method only validates that the duration is not negative, but allows `Duration.ZERO`. A zero timeout would cause `sendTransactionAndWait()` to fail immediately without any polling attempts.
+
+**Evidence:**
+```java
+public Builder timeout(final Duration timeout) {
+    Objects.requireNonNull(timeout, "timeout must not be null");
+    if (timeout.isNegative()) {
+        throw new IllegalArgumentException("timeout must not be negative");
+    }
+    this.timeout = timeout;
+    return this;
+}
+```
+
+**Impact:** Users setting `timeout(Duration.ZERO)` would get confusing behavior where transactions are sent but never waited for.
+
+**Acceptance Criteria:**
+- [ ] Either reject zero timeout: `if (timeout.isNegative() || timeout.isZero())`, OR
+- [ ] Document that zero timeout means "no waiting" with explicit behavior
+- [ ] Add test for zero timeout behavior
+
+---
+
+### 7. Missing equals/hashCode in ContractOptions
+
+**Files:**
+- `brane-contract/src/main/java/io/brane/contract/ContractOptions.java`
+
+**Problem:**
+`ContractOptions` is an immutable value class but does not override `equals()` or `hashCode()`. This means two `ContractOptions` instances with identical field values will not be equal. While this may be intentional (identity-based comparison), it could surprise users who expect value semantics from an immutable configuration object.
+
+**Evidence:**
+```java
+public final class ContractOptions {
+    // ... fields and methods
+    // No equals() or hashCode() implementations
+}
+```
+
+**Impact:** Users cannot reliably compare or use `ContractOptions` in collections that rely on value equality.
+
+**Acceptance Criteria:**
+- [ ] Convert to a record (resolves this automatically), OR
+- [ ] Implement `equals()` and `hashCode()` based on all field values, OR
+- [ ] Document explicitly that reference equality is intentional
+- [ ] Add test for equality behavior (whichever approach chosen)
+
+**Note:** This is related to the deferred Issue #10 from Round 1 (ContractOptions should be a record).
+
+---
+
+### 8. Duplicate isObjectMethod() Utility
+
+**Files:**
+- `brane-contract/src/main/java/io/brane/contract/ContractInvocationHandler.java:129`
+- `brane-core/src/main/java/io/brane/core/abi/AbiBinding.java:45`
+
+**Problem:**
+The utility method `isObjectMethod(Method)` is duplicated in both `ContractInvocationHandler` and `AbiBinding` with identical implementation.
+
+**Evidence:**
+```java
+// In both files:
+private static boolean isObjectMethod(final Method method) {
+    return method.getDeclaringClass() == Object.class;
+}
+```
+
+**Impact:** Minor code duplication; any fix or enhancement must be applied twice.
+
+**Acceptance Criteria:**
+- [ ] Extract to a shared utility class (e.g., `MethodUtils` or `ReflectionUtils`), OR
+- [ ] Move validation logic to a single location, OR
+- [ ] Document why duplication is acceptable (e.g., to avoid cross-module dependency)
 
 ---
 
@@ -223,22 +291,44 @@ Added "Runtime Exceptions from Proxy Methods" section to class Javadoc documenti
 
 | # | Issue | Severity | Type | Status |
 |---|-------|----------|------|--------|
-| 1 | ContractOptions fields ignored | HIGH | Bug | COMPLETED |
-| 2 | ReadWriteContract cannot send ETH | HIGH | API Limitation | COMPLETED |
-| 3 | Missing revert handling in proxy | HIGH | Bug | COMPLETED |
-| 4 | Missing String return type | HIGH | Bug | COMPLETED |
-| 5 | No ABI payable validation | MEDIUM | Bug | COMPLETED |
-| 6 | Null check missing in proxy | MEDIUM | Bug | COMPLETED |
-| 7 | Missing bytes return types | MEDIUM | API Limitation | COMPLETED |
-| 8 | Inconsistent API behaviors | MEDIUM | API Design | COMPLETED |
-| 9 | Missing array return types | MEDIUM | API Limitation | COMPLETED |
-| 10 | ContractOptions should be record | LOW | Style | DEFERRED |
-| 11 | Missing Javadoc for exceptions | LOW | Documentation | COMPLETED |
+| 1 | AbiBinding non-thread-safe HashMap | MEDIUM | Thread Safety | OPEN |
+| 2 | ReadWriteContract ignores ContractOptions | MEDIUM | API Inconsistency | OPEN |
+| 3 | deployRequest() missing constructor validation | MEDIUM | Validation | OPEN |
+| 4 | Missing tuple/struct return type support | LOW | Feature Gap | OPEN |
+| 5 | @Payable silent fallback to zero | LOW | Defensive Programming | OPEN |
+| 6 | Zero timeout allowed | LOW | Validation | OPEN |
+| 7 | Missing equals/hashCode in ContractOptions | LOW | API Design | OPEN |
+| 8 | Duplicate isObjectMethod() | LOW | Code Duplication | OPEN |
 
 ---
 
-## Completion Status
+## Recommended Implementation Order
 
-**10 of 11 issues completed** (Issue #10 deferred as optional style improvement)
+1. **Issue #2** - Add ContractOptions support to ReadWriteContract (API consistency)
+2. **Issue #3** - Add constructor validation to deployRequest() (better errors)
+3. **Issue #1** - Fix AbiBinding thread safety (correctness)
+4. **Issue #7** - Fix ContractOptions equals/hashCode (consider converting to record)
+5. **Issue #6** - Reject zero timeout (validation)
+6. **Issue #5** - Document or enforce @Payable runtime behavior
+7. **Issue #4** - Document tuple limitation or implement support
+8. **Issue #8** - Extract shared utility (cleanup)
 
-All HIGH and MEDIUM priority issues have been addressed. The fixes are available on the `fix/brane-contract` branch.
+---
+
+## Previously Completed (Round 1)
+
+For reference, the following issues were addressed in the previous review round:
+
+| Issue | Description | Resolution |
+|-------|-------------|------------|
+| ContractOptions fields ignored | gasLimit, transactionType, maxPriorityFee not applied | Fixed in ContractInvocationHandler |
+| ReadWriteContract cannot send ETH | Hardcoded Wei.of(0) | Added overloaded methods with Wei parameter |
+| Missing revert handling in proxy | invokeView() didn't decode reverts | Added try-catch with RevertDecoder |
+| Missing String return type | validateReturnType() rejected String | Added String.class support |
+| No ABI payable validation | @Payable not checked against ABI | Added isPayable() validation |
+| Null check missing in proxy | NPE on null RPC response | Added null/blank check |
+| Missing bytes return types | byte[]/HexData not supported | Added isBytesType() helper |
+| Inconsistent API behaviors | Different error handling across APIs | Unified with revert handling fix |
+| Missing array return types | List/array not supported | Added isArrayType() helper |
+| Missing Javadoc for exceptions | Proxy exceptions undocumented | Added runtime exceptions section |
+| ContractOptions as record | 263 lines of boilerplate | DEFERRED (optional, superseded by Issue #7) |
