@@ -12,6 +12,46 @@ import io.brane.core.types.Wei;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 
+/**
+ * Read-write façade for smart contract interactions.
+ *
+ * <p>Extends {@link ReadOnlyContract} with the ability to send state-changing
+ * transactions. Requires a {@link WalletClient} for signing and submitting
+ * transactions.
+ *
+ * <p><strong>Usage Example:</strong>
+ * <pre>{@code
+ * // Create contract instance
+ * Abi abi = Abi.fromJson(abiJson);
+ * ReadWriteContract contract = ReadWriteContract.from(
+ *     new Address("0x..."),
+ *     abi,
+ *     publicClient,
+ *     walletClient
+ * );
+ *
+ * // Call view functions (inherited from ReadOnlyContract)
+ * BigInteger balance = contract.call("balanceOf", BigInteger.class, holder);
+ *
+ * // Send transactions (fire-and-forget)
+ * Hash txHash = contract.send("transfer", recipient, amount);
+ *
+ * // Send transactions and wait for receipt
+ * TransactionReceipt receipt = contract.sendAndWait(
+ *     "transfer",
+ *     30_000L,   // timeout ms
+ *     500L,      // poll interval ms
+ *     recipient, amount
+ * );
+ * }</pre>
+ *
+ * <p>For type-safe contract interaction with compile-time checking,
+ * consider using {@link BraneContract#bind} with a Java interface instead.
+ *
+ * @see ReadOnlyContract
+ * @see BraneContract#bind
+ * @see WalletClient
+ */
 public final class ReadWriteContract extends ReadOnlyContract {
 
     private final WalletClient walletClient;
@@ -25,6 +65,16 @@ public final class ReadWriteContract extends ReadOnlyContract {
         this.walletClient = Objects.requireNonNull(walletClient, "walletClient must not be null");
     }
 
+    /**
+     * Creates a new ReadWriteContract for the specified contract.
+     *
+     * @param address      the deployed contract address
+     * @param abi          the contract ABI
+     * @param publicClient the public client for read operations
+     * @param walletClient the wallet client for write operations
+     * @return a new ReadWriteContract instance
+     * @throws NullPointerException if any parameter is null
+     */
     public static ReadWriteContract from(
             final Address address,
             final Abi abi,
@@ -33,6 +83,17 @@ public final class ReadWriteContract extends ReadOnlyContract {
         return new ReadWriteContract(address, abi, publicClient, walletClient);
     }
 
+    /**
+     * Sends a state-changing transaction to the contract.
+     *
+     * <p>This method submits the transaction and returns immediately with the
+     * transaction hash. Use {@link #sendAndWait} if you need to wait for
+     * confirmation.
+     *
+     * @param functionName the contract function name
+     * @param args         the function arguments
+     * @return the transaction hash
+     */
     public Hash send(final String functionName, final Object... args) {
         final Abi.FunctionCall fnCall = abi().encodeFunction(functionName, args);
         final TransactionRequest request =
@@ -44,6 +105,19 @@ public final class ReadWriteContract extends ReadOnlyContract {
         return walletClient.sendTransaction(request);
     }
 
+    /**
+     * Sends a state-changing transaction and waits for the receipt.
+     *
+     * <p>This method submits the transaction and polls for the receipt until
+     * confirmed or the timeout is reached.
+     *
+     * @param functionName       the contract function name
+     * @param timeoutMillis      maximum time to wait for confirmation in milliseconds
+     * @param pollIntervalMillis interval between receipt checks in milliseconds
+     * @param args               the function arguments
+     * @return the transaction receipt
+     * @throws io.brane.core.error.RpcException if the transaction fails or times out
+     */
     public TransactionReceipt sendAndWait(
             final String functionName,
             final long timeoutMillis,
