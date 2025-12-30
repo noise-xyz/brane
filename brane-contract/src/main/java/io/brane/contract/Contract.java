@@ -49,7 +49,7 @@ public final class Contract {
             }
             return call.decode(result, returnType);
         } catch (RpcException e) {
-            handlePotentialRevert(e);
+            RevertDecoder.throwIfRevert(e);
             throw e;
         }
     }
@@ -89,18 +89,8 @@ public final class Contract {
         try {
             return client.call("eth_sendRawTransaction", String.class, signedHex);
         } catch (RpcException e) {
-            handlePotentialRevert(e);
+            RevertDecoder.throwIfRevert(e);
             throw e;
-        }
-    }
-
-    private static void handlePotentialRevert(final RpcException e) throws RevertException {
-        final String raw = e.data();
-        if (raw != null && raw.startsWith("0x") && raw.length() > 10) {
-            final var decoded = RevertDecoder.decode(raw);
-            // Always throw RevertException for revert data, even if kind is UNKNOWN
-            // (UNKNOWN just means we couldn't decode it, but it's still a revert)
-            throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), e);
         }
     }
 }
