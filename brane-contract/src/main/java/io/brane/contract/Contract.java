@@ -2,16 +2,22 @@ package io.brane.contract;
 
 import io.brane.core.RevertDecoder;
 import io.brane.core.abi.Abi;
+import io.brane.core.crypto.Signature;
+import io.brane.core.crypto.Signer;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
+import io.brane.core.tx.Eip1559Transaction;
 import io.brane.core.tx.LegacyTransaction;
+import io.brane.core.tx.UnsignedTransaction;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import io.brane.primitives.Hex;
 import io.brane.rpc.Client;
 import io.brane.rpc.internal.RpcUtils;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -73,7 +79,7 @@ public final class Contract {
         }
     }
 
-    public String write(final io.brane.core.crypto.Signer signer, final String functionName, final Object... args)
+    public String write(final Signer signer, final String functionName, final Object... args)
             throws RpcException, RevertException {
         final Abi.FunctionCall call = abi.encodeFunction(functionName, args);
         final String data = call.data();
@@ -86,25 +92,51 @@ public final class Contract {
 
         final BigInteger nonce = RpcUtils.decodeHexBigInteger(
                 client.call("eth_getTransactionCount", String.class, from, "latest"));
-        final BigInteger gasPrice = RpcUtils.decodeHexBigInteger(client.call("eth_gasPrice", String.class));
 
-        final LegacyTransaction tx = new LegacyTransaction(
-                nonce.longValue(),
-                Wei.of(gasPrice),
-                options.gasLimit(),
-                address,
-                Wei.of(0),
-                new HexData(data));
+        final UnsignedTransaction tx;
+        final Signature signature;
 
-        final io.brane.core.crypto.Signature baseSig = signer.signTransaction(tx, chainId);
+        if (options.transactionType() == ContractOptions.TransactionType.EIP1559) {
+            // EIP-1559 transaction
+            final BigInteger baseFee = RpcUtils.decodeHexBigInteger(client.call("eth_gasPrice", String.class));
+            final Wei maxPriorityFee = options.maxPriorityFee();
+            final Wei maxFeePerGas = Wei.of(baseFee.add(maxPriorityFee.value()));
 
-        // Adjust V for Legacy Transaction (EIP-155)
-        final int v = (int) (chainId * 2 + 35 + baseSig.v());
-        final io.brane.core.crypto.Signature signature = new io.brane.core.crypto.Signature(baseSig.r(), baseSig.s(),
-                v);
+            final Eip1559Transaction eip1559Tx = new Eip1559Transaction(
+                    chainId,
+                    nonce.longValue(),
+                    maxPriorityFee,
+                    maxFeePerGas,
+                    options.gasLimit(),
+                    address,
+                    Wei.of(0),
+                    new HexData(data),
+                    List.of());
+
+            tx = eip1559Tx;
+            // For EIP-1559, v is just yParity (0 or 1), no EIP-155 adjustment needed
+            signature = signer.signTransaction(eip1559Tx, chainId);
+        } else {
+            // Legacy transaction
+            final BigInteger gasPrice = RpcUtils.decodeHexBigInteger(client.call("eth_gasPrice", String.class));
+
+            final LegacyTransaction legacyTx = new LegacyTransaction(
+                    nonce.longValue(),
+                    Wei.of(gasPrice),
+                    options.gasLimit(),
+                    address,
+                    Wei.of(0),
+                    new HexData(data));
+
+            tx = legacyTx;
+            final Signature baseSig = signer.signTransaction(legacyTx, chainId);
+            // Adjust V for Legacy Transaction (EIP-155)
+            final int v = (int) (chainId * 2 + 35 + baseSig.v());
+            signature = new Signature(baseSig.r(), baseSig.s(), v);
+        }
 
         final byte[] envelope = tx.encodeAsEnvelope(signature);
-        final String signedHex = io.brane.primitives.Hex.encode(envelope);
+        final String signedHex = Hex.encode(envelope);
         try {
             return client.call("eth_sendRawTransaction", String.class, signedHex);
         } catch (RpcException e) {

@@ -35,10 +35,9 @@ public final class ReadWriteContract extends ReadOnlyContract {
     public Hash send(final String functionName, final Object... args) {
         final Abi.FunctionCall fnCall = abi().encodeFunction(functionName, args);
         final TransactionRequest request =
-                TxBuilder.legacy()
+                TxBuilder.eip1559()
                         .to(address())
                         .value(Wei.of(0))
-
                         .data(new HexData(fnCall.data()))
                         .build();
         return walletClient.sendTransaction(request);
@@ -51,10 +50,9 @@ public final class ReadWriteContract extends ReadOnlyContract {
             final Object... args) {
         final Abi.FunctionCall fnCall = abi().encodeFunction(functionName, args);
         final TransactionRequest request =
-                TxBuilder.legacy()
+                TxBuilder.eip1559()
                         .to(address())
                         .value(Wei.of(0))
-
                         .data(new HexData(fnCall.data()))
                         .build();
         return walletClient.sendTransactionAndWait(request, timeoutMillis, pollIntervalMillis);
