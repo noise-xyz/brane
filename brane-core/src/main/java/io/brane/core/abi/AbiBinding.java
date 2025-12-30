@@ -13,15 +13,17 @@ public final class AbiBinding {
     public AbiBinding(final Abi abi, final Class<?> contractInterface) {
         this.abi = Objects.requireNonNull(abi, "abi");
         Objects.requireNonNull(contractInterface, "contractInterface");
-        this.cache = new HashMap<>();
 
+        final Map<Method, Abi.FunctionMetadata> mutableCache = new HashMap<>();
         for (Method method : contractInterface.getMethods()) {
             if (isObjectMethod(method)) {
                 continue;
             }
             final Abi.FunctionMetadata metadata = resolveMetadata(method);
-            cache.put(method, metadata);
+            mutableCache.put(method, metadata);
         }
+        // Create immutable snapshot for thread-safe publication
+        this.cache = Map.copyOf(mutableCache);
     }
 
     public Abi.FunctionMetadata resolve(final Method method) {

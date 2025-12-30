@@ -10,6 +10,10 @@ import io.brane.rpc.Subscription;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 import java.math.BigInteger;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 
 class AbiBindingTest {
@@ -408,6 +412,63 @@ class AbiBindingTest {
 
         Abi abi = Abi.fromJson(json);
         assertDoesNotThrow(() -> new AbiBinding(abi, TestContract.class));
+    }
+
+    @Test
+    void cacheIsThreadSafeForConcurrentReads() throws Exception {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "getValue",
+                        "stateMutability": "view",
+                        "inputs": [],
+                        "outputs": [{"name": "", "type": "uint256"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            BigInteger getValue();
+        }
+
+        Abi abi = Abi.fromJson(json);
+        AbiBinding binding = new AbiBinding(abi, TestContract.class);
+        var method = TestContract.class.getMethod("getValue");
+
+        // Test concurrent reads from multiple threads
+        int threadCount = 10;
+        int iterationsPerThread = 1000;
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(threadCount);
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger errorCount = new AtomicInteger(0);
+
+        try (ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor()) {
+            for (int i = 0; i < threadCount; i++) {
+                executor.submit(() -> {
+                    try {
+                        startLatch.await();
+                        for (int j = 0; j < iterationsPerThread; j++) {
+                            var metadata = binding.resolve(method);
+                            if (metadata != null && "getValue".equals(metadata.name())) {
+                                successCount.incrementAndGet();
+                            }
+                        }
+                    } catch (Exception e) {
+                        errorCount.incrementAndGet();
+                    } finally {
+                        doneLatch.countDown();
+                    }
+                });
+            }
+            startLatch.countDown();
+            doneLatch.await();
+        }
+
+        assertEquals(0, errorCount.get(), "No errors should occur during concurrent access");
+        assertEquals(threadCount * iterationsPerThread, successCount.get(),
+                "All reads should succeed");
     }
 
     // Minimal fake implementations

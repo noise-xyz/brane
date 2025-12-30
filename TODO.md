@@ -30,11 +30,11 @@ public AbiBinding(final Abi abi, final Class<?> contractInterface) {
 **Impact:** While unlikely to cause issues in practice (since the cache is fully populated before any reads), the JMM does not guarantee safe publication of HashMap contents without synchronization. A reader thread could theoretically see a partially constructed HashMap.
 
 **Acceptance Criteria:**
-- [ ] Cache MUST be safely published for concurrent read access
-- [ ] Use `Map.copyOf()` after population to create an immutable snapshot, OR
-- [ ] Use `Collections.unmodifiableMap()` wrapper, OR
-- [ ] Initialize with `ConcurrentHashMap`
-- [ ] Add test demonstrating thread-safe access pattern
+- [x] Cache MUST be safely published for concurrent read access
+- [x] Use `Map.copyOf()` after population to create an immutable snapshot
+- [ ] ~~Use `Collections.unmodifiableMap()` wrapper~~ (not needed)
+- [ ] ~~Initialize with `ConcurrentHashMap`~~ (not needed)
+- [x] Add test demonstrating thread-safe access pattern
 
 ---
 
@@ -291,7 +291,7 @@ private static boolean isObjectMethod(final Method method) {
 
 | # | Issue | Severity | Type | Status |
 |---|-------|----------|------|--------|
-| 1 | AbiBinding non-thread-safe HashMap | MEDIUM | Thread Safety | OPEN |
+| 1 | AbiBinding non-thread-safe HashMap | MEDIUM | Thread Safety | FIXED |
 | 2 | ReadWriteContract ignores ContractOptions | MEDIUM | API Inconsistency | FIXED |
 | 3 | deployRequest() missing constructor validation | MEDIUM | Validation | FIXED |
 | 4 | Missing tuple/struct return type support | LOW | Feature Gap | OPEN |
