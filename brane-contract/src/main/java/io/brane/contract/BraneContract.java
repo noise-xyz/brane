@@ -285,19 +285,39 @@ public final class BraneContract {
 
     private static void validateParameters(final Method method, final Abi.FunctionMetadata metadata) {
         final Class<?>[] parameterTypes = method.getParameterTypes();
-        if (parameterTypes.length != metadata.inputs().size()) {
+        final boolean isPayable = method.isAnnotationPresent(Payable.class);
+
+        // For @Payable methods, first Wei parameter is the value, not a contract parameter
+        final int expectedParams = metadata.inputs().size();
+        final int actualParams = parameterTypes.length;
+        final int offset;
+
+        if (isPayable) {
+            if (actualParams == 0 || parameterTypes[0] != io.brane.core.types.Wei.class) {
+                throw new IllegalArgumentException(
+                        "@Payable method "
+                                + method.getName()
+                                + " must have Wei as first parameter");
+            }
+            offset = 1; // Skip Wei parameter when validating against ABI
+        } else {
+            offset = 0;
+        }
+
+        if (actualParams - offset != expectedParams) {
             throw new IllegalArgumentException(
                     "Method "
                             + method.getName()
                             + " expects "
-                            + metadata.inputs().size()
+                            + expectedParams
                             + " parameters but has "
-                            + parameterTypes.length);
+                            + (actualParams - offset)
+                            + (isPayable ? " (excluding Wei value)" : ""));
         }
 
-        for (int i = 0; i < parameterTypes.length; i++) {
+        for (int i = 0; i < expectedParams; i++) {
             final String solidityType = metadata.inputs().get(i);
-            final Class<?> parameterType = parameterTypes[i];
+            final Class<?> parameterType = parameterTypes[i + offset];
             if (!isSupportedParameterType(solidityType, parameterType)) {
                 throw new IllegalArgumentException(
                         "Unsupported parameter type for "
@@ -315,6 +335,13 @@ public final class BraneContract {
     private static void validateReturnType(final Method method, final Abi.FunctionMetadata metadata) {
         final Class<?> returnType = method.getReturnType();
         final List<String> outputs = metadata.outputs();
+
+        // @Payable cannot be used on view functions
+        if (method.isAnnotationPresent(Payable.class) && metadata.isView()) {
+            throw new IllegalArgumentException(
+                    "@Payable cannot be used on view function " + method.getName());
+        }
+
         if (metadata.isView()) {
             if (returnType == void.class || returnType == Void.class) {
                 if (!outputs.isEmpty()) {

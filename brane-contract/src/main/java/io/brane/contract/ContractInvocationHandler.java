@@ -12,6 +12,7 @@ import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -48,13 +49,27 @@ final class ContractInvocationHandler implements InvocationHandler {
 
         final Object[] invocationArgs = args == null ? new Object[0] : args;
         final Abi.FunctionMetadata metadata = binding.resolve(method);
-        final Abi.FunctionCall functionCall = abi.encodeFunction(metadata.name(), invocationArgs);
+
+        // Handle payable functions - extract Wei value from first parameter
+        final boolean isPayable = method.isAnnotationPresent(Payable.class);
+        final Wei value;
+        final Object[] contractArgs;
+
+        if (isPayable && invocationArgs.length > 0 && invocationArgs[0] instanceof Wei) {
+            value = (Wei) invocationArgs[0];
+            contractArgs = Arrays.copyOfRange(invocationArgs, 1, invocationArgs.length);
+        } else {
+            value = Wei.of(0);
+            contractArgs = invocationArgs;
+        }
+
+        final Abi.FunctionCall functionCall = abi.encodeFunction(metadata.name(), contractArgs);
 
         if (metadata.isView()) {
             return invokeView(method, functionCall);
         }
 
-        return invokeWrite(method, functionCall);
+        return invokeWrite(method, functionCall, value);
     }
 
     private Object invokeView(final Method method, final Abi.FunctionCall call) {
@@ -69,12 +84,12 @@ final class ContractInvocationHandler implements InvocationHandler {
         return call.decode(output, method.getReturnType());
     }
 
-    private Object invokeWrite(final Method method, final Abi.FunctionCall call) {
+    private Object invokeWrite(final Method method, final Abi.FunctionCall call, final Wei value) {
         final TransactionRequest request =
                 TxBuilder.eip1559()
                         .to(address)
                         .data(new HexData(call.data()))
-                        .value(Wei.of(0))
+                        .value(value)
                         .build();
 
         final TransactionReceipt receipt =
