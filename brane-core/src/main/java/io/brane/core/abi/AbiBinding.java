@@ -33,24 +33,13 @@ public final class AbiBinding {
     }
 
     private Abi.FunctionMetadata resolveMetadata(final Method method) {
-        final Abi.FunctionMetadata metadata =
-                abi.getFunction(method.getName())
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "No ABI function named '" + method.getName() + "'"));
-
-        if (metadata.inputs().size() != method.getParameterCount()) {
-            throw new IllegalArgumentException(
-                    "Method "
-                            + method.getName()
-                            + " expects "
-                            + metadata.inputs().size()
-                            + " parameters but has "
-                            + method.getParameterCount());
-        }
-
-        return metadata;
+        // Note: Parameter count validation is intentionally NOT done here.
+        // BraneContract.validateParameters() handles this with @Payable annotation awareness.
+        return abi.getFunction(method.getName())
+                .orElseThrow(
+                        () ->
+                                new IllegalArgumentException(
+                                        "No ABI function named '" + method.getName() + "'"));
     }
 
     private static boolean isObjectMethod(final Method method) {

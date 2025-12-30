@@ -340,10 +340,20 @@ public final class BraneContract {
         final Class<?> returnType = method.getReturnType();
         final List<String> outputs = metadata.outputs();
 
-        // @Payable cannot be used on view functions
-        if (method.isAnnotationPresent(Payable.class) && metadata.isView()) {
-            throw new IllegalArgumentException(
-                    "@Payable cannot be used on view function " + method.getName());
+        // Validate @Payable annotation
+        if (method.isAnnotationPresent(Payable.class)) {
+            if (metadata.isView()) {
+                throw new IllegalArgumentException(
+                        "@Payable cannot be used on view function " + method.getName());
+            }
+            if (!metadata.isPayable()) {
+                throw new IllegalArgumentException(
+                        "@Payable method "
+                                + method.getName()
+                                + " does not map to a payable ABI function (stateMutability is '"
+                                + metadata.stateMutability()
+                                + "')");
+            }
         }
 
         if (metadata.isView()) {

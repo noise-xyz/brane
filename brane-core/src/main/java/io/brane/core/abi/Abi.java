@@ -164,6 +164,10 @@ public interface Abi {
         public boolean isView() {
             return "view".equals(stateMutability) || "pure".equals(stateMutability);
         }
+
+        public boolean isPayable() {
+            return "payable".equals(stateMutability);
+        }
     }
 
     private static String requireNonEmpty(final String value, final String name) {

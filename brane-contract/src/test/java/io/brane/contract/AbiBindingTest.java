@@ -81,10 +81,17 @@ class AbiBindingTest {
             void foo();
         }
 
-        Abi abi = Abi.fromJson(json);
+        PublicClient fakePublic = new FakePublicClient() {};
+        WalletClient fakeWallet = new FakeWalletClient() {};
+
         IllegalArgumentException e = assertThrows(
                 IllegalArgumentException.class,
-                () -> new AbiBinding(abi, TestContract.class));
+                () -> BraneContract.bind(
+                        new Address("0x" + "1".repeat(40)),
+                        json,
+                        fakePublic,
+                        fakeWallet,
+                        TestContract.class));
         assertTrue(e.getMessage().contains("expects 1 parameters"));
     }
 
@@ -222,6 +229,69 @@ class AbiBindingTest {
         WalletClient fakeWallet = new FakeWalletClient() {};
 
         assertThrows(IllegalArgumentException.class, () -> BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                fakePublic,
+                fakeWallet,
+                TestContract.class));
+    }
+
+    @Test
+    void rejectsPayableAnnotationOnNonPayableFunction() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "transfer",
+                        "stateMutability": "nonpayable",
+                        "inputs": [{"name": "to", "type": "address"}],
+                        "outputs": []
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            @Payable
+            void transfer(io.brane.core.types.Wei value, Address to);
+        }
+
+        PublicClient fakePublic = new FakePublicClient() {};
+        WalletClient fakeWallet = new FakeWalletClient() {};
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                BraneContract.bind(
+                        new Address("0x" + "1".repeat(40)),
+                        json,
+                        fakePublic,
+                        fakeWallet,
+                        TestContract.class));
+
+        assertTrue(ex.getMessage().contains("does not map to a payable ABI function"));
+    }
+
+    @Test
+    void allowsPayableAnnotationOnPayableFunction() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "deposit",
+                        "stateMutability": "payable",
+                        "inputs": [],
+                        "outputs": []
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            @Payable
+            void deposit(io.brane.core.types.Wei value);
+        }
+
+        PublicClient fakePublic = new FakePublicClient() {};
+        WalletClient fakeWallet = new FakeWalletClient() {};
+
+        assertDoesNotThrow(() -> BraneContract.bind(
                 new Address("0x" + "1".repeat(40)),
                 json,
                 fakePublic,
