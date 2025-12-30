@@ -95,11 +95,31 @@ public final class ReadWriteContract extends ReadOnlyContract {
      * @return the transaction hash
      */
     public Hash send(final String functionName, final Object... args) {
+        return send(functionName, Wei.of(0), args);
+    }
+
+    /**
+     * Sends a state-changing transaction with ETH value to the contract.
+     *
+     * <p>This method submits the transaction and returns immediately with the
+     * transaction hash. Use {@link #sendAndWait} if you need to wait for
+     * confirmation.
+     *
+     * <p>Use this method for payable functions that require sending ETH.
+     *
+     * @param functionName the contract function name
+     * @param value        the ETH value to send with the transaction
+     * @param args         the function arguments
+     * @return the transaction hash
+     * @throws NullPointerException if value is null
+     */
+    public Hash send(final String functionName, final Wei value, final Object... args) {
+        Objects.requireNonNull(value, "value must not be null");
         final Abi.FunctionCall fnCall = abi().encodeFunction(functionName, args);
         final TransactionRequest request =
                 TxBuilder.eip1559()
                         .to(address())
-                        .value(Wei.of(0))
+                        .value(value)
                         .data(new HexData(fnCall.data()))
                         .build();
         return walletClient.sendTransaction(request);
@@ -123,11 +143,38 @@ public final class ReadWriteContract extends ReadOnlyContract {
             final long timeoutMillis,
             final long pollIntervalMillis,
             final Object... args) {
+        return sendAndWait(functionName, Wei.of(0), timeoutMillis, pollIntervalMillis, args);
+    }
+
+    /**
+     * Sends a state-changing transaction with ETH value and waits for the receipt.
+     *
+     * <p>This method submits the transaction and polls for the receipt until
+     * confirmed or the timeout is reached.
+     *
+     * <p>Use this method for payable functions that require sending ETH.
+     *
+     * @param functionName       the contract function name
+     * @param value              the ETH value to send with the transaction
+     * @param timeoutMillis      maximum time to wait for confirmation in milliseconds
+     * @param pollIntervalMillis interval between receipt checks in milliseconds
+     * @param args               the function arguments
+     * @return the transaction receipt
+     * @throws NullPointerException if value is null
+     * @throws io.brane.core.error.RpcException if the transaction fails or times out
+     */
+    public TransactionReceipt sendAndWait(
+            final String functionName,
+            final Wei value,
+            final long timeoutMillis,
+            final long pollIntervalMillis,
+            final Object... args) {
+        Objects.requireNonNull(value, "value must not be null");
         final Abi.FunctionCall fnCall = abi().encodeFunction(functionName, args);
         final TransactionRequest request =
                 TxBuilder.eip1559()
                         .to(address())
-                        .value(Wei.of(0))
+                        .value(value)
                         .data(new HexData(fnCall.data()))
                         .build();
         return walletClient.sendTransactionAndWait(request, timeoutMillis, pollIntervalMillis);

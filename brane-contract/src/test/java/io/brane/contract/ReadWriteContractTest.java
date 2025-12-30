@@ -11,6 +11,7 @@ import io.brane.core.types.Address;
 import io.brane.rpc.Subscription;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
+import io.brane.core.types.Wei;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 import java.math.BigInteger;
@@ -91,6 +92,58 @@ class ReadWriteContractTest {
         assertThrows(
                 ChainMismatchException.class,
                 () -> contract.sendAndWait("transfer", 1000, 10, recipient, BigInteger.ONE));
+    }
+
+    @Test
+    void sendWithValueBuildsTransactionWithEthValue() {
+        CapturingWalletClient walletClient = new CapturingWalletClient();
+        ReadWriteContract contract = ReadWriteContract.from(
+                new Address("0x" + "1".repeat(40)),
+                Abi.fromJson(ERC20_ABI),
+                new NoopPublicClient(),
+                walletClient);
+
+        Wei ethValue = Wei.fromEther(java.math.BigDecimal.ONE);
+        Address recipient = new Address("0x" + "2".repeat(40));
+        contract.send("transfer", ethValue, recipient, BigInteger.valueOf(10));
+
+        TransactionRequest captured = walletClient.lastRequest;
+        assertEquals("0x" + "1".repeat(40), captured.to().value());
+        assertEquals(ethValue, captured.value());
+        // Confirm selector present
+        assertEquals("0xa9059cbb", captured.data().value().substring(0, 10));
+    }
+
+    @Test
+    void sendAndWaitWithValueBuildsTransactionWithEthValue() {
+        CapturingWalletClient walletClient = new CapturingWalletClient();
+        ReadWriteContract contract = ReadWriteContract.from(
+                new Address("0x" + "1".repeat(40)),
+                Abi.fromJson(ERC20_ABI),
+                new NoopPublicClient(),
+                walletClient);
+
+        Wei ethValue = Wei.gwei(500);
+        Address recipient = new Address("0x" + "2".repeat(40));
+        TransactionReceipt receipt = contract.sendAndWait("transfer", ethValue, 1000, 10, recipient, BigInteger.ONE);
+
+        TransactionRequest captured = walletClient.lastRequest;
+        assertEquals(ethValue, captured.value());
+        assertEquals("0x" + "a".repeat(64), receipt.transactionHash().value());
+    }
+
+    @Test
+    void sendWithNullValueThrows() {
+        CapturingWalletClient walletClient = new CapturingWalletClient();
+        ReadWriteContract contract = ReadWriteContract.from(
+                new Address("0x" + "1".repeat(40)),
+                Abi.fromJson(ERC20_ABI),
+                new NoopPublicClient(),
+                walletClient);
+
+        Address recipient = new Address("0x" + "2".repeat(40));
+        assertThrows(NullPointerException.class, () ->
+                contract.send("transfer", (Wei) null, recipient, BigInteger.ONE));
     }
 
     private static final class CapturingWalletClient implements WalletClient {
