@@ -53,7 +53,11 @@ final class ContractInvocationHandler implements InvocationHandler {
         final Object[] invocationArgs = args == null ? new Object[0] : args;
         final Abi.FunctionMetadata metadata = binding.resolve(method);
 
-        // Handle payable functions - extract Wei value from first parameter
+        // Handle payable functions - extract Wei value from first parameter.
+        // Bind-time validation in BraneContract.validateParameters() ensures that @Payable
+        // methods have Wei as their first parameter. The instanceof check here is defensive -
+        // for properly bound contracts, it will always be true. Non-payable functions or
+        // payable functions invoked with null Wei will use Wei.of(0).
         final boolean isPayable = method.isAnnotationPresent(Payable.class);
         final Wei value;
         final Object[] contractArgs;

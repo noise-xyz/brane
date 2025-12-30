@@ -198,9 +198,9 @@ if (isPayable && invocationArgs.length > 0 && invocationArgs[0] instanceof Wei) 
 **Impact:** Minor - validation at bind time should prevent this, but defense-in-depth would be better.
 
 **Acceptance Criteria:**
-- [ ] Either throw `IllegalArgumentException` at runtime if `@Payable` method invoked without Wei argument, OR
-- [ ] Document explicitly that bind-time validation is relied upon
-- [ ] Add test verifying behavior when @Payable method called without Wei
+- [ ] ~~Throw at runtime~~ (not needed - bind-time validation catches this)
+- [x] Document explicitly that bind-time validation is relied upon
+- [x] Add test verifying behavior when @Payable method called without Wei
 
 ---
 
@@ -295,7 +295,7 @@ private static boolean isObjectMethod(final Method method) {
 | 2 | ReadWriteContract ignores ContractOptions | MEDIUM | API Inconsistency | FIXED |
 | 3 | deployRequest() missing constructor validation | MEDIUM | Validation | FIXED |
 | 4 | Missing tuple/struct return type support | LOW | Feature Gap | OPEN |
-| 5 | @Payable silent fallback to zero | LOW | Defensive Programming | OPEN |
+| 5 | @Payable silent fallback to zero | LOW | Defensive Programming | FIXED |
 | 6 | Zero timeout allowed | LOW | Validation | FIXED |
 | 7 | Missing equals/hashCode in ContractOptions | LOW | API Design | FIXED |
 | 8 | Duplicate isObjectMethod() | LOW | Code Duplication | OPEN |

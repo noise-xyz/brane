@@ -384,6 +384,72 @@ class AbiBindingTest {
     }
 
     @Test
+    void rejectsPayableMethodWithoutWeiParameter() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "deposit",
+                        "stateMutability": "payable",
+                        "inputs": [],
+                        "outputs": []
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            @Payable
+            void deposit();  // Missing Wei parameter
+        }
+
+        PublicClient fakePublic = new FakePublicClient() {};
+        WalletClient fakeWallet = new FakeWalletClient() {};
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                BraneContract.bind(
+                        new Address("0x" + "1".repeat(40)),
+                        json,
+                        fakePublic,
+                        fakeWallet,
+                        TestContract.class));
+
+        assertTrue(ex.getMessage().contains("must have Wei as first parameter"));
+    }
+
+    @Test
+    void rejectsPayableMethodWithWrongFirstParameter() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "deposit",
+                        "stateMutability": "payable",
+                        "inputs": [{"name": "amount", "type": "uint256"}],
+                        "outputs": []
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            @Payable
+            void deposit(BigInteger amount);  // Wei must be first, not BigInteger
+        }
+
+        PublicClient fakePublic = new FakePublicClient() {};
+        WalletClient fakeWallet = new FakeWalletClient() {};
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                BraneContract.bind(
+                        new Address("0x" + "1".repeat(40)),
+                        json,
+                        fakePublic,
+                        fakeWallet,
+                        TestContract.class));
+
+        assertTrue(ex.getMessage().contains("must have Wei as first parameter"));
+    }
+
+    @Test
     void allowsVoidAndTransactionReceiptForWrites() {
         String json = """
                 [
