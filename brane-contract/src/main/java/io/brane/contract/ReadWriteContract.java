@@ -2,6 +2,7 @@ package io.brane.contract;
 
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.abi.Abi;
+import java.util.Objects;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
@@ -21,7 +22,7 @@ public final class ReadWriteContract extends ReadOnlyContract {
             final PublicClient publicClient,
             final WalletClient walletClient) {
         super(address, abi, publicClient);
-        this.walletClient = walletClient;
+        this.walletClient = Objects.requireNonNull(walletClient, "walletClient must not be null");
     }
 
     public static ReadWriteContract from(
