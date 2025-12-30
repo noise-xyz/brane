@@ -97,12 +97,7 @@ final class ContractInvocationHandler implements InvocationHandler {
     }
 
     private Object invokeWrite(final Method method, final Abi.FunctionCall call, final Wei value) {
-        final TransactionRequest request =
-                TxBuilder.eip1559()
-                        .to(address)
-                        .data(new HexData(call.data()))
-                        .value(value)
-                        .build();
+        final TransactionRequest request = buildTransactionRequest(call, value);
 
         final TransactionReceipt receipt =
                 walletClient.sendTransactionAndWait(
@@ -111,6 +106,24 @@ final class ContractInvocationHandler implements InvocationHandler {
             return null;
         }
         return receipt;
+    }
+
+    private TransactionRequest buildTransactionRequest(final Abi.FunctionCall call, final Wei value) {
+        if (options.transactionType() == ContractOptions.TransactionType.LEGACY) {
+            return TxBuilder.legacy()
+                    .to(address)
+                    .data(new HexData(call.data()))
+                    .value(value)
+                    .gasLimit(options.gasLimit())
+                    .build();
+        }
+        return TxBuilder.eip1559()
+                .to(address)
+                .data(new HexData(call.data()))
+                .value(value)
+                .gasLimit(options.gasLimit())
+                .maxPriorityFeePerGas(options.maxPriorityFee())
+                .build();
     }
 
     private static boolean isObjectMethod(final Method method) {

@@ -6,14 +6,18 @@ import io.brane.core.error.AbiDecodingException;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
+import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
+import io.brane.core.types.Wei;
 import io.brane.rpc.Subscription;
 import io.brane.core.types.Hash;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 import java.math.BigInteger;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class ContractInvocationHandlerTest {
@@ -343,6 +347,199 @@ class ContractInvocationHandlerTest {
                 contract.balanceOf(new Address("0x" + "2".repeat(40))));
 
         assertTrue(ex.getMessage().contains("empty result"));
+    }
+
+    @Test
+    void writeMethodAppliesGasLimitFromOptions() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "transfer",
+                        "stateMutability": "nonpayable",
+                        "inputs": [
+                            {"name": "to", "type": "address"},
+                            {"name": "amount", "type": "uint256"}
+                        ],
+                        "outputs": []
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            TransactionReceipt transfer(Address to, BigInteger amount);
+        }
+
+        AtomicReference<TransactionRequest> capturedRequest = new AtomicReference<>();
+
+        PublicClient publicClient = new FakePublicClient() {};
+
+        WalletClient walletClient = new FakeWalletClient() {
+            @Override
+            public TransactionReceipt sendTransactionAndWait(
+                    TransactionRequest request,
+                    long timeoutMillis,
+                    long pollIntervalMillis) {
+                capturedRequest.set(request);
+                return new TransactionReceipt(
+                        new Hash("0x" + "a".repeat(64)),
+                        new Hash("0x" + "b".repeat(64)),
+                        1L,
+                        new Address("0x" + "1".repeat(40)),
+                        new Address("0x" + "2".repeat(40)),
+                        new io.brane.core.types.HexData("0x"),
+                        java.util.List.of(),
+                        true,
+                        Wei.of(21000));
+            }
+        };
+
+        ContractOptions customOptions = ContractOptions.builder()
+                .gasLimit(500_000L)
+                .build();
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class,
+                customOptions);
+
+        contract.transfer(new Address("0x" + "2".repeat(40)), BigInteger.TEN);
+
+        assertNotNull(capturedRequest.get());
+        assertEquals(500_000L, capturedRequest.get().gasLimit());
+    }
+
+    @Test
+    void writeMethodAppliesMaxPriorityFeeForEip1559() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "transfer",
+                        "stateMutability": "nonpayable",
+                        "inputs": [
+                            {"name": "to", "type": "address"},
+                            {"name": "amount", "type": "uint256"}
+                        ],
+                        "outputs": []
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            TransactionReceipt transfer(Address to, BigInteger amount);
+        }
+
+        AtomicReference<TransactionRequest> capturedRequest = new AtomicReference<>();
+
+        PublicClient publicClient = new FakePublicClient() {};
+
+        WalletClient walletClient = new FakeWalletClient() {
+            @Override
+            public TransactionReceipt sendTransactionAndWait(
+                    TransactionRequest request,
+                    long timeoutMillis,
+                    long pollIntervalMillis) {
+                capturedRequest.set(request);
+                return new TransactionReceipt(
+                        new Hash("0x" + "a".repeat(64)),
+                        new Hash("0x" + "b".repeat(64)),
+                        1L,
+                        new Address("0x" + "1".repeat(40)),
+                        new Address("0x" + "2".repeat(40)),
+                        new io.brane.core.types.HexData("0x"),
+                        java.util.List.of(),
+                        true,
+                        Wei.of(21000));
+            }
+        };
+
+        Wei customPriorityFee = Wei.gwei(5);
+        ContractOptions customOptions = ContractOptions.builder()
+                .maxPriorityFee(customPriorityFee)
+                .build();
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class,
+                customOptions);
+
+        contract.transfer(new Address("0x" + "2".repeat(40)), BigInteger.TEN);
+
+        assertNotNull(capturedRequest.get());
+        assertEquals(customPriorityFee, capturedRequest.get().maxPriorityFeePerGas());
+        assertTrue(capturedRequest.get().isEip1559(), "Should be EIP-1559 transaction");
+    }
+
+    @Test
+    void writeMethodUsesLegacyTransactionWhenConfigured() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "transfer",
+                        "stateMutability": "nonpayable",
+                        "inputs": [
+                            {"name": "to", "type": "address"},
+                            {"name": "amount", "type": "uint256"}
+                        ],
+                        "outputs": []
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            TransactionReceipt transfer(Address to, BigInteger amount);
+        }
+
+        AtomicReference<TransactionRequest> capturedRequest = new AtomicReference<>();
+
+        PublicClient publicClient = new FakePublicClient() {};
+
+        WalletClient walletClient = new FakeWalletClient() {
+            @Override
+            public TransactionReceipt sendTransactionAndWait(
+                    TransactionRequest request,
+                    long timeoutMillis,
+                    long pollIntervalMillis) {
+                capturedRequest.set(request);
+                return new TransactionReceipt(
+                        new Hash("0x" + "a".repeat(64)),
+                        new Hash("0x" + "b".repeat(64)),
+                        1L,
+                        new Address("0x" + "1".repeat(40)),
+                        new Address("0x" + "2".repeat(40)),
+                        new io.brane.core.types.HexData("0x"),
+                        java.util.List.of(),
+                        true,
+                        Wei.of(21000));
+            }
+        };
+
+        ContractOptions legacyOptions = ContractOptions.builder()
+                .transactionType(ContractOptions.TransactionType.LEGACY)
+                .gasLimit(100_000L)
+                .build();
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class,
+                legacyOptions);
+
+        contract.transfer(new Address("0x" + "2".repeat(40)), BigInteger.TEN);
+
+        assertNotNull(capturedRequest.get());
+        assertFalse(capturedRequest.get().isEip1559(), "Should be legacy transaction");
+        assertEquals(100_000L, capturedRequest.get().gasLimit());
     }
 
     // Minimal fake implementations
