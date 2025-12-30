@@ -288,6 +288,35 @@ class AbiBindingTest {
     }
 
     @Test
+    void allowsListReturnTypeForDynamicArrayOutput() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "getOwners",
+                        "stateMutability": "view",
+                        "inputs": [],
+                        "outputs": [{"name": "", "type": "address[]"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            java.util.List<Address> getOwners();
+        }
+
+        PublicClient fakePublic = new FakePublicClient() {};
+        WalletClient fakeWallet = new FakeWalletClient() {};
+
+        assertDoesNotThrow(() -> BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                fakePublic,
+                fakeWallet,
+                TestContract.class));
+    }
+
+    @Test
     void rejectsPayableAnnotationOnNonPayableFunction() {
         String json = """
                 [

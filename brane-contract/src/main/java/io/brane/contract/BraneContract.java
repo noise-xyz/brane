@@ -392,6 +392,11 @@ public final class BraneContract {
                 return;
             }
 
+            if (List.class.isAssignableFrom(returnType) || returnType.isArray()) {
+                requireSingleOutput(method, outputs, BraneContract::isArrayType);
+                return;
+            }
+
             throw new IllegalArgumentException(
                     "Unsupported return type for view function "
                             + method.getName()
@@ -478,5 +483,10 @@ public final class BraneContract {
         final String normalized = solidityType.toLowerCase(Locale.ROOT);
         // Match "bytes" (dynamic) or "bytesN" (fixed-size like bytes32)
         return normalized.equals("bytes") || normalized.matches("bytes\\d+");
+    }
+
+    private static boolean isArrayType(final String solidityType) {
+        // Match dynamic arrays (type[]) or fixed-size arrays (type[N])
+        return ARRAY_PATTERN.matcher(solidityType).matches();
     }
 }
