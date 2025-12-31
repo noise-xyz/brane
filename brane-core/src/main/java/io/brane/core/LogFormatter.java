@@ -114,16 +114,16 @@ public final class LogFormatter {
     /**
      * Indentation for multi-line log continuation.
      *
-     * <p>This 10-space indent aligns continuation lines with the value portion of
-     * the first line in multi-line logs. For example:
+     * <p>This 10-space indent provides a consistent left margin for continuation
+     * lines in multi-line logs, visually grouping related fields. For example:
      * <pre>
      * [CALL] tag=latest
      *           to=0x1234...
      *           data=0xabcd...
      * </pre>
      *
-     * <p>The indent accounts for "[CALL] " (7 chars) plus "tag" (3 chars) to align
-     * the "=" signs. Adjust if the log prefix format changes.
+     * <p>The indent is chosen to roughly align with typical log prefix lengths
+     * (e.g., "[CALL] " is 7 chars) while providing readable visual separation.
      */
     private static final String CONTINUATION_INDENT = "          ";
 
