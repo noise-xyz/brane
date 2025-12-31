@@ -29,6 +29,11 @@ import io.brane.primitives.Hex;
  */
 public final class Topics {
 
+    /**
+     * 12 bytes of zero padding (24 hex chars) needed to convert 20-byte addresses to 32-byte topics.
+     */
+    private static final String ADDRESS_ZERO_PADDING = "0".repeat(24);
+
     private Topics() {
         // Utility class
     }
@@ -47,10 +52,9 @@ public final class Topics {
         if (address == null) {
             throw new IllegalArgumentException("Address cannot be null");
         }
-        // Address is 20 bytes, we need 32 bytes.
-        // Pad with 12 bytes of zeros on the left.
+        // Address is 20 bytes, we need 32 bytes - pad with 12 bytes of zeros on the left
         String cleanAddress = Hex.cleanPrefix(address.value());
-        String padded = "000000000000000000000000" + cleanAddress;
+        String padded = ADDRESS_ZERO_PADDING + cleanAddress;
         return new Hash("0x" + padded);
     }
 }
