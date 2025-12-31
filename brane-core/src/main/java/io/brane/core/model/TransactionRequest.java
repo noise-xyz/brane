@@ -117,9 +117,13 @@ public record TransactionRequest(
      * @param chainId the chain ID for the transaction
      * @return unsigned transaction (Legacy or EIP-1559 depending on
      *         {@code isEip1559})
-     * @throws NullPointerException if required fields are null
+     * @throws IllegalStateException if required fields are null (from, nonce, gasLimit,
+     *         and gas fee fields depending on transaction type)
      */
     public io.brane.core.tx.UnsignedTransaction toUnsignedTransaction(final long chainId) {
+        if (from == null) {
+            throw new IllegalStateException("from address is required for unsigned transaction");
+        }
         if (nonce == null) {
             throw new IllegalStateException("nonce must be set");
         }
