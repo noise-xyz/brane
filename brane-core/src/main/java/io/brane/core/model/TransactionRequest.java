@@ -21,7 +21,8 @@ import java.util.Optional;
  * <p>
  * <strong>Optional vs Required Fields:</strong>
  * <ul>
- * <li><strong>Required:</strong> {@code from} (sender address)</li>
+ * <li><strong>Required for signing:</strong> {@code from} (sender address) - may be null during
+ * construction but must be non-null when calling {@link #toUnsignedTransaction(long)}</li>
  * <li><strong>Optional:</strong> All other fields can be null and will be
  * auto-filled by {@code WalletClient}:
  * <ul>
@@ -43,7 +44,8 @@ import java.util.Optional;
  * {@code value} to amount, {@code data} can be null/empty</li>
  * </ul>
  * 
- * @param from                 the address sending the transaction (required)
+ * @param from                 the address sending the transaction (may be null during
+ *                             construction, but required for signing)
  * @param to                   the recipient address, or null for contract
  *                             deployment
  * @param value                the amount of native currency to transfer, or
