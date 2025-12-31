@@ -1,11 +1,15 @@
 package io.brane.core.abi;
 
+import io.brane.core.error.AbiDecodingException;
 import io.brane.core.types.Address;
 
 import java.math.BigInteger;
 import java.util.List;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AbiDecoderTest {
 
@@ -192,5 +196,82 @@ class AbiDecoderTest {
         Assertions.assertEquals(2, decodedArray.values().size());
         Assertions.assertEquals(s1, decodedArray.values().get(0));
         Assertions.assertEquals(s2, decodedArray.values().get(1));
+    }
+
+    @Test
+    void testDecodeOutOfBoundsOffset() {
+        // HIGH-8: Test malicious data with out-of-bounds offset
+        // Create data for a string where the offset points beyond the data
+        byte[] maliciousData = new byte[32];
+        // Set offset to 0xFFFFFFFF (4294967295) which is way beyond data length
+        maliciousData[31] = (byte) 0xFF;
+        maliciousData[30] = (byte) 0xFF;
+        maliciousData[29] = (byte) 0xFF;
+        maliciousData[28] = (byte) 0xFF;
+
+        AbiDecodingException exception = assertThrows(
+                AbiDecodingException.class,
+                () -> AbiDecoder.decode(maliciousData, List.of(new TypeSchema.StringSchema())));
+
+        assertTrue(exception.getMessage().contains("out of bounds") ||
+                   exception.getMessage().contains("too large"),
+                "Error message should indicate offset issue: " + exception.getMessage());
+    }
+
+    @Test
+    void testDecodeOffsetExceedsIntMaxValue() {
+        // HIGH-8: Test offset that exceeds Integer.MAX_VALUE
+        // Create data for a string where the offset is larger than Integer.MAX_VALUE
+        byte[] maliciousData = new byte[64];
+        // Set offset to 0x8000_0000_0000_0000 (much larger than Integer.MAX_VALUE)
+        maliciousData[24] = (byte) 0x80;  // This makes the BigInteger very large
+        // The rest are zeros
+
+        AbiDecodingException exception = assertThrows(
+                AbiDecodingException.class,
+                () -> AbiDecoder.decode(maliciousData, List.of(new TypeSchema.StringSchema())));
+
+        assertTrue(exception.getMessage().contains("too large for int"),
+                "Error message should indicate overflow: " + exception.getMessage());
+    }
+
+    @Test
+    void testDecodeNegativeOffset() {
+        // HIGH-8: Test data with negative offset (high bit set in signed interpretation)
+        byte[] maliciousData = new byte[64];
+        // Set a negative offset (first byte 0xFF makes it negative in signed interpretation)
+        maliciousData[0] = (byte) 0xFF;  // This makes BigInteger negative
+
+        // This should throw an exception - negative values don't fit in int (too large)
+        AbiDecodingException exception = assertThrows(
+                AbiDecodingException.class,
+                () -> AbiDecoder.decode(maliciousData, List.of(new TypeSchema.StringSchema())));
+
+        // Negative BigIntegers that don't fit in int will show as "too large for int"
+        assertTrue(exception.getMessage().contains("out of bounds") ||
+                   exception.getMessage().contains("too large for int"),
+                "Error message should indicate offset issue: " + exception.getMessage());
+    }
+
+    @Test
+    void testDecodeCorruptedStringLength() {
+        // HIGH-8: Test malicious data where string length is too large
+        byte[] maliciousData = new byte[64];
+        // First 32 bytes: offset to string data (32)
+        maliciousData[31] = 32;
+
+        // Next 32 bytes: string length (set to huge value)
+        maliciousData[63] = (byte) 0xFF;
+        maliciousData[62] = (byte) 0xFF;
+        maliciousData[61] = (byte) 0xFF;
+        maliciousData[60] = (byte) 0xFF;
+
+        AbiDecodingException exception = assertThrows(
+                AbiDecodingException.class,
+                () -> AbiDecoder.decode(maliciousData, List.of(new TypeSchema.StringSchema())));
+
+        assertTrue(exception.getMessage().contains("out of bounds") ||
+                   exception.getMessage().contains("too large"),
+                "Error message should indicate size issue: " + exception.getMessage());
     }
 }

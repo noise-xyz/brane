@@ -1,5 +1,6 @@
 package io.brane.core.abi;
 
+import io.brane.core.error.AbiDecodingException;
 import io.brane.core.types.Address;
 
 import io.brane.primitives.Hex;
@@ -74,8 +75,10 @@ public final class AbiDecoder {
         for (TypeSchema schema : schemas) {
             if (schema.isDynamic()) {
                 // Dynamic type: head is 32-byte offset
-                int relativeOffset = decodeInt(data, currentHeadOffset).intValueExact();
+                BigInteger offsetValue = decodeInt(data, currentHeadOffset);
+                int relativeOffset = toIntExact(offsetValue, "dynamic type offset");
                 int absoluteOffset = offset + relativeOffset;
+                validateOffset(data, absoluteOffset, "dynamic type data");
                 results.add(decodeDynamic(data, absoluteOffset, schema));
                 currentHeadOffset += 32;
             } else {
@@ -135,14 +138,18 @@ public final class AbiDecoder {
         return switch (schema) {
             case TypeSchema.BytesSchema s -> {
                 // Length + Data
-                int length = decodeInt(data, offset).intValueExact();
+                BigInteger lengthValue = decodeInt(data, offset);
+                int length = toIntExact(lengthValue, "bytes length");
                 int dataOffset = offset + 32;
+                validateOffset(data, dataOffset + length - 1, "bytes data");
                 byte[] bytes = Arrays.copyOfRange(data, dataOffset, dataOffset + length);
                 yield Bytes.of(bytes);
             }
             case TypeSchema.StringSchema s -> {
-                int length = decodeInt(data, offset).intValueExact();
+                BigInteger lengthValue = decodeInt(data, offset);
+                int length = toIntExact(lengthValue, "string length");
                 int dataOffset = offset + 32;
+                validateOffset(data, dataOffset + length - 1, "string data");
                 byte[] bytes = Arrays.copyOfRange(data, dataOffset, dataOffset + length);
                 yield new Utf8String(new String(bytes, StandardCharsets.UTF_8));
             }
@@ -155,7 +162,8 @@ public final class AbiDecoder {
                     length = s.fixedLength();
                     elemOffset = offset;
                 } else {
-                    length = decodeInt(data, offset).intValueExact();
+                    BigInteger lengthValue = decodeInt(data, offset);
+                    length = toIntExact(lengthValue, "array length");
                     elemOffset = offset + 32;
                 }
 
@@ -196,5 +204,36 @@ public final class AbiDecoder {
     private static BigInteger decodeInt(byte[] data, int offset) {
         byte[] slice = Arrays.copyOfRange(data, offset, offset + 32);
         return new BigInteger(slice);
+    }
+
+    /**
+     * Converts a BigInteger to int, throwing AbiDecodingException if it doesn't fit.
+     *
+     * @param value   the value to convert
+     * @param context description of what the value represents (for error messages)
+     * @return the int value
+     * @throws AbiDecodingException if the value exceeds Integer.MAX_VALUE
+     */
+    private static int toIntExact(BigInteger value, String context) {
+        try {
+            return value.intValueExact();
+        } catch (ArithmeticException e) {
+            throw new AbiDecodingException(context + " too large for int: " + value, e);
+        }
+    }
+
+    /**
+     * Validates that an offset is within the data bounds.
+     *
+     * @param data    the byte array
+     * @param offset  the offset to validate
+     * @param context description of what the offset points to (for error messages)
+     * @throws AbiDecodingException if the offset is out of bounds
+     */
+    private static void validateOffset(byte[] data, int offset, String context) {
+        if (offset < 0 || offset >= data.length) {
+            throw new AbiDecodingException(
+                    context + " offset out of bounds: " + offset + " (data length: " + data.length + ")");
+        }
     }
 }
