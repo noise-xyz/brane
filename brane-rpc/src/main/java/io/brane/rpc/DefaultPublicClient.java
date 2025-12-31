@@ -23,6 +23,40 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+/**
+ * Default implementation of {@link PublicClient} for read-only blockchain operations.
+ *
+ * <p>This class provides implementations of all read operations defined in
+ * {@link PublicClient}, translating method calls to JSON-RPC requests via
+ * the underlying {@link BraneProvider}.
+ *
+ * <p><strong>Supported Operations:</strong>
+ * <ul>
+ *   <li>Block queries ({@code eth_getBlockByNumber})</li>
+ *   <li>Transaction queries ({@code eth_getTransactionByHash})</li>
+ *   <li>Balance queries ({@code eth_getBalance})</li>
+ *   <li>Contract calls ({@code eth_call})</li>
+ *   <li>Event log queries ({@code eth_getLogs})</li>
+ *   <li>Access list creation ({@code eth_createAccessList})</li>
+ *   <li>Chain ID queries ({@code eth_chainId})</li>
+ *   <li>Subscription management (newHeads, logs)</li>
+ * </ul>
+ *
+ * <p><strong>Retry Behavior:</strong> All RPC calls are automatically retried
+ * on transient failures using {@link RpcRetry} with 3 attempts and exponential
+ * backoff. Non-retryable errors (reverts, insufficient funds) fail immediately.
+ *
+ * <p><strong>Thread Safety:</strong> This class is thread-safe. All methods
+ * can be called concurrently from multiple threads. Thread safety is provided
+ * by the underlying {@link BraneProvider} implementation.
+ *
+ * <p><strong>JSON Deserialization:</strong> Response parsing uses Jackson's
+ * ObjectMapper for type-safe conversion of RPC results to domain objects.
+ *
+ * @see PublicClient
+ * @see BraneProvider
+ * @see RpcRetry
+ */
 final class DefaultPublicClient implements PublicClient {
 
     private final BraneProvider provider;
