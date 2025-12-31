@@ -26,7 +26,7 @@ final class BuilderValidation {
         if (to == null && data == null) {
             throw new BraneTxBuilderException("Transaction must have a recipient or data");
         }
-        if (to == null && data != null && data.value().isBlank()) {
+        if (to == null && data != null && data.byteLength() == 0) {
             throw new BraneTxBuilderException("Contract creation requires non-empty data");
         }
     }
