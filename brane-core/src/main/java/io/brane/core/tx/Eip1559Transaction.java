@@ -111,7 +111,10 @@ public record Eip1559Transaction(
 
     @Override
     public byte[] encodeForSigning(final long chainId) {
-        // Note: chainId parameter is ignored; we use the chainId from the record
+        if (chainId != this.chainId) {
+            throw new IllegalArgumentException(
+                    "chainId parameter (" + chainId + ") must match transaction chainId (" + this.chainId + ")");
+        }
         final byte[] rlpPayload = encodePayload(false, null);
 
         // Prepend type byte
