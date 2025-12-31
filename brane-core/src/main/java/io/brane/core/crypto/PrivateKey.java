@@ -133,8 +133,12 @@ public final class PrivateKey implements Destroyable {
      * @throws IllegalStateException if the key has been destroyed
      */
     public Address toAddress() {
-        checkNotDestroyed();
-        final byte[] pubKeyBytes = publicKey.getEncoded(false); // uncompressed: 0x04 || x || y
+        final ECPoint pubKey;
+        synchronized (this) {
+            checkNotDestroyed();
+            pubKey = publicKey;
+        }
+        final byte[] pubKeyBytes = pubKey.getEncoded(false); // uncompressed: 0x04 || x || y
 
         // Hash public key (skip first byte 0x04)
         final byte[] hash = Keccak256.hash(Arrays.copyOfRange(pubKeyBytes, 1, pubKeyBytes.length));
@@ -168,12 +172,16 @@ public final class PrivateKey implements Destroyable {
      * @throws IllegalStateException if the key has been destroyed
      */
     public Signature signFast(final byte[] messageHash) {
-        checkNotDestroyed();
         Objects.requireNonNull(messageHash, "message hash cannot be null");
         if (messageHash.length != 32) {
             throw new IllegalArgumentException("Message hash must be 32 bytes, got " + messageHash.length);
         }
-        return FastSigner.sign(messageHash, privateKeyValue);
+        final BigInteger key;
+        synchronized (this) {
+            checkNotDestroyed();
+            key = privateKeyValue;
+        }
+        return FastSigner.sign(messageHash, key);
     }
 
     /**
@@ -289,12 +297,18 @@ public final class PrivateKey implements Destroyable {
      * <b>Note:</b> Due to Java's BigInteger being immutable, this cannot guarantee
      * complete removal of key material from memory. However, it nullifies references
      * to help garbage collection and prevents accidental reuse of the key.
+     *
+     * <p>
+     * This method is thread-safe. Concurrent calls to destroy and sign/toAddress
+     * will either complete the operation or throw {@link IllegalStateException}.
      */
     @Override
     public void destroy() {
-        destroyed = true;
-        privateKeyValue = null;
-        publicKey = null;
+        synchronized (this) {
+            destroyed = true;
+            privateKeyValue = null;
+            publicKey = null;
+        }
     }
 
     /**
