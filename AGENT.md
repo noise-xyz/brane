@@ -127,6 +127,30 @@ When adding/modifying code:
 3. **NO Raw Types:** Ensure all Generics are typed (`List<String>`, not `List`).
 4. **NO Swallowing Exceptions:** Never `catch (Exception e) {}`. At minimum, log it.
 
+### VIII. Factory Method Naming Convention
+
+Brane SDK follows a consistent naming convention for static factory methods:
+
+| Method Name | Purpose | Example |
+|-------------|---------|---------|
+| `create()` | Simple factory that constructs an instance directly | `WebSocketProvider.create(url)` |
+| `builder()` | Starts a builder pattern, returns a `Builder` with `.build()` | `HttpBraneProvider.builder(url).build()` |
+| `from()` | Conversion/adaptation from an existing object or explicit parameters | `PublicClient.from(provider)` |
+| `of()` | Static factory for value objects (records, immutable types) | `CallRequest.of(to, data)` |
+| `forChain()` | Domain-specific factory for chain configuration (returns builder) | `BranePublicClient.forChain(profile)` |
+
+**Guidelines:**
+1. **`create()`** - Use when construction is straightforward and doesn't require many optional parameters.
+2. **`builder()`** - Use when the object has many optional configuration parameters.
+3. **`from()`** - Use when wrapping, adapting, or converting from another type. The semantics imply "derive this from that."
+4. **`of()`** - Reserved for value objects where the factory closely resembles a constructor call.
+5. **`forChain()`** - Domain-specific; returns a builder for chain-aware configuration.
+
+**Anti-patterns:**
+- Avoid mixing `create()` and `from()` with identical semantics in the same class.
+- Don't use `new*()` or `make*()` prefixes - they're not idiomatic Java.
+- Avoid `get*()` for factories - reserve `get` for accessors.
+
 ---
 
 ## 5. Testing Protocol

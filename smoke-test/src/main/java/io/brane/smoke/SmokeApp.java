@@ -254,7 +254,7 @@ public class SmokeApp {
                 new LogFilter(
                         Optional.of(0L),
                         Optional.empty(),
-                        Optional.of(tokenAddress),
+                        Optional.of(List.of(tokenAddress)),
                         Optional.empty()));
 
         System.out.println("  Found " + logs.size() + " logs.");
@@ -661,7 +661,7 @@ public class SmokeApp {
             // 2. Subscribe to Logs (Transfer event)
             java.util.concurrent.CompletableFuture<LogEntry> logFuture = new java.util.concurrent.CompletableFuture<>();
             io.brane.rpc.Subscription logSub = wsClient.subscribeToLogs(
-                    new LogFilter(Optional.empty(), Optional.empty(), Optional.of(tokenAddress), Optional.empty()),
+                    new LogFilter(Optional.empty(), Optional.empty(), Optional.of(List.of(tokenAddress)), Optional.empty()),
                     log -> {
                         System.out.println("  ✓ [WS] Log Received: " + log.transactionHash());
                         logFuture.complete(log);
