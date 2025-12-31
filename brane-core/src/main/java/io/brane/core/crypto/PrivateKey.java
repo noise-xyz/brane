@@ -108,8 +108,17 @@ public final class PrivateKey implements Destroyable {
 
     /**
      * Creates a private key from raw bytes.
-     * 
-     * @param keyBytes 32-byte private key
+     *
+     * <p>
+     * <b>Security note:</b> The input byte array will be zeroed after the key is created
+     * to minimize exposure of key material in memory. Callers should not rely on the
+     * contents of the array after this method returns.
+     *
+     * @apiNote This method takes ownership of the provided byte array and will zero it
+     *          after extracting the key material. If you need to retain the original bytes,
+     *          pass a copy: {@code PrivateKey.fromBytes(keyBytes.clone())}
+     *
+     * @param keyBytes 32-byte private key (will be zeroed after use)
      * @return private key instance
      * @throws IllegalArgumentException if key bytes are invalid
      */

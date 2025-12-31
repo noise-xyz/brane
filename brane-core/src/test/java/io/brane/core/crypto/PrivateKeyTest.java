@@ -189,6 +189,31 @@ class PrivateKeyTest {
     }
 
     @Test
+    void testFromBytesZerosInputArray() {
+        // Security behavior: fromBytes zeros the input array after use
+        final byte[] keyBytes = hexToBytes(TEST_PRIVATE_KEY.substring(2));
+
+        // Verify the bytes are non-zero before creating key
+        boolean hasNonZero = false;
+        for (byte b : keyBytes) {
+            if (b != 0) {
+                hasNonZero = true;
+                break;
+            }
+        }
+        assertTrue(hasNonZero, "Test key should have non-zero bytes");
+
+        // Create the key
+        final PrivateKey key = PrivateKey.fromBytes(keyBytes);
+        assertNotNull(key);
+
+        // Verify the input array has been zeroed
+        for (byte b : keyBytes) {
+            assertEquals(0, b, "Input array should be zeroed after fromBytes()");
+        }
+    }
+
+    @Test
     void testToString() {
         final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
         final String str = key.toString();
