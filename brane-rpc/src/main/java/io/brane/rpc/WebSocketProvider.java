@@ -596,7 +596,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             CompletableFuture<JsonRpcResponse> existing = slots.get(slot);
             if (existing != null && !existing.isDone()) {
                 // Slot is in use by an active request - backpressure
-                metrics.onBackpressure();
+                metrics.onBackpressure(slot, maxPendingRequests);
                 return CompletableFuture.failedFuture(new io.brane.core.error.RpcException(
                         -32000,
                         "Too many pending requests (" + maxPendingRequests + " limit reached, slot " + slot + " in use)",
@@ -665,7 +665,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                     if (!future.isDone()) {
                         // Use CAS to only clear if slot still contains our future
                         slots.compareAndSet(slot, future, null);
-                        metrics.onRequestTimeout(method);
+                        metrics.onRequestTimeout(method, id);
                         future.completeExceptionally(new io.brane.core.error.RpcException(
                                 -32000,
                                 "Request timed out after " + timeout.toMillis() + "ms (method: " + method + ")",

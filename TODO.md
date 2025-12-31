@@ -480,7 +480,7 @@ private Long requireLogIndex(Long logIndex, Map<String, Object> map) {
 
 ---
 
-### LOW-2: BraneMetrics Methods Need More Context
+### LOW-2: BraneMetrics Methods Need More Context ✅
 
 **File:** `brane-rpc/src/main/java/io/brane/rpc/BraneMetrics.java`
 
@@ -489,9 +489,11 @@ private Long requireLogIndex(Long logIndex, Map<String, Object> map) {
 - `onBackpressure()` gets no context at all
 
 **Acceptance Criteria:**
-- [ ] Add request ID to timeout callback
-- [ ] Add current queue depth to backpressure callback
-- [ ] Enable better debugging and metrics correlation
+- [x] Add request ID to timeout callback
+- [x] Add current queue depth to backpressure callback
+- [x] Enable better debugging and metrics correlation
+
+**Fixed in:** Added `onRequestTimeout(String, long)` with requestId and `onBackpressure(int, int)` with slot/maxPending. Old methods deprecated with backward-compatible defaults.
 
 ---
 
