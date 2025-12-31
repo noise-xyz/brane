@@ -1,31 +1,25 @@
 package io.brane.examples;
 
-import io.brane.core.abi.Abi;
-import io.brane.contract.Contract;
 import io.brane.contract.ReadOnlyContract;
+import io.brane.core.abi.Abi;
 import io.brane.core.error.AbiDecodingException;
 import io.brane.core.error.AbiEncodingException;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.core.types.Address;
 import io.brane.rpc.BraneProvider;
-import io.brane.rpc.Client;
 import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.HttpClient;
 import io.brane.rpc.PublicClient;
-
 import java.math.BigDecimal;
 import java.math.BigInteger;
-import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * ERC-20 read-only demo using three paths:
+ * ERC-20 read-only demo using two paths:
  *
- *  1) Contract.read + HttpClient (direct RPC client)
- *  2) PublicClient + Abi.FunctionCall (raw eth_call)
- *  3) ReadOnlyContract + PublicClient (read-only façade)
+ *  1) PublicClient + Abi.FunctionCall (raw eth_call)
+ *  2) ReadOnlyContract + PublicClient (read-only facade)
  *
  * Usage:
  *
@@ -79,37 +73,12 @@ public final class Erc20Example {
         final Address holder = new Address(holderAddress);
         final Abi abi = Abi.fromJson(ERC20_ABI);
 
-        runWithContractRead(rpcUrl, token, holder, abi);
         runWithPublicClient(rpcUrl, token, holder, abi);
         runWithReadOnlyContract(rpcUrl, token, holder, abi);
     }
 
     /**
-     * Path 1: legacy Contract + HttpClient.
-     */
-    private static void runWithContractRead(
-            final String rpcUrl, final Address token, final Address holder, final Abi abi) {
-
-        final Client client = new HttpClient(URI.create(rpcUrl));
-        final Contract contract = new Contract(token, abi, client);
-
-        try {
-            final BigInteger decimals = contract.read("decimals", BigInteger.class);
-            final BigInteger balance = contract.read("balanceOf", BigInteger.class, holder);
-            final BigDecimal human =
-                    new BigDecimal(balance).divide(BigDecimal.TEN.pow(decimals.intValue()));
-
-            System.out.println("[Contract.read] decimals  = " + decimals);
-            System.out.println("[Contract.read] balanceOf = " + balance + " (raw), " + human);
-        } catch (final RevertException e) {
-            System.err.println("[Contract.read] Revert: " + e.revertReason());
-        } catch (final RpcException e) {
-            System.err.println("[Contract.read] RPC error (" + e.code() + "): " + e.getMessage());
-        }
-    }
-
-    /**
-     * Path 2: PublicClient + Abi.FunctionCall + raw eth_call.
+     * Path 1: PublicClient + Abi.FunctionCall + raw eth_call.
      */
     private static void runWithPublicClient(
             final String rpcUrl, final Address token, final Address holder, final Abi abi) {
@@ -147,7 +116,7 @@ public final class Erc20Example {
     }
 
     /**
-     * Path 3: ReadOnlyContract façade over PublicClient.
+     * Path 2: ReadOnlyContract facade over PublicClient.
      */
     private static void runWithReadOnlyContract(
             final String rpcUrl, final Address token, final Address holder, final Abi abi) {

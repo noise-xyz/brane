@@ -13,6 +13,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 /**
  * Dynamic proxy-based contract binding system that maps Java interfaces to
@@ -40,6 +41,16 @@ import java.util.Objects;
  * <li>{@code string} → {@link String}</li>
  * <li>{@code bytes, bytes32} → {@code byte[]}/{@link HexData}</li>
  * <li>{@code T[]} → {@code T[]}/{@link List}&lt;T&gt;</li>
+ * </ul>
+ *
+ * <p>
+ * <strong>Limitations:</strong>
+ * <ul>
+ * <li><strong>Tuple/Struct return types:</strong> Functions returning Solidity structs
+ * or tuples are not currently supported. The proxy binding will fail at bind time
+ * with "Unsupported return type" for methods that return Java record types or custom
+ * classes. Use {@link ReadOnlyContract} or {@link ReadWriteContract} for contracts
+ * with tuple returns, and manually decode the results.</li>
  * </ul>
  * 
  * <p>
@@ -106,7 +117,26 @@ import java.util.Objects;
  * <strong>Implementation:</strong> Uses Java's {@link Proxy} API with
  * {@link ContractInvocationHandler}
  * to intercept method calls and translate them to RPC calls.
- * 
+ *
+ * <p>
+ * <strong>Runtime Exceptions from Proxy Methods:</strong>
+ * Methods on the bound contract proxy may throw these exceptions at runtime:
+ * <ul>
+ * <li><strong>View/Pure functions:</strong>
+ *   <ul>
+ *   <li>{@link io.brane.rpc.RpcException} - RPC communication failures</li>
+ *   <li>{@link io.brane.core.RevertException} - Contract reverted (includes revert reason if available)</li>
+ *   <li>{@link io.brane.core.error.AbiDecodingException} - Failed to decode return value</li>
+ *   </ul>
+ * </li>
+ * <li><strong>State-changing functions:</strong>
+ *   <ul>
+ *   <li>{@link io.brane.rpc.RpcException} - RPC communication failures or transaction rejection</li>
+ *   <li>{@link io.brane.core.error.AbiEncodingException} - Failed to encode function parameters</li>
+ *   </ul>
+ * </li>
+ * </ul>
+ *
  * @see Abi
  * @see ContractInvocationHandler
  * @see PublicClient
@@ -114,12 +144,15 @@ import java.util.Objects;
  */
 public final class BraneContract {
 
+    /** Pattern to match array types: type[] (dynamic) or type[N] (fixed-size). */
+    private static final Pattern ARRAY_PATTERN = Pattern.compile(".*\\[\\d*]$");
+
     private BraneContract() {
     }
 
     /**
-     * Binds a Java interface to a deployed smart contract using dynamic proxy.
-     * 
+     * Binds a Java interface to a deployed smart contract using dynamic proxy with default options.
+     *
      * <p>
      * Creates a type-safe proxy instance that implements the specified interface.
      * Method calls on the proxy are translated to contract function calls:
@@ -128,7 +161,7 @@ public final class BraneContract {
      * <li>State-changing functions → {@code eth_sendTransaction} via
      * {@link WalletClient}</li>
      * </ul>
-     * 
+     *
      * <p>
      * <strong>Interface Requirements:</strong>
      * <ul>
@@ -137,7 +170,7 @@ public final class BraneContract {
      * <li>Parameter types must match Solidity types</li>
      * <li>Return types must be compatible with function mutability</li>
      * </ul>
-     * 
+     *
      * @param <T>               the contract interface type
      * @param address           the deployed contract address
      * @param abiJson           the contract ABI in JSON format (array of
@@ -156,11 +189,69 @@ public final class BraneContract {
             final PublicClient publicClient,
             final WalletClient walletClient,
             final Class<T> contractInterface) {
+        return bind(address, abiJson, publicClient, walletClient, contractInterface, ContractOptions.defaults());
+    }
+
+    /**
+     * Binds a Java interface to a deployed smart contract using dynamic proxy with custom options.
+     *
+     * <p>
+     * Creates a type-safe proxy instance that implements the specified interface.
+     * Method calls on the proxy are translated to contract function calls:
+     * <ul>
+     * <li>View/pure functions → {@code eth_call} via {@link PublicClient}</li>
+     * <li>State-changing functions → {@code eth_sendTransaction} via
+     * {@link WalletClient}</li>
+     * </ul>
+     *
+     * <p>
+     * <strong>Interface Requirements:</strong>
+     * <ul>
+     * <li>Must be an interface (not a class)</li>
+     * <li>Method names must exactly match ABI function names</li>
+     * <li>Parameter types must match Solidity types</li>
+     * <li>Return types must be compatible with function mutability</li>
+     * </ul>
+     *
+     * <p>
+     * <strong>Example with custom options:</strong>
+     * <pre>{@code
+     * var options = ContractOptions.builder()
+     *     .gasLimit(500_000L)
+     *     .timeout(Duration.ofSeconds(30))
+     *     .pollInterval(Duration.ofMillis(100))
+     *     .build();
+     *
+     * Erc20Contract usdc = BraneContract.bind(
+     *         address, abiJson, publicClient, walletClient, Erc20Contract.class, options);
+     * }</pre>
+     *
+     * @param <T>               the contract interface type
+     * @param address           the deployed contract address
+     * @param abiJson           the contract ABI in JSON format (array of
+     *                          function/event definitions)
+     * @param publicClient      the client for view function calls
+     * @param walletClient      the client for state-changing function calls
+     * @param contractInterface the Java interface class representing the contract
+     * @param options           the contract options for gas limit, timeouts, etc.
+     * @return a proxy instance implementing the contract interface
+     * @throws IllegalArgumentException if validation fails (method not in ABI, type
+     *                                  mismatch, etc.)
+     * @throws NullPointerException     if any parameter is null
+     */
+    public static <T> T bind(
+            final Address address,
+            final String abiJson,
+            final PublicClient publicClient,
+            final WalletClient walletClient,
+            final Class<T> contractInterface,
+            final ContractOptions options) {
         Objects.requireNonNull(address, "address");
         Objects.requireNonNull(abiJson, "abiJson");
         Objects.requireNonNull(publicClient, "publicClient");
         Objects.requireNonNull(walletClient, "walletClient");
         Objects.requireNonNull(contractInterface, "contractInterface");
+        Objects.requireNonNull(options, "options");
 
         if (!contractInterface.isInterface()) {
             throw new IllegalArgumentException("contractInterface must be an interface");
@@ -170,8 +261,8 @@ public final class BraneContract {
         validateMethods(contractInterface, abi);
 
         final AbiBinding binding = new AbiBinding(abi, contractInterface);
-        final ContractInvocationHandler handler = new ContractInvocationHandler(address, abi, binding, publicClient,
-                walletClient);
+        final ContractInvocationHandler handler = new ContractInvocationHandler(
+                address, abi, binding, publicClient, walletClient, options);
         final Object proxy = Proxy.newProxyInstance(
                 contractInterface.getClassLoader(), new Class<?>[] { contractInterface }, handler);
         return contractInterface.cast(proxy);
@@ -205,7 +296,7 @@ public final class BraneContract {
             deployData += encodedArgs.value().substring(2);
         }
 
-        return io.brane.core.builder.TxBuilder.legacy()
+        return io.brane.core.builder.TxBuilder.eip1559()
                 .data(new HexData(deployData))
                 .build();
     }
@@ -227,19 +318,39 @@ public final class BraneContract {
 
     private static void validateParameters(final Method method, final Abi.FunctionMetadata metadata) {
         final Class<?>[] parameterTypes = method.getParameterTypes();
-        if (parameterTypes.length != metadata.inputs().size()) {
+        final boolean isPayable = method.isAnnotationPresent(Payable.class);
+
+        // For @Payable methods, first Wei parameter is the value, not a contract parameter
+        final int expectedParams = metadata.inputs().size();
+        final int actualParams = parameterTypes.length;
+        final int offset;
+
+        if (isPayable) {
+            if (actualParams == 0 || parameterTypes[0] != io.brane.core.types.Wei.class) {
+                throw new IllegalArgumentException(
+                        "@Payable method "
+                                + method.getName()
+                                + " must have Wei as first parameter");
+            }
+            offset = 1; // Skip Wei parameter when validating against ABI
+        } else {
+            offset = 0;
+        }
+
+        if (actualParams - offset != expectedParams) {
             throw new IllegalArgumentException(
                     "Method "
                             + method.getName()
                             + " expects "
-                            + metadata.inputs().size()
+                            + expectedParams
                             + " parameters but has "
-                            + parameterTypes.length);
+                            + (actualParams - offset)
+                            + (isPayable ? " (excluding Wei value)" : ""));
         }
 
-        for (int i = 0; i < parameterTypes.length; i++) {
+        for (int i = 0; i < expectedParams; i++) {
             final String solidityType = metadata.inputs().get(i);
-            final Class<?> parameterType = parameterTypes[i];
+            final Class<?> parameterType = parameterTypes[i + offset];
             if (!isSupportedParameterType(solidityType, parameterType)) {
                 throw new IllegalArgumentException(
                         "Unsupported parameter type for "
@@ -257,6 +368,23 @@ public final class BraneContract {
     private static void validateReturnType(final Method method, final Abi.FunctionMetadata metadata) {
         final Class<?> returnType = method.getReturnType();
         final List<String> outputs = metadata.outputs();
+
+        // Validate @Payable annotation
+        if (method.isAnnotationPresent(Payable.class)) {
+            if (metadata.isView()) {
+                throw new IllegalArgumentException(
+                        "@Payable cannot be used on view function " + method.getName());
+            }
+            if (!metadata.isPayable()) {
+                throw new IllegalArgumentException(
+                        "@Payable method "
+                                + method.getName()
+                                + " does not map to a payable ABI function (stateMutability is '"
+                                + metadata.stateMutability()
+                                + "')");
+            }
+        }
+
         if (metadata.isView()) {
             if (returnType == void.class || returnType == Void.class) {
                 if (!outputs.isEmpty()) {
@@ -280,6 +408,21 @@ public final class BraneContract {
 
             if (returnType == Boolean.class || returnType == boolean.class) {
                 requireSingleOutput(method, outputs, BraneContract::isBoolType);
+                return;
+            }
+
+            if (returnType == String.class) {
+                requireSingleOutput(method, outputs, BraneContract::isStringType);
+                return;
+            }
+
+            if (returnType == byte[].class || returnType == HexData.class) {
+                requireSingleOutput(method, outputs, BraneContract::isBytesType);
+                return;
+            }
+
+            if (List.class.isAssignableFrom(returnType) || returnType.isArray()) {
+                requireSingleOutput(method, outputs, BraneContract::isArrayType);
                 return;
             }
 
@@ -315,7 +458,8 @@ public final class BraneContract {
 
     private static boolean isSupportedParameterType(
             final String solidityType, final Class<?> parameterType) {
-        if (solidityType.endsWith("[]")) {
+        // Handle both dynamic arrays (type[]) and fixed-size arrays (type[N])
+        if (ARRAY_PATTERN.matcher(solidityType).matches()) {
             return parameterType.isArray() || List.class.isAssignableFrom(parameterType);
         }
 
@@ -358,5 +502,20 @@ public final class BraneContract {
 
     private static boolean isBoolType(final String solidityType) {
         return "bool".equals(solidityType.toLowerCase(Locale.ROOT));
+    }
+
+    private static boolean isStringType(final String solidityType) {
+        return "string".equals(solidityType.toLowerCase(Locale.ROOT));
+    }
+
+    private static boolean isBytesType(final String solidityType) {
+        final String normalized = solidityType.toLowerCase(Locale.ROOT);
+        // Match "bytes" (dynamic) or "bytesN" (fixed-size like bytes32)
+        return normalized.equals("bytes") || normalized.matches("bytes\\d+");
+    }
+
+    private static boolean isArrayType(final String solidityType) {
+        // Match dynamic arrays (type[]) or fixed-size arrays (type[N])
+        return ARRAY_PATTERN.matcher(solidityType).matches();
     }
 }

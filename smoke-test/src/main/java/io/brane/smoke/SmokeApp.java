@@ -249,9 +249,10 @@ public class SmokeApp {
     private static void testEventLogs() throws Exception {
         System.out.println("\n[Scenario C] Event Logs (Observability)");
 
+        // Specify fromBlock=0 to query all blocks, not just "latest"
         List<LogEntry> logs = publicClient.getLogs(
                 new LogFilter(
-                        Optional.empty(),
+                        Optional.of(0L),
                         Optional.empty(),
                         Optional.of(tokenAddress),
                         Optional.empty()));

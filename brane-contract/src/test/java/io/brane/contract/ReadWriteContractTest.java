@@ -11,6 +11,7 @@ import io.brane.core.types.Address;
 import io.brane.rpc.Subscription;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
+import io.brane.core.types.Wei;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 import java.math.BigInteger;
@@ -93,8 +94,154 @@ class ReadWriteContractTest {
                 () -> contract.sendAndWait("transfer", 1000, 10, recipient, BigInteger.ONE));
     }
 
+    @Test
+    void sendWithValueBuildsTransactionWithEthValue() {
+        CapturingWalletClient walletClient = new CapturingWalletClient();
+        ReadWriteContract contract = ReadWriteContract.from(
+                new Address("0x" + "1".repeat(40)),
+                Abi.fromJson(ERC20_ABI),
+                new NoopPublicClient(),
+                walletClient);
+
+        Wei ethValue = Wei.fromEther(java.math.BigDecimal.ONE);
+        Address recipient = new Address("0x" + "2".repeat(40));
+        contract.send("transfer", ethValue, recipient, BigInteger.valueOf(10));
+
+        TransactionRequest captured = walletClient.lastRequest;
+        assertEquals("0x" + "1".repeat(40), captured.to().value());
+        assertEquals(ethValue, captured.value());
+        // Confirm selector present
+        assertEquals("0xa9059cbb", captured.data().value().substring(0, 10));
+    }
+
+    @Test
+    void sendAndWaitWithValueBuildsTransactionWithEthValue() {
+        CapturingWalletClient walletClient = new CapturingWalletClient();
+        ReadWriteContract contract = ReadWriteContract.from(
+                new Address("0x" + "1".repeat(40)),
+                Abi.fromJson(ERC20_ABI),
+                new NoopPublicClient(),
+                walletClient);
+
+        Wei ethValue = Wei.gwei(500);
+        Address recipient = new Address("0x" + "2".repeat(40));
+        TransactionReceipt receipt = contract.sendAndWait("transfer", ethValue, 1000, 10, recipient, BigInteger.ONE);
+
+        TransactionRequest captured = walletClient.lastRequest;
+        assertEquals(ethValue, captured.value());
+        assertEquals("0x" + "a".repeat(64), receipt.transactionHash().value());
+    }
+
+    @Test
+    void sendWithNullValueThrows() {
+        CapturingWalletClient walletClient = new CapturingWalletClient();
+        ReadWriteContract contract = ReadWriteContract.from(
+                new Address("0x" + "1".repeat(40)),
+                Abi.fromJson(ERC20_ABI),
+                new NoopPublicClient(),
+                walletClient);
+
+        Address recipient = new Address("0x" + "2".repeat(40));
+        assertThrows(NullPointerException.class, () ->
+                contract.send("transfer", (Wei) null, recipient, BigInteger.ONE));
+    }
+
+    @Test
+    void sendAppliesContractOptionsGasLimit() {
+        CapturingWalletClient walletClient = new CapturingWalletClient();
+        ContractOptions options = ContractOptions.builder()
+                .gasLimit(500_000L)
+                .build();
+
+        ReadWriteContract contract = ReadWriteContract.from(
+                new Address("0x" + "1".repeat(40)),
+                Abi.fromJson(ERC20_ABI),
+                new NoopPublicClient(),
+                walletClient,
+                options);
+
+        Address recipient = new Address("0x" + "2".repeat(40));
+        contract.send("transfer", recipient, BigInteger.valueOf(10));
+
+        TransactionRequest captured = walletClient.lastRequest;
+        assertEquals(Long.valueOf(500_000L), captured.gasLimit());
+    }
+
+    @Test
+    void sendAppliesContractOptionsMaxPriorityFee() {
+        CapturingWalletClient walletClient = new CapturingWalletClient();
+        Wei priorityFee = Wei.gwei(5);
+        ContractOptions options = ContractOptions.builder()
+                .maxPriorityFee(priorityFee)
+                .build();
+
+        ReadWriteContract contract = ReadWriteContract.from(
+                new Address("0x" + "1".repeat(40)),
+                Abi.fromJson(ERC20_ABI),
+                new NoopPublicClient(),
+                walletClient,
+                options);
+
+        Address recipient = new Address("0x" + "2".repeat(40));
+        contract.send("transfer", recipient, BigInteger.valueOf(10));
+
+        TransactionRequest captured = walletClient.lastRequest;
+        assertEquals(priorityFee, captured.maxPriorityFeePerGas());
+        assertEquals(true, captured.isEip1559());
+    }
+
+    @Test
+    void sendAppliesLegacyTransactionType() {
+        CapturingWalletClient walletClient = new CapturingWalletClient();
+        ContractOptions options = ContractOptions.builder()
+                .transactionType(ContractOptions.TransactionType.LEGACY)
+                .gasLimit(100_000L)
+                .build();
+
+        ReadWriteContract contract = ReadWriteContract.from(
+                new Address("0x" + "1".repeat(40)),
+                Abi.fromJson(ERC20_ABI),
+                new NoopPublicClient(),
+                walletClient,
+                options);
+
+        Address recipient = new Address("0x" + "2".repeat(40));
+        contract.send("transfer", recipient, BigInteger.valueOf(10));
+
+        TransactionRequest captured = walletClient.lastRequest;
+        assertEquals(false, captured.isEip1559());
+        assertEquals(Long.valueOf(100_000L), captured.gasLimit());
+    }
+
+    @Test
+    void sendAndWaitAppliesContractOptionsGasLimit() {
+        CapturingWalletClient walletClient = new CapturingWalletClient();
+        Wei priorityFee = Wei.gwei(3);
+        ContractOptions options = ContractOptions.builder()
+                .gasLimit(250_000L)
+                .maxPriorityFee(priorityFee)
+                .build();
+
+        ReadWriteContract contract = ReadWriteContract.from(
+                new Address("0x" + "1".repeat(40)),
+                Abi.fromJson(ERC20_ABI),
+                new NoopPublicClient(),
+                walletClient,
+                options);
+
+        Address recipient = new Address("0x" + "2".repeat(40));
+        contract.sendAndWait("transfer", 5000L, 200L, recipient, BigInteger.valueOf(10));
+
+        TransactionRequest captured = walletClient.lastRequest;
+        assertEquals(Long.valueOf(250_000L), captured.gasLimit());
+        assertEquals(priorityFee, captured.maxPriorityFeePerGas());
+        assertEquals(true, captured.isEip1559());
+    }
+
     private static final class CapturingWalletClient implements WalletClient {
         TransactionRequest lastRequest;
+        long lastTimeoutMillis;
+        long lastPollIntervalMillis;
 
         @Override
         public Hash sendTransaction(final TransactionRequest request) {
@@ -106,6 +253,8 @@ class ReadWriteContractTest {
         public TransactionReceipt sendTransactionAndWait(
                 final TransactionRequest request, final long timeoutMillis, final long pollIntervalMillis) {
             this.lastRequest = request;
+            this.lastTimeoutMillis = timeoutMillis;
+            this.lastPollIntervalMillis = pollIntervalMillis;
             return new TransactionReceipt(
                     new Hash("0x" + "a".repeat(64)),
                     new Hash("0x" + "0".repeat(64)),

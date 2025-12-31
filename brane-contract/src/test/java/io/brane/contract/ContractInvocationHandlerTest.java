@@ -2,15 +2,22 @@ package io.brane.contract;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
+import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
+import io.brane.core.types.Wei;
 import io.brane.rpc.Subscription;
 import io.brane.core.types.Hash;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 import java.math.BigInteger;
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class ContractInvocationHandlerTest {
@@ -169,6 +176,370 @@ class ContractInvocationHandlerTest {
         assertTrue(contract.toString().contains("BraneContractProxy"));
         assertEquals(contract, contract);
         assertNotEquals(contract, new Object());
+    }
+
+    @Test
+    void viewMethodReturnsStringCorrectly() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "name",
+                        "stateMutability": "view",
+                        "inputs": [],
+                        "outputs": [{"name": "", "type": "string"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            String name();
+        }
+
+        // Encoded "TestToken" string:
+        // offset (32) + length (9) + "TestToken" padded
+        String encodedString = "0x"
+                + "0000000000000000000000000000000000000000000000000000000000000020"  // offset
+                + "0000000000000000000000000000000000000000000000000000000000000009"  // length=9
+                + "54657374546f6b656e0000000000000000000000000000000000000000000000"; // "TestToken"
+
+        PublicClient publicClient = new FakePublicClient() {
+            @Override
+            public String call(Map<String, Object> callObject, String blockTag) {
+                return encodedString;
+            }
+        };
+
+        WalletClient walletClient = new FakeWalletClient() {};
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class);
+
+        String result = contract.name();
+        assertEquals("TestToken", result);
+    }
+
+    @Test
+    void viewMethodDecodesRevertReason() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "balanceOf",
+                        "stateMutability": "view",
+                        "inputs": [{"name": "owner", "type": "address"}],
+                        "outputs": [{"name": "", "type": "uint256"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            BigInteger balanceOf(Address owner);
+        }
+
+        // Error(string) selector + "Insufficient balance" encoded
+        String revertData = "0x08c379a0"
+                + "0000000000000000000000000000000000000000000000000000000000000020"
+                + "0000000000000000000000000000000000000000000000000000000000000014"
+                + "496e73756666696369656e742062616c616e6365000000000000000000000000";
+
+        PublicClient publicClient = new FakePublicClient() {
+            @Override
+            public String call(Map<String, Object> callObject, String blockTag) {
+                throw new RpcException(-32000, "execution reverted", revertData);
+            }
+        };
+
+        WalletClient walletClient = new FakeWalletClient() {};
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class);
+
+        RevertException ex = assertThrows(RevertException.class, () ->
+                contract.balanceOf(new Address("0x" + "2".repeat(40))));
+
+        assertEquals("Insufficient balance", ex.revertReason());
+    }
+
+    @Test
+    void viewMethodThrowsOnEmptyResponse() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "balanceOf",
+                        "stateMutability": "view",
+                        "inputs": [{"name": "owner", "type": "address"}],
+                        "outputs": [{"name": "", "type": "uint256"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            BigInteger balanceOf(Address owner);
+        }
+
+        PublicClient publicClient = new FakePublicClient() {
+            @Override
+            public String call(Map<String, Object> callObject, String blockTag) {
+                return "";  // Empty response
+            }
+        };
+
+        WalletClient walletClient = new FakeWalletClient() {};
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class);
+
+        AbiDecodingException ex = assertThrows(AbiDecodingException.class, () ->
+                contract.balanceOf(new Address("0x" + "2".repeat(40))));
+
+        assertTrue(ex.getMessage().contains("empty result"));
+    }
+
+    @Test
+    void viewMethodThrowsOnNullResponse() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "balanceOf",
+                        "stateMutability": "view",
+                        "inputs": [{"name": "owner", "type": "address"}],
+                        "outputs": [{"name": "", "type": "uint256"}]
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            BigInteger balanceOf(Address owner);
+        }
+
+        PublicClient publicClient = new FakePublicClient() {
+            @Override
+            public String call(Map<String, Object> callObject, String blockTag) {
+                return null;  // Null response
+            }
+        };
+
+        WalletClient walletClient = new FakeWalletClient() {};
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class);
+
+        AbiDecodingException ex = assertThrows(AbiDecodingException.class, () ->
+                contract.balanceOf(new Address("0x" + "2".repeat(40))));
+
+        assertTrue(ex.getMessage().contains("empty result"));
+    }
+
+    @Test
+    void writeMethodAppliesGasLimitFromOptions() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "transfer",
+                        "stateMutability": "nonpayable",
+                        "inputs": [
+                            {"name": "to", "type": "address"},
+                            {"name": "amount", "type": "uint256"}
+                        ],
+                        "outputs": []
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            TransactionReceipt transfer(Address to, BigInteger amount);
+        }
+
+        AtomicReference<TransactionRequest> capturedRequest = new AtomicReference<>();
+
+        PublicClient publicClient = new FakePublicClient() {};
+
+        WalletClient walletClient = new FakeWalletClient() {
+            @Override
+            public TransactionReceipt sendTransactionAndWait(
+                    TransactionRequest request,
+                    long timeoutMillis,
+                    long pollIntervalMillis) {
+                capturedRequest.set(request);
+                return new TransactionReceipt(
+                        new Hash("0x" + "a".repeat(64)),
+                        new Hash("0x" + "b".repeat(64)),
+                        1L,
+                        new Address("0x" + "1".repeat(40)),
+                        new Address("0x" + "2".repeat(40)),
+                        new io.brane.core.types.HexData("0x"),
+                        java.util.List.of(),
+                        true,
+                        Wei.of(21000));
+            }
+        };
+
+        ContractOptions customOptions = ContractOptions.builder()
+                .gasLimit(500_000L)
+                .build();
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class,
+                customOptions);
+
+        contract.transfer(new Address("0x" + "2".repeat(40)), BigInteger.TEN);
+
+        assertNotNull(capturedRequest.get());
+        assertEquals(500_000L, capturedRequest.get().gasLimit());
+    }
+
+    @Test
+    void writeMethodAppliesMaxPriorityFeeForEip1559() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "transfer",
+                        "stateMutability": "nonpayable",
+                        "inputs": [
+                            {"name": "to", "type": "address"},
+                            {"name": "amount", "type": "uint256"}
+                        ],
+                        "outputs": []
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            TransactionReceipt transfer(Address to, BigInteger amount);
+        }
+
+        AtomicReference<TransactionRequest> capturedRequest = new AtomicReference<>();
+
+        PublicClient publicClient = new FakePublicClient() {};
+
+        WalletClient walletClient = new FakeWalletClient() {
+            @Override
+            public TransactionReceipt sendTransactionAndWait(
+                    TransactionRequest request,
+                    long timeoutMillis,
+                    long pollIntervalMillis) {
+                capturedRequest.set(request);
+                return new TransactionReceipt(
+                        new Hash("0x" + "a".repeat(64)),
+                        new Hash("0x" + "b".repeat(64)),
+                        1L,
+                        new Address("0x" + "1".repeat(40)),
+                        new Address("0x" + "2".repeat(40)),
+                        new io.brane.core.types.HexData("0x"),
+                        java.util.List.of(),
+                        true,
+                        Wei.of(21000));
+            }
+        };
+
+        Wei customPriorityFee = Wei.gwei(5);
+        ContractOptions customOptions = ContractOptions.builder()
+                .maxPriorityFee(customPriorityFee)
+                .build();
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class,
+                customOptions);
+
+        contract.transfer(new Address("0x" + "2".repeat(40)), BigInteger.TEN);
+
+        assertNotNull(capturedRequest.get());
+        assertEquals(customPriorityFee, capturedRequest.get().maxPriorityFeePerGas());
+        assertTrue(capturedRequest.get().isEip1559(), "Should be EIP-1559 transaction");
+    }
+
+    @Test
+    void writeMethodUsesLegacyTransactionWhenConfigured() {
+        String json = """
+                [
+                    {
+                        "type": "function",
+                        "name": "transfer",
+                        "stateMutability": "nonpayable",
+                        "inputs": [
+                            {"name": "to", "type": "address"},
+                            {"name": "amount", "type": "uint256"}
+                        ],
+                        "outputs": []
+                    }
+                ]
+                """;
+
+        interface TestContract {
+            TransactionReceipt transfer(Address to, BigInteger amount);
+        }
+
+        AtomicReference<TransactionRequest> capturedRequest = new AtomicReference<>();
+
+        PublicClient publicClient = new FakePublicClient() {};
+
+        WalletClient walletClient = new FakeWalletClient() {
+            @Override
+            public TransactionReceipt sendTransactionAndWait(
+                    TransactionRequest request,
+                    long timeoutMillis,
+                    long pollIntervalMillis) {
+                capturedRequest.set(request);
+                return new TransactionReceipt(
+                        new Hash("0x" + "a".repeat(64)),
+                        new Hash("0x" + "b".repeat(64)),
+                        1L,
+                        new Address("0x" + "1".repeat(40)),
+                        new Address("0x" + "2".repeat(40)),
+                        new io.brane.core.types.HexData("0x"),
+                        java.util.List.of(),
+                        true,
+                        Wei.of(21000));
+            }
+        };
+
+        ContractOptions legacyOptions = ContractOptions.builder()
+                .transactionType(ContractOptions.TransactionType.LEGACY)
+                .gasLimit(100_000L)
+                .build();
+
+        TestContract contract = BraneContract.bind(
+                new Address("0x" + "1".repeat(40)),
+                json,
+                publicClient,
+                walletClient,
+                TestContract.class,
+                legacyOptions);
+
+        contract.transfer(new Address("0x" + "2".repeat(40)), BigInteger.TEN);
+
+        assertNotNull(capturedRequest.get());
+        assertFalse(capturedRequest.get().isEip1559(), "Should be legacy transaction");
+        assertEquals(100_000L, capturedRequest.get().gasLimit());
     }
 
     // Minimal fake implementations

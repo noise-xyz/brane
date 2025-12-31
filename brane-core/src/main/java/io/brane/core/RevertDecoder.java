@@ -6,6 +6,7 @@ import io.brane.core.abi.TypeSchema;
 import io.brane.core.abi.Utf8String;
 import io.brane.core.abi.UInt;
 import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
 import io.brane.primitives.Hex;
 import java.math.BigInteger;
 import java.util.List;
@@ -177,6 +178,24 @@ public final class RevertDecoder {
         }
 
         return new Decoded(RevertKind.UNKNOWN, null, rawDataHex);
+    }
+
+    /**
+     * Checks if an RpcException contains revert data and throws a RevertException if so.
+     *
+     * <p>This method inspects the exception's data field. If it contains valid revert data
+     * (starts with "0x" and has sufficient length for a selector), it decodes the revert
+     * reason and throws a {@link RevertException}.
+     *
+     * @param e the RpcException to check
+     * @throws RevertException if the exception contains decodable revert data
+     */
+    public static void throwIfRevert(final RpcException e) throws RevertException {
+        final String raw = e.data();
+        if (raw != null && raw.startsWith("0x") && raw.length() > 10) {
+            final Decoded decoded = decode(raw);
+            throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), e);
+        }
     }
 
     private static String mapPanicReason(final BigInteger code) {

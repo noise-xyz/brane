@@ -1,5 +1,6 @@
 package io.brane.core.abi;
 
+import io.brane.core.util.MethodUtils;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -13,15 +14,17 @@ public final class AbiBinding {
     public AbiBinding(final Abi abi, final Class<?> contractInterface) {
         this.abi = Objects.requireNonNull(abi, "abi");
         Objects.requireNonNull(contractInterface, "contractInterface");
-        this.cache = new HashMap<>();
 
+        final Map<Method, Abi.FunctionMetadata> mutableCache = new HashMap<>();
         for (Method method : contractInterface.getMethods()) {
-            if (isObjectMethod(method)) {
+            if (MethodUtils.isObjectMethod(method)) {
                 continue;
             }
             final Abi.FunctionMetadata metadata = resolveMetadata(method);
-            cache.put(method, metadata);
+            mutableCache.put(method, metadata);
         }
+        // Create immutable snapshot for thread-safe publication
+        this.cache = Map.copyOf(mutableCache);
     }
 
     public Abi.FunctionMetadata resolve(final Method method) {
@@ -33,28 +36,13 @@ public final class AbiBinding {
     }
 
     private Abi.FunctionMetadata resolveMetadata(final Method method) {
-        final Abi.FunctionMetadata metadata =
-                abi.getFunction(method.getName())
-                        .orElseThrow(
-                                () ->
-                                        new IllegalArgumentException(
-                                                "No ABI function named '" + method.getName() + "'"));
-
-        if (metadata.inputs().size() != method.getParameterCount()) {
-            throw new IllegalArgumentException(
-                    "Method "
-                            + method.getName()
-                            + " expects "
-                            + metadata.inputs().size()
-                            + " parameters but has "
-                            + method.getParameterCount());
-        }
-
-        return metadata;
-    }
-
-    private static boolean isObjectMethod(final Method method) {
-        return method.getDeclaringClass() == Object.class;
+        // Note: Parameter count validation is intentionally NOT done here.
+        // BraneContract.validateParameters() handles this with @Payable annotation awareness.
+        return abi.getFunction(method.getName())
+                .orElseThrow(
+                        () ->
+                                new IllegalArgumentException(
+                                        "No ABI function named '" + method.getName() + "'"));
     }
 }
 

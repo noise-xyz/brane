@@ -12,7 +12,7 @@ Used for calling `pure` and `view` functions. It requires a `PublicClient`.
 
 ```java
 import io.brane.contract.ReadOnlyContract;
-import io.brane.contract.Abi;
+import io.brane.core.abi.Abi;
 
 // 1. Load ABI
 Abi abi = Abi.fromJson(jsonString);
@@ -50,13 +50,67 @@ Address recipientAddress = new Address("0x...");
 BigInteger amount = BigInteger.valueOf(1000);
 
 TransactionReceipt receipt = contract.sendAndWait(
-    "transfer", 
-    60_000, 
-    1_000, 
-    recipientAddress, 
+    "transfer",
+    60_000,
+    1_000,
+    recipientAddress,
     amount
 );
 ```
+
+### Sending ETH with Transactions
+
+Use `send` or `sendAndWait` with a `Wei` value parameter for payable functions:
+
+```java
+import io.brane.core.types.Wei;
+
+// Fire-and-forget with ETH value
+Hash txHash = contract.send("deposit", Wei.fromEther(new BigDecimal("1.0")));
+
+// Send and wait with ETH value
+TransactionReceipt receipt = contract.sendAndWait(
+    "deposit",
+    Wei.fromEther(new BigDecimal("0.5")),
+    60_000,  // timeout
+    1_000,   // poll interval
+    // ... other args
+);
+```
+
+### Contract Options
+
+Customize transaction behavior with `ContractOptions`:
+
+```java
+import io.brane.contract.ContractOptions;
+import io.brane.core.types.Wei;
+import java.time.Duration;
+
+ContractOptions options = ContractOptions.builder()
+    .gasLimit(500_000L)
+    .timeout(Duration.ofSeconds(30))
+    .pollInterval(Duration.ofMillis(500))
+    .transactionType(ContractOptions.TransactionType.EIP1559)
+    .maxPriorityFee(Wei.gwei(2))
+    .build();
+
+ReadWriteContract contract = ReadWriteContract.from(
+    address,
+    abi,
+    publicClient,
+    walletClient,
+    options  // Pass custom options
+);
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `gasLimit` | 300,000 | Maximum gas for transactions |
+| `timeout` | 10 seconds | Max wait time for confirmation |
+| `pollInterval` | 500ms | Interval between receipt checks |
+| `transactionType` | EIP1559 | `EIP1559` or `LEGACY` |
+| `maxPriorityFee` | 2 gwei | Priority fee for EIP-1559 |
 
 ## Deploying Contracts
 
