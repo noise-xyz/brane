@@ -531,7 +531,7 @@ private Long requireLogIndex(Long logIndex, Map<String, Object> map) {
 
 ---
 
-### LOW-5: BatchHandle Double-Completion Not Atomic
+### LOW-5: BatchHandle Double-Completion Not Atomic ✅
 
 **File:** `brane-rpc/src/main/java/io/brane/rpc/BatchHandle.java:58-62`
 
@@ -547,8 +547,10 @@ void complete(BatchResult<T> result) {
 ```
 
 **Acceptance Criteria:**
-- [ ] Use `AtomicReference` with `compareAndSet()` for atomic completion
-- [ ] Or document that `complete()` must only be called from single thread
+- [x] Use `AtomicReference` with `compareAndSet()` for atomic completion
+- [x] Or document that `complete()` must only be called from single thread
+
+**Fixed in:** Replaced `volatile BatchResult<T>` with `AtomicReference<BatchResult<T>>` and use `compareAndSet(null, result)` for atomic completion. Added thread-safety documentation.
 - [ ] Add test verifying double-completion behavior
 
 ---
