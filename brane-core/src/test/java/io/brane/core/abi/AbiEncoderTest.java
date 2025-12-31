@@ -133,7 +133,7 @@ class AbiEncoderTest {
         // uint[] [1, 2]
         UInt u1 = new UInt(256, BigInteger.valueOf(1));
         UInt u2 = new UInt(256, BigInteger.valueOf(2));
-        AbiType array = new Array<>(List.of(u1, u2), UInt.class, true);
+        AbiType array = new Array<>(List.of(u1, u2), UInt.class, true, "uint256");
 
         byte[] encoded = AbiEncoder.encode(List.of(array));
 

@@ -4,6 +4,8 @@ import java.lang.reflect.Method;
 
 /**
  * Utility methods for working with Java reflection Method objects.
+ *
+ * @since 0.1.0-alpha
  */
 public final class MethodUtils {
 

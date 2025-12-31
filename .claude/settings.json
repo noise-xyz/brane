@@ -1,0 +1,39 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(jq -r '.tool_input.file_path'); if echo \"$file\" | grep -qE '\\.(java|kt|gradle)$'; then cd \"$CLAUDE_PROJECT_DIR\" && ./gradlew spotlessApply -q 2>/dev/null; fi; exit 0"
+          },
+          {
+            "type": "command",
+            "command": "file=$(jq -r '.tool_input.file_path'); if echo \"$file\" | grep -q '\\.java$'; then cd \"$CLAUDE_PROJECT_DIR\" && module=$(echo \"$file\" | sed -n 's|.*/\\(brane-[^/]*\\)/.*|:\\1|p'); if [ -n \"$module\" ]; then ./gradlew ${module}:compileJava -q 2>&1; fi; fi; exit 0"
+          }
+        ]
+      },
+      {
+        "matcher": "Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file=$(jq -r '.tool_input.file_path'); content=$(jq -r '.tool_input.content'); if echo \"$file\" | grep -q '\\.java$' && ! echo \"$file\" | grep -q 'internal' && echo \"$content\" | grep -q 'public class\\|public interface\\|public record\\|public enum' && ! echo \"$content\" | grep -q '@since'; then echo '{\"systemMessage\": \"Reminder: Public types need @since 0.1.0-alpha tag in Javadoc\"}'; fi; exit 0"
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "jq -r '.tool_input.file_path' | grep -qE 'gradle-wrapper\\.properties|java\\.license|deploy\\.yml' && { echo 'Protected file - please confirm with user before modifying' >&2; exit 2; } || exit 0"
+          }
+        ]
+      }
+    ]
+  }
+}

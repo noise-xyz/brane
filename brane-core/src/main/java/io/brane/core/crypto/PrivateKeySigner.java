@@ -43,6 +43,7 @@ public final class PrivateKeySigner implements Signer {
 
     @Override
     public Signature signMessage(final byte[] message) {
+        java.util.Objects.requireNonNull(message, "message cannot be null");
         // EIP-191 style signing (Ethereum Signed Message)
         // \x19Ethereum Signed Message:\n + length + message
         byte[] prefix = ("\u0019Ethereum Signed Message:\n" + message.length)

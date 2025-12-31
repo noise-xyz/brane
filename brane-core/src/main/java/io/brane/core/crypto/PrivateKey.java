@@ -8,6 +8,7 @@ import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.bouncycastle.math.ec.ECPoint;
 import org.bouncycastle.math.ec.FixedPointCombMultiplier;
 
+import javax.security.auth.Destroyable;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Objects;
@@ -38,9 +39,24 @@ import java.util.Objects;
  * assert recovered.equals(address);
  * }</pre>
  * 
+ * <h2>Security Considerations</h2>
+ *
+ * <p>
+ * This class implements {@link Destroyable} to allow clearing sensitive key material
+ * from memory when no longer needed. While Java's BigInteger is immutable and cannot
+ * be fully zeroed, calling {@link #destroy()} will:
+ * <ul>
+ * <li>Null out internal references to prevent further use</li>
+ * <li>Mark the key as destroyed, causing subsequent operations to fail</li>
+ * <li>Help the garbage collector reclaim memory sooner</li>
+ * </ul>
+ *
+ * <p>
+ * For maximum security, call {@link #destroy()} as soon as the key is no longer needed.
+ *
  * @since 0.2.0
  */
-public final class PrivateKey {
+public final class PrivateKey implements Destroyable {
 
     private static final X9ECParameters CURVE_PARAMS = CustomNamedCurves.getByName("secp256k1");
     private static final ECDomainParameters CURVE = new ECDomainParameters(
@@ -49,25 +65,31 @@ public final class PrivateKey {
             CURVE_PARAMS.getN(),
             CURVE_PARAMS.getH());
 
-    private final BigInteger privateKeyValue;
-    private final ECPoint publicKey;
+    private volatile BigInteger privateKeyValue;
+    private volatile ECPoint publicKey;
+    private volatile boolean destroyed = false;
 
     private PrivateKey(final byte[] keyBytes) {
         if (keyBytes.length != 32) {
             throw new IllegalArgumentException("Private key must be 32 bytes, got " + keyBytes.length);
         }
 
-        this.privateKeyValue = new BigInteger(1, keyBytes);
+        try {
+            this.privateKeyValue = new BigInteger(1, keyBytes);
 
-        if (privateKeyValue.compareTo(BigInteger.ZERO) == 0) {
-            throw new IllegalArgumentException("Private key cannot be zero");
-        }
-        if (privateKeyValue.compareTo(CURVE.getN()) >= 0) {
-            throw new IllegalArgumentException("Private key must be less than curve order");
-        }
+            if (privateKeyValue.compareTo(BigInteger.ZERO) == 0) {
+                throw new IllegalArgumentException("Private key cannot be zero");
+            }
+            if (privateKeyValue.compareTo(CURVE.getN()) >= 0) {
+                throw new IllegalArgumentException("Private key must be less than curve order");
+            }
 
-        // Compute public key: G * privateKey
-        this.publicKey = new FixedPointCombMultiplier().multiply(CURVE.getG(), privateKeyValue);
+            // Compute public key: G * privateKey
+            this.publicKey = new FixedPointCombMultiplier().multiply(CURVE.getG(), privateKeyValue);
+        } finally {
+            // Zero the input byte array to minimize exposure of key material
+            Arrays.fill(keyBytes, (byte) 0);
+        }
     }
 
     /**
@@ -86,8 +108,17 @@ public final class PrivateKey {
 
     /**
      * Creates a private key from raw bytes.
-     * 
-     * @param keyBytes 32-byte private key
+     *
+     * <p>
+     * <b>Security note:</b> The input byte array will be zeroed after the key is created
+     * to minimize exposure of key material in memory. Callers should not rely on the
+     * contents of the array after this method returns.
+     *
+     * @apiNote This method takes ownership of the provided byte array and will zero it
+     *          after extracting the key material. If you need to retain the original bytes,
+     *          pass a copy: {@code PrivateKey.fromBytes(keyBytes.clone())}
+     *
+     * @param keyBytes 32-byte private key (will be zeroed after use)
      * @return private key instance
      * @throws IllegalArgumentException if key bytes are invalid
      */
@@ -98,7 +129,7 @@ public final class PrivateKey {
 
     /**
      * Derives the Ethereum address from this private key's public key.
-     * 
+     *
      * <p>
      * Algorithm:
      * <ol>
@@ -106,11 +137,17 @@ public final class PrivateKey {
      * <li>Take Keccak256 hash of the last 64 bytes (skip 0x04 prefix)</li>
      * <li>Take last 20 bytes of the hash</li>
      * </ol>
-     * 
+     *
      * @return Ethereum address
+     * @throws IllegalStateException if the key has been destroyed
      */
     public Address toAddress() {
-        final byte[] pubKeyBytes = publicKey.getEncoded(false); // uncompressed: 0x04 || x || y
+        final ECPoint pubKey;
+        synchronized (this) {
+            checkNotDestroyed();
+            pubKey = publicKey;
+        }
+        final byte[] pubKeyBytes = pubKey.getEncoded(false); // uncompressed: 0x04 || x || y
 
         // Hash public key (skip first byte 0x04)
         final byte[] hash = Keccak256.hash(Arrays.copyOfRange(pubKeyBytes, 1, pubKeyBytes.length));
@@ -122,14 +159,15 @@ public final class PrivateKey {
 
     /**
      * Signs a message hash using deterministic ECDSA (RFC 6979).
-     * 
+     *
      * <p>
      * The signature is automatically normalized to low-s to prevent malleability.
-     * 
+     *
      * @param messageHash 32-byte Keccak256 hash of the message
      * @return ECDSA signature with v=0 or v=1 (use with EIP-155 encoding for
      *         transactions)
      * @throws IllegalArgumentException if message hash is not 32 bytes
+     * @throws IllegalStateException if the key has been destroyed
      */
     public Signature sign(final byte[] messageHash) {
         return signFast(messageHash);
@@ -137,16 +175,22 @@ public final class PrivateKey {
 
     /**
      * Optimized signing that avoids public key recovery.
-     * 
+     *
      * @param messageHash 32-byte hash
      * @return Signature with v
+     * @throws IllegalStateException if the key has been destroyed
      */
     public Signature signFast(final byte[] messageHash) {
         Objects.requireNonNull(messageHash, "message hash cannot be null");
         if (messageHash.length != 32) {
             throw new IllegalArgumentException("Message hash must be 32 bytes, got " + messageHash.length);
         }
-        return FastSigner.sign(messageHash, privateKeyValue);
+        final BigInteger key;
+        synchronized (this) {
+            checkNotDestroyed();
+            key = privateKeyValue;
+        }
+        return FastSigner.sign(messageHash, key);
     }
 
     /**
@@ -251,8 +295,71 @@ public final class PrivateKey {
         return encoded;
     }
 
+    /**
+     * Destroys this private key by clearing internal references.
+     *
+     * <p>
+     * After calling this method, any attempt to use the key (sign, toAddress, etc.)
+     * will throw an {@link IllegalStateException}.
+     *
+     * <p>
+     * <b>Note:</b> Due to Java's BigInteger being immutable, this cannot guarantee
+     * complete removal of key material from memory. However, it nullifies references
+     * to help garbage collection and prevents accidental reuse of the key.
+     *
+     * <p>
+     * This method is thread-safe. Concurrent calls to destroy and sign/toAddress
+     * will either complete the operation or throw {@link IllegalStateException}.
+     */
+    @Override
+    public void destroy() {
+        synchronized (this) {
+            destroyed = true;
+            privateKeyValue = null;
+            publicKey = null;
+        }
+    }
+
+    /**
+     * Returns whether this key has been destroyed.
+     *
+     * @return true if {@link #destroy()} has been called
+     */
+    @Override
+    public boolean isDestroyed() {
+        return destroyed;
+    }
+
+    /**
+     * Checks that the key has not been destroyed.
+     *
+     * @throws IllegalStateException if the key has been destroyed
+     */
+    private void checkNotDestroyed() {
+        if (destroyed) {
+            throw new IllegalStateException("PrivateKey has been destroyed");
+        }
+    }
+
+    /**
+     * Returns a string representation of this private key.
+     *
+     * <p>
+     * For security, the actual private key bytes are never included.
+     * Instead, the derived address is shown to help identify the key.
+     * If the key has been destroyed, returns "PrivateKey[destroyed]".
+     *
+     * <p>
+     * This method is thread-safe with respect to concurrent {@link #destroy()} calls.
+     *
+     * @return string representation showing address or destroyed status
+     */
     @Override
     public String toString() {
-        return "PrivateKey[address=" + toAddress() + "]";
+        try {
+            return "PrivateKey[address=" + toAddress() + "]";
+        } catch (IllegalStateException e) {
+            return "PrivateKey[destroyed]";
+        }
     }
 }

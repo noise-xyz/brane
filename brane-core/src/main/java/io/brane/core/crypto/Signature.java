@@ -1,5 +1,7 @@
 package io.brane.core.crypto;
 
+import io.brane.primitives.Hex;
+
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -40,6 +42,12 @@ import java.util.Objects;
  */
 public record Signature(byte[] r, byte[] s, int v) {
 
+    /**
+     * Maximum bytes to display in full hex in toString().
+     * Beyond this, just show the byte count to keep logs readable.
+     */
+    private static final int MAX_BYTES_TO_DISPLAY = 8;
+
     public Signature {
         Objects.requireNonNull(r, "r cannot be null");
         Objects.requireNonNull(s, "s cannot be null");
@@ -57,23 +65,53 @@ public record Signature(byte[] r, byte[] s, int v) {
     }
 
     /**
+     * Returns the r component of the signature.
+     * <p>
+     * A defensive copy is returned to preserve immutability.
+     *
+     * @return a copy of the r bytes (32 bytes)
+     */
+    @Override
+    public byte[] r() {
+        return Arrays.copyOf(r, r.length);
+    }
+
+    /**
+     * Returns the s component of the signature.
+     * <p>
+     * A defensive copy is returned to preserve immutability.
+     *
+     * @return a copy of the s bytes (32 bytes)
+     */
+    @Override
+    public byte[] s() {
+        return Arrays.copyOf(s, s.length);
+    }
+
+    /**
      * Extracts the recovery ID (yParity) from the v value.
-     * 
+     *
      * <p>
      * For EIP-155 signatures: {@code yParity = (v - chainId * 2 - 35)}
      * <br>
      * For simple signatures: {@code yParity = v} (if v is 0 or 1)
-     * 
+     *
      * @param chainId the chain ID (use 0 if not EIP-155)
      * @return 0 or 1
+     * @throws IllegalArgumentException if the computed recovery ID is not 0 or 1
      */
     public int getRecoveryId(final long chainId) {
         if (v == 0 || v == 1) {
             // Simple v (EIP-1559 or pre-EIP-155)
             return v;
         }
-        // EIP-155 format
-        return v - (int) (chainId * 2 + 35);
+        // EIP-155 format: compute in long space to avoid overflow
+        long recoveryId = (long) v - chainId * 2L - 35L;
+        if (recoveryId != 0 && recoveryId != 1) {
+            throw new IllegalArgumentException(
+                    "Invalid recovery ID: " + recoveryId + " (v=" + v + ", chainId=" + chainId + ")");
+        }
+        return (int) recoveryId;
     }
 
     /**
@@ -105,13 +143,9 @@ public record Signature(byte[] r, byte[] s, int v) {
     }
 
     private static String bytesToHex(byte[] bytes) {
-        if (bytes.length > 8) {
+        if (bytes.length > MAX_BYTES_TO_DISPLAY) {
             return bytes.length + " bytes";
         }
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
+        return Hex.encodeNoPrefix(bytes);
     }
 }

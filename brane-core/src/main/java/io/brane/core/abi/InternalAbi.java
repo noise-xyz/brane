@@ -11,6 +11,7 @@ import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.primitives.Hex;
 import java.io.IOException;
+import java.lang.reflect.InaccessibleObjectException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -24,9 +25,13 @@ import java.util.Objects;
 import java.util.Optional;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 final class InternalAbi implements Abi {
 
+    /** Logger for debug-level diagnostics, e.g., constructor matching failures during event decoding. */
+    private static final Logger LOG = LoggerFactory.getLogger(InternalAbi.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final Map<String, AbiFunction> functionsByName;
@@ -269,6 +274,7 @@ final class InternalAbi implements Abi {
             final TypeConverter elementConverter = createConverter(elementParam);
 
             final int elementHeadSize = elementConverter.getHeadSize();
+            final String elementTypeName = baseType;
 
             return new TypeConverter() {
                 @Override
@@ -280,7 +286,7 @@ final class InternalAbi implements Abi {
                     for (Object element : listValue) {
                         elements.add(elementConverter.convert(element));
                     }
-                    return new Array<AbiType>(elements, AbiType.class, true);
+                    return new Array<AbiType>(elements, AbiType.class, true, elementTypeName);
                 }
 
                 @Override
@@ -644,8 +650,15 @@ final class InternalAbi implements Abi {
 
                 @Override
                 public int getContentSize(Object value) {
-                    Bytes b = toBytes(value, true);
-                    int len = Hex.decode(b.value().value()).length;
+                    // Calculate length directly without intermediate Bytes object
+                    int len;
+                    if (value instanceof byte[] b) {
+                        len = b.length;
+                    } else if (value instanceof HexData h) {
+                        len = h.byteLength();
+                    } else {
+                        throw new AbiEncodingException("Expected byte[] or HexData for bytes");
+                    }
                     int padding = (32 - (len % 32)) % 32;
                     return 32 + len + padding;
                 }
@@ -689,7 +702,6 @@ final class InternalAbi implements Abi {
 
                 @Override
                 public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
-                    // Static bytes are just right-padded
                     // Static bytes are just right-padded
                     byte[] data;
                     if (value instanceof byte[]) {
@@ -826,7 +838,8 @@ final class InternalAbi implements Abi {
 
     private static String parseStateMutability(final JsonNode node) {
         String stateMutability = node.path("stateMutability").asText("");
-        if (stateMutability == null || stateMutability.isBlank()) {
+        // asText("") never returns null, only check for blank
+        if (stateMutability.isBlank()) {
             final boolean constant = node.path("constant").asBoolean(false);
             stateMutability = constant ? "view" : "nonpayable";
         }
@@ -921,10 +934,41 @@ final class InternalAbi implements Abi {
         }
     }
 
-    private record AbiEvent(String name, List<AbiParameter> inputs) {
-        String signature() {
+    /**
+     * Internal representation of an ABI event with cached topic hash for performance.
+     * The topic hash (Keccak256 of the signature) is computed once at construction time
+     * to avoid repeated hashing during log filtering.
+     */
+    private static final class AbiEvent {
+        private final String name;
+        private final List<AbiParameter> inputs;
+        private final String signature;
+        private final String topicHash;
+
+        AbiEvent(String name, List<AbiParameter> inputs) {
+            this.name = name;
+            this.inputs = inputs;
+            // Compute and cache signature
             final String joined = inputs.stream().map(AbiParameter::canonicalType).collect(Collectors.joining(","));
-            return name + "(" + joined + ")";
+            this.signature = name + "(" + joined + ")";
+            // Compute and cache topic hash (Keccak256 of signature)
+            this.topicHash = Abi.eventTopic(this.signature).value();
+        }
+
+        String name() {
+            return name;
+        }
+
+        List<AbiParameter> inputs() {
+            return inputs;
+        }
+
+        String signature() {
+            return signature;
+        }
+
+        String topicHash() {
+            return topicHash;
         }
     }
 
@@ -987,7 +1031,7 @@ final class InternalAbi implements Abi {
         final TypeSchema multicallResultSchema = new TypeSchema.ArraySchema(
                 new TypeSchema.TupleSchema(List.of(
                         new TypeSchema.BoolSchema(),
-                        new TypeSchema.BytesSchema(true))),
+                        new TypeSchema.BytesSchema(TypeSchema.BytesSchema.DYNAMIC))),
                 -1);
 
         try {
@@ -1009,7 +1053,9 @@ final class InternalAbi implements Abi {
                 results.add(new MulticallResult(success, returnData));
             }
             return results;
-        } catch (Exception e) {
+        } catch (AbiDecodingException e) {
+            throw e;
+        } catch (IllegalArgumentException | ArrayIndexOutOfBoundsException e) {
             throw new AbiDecodingException("Failed to decode Multicall3 results", e);
         }
     }
@@ -1018,8 +1064,8 @@ final class InternalAbi implements Abi {
         if (log.topics() == null || log.topics().isEmpty()) {
             return false;
         }
-        final String topic0 = Abi.eventTopic(event.signature()).value();
-        return topic0.equalsIgnoreCase(log.topics().get(0).value());
+        // Use cached topic hash to avoid repeated Keccak256 hashing
+        return event.topicHash().equalsIgnoreCase(log.topics().get(0).value());
     }
 
     private <T> T decodeEvent(
@@ -1048,7 +1094,8 @@ final class InternalAbi implements Abi {
                     // Let's wrap in tuple.
                     final List<AbiType> decoded = AbiDecoder.decode(topicBytes, List.of(schema));
                     values.add(toJavaValue(decoded.get(0)));
-                } catch (Exception e) {
+                } catch (AbiDecodingException | IllegalArgumentException | ArrayIndexOutOfBoundsException e) {
+                    // Catch expected decoding failures; let programming errors (NPE, etc.) propagate
                     throw new AbiDecodingException("Failed to decode indexed param '" + param.name + "'", e);
                 }
                 topicIdx++;
@@ -1068,18 +1115,36 @@ final class InternalAbi implements Abi {
         return mapToEventType(values, eventType, event.name());
     }
 
+    /**
+     * Maps decoded event values to the specified type.
+     *
+     * <p>
+     * <b>Module System Note:</b> This method uses reflection to instantiate event types.
+     * On Java 9+ with the module system, {@code setAccessible(true)} may fail with
+     * {@link InaccessibleObjectException} if:
+     * <ul>
+     * <li>The event type or its constructor is not public</li>
+     * <li>The package is not exported/opened to the brane module</li>
+     * </ul>
+     *
+     * <p>
+     * To avoid issues, ensure event types are public records/classes with public constructors.
+     *
+     * @param values    the decoded event values
+     * @param eventType the target type
+     * @param eventName the event name (for error messages)
+     * @param <T>       the event type
+     * @return the mapped event instance
+     * @throws AbiDecodingException if mapping fails
+     */
     private <T> T mapToEventType(List<Object> values, Class<T> eventType, String eventName) {
-        if (eventType == List.class || List.class.isAssignableFrom(eventType)) {
-            @SuppressWarnings("unchecked")
-            final T cast = (T) values;
-            return cast;
-        }
-        if (eventType == Object[].class) {
-            @SuppressWarnings("unchecked")
-            final T cast = (T) values.toArray();
-            return cast;
+        // Try common collection mappings first
+        T result = tryMapToCollection(values, eventType);
+        if (result != null) {
+            return result;
         }
 
+        // For events, try to instantiate custom types via constructor matching
         for (var ctor : eventType.getDeclaredConstructors()) {
             if (ctor.getParameterCount() == values.size()) {
                 try {
@@ -1087,13 +1152,41 @@ final class InternalAbi implements Abi {
                     @SuppressWarnings("unchecked")
                     final T instance = (T) ctor.newInstance(values.toArray());
                     return instance;
-                } catch (Exception ignore) {
-                    // try next
+                } catch (InaccessibleObjectException e) {
+                    // Java 9+ module system denied access
+                    throw new AbiDecodingException(
+                            "Cannot access constructor for event type '" + eventType.getName() + "'. "
+                                    + "Ensure the type and constructor are public, and for modular applications, "
+                                    + "the package is exported or opened. "
+                                    + "Alternatively, use List.class or Object[].class as the event type.",
+                            e);
+                } catch (Exception e) {
+                    // Try next constructor - type mismatch or invocation failure
+                    LOG.debug("Constructor {} failed for event '{}': {}",
+                            ctor.toGenericString(), eventName, e.getMessage());
                 }
             }
         }
         throw new AbiDecodingException(
                 "Cannot map event '" + eventName + "' to " + eventType.getName());
+    }
+
+    /**
+     * Tries to map values to List or Object[] collection types.
+     *
+     * @param values the decoded values
+     * @param targetType the target type
+     * @return the mapped collection, or null if targetType is not a collection type
+     */
+    @SuppressWarnings("unchecked")
+    private static <T> T tryMapToCollection(List<Object> values, Class<T> targetType) {
+        if (targetType == List.class || List.class.isAssignableFrom(targetType)) {
+            return (T) values;
+        }
+        if (targetType == Object[].class) {
+            return (T) values.toArray();
+        }
+        return null;
     }
 
     private static Object toJavaValue(final AbiType type) {
@@ -1158,9 +1251,11 @@ final class InternalAbi implements Abi {
         if (normalized.equals("string"))
             return new TypeSchema.StringSchema();
         if (normalized.equals("bytes"))
-            return new TypeSchema.BytesSchema(true);
-        if (normalized.startsWith("bytes"))
-            return new TypeSchema.BytesSchema(false);
+            return new TypeSchema.BytesSchema(TypeSchema.BytesSchema.DYNAMIC);
+        if (normalized.startsWith("bytes")) {
+            int size = Integer.parseInt(normalized.substring(5));
+            return new TypeSchema.BytesSchema(size);
+        }
 
         throw new AbiEncodingException("Unsupported type schema: " + solidityType);
     }
@@ -1214,7 +1309,7 @@ final class InternalAbi implements Abi {
                     final List<Object> mapped = decoded.stream()
                             .map(InternalAbi::toJavaValue)
                             .toList();
-                    return mapToEventType(mapped, returnType, abiFunction.name());
+                    return mapMultipleReturns(mapped, returnType, abiFunction.name());
                 }
 
                 final Object mapped = toJavaValue(decoded.get(0));
@@ -1227,19 +1322,14 @@ final class InternalAbi implements Abi {
             }
         }
 
-        private <T> T mapToEventType(List<Object> values, Class<T> eventType, String eventName) {
-            if (eventType == List.class || List.class.isAssignableFrom(eventType)) {
-                @SuppressWarnings("unchecked")
-                final T cast = (T) values;
-                return cast;
-            }
-            if (eventType == Object[].class) {
-                @SuppressWarnings("unchecked")
-                final T cast = (T) values.toArray();
-                return cast;
+        private <T> T mapMultipleReturns(List<Object> values, Class<T> returnType, String functionName) {
+            // Use the shared collection mapping helper
+            T result = tryMapToCollection(values, returnType);
+            if (result != null) {
+                return result;
             }
             throw new AbiDecodingException(
-                    "Function " + eventName + " returns multiple values; use List or Object[]");
+                    "Function " + functionName + " returns multiple values; use List or Object[]");
         }
 
         private <T> T mapValue(final Object value, final Class<T> targetType) {

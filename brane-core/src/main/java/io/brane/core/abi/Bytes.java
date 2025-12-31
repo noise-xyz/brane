@@ -10,12 +10,18 @@ import java.util.Objects;
  * @param isDynamic true for 'bytes', false for 'bytesN'
  */
 public record Bytes(HexData value, boolean isDynamic) implements AbiType {
+
+    /** Maximum size for static bytesN types (bytes1 to bytes32). */
+    private static final int MAX_STATIC_BYTES = 32;
+
     public Bytes {
         Objects.requireNonNull(value, "value cannot be null");
-        if (!isDynamic && value.value().length() > 66) { // 0x + 32 bytes * 2 = 66 chars
-            // Actually bytesN can be up to 32 bytes.
-            // If it's static, it must be bytes1..bytes32.
-            // We don't strictly enforce N here, but we could.
+        if (!isDynamic) {
+            int byteLen = value.byteLength();
+            if (byteLen == 0 || byteLen > MAX_STATIC_BYTES) {
+                throw new IllegalArgumentException(
+                        "Static bytes must be 1-32 bytes, got " + byteLen);
+            }
         }
     }
 
@@ -29,8 +35,7 @@ public record Bytes(HexData value, boolean isDynamic) implements AbiType {
         if (isDynamic) {
             return "bytes";
         }
-        int n = (value.value().length() - 2) / 2;
-        return "bytes" + n;
+        return "bytes" + value.byteLength();
     }
 
     @Override

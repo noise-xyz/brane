@@ -55,4 +55,16 @@ class PrivateKeySignerTest {
         // 0 or 1 is not valid for personal_sign
         assertTrue(sig.v() == 27 || sig.v() == 28, "v should be 27 or 28, but was " + sig.v());
     }
+
+    @Test
+    void signMessageThrowsOnNullMessage() {
+        // HIGH-2: Verify null message throws NullPointerException with clear message
+        PrivateKeySigner signer = new PrivateKeySigner(
+                "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
+
+        NullPointerException ex = assertThrows(
+                NullPointerException.class,
+                () -> signer.signMessage(null));
+        assertTrue(ex.getMessage().contains("message"));
+    }
 }

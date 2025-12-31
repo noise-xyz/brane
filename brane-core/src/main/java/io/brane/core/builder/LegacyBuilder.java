@@ -5,6 +5,30 @@ import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 
+/**
+ * Builder for legacy (pre-EIP-1559) transactions with a single gas price.
+ *
+ * <p>Legacy transactions use a single {@code gasPrice} field instead of
+ * the EIP-1559 {@code maxFeePerGas} and {@code maxPriorityFeePerGas} fields.
+ *
+ * <p><strong>Example:</strong>
+ * <pre>{@code
+ * TransactionRequest tx = TxBuilder.legacy()
+ *     .from(sender)
+ *     .to(recipient)
+ *     .value(Wei.ether("1"))
+ *     .gasPrice(Wei.gwei(50))
+ *     .gasLimit(21000)
+ *     .build();
+ * }</pre>
+ *
+ * <p><strong>Thread Safety:</strong> This builder is <em>not</em> thread-safe. Each thread
+ * should use its own builder instance. The {@link #build()} method creates an immutable
+ * {@link TransactionRequest} that is safe to share across threads.
+ *
+ * @see TxBuilder#legacy()
+ * @since 0.1.0-alpha
+ */
 public final class LegacyBuilder implements TxBuilder<LegacyBuilder> {
     private Address from;
     private Address to;
@@ -50,6 +74,15 @@ public final class LegacyBuilder implements TxBuilder<LegacyBuilder> {
         return this;
     }
 
+    /**
+     * Sets the gas price for the transaction.
+     *
+     * <p>This is the price per gas unit that the sender is willing to pay.
+     * Higher gas prices increase the likelihood of faster transaction inclusion.
+     *
+     * @param gasPrice the gas price in wei
+     * @return this builder for chaining
+     */
     public LegacyBuilder gasPrice(final Wei gasPrice) {
         this.gasPrice = gasPrice;
         return this;
@@ -57,7 +90,7 @@ public final class LegacyBuilder implements TxBuilder<LegacyBuilder> {
 
     @Override
     public TransactionRequest build() {
-        validateTarget();
+        BuilderValidation.validateTarget(to, data);
 
         return new TransactionRequest(
                 from,
@@ -71,15 +104,5 @@ public final class LegacyBuilder implements TxBuilder<LegacyBuilder> {
                 data,
                 false,
                 null);
-    }
-
-    private void validateTarget() {
-        if (to == null && data == null) {
-            throw new BraneTxBuilderException("Transaction must have a recipient or data");
-        }
-
-        if (to == null && data != null && data.value().isBlank()) {
-            throw new BraneTxBuilderException("Contract creation requires non-empty data");
-        }
     }
 }

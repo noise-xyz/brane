@@ -2,6 +2,8 @@ package io.brane.core.error;
 
 /**
  * Thrown when ABI inputs cannot be encoded.
+ *
+ * @since 0.1.0-alpha
  */
 public final class AbiEncodingException extends BraneException {
 

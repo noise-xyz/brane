@@ -32,6 +32,18 @@ import java.math.BigInteger;
  * <p>
  * This signer enforces <b>Low-S</b> values (EIP-2) to prevent signature
  * malleability.
+ *
+ * <h2>Thread Safety</h2>
+ * <p>
+ * This class is <b>thread-safe</b>. The static {@link FixedPointCombMultiplier} is
+ * safe for concurrent use because:
+ * <ul>
+ * <li>Bouncy Castle's precomputed multiplication tables are stored in a
+ * {@link java.util.concurrent.ConcurrentHashMap} on the ECCurve.</li>
+ * <li>The multiplier itself maintains no mutable state between calls.</li>
+ * <li>Each call to {@link #sign(byte[], BigInteger)} creates its own
+ * {@link HMacDSAKCalculator} instance, so there is no shared mutable state.</li>
+ * </ul>
  */
 public final class FastSigner {
 
@@ -42,6 +54,11 @@ public final class FastSigner {
             CURVE_PARAMS.getN(),
             CURVE_PARAMS.getH());
     private static final BigInteger HALF_CURVE_ORDER = CURVE_PARAMS.getN().shiftRight(1);
+
+    /**
+     * Shared multiplier instance. Thread-safe per Bouncy Castle's implementation which uses
+     * ConcurrentHashMap for precomputed table caching and maintains no mutable state.
+     */
     private static final FixedPointCombMultiplier MULTIPLIER = new FixedPointCombMultiplier();
 
     private FastSigner() {
@@ -63,31 +80,31 @@ public final class FastSigner {
         BigInteger k;
         ECPoint p;
 
-        do {
-            k = kCalculator.nextK();
-            p = MULTIPLIER.multiply(CURVE.getG(), k).normalize();
-
-            // r = x1 mod n
-            r = p.getAffineXCoord().toBigInteger().mod(CURVE.getN());
-        } while (r.equals(BigInteger.ZERO));
-
         // s = k^-1 * (z + r * d) mod n
         BigInteger d = privateKey;
         BigInteger z = new BigInteger(1, messageHash);
 
-        BigInteger kInv = k.modInverse(CURVE.getN());
-        BigInteger rd = r.multiply(d);
-        s = kInv.multiply(z.add(rd)).mod(CURVE.getN());
+        // RFC 6979 loop: iterate until we get valid r and s (both non-zero).
+        // Per RFC 6979 section 3.2 step h: if r==0 or s==0, generate next K value.
+        // The HMacDSAKCalculator.nextK() deterministically generates successive k values,
+        // ensuring we never get stuck in an infinite loop with the same invalid k.
+        //
+        // In practice, r==0 or s==0 probability is ~2^-256 (negligible) since:
+        // - r==0 requires k*G to have x-coordinate == 0 mod n
+        // - s==0 requires (z + r*d) == 0 mod n, which depends on the message hash
+        do {
+            do {
+                k = kCalculator.nextK();
+                p = MULTIPLIER.multiply(CURVE.getG(), k).normalize();
 
-        if (s.equals(BigInteger.ZERO)) {
-            // Extremely rare, but technically possible. Should retry loop in a real impl,
-            // but for deterministic K, this means the key/msg combo is bad.
-            // However, RFC 6979 handles this by updating K.
-            // For simplicity in this fast path, we'll just recurse or throw.
-            // Let's recurse (it will re-init kCalculator, which is fine but slightly
-            // inefficient).
-            return sign(messageHash, privateKey);
-        }
+                // r = x1 mod n
+                r = p.getAffineXCoord().toBigInteger().mod(CURVE.getN());
+            } while (r.equals(BigInteger.ZERO));
+
+            BigInteger kInv = k.modInverse(CURVE.getN());
+            BigInteger rd = r.multiply(d);
+            s = kInv.multiply(z.add(rd)).mod(CURVE.getN());
+        } while (s.equals(BigInteger.ZERO));
 
         // Calculate v (recovery ID) based on the original point R = k*G.
         // v = 0 if R.y is even, 1 if R.y is odd.

@@ -1,5 +1,6 @@
 package io.brane.core.abi;
 
+import io.brane.core.error.AbiDecodingException;
 import io.brane.core.types.Address;
 
 import io.brane.primitives.Hex;
@@ -38,6 +39,12 @@ import java.util.List;
  */
 public final class AbiDecoder {
 
+    /**
+     * Number of padding bytes before an address in a 32-byte ABI slot.
+     * Addresses are 20 bytes, so they are left-padded with 12 zero bytes (32 - 20 = 12).
+     */
+    private static final int ADDRESS_PADDING_BYTES = 12;
+
     private AbiDecoder() {
     }
 
@@ -74,8 +81,10 @@ public final class AbiDecoder {
         for (TypeSchema schema : schemas) {
             if (schema.isDynamic()) {
                 // Dynamic type: head is 32-byte offset
-                int relativeOffset = decodeInt(data, currentHeadOffset).intValueExact();
+                BigInteger offsetValue = decodeInt(data, currentHeadOffset);
+                int relativeOffset = toIntExact(offsetValue, "dynamic type offset");
                 int absoluteOffset = offset + relativeOffset;
+                validateOffset(data, absoluteOffset, "dynamic type data");
                 results.add(decodeDynamic(data, absoluteOffset, schema));
                 currentHeadOffset += 32;
             } else {
@@ -92,18 +101,12 @@ public final class AbiDecoder {
             case TypeSchema.UIntSchema s -> new UInt(s.width(), decodeUInt(data, offset));
             case TypeSchema.IntSchema s -> new Int(s.width(), decodeInt(data, offset));
             case TypeSchema.AddressSchema s ->
-                new AddressType(new Address(Hex.encode(Arrays.copyOfRange(data, offset + 12, offset + 32))));
+                new AddressType(new Address(Hex.encode(Arrays.copyOfRange(data, offset + ADDRESS_PADDING_BYTES, offset + 32))));
             case TypeSchema.BoolSchema s -> new Bool(decodeUInt(data, offset).equals(BigInteger.ONE));
             case TypeSchema.BytesSchema s -> {
-                // Static bytesN
-                // Read 32 bytes, but value is left-aligned.
-                // We don't know N here easily unless we parse it from schema or assume 32.
-                // BytesSchema doesn't have N.
-                // Let's assume we take all 32 bytes and trim? No, bytesN is fixed.
-                // If schema is static BytesSchema, it implies bytesN.
-                // We should probably store N in BytesSchema for correctness.
-                // For now, let's return 32 bytes.
-                yield Bytes.ofStatic(Arrays.copyOfRange(data, offset, offset + 32));
+                // Static bytesN: value is left-aligned in 32 bytes, extract only N bytes
+                int size = s.size();
+                yield Bytes.ofStatic(Arrays.copyOfRange(data, offset, offset + size));
             }
             case TypeSchema.ArraySchema s -> {
                 // Static array: sequence of N elements
@@ -115,14 +118,16 @@ public final class AbiDecoder {
                 @SuppressWarnings("unchecked")
                 Class<AbiType> elemClass = (Class<AbiType>) (elements.isEmpty() ? AbiType.class
                         : elements.get(0).getClass());
-                yield new Array<>(elements, elemClass, false);
+                yield new Array<>(elements, elemClass, false, s.element().typeName());
             }
             case TypeSchema.TupleSchema s -> {
                 // Static tuple: sequence of components
                 List<AbiType> components = decodeTuple(data, offset, s.components());
                 yield new Tuple(components);
             }
-            default -> throw new IllegalArgumentException("Unknown static schema: " + schema);
+            // StringSchema is always dynamic, so it should never reach decodeStatic
+            case TypeSchema.StringSchema s ->
+                throw new IllegalStateException("StringSchema is always dynamic and should not be decoded as static");
         };
     }
 
@@ -133,7 +138,14 @@ public final class AbiDecoder {
         return switch (schema) {
             case TypeSchema.TupleSchema t -> t.components().stream().mapToInt(AbiDecoder::getStaticSize).sum();
             case TypeSchema.ArraySchema a -> a.fixedLength() * getStaticSize(a.element());
-            default -> 32;
+            // All other static types are 32 bytes (single slot)
+            case TypeSchema.UIntSchema s -> 32;
+            case TypeSchema.IntSchema s -> 32;
+            case TypeSchema.AddressSchema s -> 32;
+            case TypeSchema.BoolSchema s -> 32;
+            case TypeSchema.BytesSchema s -> 32;
+            // StringSchema is always dynamic, handled by early return above
+            case TypeSchema.StringSchema s -> 32;
         };
     }
 
@@ -141,14 +153,24 @@ public final class AbiDecoder {
         return switch (schema) {
             case TypeSchema.BytesSchema s -> {
                 // Length + Data
-                int length = decodeInt(data, offset).intValueExact();
+                BigInteger lengthValue = decodeInt(data, offset);
+                int length = toIntExact(lengthValue, "bytes length");
                 int dataOffset = offset + 32;
+                // Only validate if length > 0 to avoid underflow when length == 0
+                if (length > 0) {
+                    validateOffset(data, dataOffset + length - 1, "bytes data");
+                }
                 byte[] bytes = Arrays.copyOfRange(data, dataOffset, dataOffset + length);
                 yield Bytes.of(bytes);
             }
             case TypeSchema.StringSchema s -> {
-                int length = decodeInt(data, offset).intValueExact();
+                BigInteger lengthValue = decodeInt(data, offset);
+                int length = toIntExact(lengthValue, "string length");
                 int dataOffset = offset + 32;
+                // Only validate if length > 0 to avoid underflow when length == 0
+                if (length > 0) {
+                    validateOffset(data, dataOffset + length - 1, "string data");
+                }
                 byte[] bytes = Arrays.copyOfRange(data, dataOffset, dataOffset + length);
                 yield new Utf8String(new String(bytes, StandardCharsets.UTF_8));
             }
@@ -161,7 +183,8 @@ public final class AbiDecoder {
                     length = s.fixedLength();
                     elemOffset = offset;
                 } else {
-                    length = decodeInt(data, offset).intValueExact();
+                    BigInteger lengthValue = decodeInt(data, offset);
+                    length = toIntExact(lengthValue, "array length");
                     elemOffset = offset + 32;
                 }
 
@@ -183,14 +206,24 @@ public final class AbiDecoder {
                 @SuppressWarnings("unchecked")
                 Class<AbiType> elemClass = (Class<AbiType>) (elements.isEmpty() ? AbiType.class
                         : elements.get(0).getClass());
-                yield new Array<>(elements, elemClass, true);
+                yield new Array<>(elements, elemClass, true, s.element().typeName());
             }
             case TypeSchema.TupleSchema s -> {
                 // Dynamic tuple is encoded as a tuple at the offset
                 List<AbiType> components = decodeTuple(data, offset, s.components());
                 yield new Tuple(components);
             }
-            default -> throw new IllegalArgumentException("Unknown dynamic schema: " + schema);
+            // These types are always static (isDynamic() returns false), so they should never
+            // reach decodeDynamic. Include them for exhaustiveness to get compile-time warnings
+            // if new types are added to the sealed hierarchy.
+            case TypeSchema.UIntSchema s ->
+                throw new IllegalStateException("UIntSchema is always static and should not be decoded as dynamic");
+            case TypeSchema.IntSchema s ->
+                throw new IllegalStateException("IntSchema is always static and should not be decoded as dynamic");
+            case TypeSchema.AddressSchema s ->
+                throw new IllegalStateException("AddressSchema is always static and should not be decoded as dynamic");
+            case TypeSchema.BoolSchema s ->
+                throw new IllegalStateException("BoolSchema is always static and should not be decoded as dynamic");
         };
     }
 
@@ -202,5 +235,36 @@ public final class AbiDecoder {
     private static BigInteger decodeInt(byte[] data, int offset) {
         byte[] slice = Arrays.copyOfRange(data, offset, offset + 32);
         return new BigInteger(slice);
+    }
+
+    /**
+     * Converts a BigInteger to int, throwing AbiDecodingException if it doesn't fit.
+     *
+     * @param value   the value to convert
+     * @param context description of what the value represents (for error messages)
+     * @return the int value
+     * @throws AbiDecodingException if the value exceeds Integer.MAX_VALUE
+     */
+    private static int toIntExact(BigInteger value, String context) {
+        try {
+            return value.intValueExact();
+        } catch (ArithmeticException e) {
+            throw new AbiDecodingException(context + " too large for int: " + value, e);
+        }
+    }
+
+    /**
+     * Validates that an offset is within the data bounds.
+     *
+     * @param data    the byte array
+     * @param offset  the offset to validate
+     * @param context description of what the offset points to (for error messages)
+     * @throws AbiDecodingException if the offset is out of bounds
+     */
+    private static void validateOffset(byte[] data, int offset, String context) {
+        if (offset < 0 || offset >= data.length) {
+            throw new AbiDecodingException(
+                    context + " offset out of bounds: " + offset + " (data length: " + data.length + ")");
+        }
     }
 }

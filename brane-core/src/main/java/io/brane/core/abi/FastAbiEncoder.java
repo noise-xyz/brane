@@ -185,12 +185,15 @@ public final class FastAbiEncoder {
     /**
      * Encodes an int256 value directly into the buffer.
      *
-     * @param value  the value to encode
+     * <p>Valid range for int256: {@code -2^255} to {@code 2^255 - 1} (inclusive).
+     *
+     * @param value  the value to encode (must be in int256 range)
      * @param buffer the destination buffer
+     * @throws IllegalArgumentException if value is outside int256 range
      */
     public static void encodeInt256(BigInteger value, ByteBuffer buffer) {
         if (value.bitLength() > 255) {
-            throw new IllegalArgumentException("Value too large for int256");
+            throw new IllegalArgumentException("Value outside int256 range: must be between -2^255 and 2^255-1");
         }
         byte[] bytes = value.toByteArray();
         int len = bytes.length;
@@ -255,14 +258,6 @@ public final class FastAbiEncoder {
         encodeBool(value, buffer);
         return result;
     }
-
-    /**
-     * Encodes dynamic bytes directly into the buffer.
-     * Writes length (uint256) followed by data, right-padded to 32 bytes.
-     *
-     * @param bytes  the bytes object
-     * @param buffer the destination buffer
-     */
 
     /**
      * Encodes dynamic bytes (HexData) directly into the buffer.
@@ -335,8 +330,6 @@ public final class FastAbiEncoder {
         System.arraycopy(data, 0, result, 0, data.length);
         return result;
     }
-
-    // ... primitives ...
 
     /**
      * Encodes an array of ABI types directly into the buffer.

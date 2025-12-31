@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 public record Tuple(List<AbiType> components) implements AbiType {
     public Tuple {
         Objects.requireNonNull(components, "components cannot be null");
+        components = List.copyOf(components);
     }
 
     @Override
@@ -30,7 +31,9 @@ public record Tuple(List<AbiType> components) implements AbiType {
 
     @Override
     public String typeName() {
-        return "(" + components.stream().map(AbiType::typeName).collect(Collectors.joining(",")) + ")";
+        return components.stream()
+                .map(AbiType::typeName)
+                .collect(Collectors.joining(",", "(", ")"));
     }
 
     @Override

@@ -88,6 +88,39 @@ class Keccak256Test {
         assertArrayEquals(hash1, hash2, "Same input must produce same hash");
     }
 
+    @Test
+    void testCleanupAllowsSubsequentHashing() {
+        // CRIT-3: Verify cleanup() removes ThreadLocal but allows subsequent hashing
+        final byte[] input = "cleanup test".getBytes(StandardCharsets.UTF_8);
+
+        // Hash before cleanup
+        final byte[] hashBefore = Keccak256.hash(input);
+
+        // Cleanup should not throw
+        assertDoesNotThrow(Keccak256::cleanup);
+
+        // Hash after cleanup should work and produce same result
+        final byte[] hashAfter = Keccak256.hash(input);
+        assertArrayEquals(hashBefore, hashAfter, "Hash should be same after cleanup");
+    }
+
+    @Test
+    void testCleanupIdempotent() {
+        // CRIT-3: Cleanup should be safe to call multiple times
+        assertDoesNotThrow(() -> {
+            Keccak256.cleanup();
+            Keccak256.cleanup();
+            Keccak256.cleanup();
+        });
+    }
+
+    @Test
+    void testCleanupWithoutPriorHash() {
+        // CRIT-3: Cleanup should be safe even without prior hash call
+        // Note: This test may run after other tests, so we just verify it doesn't throw
+        assertDoesNotThrow(Keccak256::cleanup);
+    }
+
     // Helper methods
 
     private static String bytesToHex(byte[] bytes) {

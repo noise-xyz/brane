@@ -264,7 +264,7 @@ public class SmokeApp {
 
         // Check for Transfer to Recipient
         // Topic 2 is 'to' (indexed)
-        String recipientTopic = io.brane.core.utils.Topics.fromAddress(RECIPIENT).value();
+        String recipientTopic = io.brane.core.util.Topics.fromAddress(RECIPIENT).value();
 
         boolean foundTransfer = logs.stream().anyMatch(log -> log.topics().size() >= 3 &&
                 log.topics().get(2).value().equalsIgnoreCase(recipientTopic));
@@ -400,7 +400,7 @@ public class SmokeApp {
 
         runSepoliaTask(() -> {
             io.brane.core.model.BlockHeader block = publicClient.getLatestBlock();
-            if (block == null || block.number() == null) {
+            if (block == null) {
                 throw new RuntimeException("Failed to get latest block");
             }
             System.out.println("  ✓ Latest Block: " + block.number());

@@ -25,4 +25,22 @@ class WeiTest {
         assertEquals(new BigInteger("1500000000000000000"), wei.value());
         assertEquals(new BigDecimal("1.500000000000000000"), wei.toEther());
     }
+
+    @Test
+    void fromEtherRejectsFractionalWei() {
+        // 19 decimal places results in fractional wei
+        BigDecimal fractionalEther = new BigDecimal("0.0000000000000000001");
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> Wei.fromEther(fractionalEther));
+        assertTrue(ex.getMessage().contains("fractional wei"));
+    }
+
+    @Test
+    void gweiRejectsNegative() {
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> Wei.gwei(-1));
+        assertTrue(ex.getMessage().contains("gwei cannot be negative"));
+    }
 }

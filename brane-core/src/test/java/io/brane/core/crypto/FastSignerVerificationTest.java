@@ -13,7 +13,13 @@ import org.junit.jupiter.api.Test;
 
 import java.math.BigInteger;
 import java.security.Security;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -131,6 +137,68 @@ class FastSignerVerificationTest {
             BigInteger s = new BigInteger(1, sig.s());
             assertTrue(s.compareTo(CURVE.getN().shiftRight(1)) <= 0, "Signature S must be in lower half");
         }
+    }
+
+    /**
+     * Strategy 3: Concurrent Signing Test (Thread Safety).
+     * <p>
+     * Verifies that the static FixedPointCombMultiplier is thread-safe by
+     * running many signing operations concurrently and verifying all signatures
+     * are correct.
+     */
+    @Test
+    void concurrentSigningIsThreadSafe() throws Exception {
+        int threadCount = 50;
+        int signaturesPerThread = 100;
+        ExecutorService executor = Executors.newFixedThreadPool(threadCount);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        List<Future<Boolean>> futures = new ArrayList<>();
+
+        // Use a fixed private key for consistency
+        BigInteger privateKey = new BigInteger(
+                "4c0883a69102937d6231471b5dbb6204fe5129617082792ae468d01a3f362318", 16);
+        PrivateKey key = PrivateKey.fromBytes(toBytes32(privateKey));
+        Address expectedAddress = key.toAddress();
+
+        // Launch threads that all sign different messages concurrently
+        for (int t = 0; t < threadCount; t++) {
+            final int threadId = t;
+            futures.add(executor.submit(() -> {
+                startLatch.await(); // Wait for all threads to be ready
+                Random random = new Random(threadId); // Different seed per thread
+
+                for (int i = 0; i < signaturesPerThread; i++) {
+                    byte[] messageHash = new byte[32];
+                    random.nextBytes(messageHash);
+
+                    // Sign using FastSigner (tests the shared MULTIPLIER)
+                    Signature sig = FastSigner.sign(messageHash, privateKey);
+
+                    // Verify via recovery
+                    Address recovered = PrivateKey.recoverAddress(messageHash, sig);
+                    if (!expectedAddress.equals(recovered)) {
+                        return false;
+                    }
+
+                    // Verify low-S property
+                    BigInteger s = new BigInteger(1, sig.s());
+                    if (s.compareTo(CURVE.getN().shiftRight(1)) > 0) {
+                        return false;
+                    }
+                }
+                return true;
+            }));
+        }
+
+        // Start all threads at once
+        startLatch.countDown();
+
+        // Verify all threads succeeded
+        for (Future<Boolean> future : futures) {
+            assertTrue(future.get(), "Concurrent signing produced invalid signature");
+        }
+
+        executor.shutdown();
     }
 
     private static byte[] toBytes32(BigInteger value) {

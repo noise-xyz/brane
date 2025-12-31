@@ -111,6 +111,40 @@ import static io.brane.core.AnsiColors.*;
  */
 public final class LogFormatter {
 
+    /**
+     * Number of characters to show at the start of shortened hashes (includes "0x" prefix).
+     * For example, with value 6: "0xabcd...ef12" shows "0xabcd".
+     */
+    private static final int HASH_PREFIX_LENGTH = 6;
+
+    /**
+     * Number of characters to show at the end of shortened hashes.
+     * For example, with value 4: "0xabcd...ef12" shows "ef12".
+     */
+    private static final int HASH_SUFFIX_LENGTH = 4;
+
+    /**
+     * Minimum hash length before shortening is applied.
+     * Hashes shorter than this are displayed in full.
+     */
+    private static final int HASH_SHORTEN_THRESHOLD = HASH_PREFIX_LENGTH + HASH_SUFFIX_LENGTH;
+
+    /**
+     * Indentation for multi-line log continuation.
+     *
+     * <p>This 10-space indent provides a consistent left margin for continuation
+     * lines in multi-line logs, visually grouping related fields. For example:
+     * <pre>
+     * [CALL] tag=latest
+     *           to=0x1234...
+     *           data=0xabcd...
+     * </pre>
+     *
+     * <p>The indent is chosen to roughly align with typical log prefix lengths
+     * (e.g., "[CALL] " is 7 chars) while providing readable visual separation.
+     */
+    private static final String CONTINUATION_INDENT = "          ";
+
     private LogFormatter() {
     }
 
@@ -129,11 +163,11 @@ public final class LogFormatter {
             String dataValue = extractValue(requestStr, "data=");
 
             return String.format(
-                    "%s[CALL]%s tag=%s\n          to=%s\n          data=%s",
+                    "%s[CALL]%s tag=%s\n%sto=%s\n%sdata=%s",
                     INDIGO, RESET,
                     tag,
-                    toValue != null ? shortenHash(toValue) : "?",
-                    dataValue != null ? shortenHash(dataValue) : "?");
+                    CONTINUATION_INDENT, toValue != null ? shortenHash(toValue) : "?",
+                    CONTINUATION_INDENT, dataValue != null ? shortenHash(dataValue) : "?");
         }
 
         // Fallback: single line if request isn't structured
@@ -311,13 +345,21 @@ public final class LogFormatter {
     }
 
     /**
-     * Helper: shorten hash to 0x1234...5678 format
+     * Shortens a hash to a readable format: {@code 0xabcd...ef12}.
+     *
+     * <p>Hashes longer than {@value #HASH_SHORTEN_THRESHOLD} characters are shortened
+     * to show the first {@value #HASH_PREFIX_LENGTH} characters (including "0x" prefix)
+     * and the last {@value #HASH_SUFFIX_LENGTH} characters, separated by "...".
+     *
+     * @param fullHash the full hash string to shorten
+     * @return the shortened hash, or the original if null or already short enough
      */
     private static String shortenHash(String fullHash) {
-        if (fullHash == null || fullHash.length() <= 10) {
+        if (fullHash == null || fullHash.length() <= HASH_SHORTEN_THRESHOLD) {
             return fullHash;
         }
-        // Keep 0x + first 4 chars + ... + last 4 chars
-        return fullHash.substring(0, 6) + "..." + fullHash.substring(fullHash.length() - 4);
+        return fullHash.substring(0, HASH_PREFIX_LENGTH)
+                + "..."
+                + fullHash.substring(fullHash.length() - HASH_SUFFIX_LENGTH);
     }
 }

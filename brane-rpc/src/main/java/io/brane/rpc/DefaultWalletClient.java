@@ -146,14 +146,30 @@ public final class DefaultWalletClient implements WalletClient {
         return create(provider, publicClient, signer, signer.address(), chainProfile);
     }
 
+    /**
+     * Creates a wallet client that auto-detects the chain ID from the connected network.
+     *
+     * <p>This method queries {@code eth_chainId} to determine the network's chain ID
+     * and creates an appropriate ChainProfile. Use the overloads that accept a
+     * {@link ChainProfile} parameter for better performance (avoids the RPC call).
+     */
     public static DefaultWalletClient create(
             final BraneProvider provider,
             final PublicClient publicClient,
             final io.brane.core.crypto.Signer signer,
             final Address senderAddress) {
-        return from(provider, publicClient, signer, senderAddress, 0L);
+        final long chainId = publicClient.getChainId().longValue();
+        final ChainProfile profile = ChainProfile.of(chainId, null, true, Wei.of(1_000_000_000L));
+        return create(provider, publicClient, signer, senderAddress, profile);
     }
 
+    /**
+     * Creates a wallet client that auto-detects the chain ID from the connected network.
+     *
+     * <p>This method queries {@code eth_chainId} to determine the network's chain ID
+     * and creates an appropriate ChainProfile. Use the overloads that accept a
+     * {@link ChainProfile} parameter for better performance (avoids the RPC call).
+     */
     public static DefaultWalletClient create(
             final BraneProvider provider,
             final PublicClient publicClient,
@@ -372,7 +388,7 @@ public final class DefaultWalletClient implements WalletClient {
                 blockNumber != null ? blockNumber : 0L,
                 fromHex != null ? new Address(fromHex) : null,
                 toHex != null ? new Address(toHex) : null,
-                contractAddress != null ? new HexData(contractAddress) : HexData.EMPTY,
+                contractAddress != null ? new Address(contractAddress) : null,
                 logs,
                 status,
                 cumulativeGasUsed != null ? new Wei(RpcUtils.decodeHexBigInteger(cumulativeGasUsed)) : null);

@@ -42,8 +42,24 @@ package io.brane.core;
  */
 public final class AnsiColors {
 
-    private static final boolean IS_TTY = System.console() != null
-            || "true".equals(System.getenv("FORCE_COLOR"));
+    /**
+     * Whether standard output is a TTY (terminal) environment.
+     *
+     * <p>This is determined in the following order:
+     * <ol>
+     *   <li>If system property {@code brane.force.color=true} is set, colors are enabled
+     *       (useful for testing)</li>
+     *   <li>If environment variable {@code FORCE_COLOR=true} is set, colors are enabled
+     *       (for CI/CD pipelines)</li>
+     *   <li>If {@code System.console()} is non-null, colors are enabled (interactive terminal)</li>
+     *   <li>Otherwise, colors are disabled</li>
+     * </ol>
+     *
+     * <p>Other classes should use this constant instead of duplicating the TTY detection logic.
+     */
+    public static final boolean IS_TTY = "true".equals(System.getProperty("brane.force.color"))
+            || "true".equals(System.getenv("FORCE_COLOR"))
+            || System.console() != null;
 
     // Reset
     /** ANSI reset code - clears all formatting */
@@ -97,14 +113,23 @@ public final class AnsiColors {
 
     // Helper methods for formatted output
     /**
-     * Returns the given hash value, possibly shortened for display.
-     * 
+     * Shortens a hash or address value for readable log display.
+     *
+     * <p>Values longer than 16 characters are shortened to show the first 10
+     * characters (including "0x" prefix) followed by "..." and the last 4 characters.
+     * For example, a 66-character hash becomes: {@code 0x12345678...abcd}
+     *
      * @param value the hash or address value to format
-     * @return the formatted value
+     * @return the shortened value, or "null" if value is null
      */
     public static String hash(final String value) {
-        if (value == null)
+        if (value == null) {
             return "null";
+        }
+        // Shorten hashes longer than 16 chars: "0x12345678...abcd"
+        if (value.length() > 16) {
+            return value.substring(0, 10) + "..." + value.substring(value.length() - 4);
+        }
         return value;
     }
 

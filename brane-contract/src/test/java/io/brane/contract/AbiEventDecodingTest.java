@@ -47,8 +47,8 @@ class AbiEventDecodingTest {
         new Address("0x" + "9".repeat(40)),
         new HexData(data),
         List.of(topic0, topicFrom, topicTo),
-        null,
-        null,
+        null,  // blockHash can be null for pending logs
+        new Hash("0x" + "c".repeat(64)),  // transactionHash is required
         0L,
         false);
 

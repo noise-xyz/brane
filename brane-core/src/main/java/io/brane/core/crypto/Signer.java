@@ -28,6 +28,7 @@ public interface Signer {
      * @param tx      the unsigned transaction to sign
      * @param chainId the chain ID for replay protection
      * @return the raw signature of the transaction hash
+     * @throws NullPointerException if tx is null
      */
     Signature signTransaction(UnsignedTransaction tx, long chainId);
 
@@ -39,8 +40,9 @@ public interface Signer {
      * and signing.
      * The returned signature should have a {@code v} value of 27 or 28.
      *
-     * @param message the raw message bytes to sign
+     * @param message the raw message bytes to sign (must not be null)
      * @return the EIP-191 compatible signature
+     * @throws NullPointerException if message is null
      */
     Signature signMessage(byte[] message);
 }

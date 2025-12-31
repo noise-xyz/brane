@@ -4,6 +4,11 @@ import io.brane.core.types.Address;
 import org.junit.jupiter.api.Test;
 
 import java.nio.charset.StandardCharsets;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -184,6 +189,31 @@ class PrivateKeyTest {
     }
 
     @Test
+    void testFromBytesZerosInputArray() {
+        // Security behavior: fromBytes zeros the input array after use
+        final byte[] keyBytes = hexToBytes(TEST_PRIVATE_KEY.substring(2));
+
+        // Verify the bytes are non-zero before creating key
+        boolean hasNonZero = false;
+        for (byte b : keyBytes) {
+            if (b != 0) {
+                hasNonZero = true;
+                break;
+            }
+        }
+        assertTrue(hasNonZero, "Test key should have non-zero bytes");
+
+        // Create the key
+        final PrivateKey key = PrivateKey.fromBytes(keyBytes);
+        assertNotNull(key);
+
+        // Verify the input array has been zeroed
+        for (byte b : keyBytes) {
+            assertEquals(0, b, "Input array should be zeroed after fromBytes()");
+        }
+    }
+
+    @Test
     void testToString() {
         final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
         final String str = key.toString();
@@ -191,6 +221,171 @@ class PrivateKeyTest {
         assertNotNull(str);
         assertTrue(str.contains("PrivateKey"));
         assertTrue(str.contains(key.toAddress().value()));
+    }
+
+    @Test
+    void testDestroyable() {
+        final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
+
+        // Key should not be destroyed initially
+        assertFalse(key.isDestroyed());
+
+        // Destroy the key
+        key.destroy();
+
+        // Key should now be destroyed
+        assertTrue(key.isDestroyed());
+    }
+
+    @Test
+    void testDestroyedKeyThrowsOnToAddress() {
+        final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
+        key.destroy();
+
+        assertThrows(IllegalStateException.class, key::toAddress);
+    }
+
+    @Test
+    void testDestroyedKeyThrowsOnSign() {
+        final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
+        key.destroy();
+
+        final byte[] messageHash = Keccak256.hash("test".getBytes(StandardCharsets.UTF_8));
+        assertThrows(IllegalStateException.class, () -> key.sign(messageHash));
+    }
+
+    @Test
+    void testDestroyedKeyToString() {
+        final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
+        key.destroy();
+
+        assertEquals("PrivateKey[destroyed]", key.toString());
+    }
+
+    @Test
+    void testDestroyIsIdempotent() {
+        final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
+
+        // Multiple destroy calls should be safe
+        key.destroy();
+        key.destroy();
+        key.destroy();
+
+        assertTrue(key.isDestroyed());
+    }
+
+    @Test
+    void testConcurrentSignAndDestroy() throws InterruptedException {
+        // Test that concurrent sign and destroy operations don't cause NPE
+        // Either the sign completes successfully, or it throws IllegalStateException
+        final int iterations = 100;
+
+        for (int i = 0; i < iterations; i++) {
+            final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
+            final byte[] messageHash = Keccak256.hash("test".getBytes(StandardCharsets.UTF_8));
+
+            final CountDownLatch startLatch = new CountDownLatch(1);
+            final AtomicInteger successCount = new AtomicInteger(0);
+            final AtomicInteger destroyedCount = new AtomicInteger(0);
+            final AtomicInteger unexpectedErrorCount = new AtomicInteger(0);
+
+            final ExecutorService executor = Executors.newFixedThreadPool(2);
+
+            // Thread 1: Try to sign
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    key.sign(messageHash);
+                    successCount.incrementAndGet();
+                } catch (IllegalStateException e) {
+                    // Expected if key was destroyed
+                    destroyedCount.incrementAndGet();
+                } catch (Exception e) {
+                    // Unexpected - would indicate race condition (NPE, etc.)
+                    unexpectedErrorCount.incrementAndGet();
+                }
+            });
+
+            // Thread 2: Destroy the key
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    key.destroy();
+                } catch (Exception e) {
+                    unexpectedErrorCount.incrementAndGet();
+                }
+            });
+
+            // Start both threads simultaneously
+            startLatch.countDown();
+
+            executor.shutdown();
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+
+            // Should never have unexpected errors (like NPE from race condition)
+            assertEquals(0, unexpectedErrorCount.get(),
+                    "No unexpected errors should occur during concurrent sign/destroy");
+
+            // Either sign succeeded or was rejected because key was destroyed
+            assertEquals(1, successCount.get() + destroyedCount.get(),
+                    "Sign should either succeed or throw IllegalStateException");
+        }
+    }
+
+    @Test
+    void testConcurrentToAddressAndDestroy() throws InterruptedException {
+        // Test that concurrent toAddress and destroy operations don't cause NPE
+        final int iterations = 100;
+
+        for (int i = 0; i < iterations; i++) {
+            final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
+
+            final CountDownLatch startLatch = new CountDownLatch(1);
+            final AtomicInteger successCount = new AtomicInteger(0);
+            final AtomicInteger destroyedCount = new AtomicInteger(0);
+            final AtomicInteger unexpectedErrorCount = new AtomicInteger(0);
+
+            final ExecutorService executor = Executors.newFixedThreadPool(2);
+
+            // Thread 1: Try to get address
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    key.toAddress();
+                    successCount.incrementAndGet();
+                } catch (IllegalStateException e) {
+                    // Expected if key was destroyed
+                    destroyedCount.incrementAndGet();
+                } catch (Exception e) {
+                    // Unexpected - would indicate race condition (NPE, etc.)
+                    unexpectedErrorCount.incrementAndGet();
+                }
+            });
+
+            // Thread 2: Destroy the key
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    key.destroy();
+                } catch (Exception e) {
+                    unexpectedErrorCount.incrementAndGet();
+                }
+            });
+
+            // Start both threads simultaneously
+            startLatch.countDown();
+
+            executor.shutdown();
+            assertTrue(executor.awaitTermination(5, TimeUnit.SECONDS));
+
+            // Should never have unexpected errors (like NPE from race condition)
+            assertEquals(0, unexpectedErrorCount.get(),
+                    "No unexpected errors should occur during concurrent toAddress/destroy");
+
+            // Either toAddress succeeded or was rejected because key was destroyed
+            assertEquals(1, successCount.get() + destroyedCount.get(),
+                    "toAddress should either succeed or throw IllegalStateException");
+        }
     }
 
     // Helper method

@@ -21,7 +21,8 @@ import java.util.Optional;
  * <p>
  * <strong>Optional vs Required Fields:</strong>
  * <ul>
- * <li><strong>Required:</strong> {@code from} (sender address)</li>
+ * <li><strong>Required for signing:</strong> {@code from} (sender address) - may be null during
+ * construction but must be non-null when calling {@link #toUnsignedTransaction(long)}</li>
  * <li><strong>Optional:</strong> All other fields can be null and will be
  * auto-filled by {@code WalletClient}:
  * <ul>
@@ -43,7 +44,8 @@ import java.util.Optional;
  * {@code value} to amount, {@code data} can be null/empty</li>
  * </ul>
  * 
- * @param from                 the address sending the transaction (required)
+ * @param from                 the address sending the transaction (may be null during
+ *                             construction, but required for signing)
  * @param to                   the recipient address, or null for contract
  *                             deployment
  * @param value                the amount of native currency to transfer, or
@@ -59,6 +61,7 @@ import java.util.Optional;
  * @param isEip1559            {@code true} for EIP-1559 transactions,
  *                             {@code false} for legacy
  * @param accessList           the EIP-2930 access list, or null/empty
+ * @since 0.1.0-alpha
  */
 public record TransactionRequest(
         Address from,
@@ -72,6 +75,28 @@ public record TransactionRequest(
         HexData data,
         boolean isEip1559,
         List<AccessListEntry> accessList) {
+
+    /**
+     * Validates transaction request parameters.
+     *
+     * @throws IllegalArgumentException if gasLimit is negative, or if both legacy
+     *         (gasPrice) and EIP-1559 (maxFeePerGas/maxPriorityFeePerGas) fee fields are set
+     */
+    public TransactionRequest {
+        if (gasLimit != null && gasLimit < 0) {
+            throw new IllegalArgumentException("gasLimit cannot be negative: " + gasLimit);
+        }
+        if (nonce != null && nonce < 0) {
+            throw new IllegalArgumentException("nonce cannot be negative: " + nonce);
+        }
+        // Validate mutually exclusive fee fields
+        boolean hasLegacyGas = gasPrice != null;
+        boolean hasEip1559Gas = maxFeePerGas != null || maxPriorityFeePerGas != null;
+        if (hasLegacyGas && hasEip1559Gas) {
+            throw new IllegalArgumentException(
+                    "Cannot specify both gasPrice and EIP-1559 fee fields (maxFeePerGas/maxPriorityFeePerGas)");
+        }
+    }
 
     public Optional<Address> toOpt() {
         return Optional.ofNullable(to);
@@ -117,9 +142,13 @@ public record TransactionRequest(
      * @param chainId the chain ID for the transaction
      * @return unsigned transaction (Legacy or EIP-1559 depending on
      *         {@code isEip1559})
-     * @throws NullPointerException if required fields are null
+     * @throws IllegalStateException if required fields are null (from, nonce, gasLimit,
+     *         and gas fee fields depending on transaction type)
      */
     public io.brane.core.tx.UnsignedTransaction toUnsignedTransaction(final long chainId) {
+        if (from == null) {
+            throw new IllegalStateException("from address is required for unsigned transaction");
+        }
         if (nonce == null) {
             throw new IllegalStateException("nonce must be set");
         }

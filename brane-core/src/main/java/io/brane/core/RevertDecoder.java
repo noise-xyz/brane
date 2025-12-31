@@ -14,6 +14,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Decodes EVM revert reasons from raw transaction revert data.
@@ -81,6 +83,8 @@ import java.util.stream.Collectors;
  */
 public final class RevertDecoder {
 
+    private static final Logger LOG = LoggerFactory.getLogger(RevertDecoder.class);
+
     private static final String ERROR_STRING_SELECTOR = "08c379a0";
     private static final String PANIC_SELECTOR = "4e487b71";
 
@@ -143,7 +147,8 @@ public final class RevertDecoder {
                             RevertKind.ERROR_STRING, str.value(), rawDataHex);
                 }
             } catch (Exception e) {
-                // fallthrough
+                // Fallthrough to UNKNOWN - selector matched but payload was malformed
+                LOG.debug("Failed to decode Error(string) revert data: {}", e.getMessage());
             }
             return new Decoded(RevertKind.UNKNOWN, null, rawDataHex);
         }
@@ -157,7 +162,8 @@ public final class RevertDecoder {
                     return new Decoded(RevertKind.PANIC, mapPanicReason(code), rawDataHex);
                 }
             } catch (Exception e) {
-                // fallthrough
+                // Fallthrough to UNKNOWN - selector matched but payload was malformed
+                LOG.debug("Failed to decode Panic(uint256) revert data: {}", e.getMessage());
             }
             return new Decoded(RevertKind.UNKNOWN, null, rawDataHex);
         }
@@ -173,7 +179,8 @@ public final class RevertDecoder {
                 final String reason = formatCustomReason(custom.name(), results);
                 return new Decoded(RevertKind.CUSTOM, reason, rawDataHex);
             } catch (Exception e) {
-                // fallthrough
+                // Fallthrough to UNKNOWN - custom error matched but payload was malformed
+                LOG.debug("Failed to decode custom error '{}': {}", custom.name(), e.getMessage());
             }
         }
 
@@ -199,18 +206,23 @@ public final class RevertDecoder {
     }
 
     private static String mapPanicReason(final BigInteger code) {
-        final String hexCode = code.toString(16);
-        return switch (hexCode) {
-            case "1" -> "assertion failed";
-            case "11" -> "arithmetic overflow or underflow";
-            case "12" -> "division or modulo by zero";
-            case "21" -> "enum conversion out of range";
-            case "22" -> "invalid storage byte array indexing";
-            case "31" -> "pop on empty array";
-            case "32" -> "array index out of bounds";
-            case "41" -> "memory allocation overflow";
-            case "51" -> "zero-initialized variable of internal function type";
-            default -> "panic with code 0x" + hexCode;
+        // Solidity panic codes - switch on integer value for clarity
+        // See: https://docs.soliditylang.org/en/latest/control-structures.html#panic-via-assert-and-error-via-require
+        // Guard against overflow: known panic codes fit in an int
+        if (code.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0 || code.signum() < 0) {
+            return "panic with code 0x" + code.toString(16);
+        }
+        return switch (code.intValue()) {
+            case 0x01 -> "assertion failed";
+            case 0x11 -> "arithmetic overflow or underflow";
+            case 0x12 -> "division or modulo by zero";
+            case 0x21 -> "enum conversion out of range";
+            case 0x22 -> "invalid storage byte array indexing";
+            case 0x31 -> "pop on empty array";
+            case 0x32 -> "array index out of bounds";
+            case 0x41 -> "memory allocation overflow";
+            case 0x51 -> "zero-initialized variable of internal function type";
+            default -> "panic with code 0x" + code.toString(16);
         };
     }
 

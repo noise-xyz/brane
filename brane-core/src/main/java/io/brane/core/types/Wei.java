@@ -18,6 +18,8 @@ import java.util.Objects;
  * <p>
  * Use {@link #fromEther(BigDecimal)} and {@link #toEther()} for convenient
  * conversions.
+ *
+ * @since 0.1.0-alpha
  */
 public record Wei(BigInteger value) {
     private static final BigDecimal WEI_PER_ETHER = BigDecimal.TEN.pow(18);
@@ -37,14 +39,36 @@ public record Wei(BigInteger value) {
         return new Wei(wei);
     }
 
+    /**
+     * Creates a Wei value from an Ether amount.
+     *
+     * @param ether the ether amount (must not be null)
+     * @return the equivalent Wei value
+     * @throws IllegalArgumentException if the ether value results in fractional wei
+     */
     public static Wei fromEther(final BigDecimal ether) {
         Objects.requireNonNull(ether, "ether");
-        return new Wei(ether.multiply(WEI_PER_ETHER).toBigIntegerExact());
+        try {
+            return new Wei(ether.multiply(WEI_PER_ETHER).toBigIntegerExact());
+        } catch (ArithmeticException e) {
+            throw new IllegalArgumentException(
+                    "Ether value " + ether + " results in fractional wei", e);
+        }
     }
 
     private static final BigInteger GWEI_MULTIPLIER = BigInteger.valueOf(1_000_000_000L);
 
+    /**
+     * Creates a Wei value from a gwei amount.
+     *
+     * @param gwei the gwei amount (must be non-negative)
+     * @return the equivalent Wei value
+     * @throws IllegalArgumentException if gwei is negative
+     */
     public static Wei gwei(final long gwei) {
+        if (gwei < 0) {
+            throw new IllegalArgumentException("gwei cannot be negative: " + gwei);
+        }
         return new Wei(BigInteger.valueOf(gwei).multiply(GWEI_MULTIPLIER));
     }
 

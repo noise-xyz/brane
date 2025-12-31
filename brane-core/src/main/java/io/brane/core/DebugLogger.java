@@ -10,10 +10,6 @@ public final class DebugLogger {
 
     private static final Logger LOG = LoggerFactory.getLogger("io.brane.debug");
 
-    // Use modern colored output when enabled
-    private static final boolean USE_COLORS = System.console() != null
-            || "true".equals(System.getenv("FORCE_COLOR"));
-
     private DebugLogger() {
     }
 
@@ -52,7 +48,7 @@ public final class DebugLogger {
         // SECURITY: Always sanitize, even for colored output
         final String sanitized = LogSanitizer.sanitize(formatted);
 
-        if (USE_COLORS) {
+        if (AnsiColors.IS_TTY) {
             System.out.println(sanitized);
         } else {
             // Fall back to SLF4J for non-TTY environments

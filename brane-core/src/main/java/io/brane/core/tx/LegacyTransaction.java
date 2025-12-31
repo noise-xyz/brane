@@ -96,8 +96,43 @@ public record LegacyTransaction(
         return Rlp.encodeList(items);
     }
 
+    /**
+     * Encodes the signed transaction as a network-ready envelope.
+     *
+     * <p>
+     * The signature's {@code v} value must be EIP-155 encoded:
+     * <pre>
+     * v = chainId * 2 + 35 + yParity
+     * </pre>
+     * where {@code yParity} is 0 or 1 (the recovery ID from signing).
+     *
+     * <p>
+     * <b>Important:</b> The caller is responsible for computing the correct v value.
+     * The raw signing operation returns yParity (0 or 1), which must be transformed:
+     * <pre>{@code
+     * Signature rawSig = privateKey.sign(messageHash);
+     * int eip155V = (int) (chainId * 2 + 35 + rawSig.v());
+     * Signature eip155Sig = new Signature(rawSig.r(), rawSig.s(), eip155V);
+     * byte[] envelope = tx.encodeAsEnvelope(eip155Sig);
+     * }</pre>
+     *
+     * @param signature the signature with EIP-155 encoded v value (must be &ge; 35)
+     * @return bytes ready for eth_sendRawTransaction
+     * @throws NullPointerException     if signature is null
+     * @throws IllegalArgumentException if signature.v() &lt; 35 (not EIP-155 encoded)
+     */
     @Override
     public byte[] encodeAsEnvelope(final Signature signature) {
+        Objects.requireNonNull(signature, "signature is required");
+
+        // EIP-155: v = chainId * 2 + 35 + yParity, so minimum v is 35 (chainId=0, yParity=0)
+        // In practice chainId is always >= 1, so v should be >= 37
+        if (signature.v() < 35) {
+            throw new IllegalArgumentException(
+                    "Legacy transaction signature v must be EIP-155 encoded (>= 35), got: " + signature.v()
+                            + ". Did you forget to encode: v = chainId * 2 + 35 + yParity?");
+        }
+
         final List<RlpItem> items = new ArrayList<>(9);
 
         items.add(RlpNumeric.encodeLongUnsignedItem(nonce));
@@ -107,8 +142,7 @@ public record LegacyTransaction(
         items.add(RlpNumeric.encodeBigIntegerUnsignedItem(value.value()));
         items.add(new RlpString(data.toBytes()));
 
-        // Add signature components
-        // v is already EIP-155 encoded (chainId * 2 + 35 + yParity)
+        // Add signature components (v is already EIP-155 encoded)
         items.add(RlpNumeric.encodeLongUnsignedItem(signature.v()));
         items.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.r())));
         items.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.s())));

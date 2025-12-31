@@ -259,12 +259,12 @@ class ReadWriteContractTest {
                     new Hash("0x" + "a".repeat(64)),
                     new Hash("0x" + "0".repeat(64)),
                     0L,
-                    null,
-                    null,
-                    HexData.EMPTY,
+                    new Address("0x" + "1".repeat(40)),  // from address
+                    null,  // to can be null for contract creation
+                    null,  // contractAddress null for non-deployment
                     java.util.List.of(),
                     true,
-                    null);
+                    Wei.of(21000L));
         }
     }
 
