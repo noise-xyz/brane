@@ -50,7 +50,7 @@ public record Transaction(
         Address to,
         HexData input,
         Wei value,
-        Long nonce,
+        long nonce,
         Long blockNumber) {
 
     /**
@@ -63,7 +63,7 @@ public record Transaction(
         Objects.requireNonNull(from, "from is required");
         Objects.requireNonNull(input, "input is required");
         Objects.requireNonNull(value, "value is required");
-        Objects.requireNonNull(nonce, "nonce is required");
+        // nonce uses primitive long, so no null check needed
         // to can be null (contract creation)
         // blockNumber can be null (pending transaction)
     }
