@@ -20,15 +20,15 @@ import java.util.Optional;
  *   <li>{@code nonce} - the transaction nonce</li>
  * </ul>
  *
- * <p>Optional fields:
+ * <p>Optional fields (use {@code *Opt()} accessors):
  * <ul>
- *   <li>{@code to} - the recipient address (empty for contract creation)</li>
+ *   <li>{@code to} - the recipient address (null for contract creation)</li>
  *   <li>{@code blockNumber} - the block number (null if pending)</li>
  * </ul>
  *
  * @param hash        the transaction hash (required)
  * @param from        the sender address (required)
- * @param to          the recipient address (empty for contract creation)
+ * @param to          the recipient address (null for contract creation)
  * @param input       the input data (required, may be empty)
  * @param value       the value transferred (required)
  * @param nonce       the transaction nonce (required)
@@ -37,7 +37,7 @@ import java.util.Optional;
 public record Transaction(
         Hash hash,
         Address from,
-        Optional<Address> to,
+        Address to,
         HexData input,
         Wei value,
         Long nonce,
@@ -54,8 +54,25 @@ public record Transaction(
         Objects.requireNonNull(input, "input is required");
         Objects.requireNonNull(value, "value is required");
         Objects.requireNonNull(nonce, "nonce is required");
-        // to can be empty (contract creation)
-        to = to != null ? to : Optional.empty();
+        // to can be null (contract creation)
         // blockNumber can be null (pending transaction)
+    }
+
+    /**
+     * Returns the recipient address as an Optional.
+     *
+     * @return Optional containing the recipient, or empty for contract creation
+     */
+    public Optional<Address> toOpt() {
+        return Optional.ofNullable(to);
+    }
+
+    /**
+     * Returns the block number as an Optional.
+     *
+     * @return Optional containing the block number, or empty if pending
+     */
+    public Optional<Long> blockNumberOpt() {
+        return Optional.ofNullable(blockNumber);
     }
 }
