@@ -1,289 +1,502 @@
-# TODO: brane-contract Module Issues
+# TODO: brane-core Module Issues
 
-This document captures issues identified in the brane-contract module code review (Round 2), with full context, acceptance criteria, and proposed fixes.
+This document captures issues identified in the brane-core module code review, with full context, acceptance criteria, and proposed fixes.
 
-**Previous Review:** Round 1 identified 11 issues, of which 10 were fixed and 1 deferred. This round found 8 new issues.
+---
+
+## CRITICAL PRIORITY
+
+### 1. Thread-Safety Bug in HexData.value() - Race Condition
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/types/HexData.java:118-123`
+
+**Problem:**
+The `value()` method has a race condition. Multiple threads can call `value()` simultaneously, and since `value` is not volatile, one thread's write may not be visible to another. This is a classic double-checked locking bug without proper synchronization.
+
+**Evidence:**
+```java
+@com.fasterxml.jackson.annotation.JsonValue
+public String value() {
+    if (value == null) {  // Thread A reads null
+        value = Hex.encode(raw);  // Thread B also enters here
+    }
+    return value;  // Could return partially constructed String
+}
+```
+
+**Impact:** Data corruption or NullPointerException under concurrent access. HexData is used throughout the codebase for transaction data, addresses, and hashes.
+
+**Acceptance Criteria:**
+- [ ] Use AtomicReference or volatile with double-checked locking
+- [ ] Ensure thread-safe lazy initialization
+- [ ] Add concurrent access test
+
+**Proposed Fix:**
+```java
+private volatile String value;
+
+public String value() {
+    String v = value;
+    if (v == null) {
+        synchronized (this) {
+            v = value;
+            if (v == null) {
+                value = v = Hex.encode(raw);
+            }
+        }
+    }
+    return v;
+}
+```
+
+---
+
+### 2. Private Key Material Not Cleared from Memory
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/crypto/PrivateKey.java`
+
+**Problem:**
+Private key bytes are converted to BigInteger but the original byte array is never zeroed. Also, PrivateKey lacks a `destroy()` or `close()` method to clear sensitive material. This is a security vulnerability - private keys can remain in memory longer than necessary, making them vulnerable to memory dumps or cold boot attacks.
+
+**Impact:** Private keys may be extractable from memory dumps, crash logs, or via memory scanning attacks.
+
+**Acceptance Criteria:**
+- [ ] Zero byte arrays after conversion to BigInteger
+- [ ] Implement `javax.security.auth.Destroyable` interface
+- [ ] Document security considerations
+- [ ] Add test verifying key material can be destroyed
+
+**Proposed Fix:**
+```java
+public final class PrivateKey implements Destroyable {
+    private volatile boolean destroyed = false;
+
+    @Override
+    public void destroy() {
+        // Zero the internal BigInteger if possible
+        destroyed = true;
+    }
+
+    @Override
+    public boolean isDestroyed() {
+        return destroyed;
+    }
+}
+```
+
+---
+
+## HIGH PRIORITY
+
+### 3. Static Mutable FixedPointCombMultiplier in FastSigner
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/crypto/FastSigner.java:45`
+
+**Problem:**
+`FixedPointCombMultiplier` is stored in a static field and reused. Bouncy Castle's `FixedPointCombMultiplier` caches precomputed tables internally. While likely thread-safe, this should be verified or documented explicitly.
+
+**Evidence:**
+```java
+private static final FixedPointCombMultiplier MULTIPLIER = new FixedPointCombMultiplier();
+```
+
+**Impact:** Potential thread-safety issue in cryptographic signing code. Could result in incorrect signatures under concurrent load.
+
+**Acceptance Criteria:**
+- [ ] Verify BouncyCastle's thread-safety guarantees for FixedPointCombMultiplier
+- [ ] Either document thread-safety or create new instance per call
+- [ ] Add concurrent signing test
+
+---
+
+### 4. Duplicate ChainProfile Records in Different Packages
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/model/ChainProfile.java`
+- `brane-core/src/main/java/io/brane/core/chain/ChainProfile.java`
+
+**Problem:**
+Two different `ChainProfile` records exist with different fields:
+- `io.brane.core.model.ChainProfile(chainId, name, nativeCurrencySymbol)`
+- `io.brane.core.chain.ChainProfile(chainId, defaultRpcUrl, supportsEip1559, defaultPriorityFeePerGas)`
+
+This is confusing, violates single responsibility, and creates naming conflicts for imports.
+
+**Impact:** Developers must use fully qualified names or carefully manage imports. High cognitive overhead and potential for bugs.
+
+**Acceptance Criteria:**
+- [ ] Consolidate into a single ChainProfile with all fields
+- [ ] Deprecate one or merge fields
+- [ ] Update all usages across codebase
+
+---
+
+### 5. BraneTxBuilderException Not Part of BraneException Hierarchy
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/builder/BraneTxBuilderException.java`
+
+**Problem:**
+`BraneTxBuilderException` extends `RuntimeException` directly, not `BraneException`. This breaks the sealed exception hierarchy pattern established for consistent error handling.
+
+**Evidence:**
+```java
+public final class BraneTxBuilderException extends RuntimeException {
+```
+
+**Impact:** Users catching `BraneException` will miss transaction builder errors. Inconsistent error handling across the SDK.
+
+**Acceptance Criteria:**
+- [ ] Either add BraneTxBuilderException to BraneException permits list
+- [ ] Or make it extend TxnException
+- [ ] Update tests and documentation
+
+---
+
+### 6. Missing Null Check in TransactionRequest.toUnsignedTransaction()
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/model/TransactionRequest.java:122`
+
+**Problem:**
+The method throws NullPointerException for `from` but doesn't validate it upfront. If `from` is null but other fields are set, the transaction can be created but will fail silently or with cryptic errors later.
+
+**Impact:** Poor developer experience with unhelpful error messages when creating unsigned transactions.
+
+**Acceptance Criteria:**
+- [ ] Add explicit null check for `from` at start of method
+- [ ] Throw IllegalStateException with clear message: "from address is required for unsigned transaction"
+- [ ] Add test for null from field
+
+---
+
+### 7. Exception Swallowing in RevertDecoder and InternalAbi
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/RevertDecoder.java:145-147`
+- `brane-core/src/main/java/io/brane/core/abi/InternalAbi.java:1012`
+
+**Problem:**
+Exceptions are caught and silently swallowed with `// fallthrough` comments. This makes debugging extremely difficult when decoding fails.
+
+**Evidence:**
+```java
+} catch (Exception e) {
+    // fallthrough
+}
+```
+
+**Impact:** Lost diagnostic information when ABI decoding fails. Hours wasted debugging silent failures.
+
+**Acceptance Criteria:**
+- [ ] Log at DEBUG level before falling through
+- [ ] Or preserve the cause for better diagnostics
+- [ ] Document why fallthrough is acceptable in each case
+
+---
+
+### 8. Missing Validation in LegacyTransaction.encodeAsEnvelope()
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/tx/LegacyTransaction.java:100`
+
+**Problem:**
+No null check for signature parameter in `encodeAsEnvelope()` unlike `Eip1559Transaction` which has `Objects.requireNonNull(signature, "signature is required")`. Inconsistent validation across transaction types.
+
+**Acceptance Criteria:**
+- [ ] Add `Objects.requireNonNull(signature, "signature")` at method start
+- [ ] Ensure consistent validation across all transaction types
 
 ---
 
 ## MEDIUM PRIORITY
 
-### 1. AbiBinding Uses Non-Thread-Safe HashMap
+### 9. Inconsistent Package Naming: util vs utils
 
 **Files:**
-- `brane-core/src/main/java/io/brane/core/abi/AbiBinding.java:11-24`
+- `brane-core/src/main/java/io/brane/core/util/MethodUtils.java`
+- `brane-core/src/main/java/io/brane/core/utils/Topics.java`
 
 **Problem:**
-The `AbiBinding` class uses a plain `HashMap` for caching method-to-metadata mappings. While this cache is populated entirely during construction, the class is used by `ContractInvocationHandler` which may be invoked from multiple threads (the proxy instance could be shared). Although the cache is read-only after construction, `HashMap` does not guarantee safe publication without explicit synchronization or using a thread-safe collection.
-
-**Evidence:**
-```java
-private final Map<Method, Abi.FunctionMetadata> cache;
-
-public AbiBinding(final Abi abi, final Class<?> contractInterface) {
-    // ...
-    this.cache = new HashMap<>();
-    // ... populates cache
-}
-```
-
-**Impact:** While unlikely to cause issues in practice (since the cache is fully populated before any reads), the JMM does not guarantee safe publication of HashMap contents without synchronization. A reader thread could theoretically see a partially constructed HashMap.
+Two utility packages with inconsistent naming: `io.brane.core.util` vs `io.brane.core.utils`. This creates confusion and makes imports harder to remember.
 
 **Acceptance Criteria:**
-- [x] Cache MUST be safely published for concurrent read access
-- [x] Use `Map.copyOf()` after population to create an immutable snapshot
-- [ ] ~~Use `Collections.unmodifiableMap()` wrapper~~ (not needed)
-- [ ] ~~Initialize with `ConcurrentHashMap`~~ (not needed)
-- [x] Add test demonstrating thread-safe access pattern
+- [ ] Standardize on one naming convention (prefer `util` - singular)
+- [ ] Move `Topics` to `io.brane.core.util`
+- [ ] Update all imports
 
 ---
 
-### 2. ReadWriteContract Ignores ContractOptions
+### 10. Empty Validation Block in Bytes Record
 
 **Files:**
-- `brane-contract/src/main/java/io/brane/contract/ReadWriteContract.java:116-126, 166-181`
+- `brane-core/src/main/java/io/brane/core/abi/Bytes.java:14-19`
 
 **Problem:**
-`ReadWriteContract.send()` and `sendAndWait()` always use EIP-1559 transactions (`TxBuilder.eip1559()`) and do not apply any `ContractOptions` like gas limit or max priority fee. In contrast, `ContractInvocationHandler.buildTransactionRequest()` properly respects `ContractOptions` for transaction type, gas limit, and max priority fee.
-
-This creates an API inconsistency: users who use `BraneContract.bind()` get configurable transaction options, but users who use `ReadWriteContract.from()` get hardcoded defaults.
+The compact constructor has an empty if block with only a comment. Dead code that should either be implemented or removed.
 
 **Evidence:**
 ```java
-// ReadWriteContract.send() - no options support
-public Hash send(final String functionName, final Wei value, final Object... args) {
-    // ...
-    final TransactionRequest request =
-            TxBuilder.eip1559()  // Always EIP-1559, no legacy option
-                    .to(address())
-                    .value(value)
-                    .data(new HexData(fnCall.data()))
-                    .build();  // No gasLimit, no maxPriorityFee
-    return walletClient.sendTransaction(request);
-}
-```
-
-**Impact:** Users of `ReadWriteContract` cannot configure gas limits, priority fees, or use legacy transactions, leading to potential gas estimation issues or transaction failures on non-EIP-1559 chains.
-
-**Acceptance Criteria:**
-- [x] Add `ContractOptions` parameter to `ReadWriteContract.from()` factory method
-- [x] Apply `transactionType` option (LEGACY vs EIP-1559) in `send()`/`sendAndWait()`
-- [x] Apply `gasLimit` option to transaction requests
-- [x] Apply `maxPriorityFee` option for EIP-1559 transactions
-- [x] Add tests verifying options are applied correctly
-- [x] Update Javadoc to document options support
-
-**Proposed Fix:**
-```java
-public static ReadWriteContract from(
-        final Address address,
-        final String abiJson,
-        final PublicClient publicClient,
-        final WalletClient walletClient,
-        final ContractOptions options) {  // New parameter
-    // ... store options and use in send/sendAndWait
-}
-```
-
----
-
-### 3. deployRequest() Missing Constructor Validation
-
-**Files:**
-- `brane-contract/src/main/java/io/brane/contract/BraneContract.java:268-292`
-
-**Problem:**
-The `deployRequest()` method does not validate that the provided arguments match the constructor parameters in the ABI. It simply passes arguments to `abi.encodeConstructor(args)` which may throw a cryptic error or produce incorrect encoding if types don't match.
-
-**Evidence:**
-```java
-public static io.brane.core.model.TransactionRequest deployRequest(
-        final String abiJson,
-        final String bytecode,
-        final Object... args) {
-    // ... no validation of args against ABI constructor
-    final HexData encodedArgs = abi.encodeConstructor(args);
-    // ...
-}
-```
-
-**Impact:** Users passing wrong argument types or counts get unhelpful error messages from the encoding layer rather than clear validation errors.
-
-**Acceptance Criteria:**
-- [x] Validate argument count matches ABI constructor input count (already in encodeConstructor)
-- [x] Provide clear error message on argument count mismatch (already in encodeConstructor)
-- [x] Add test for constructor argument validation
-- [x] Error message MUST include expected vs actual argument count (already in encodeConstructor)
-
-**Proposed Fix:**
-```java
-public static TransactionRequest deployRequest(
-        final String abiJson,
-        final String bytecode,
-        final Object... args) {
-    final Abi abi = Abi.fromJson(abiJson);
-
-    // Get constructor metadata and validate
-    final var constructor = abi.getConstructor();
-    if (constructor.isPresent()) {
-        final int expected = constructor.get().inputs().size();
-        if (args.length != expected) {
-            throw new IllegalArgumentException(
-                    "Constructor expects " + expected + " arguments but got " + args.length);
-        }
-    } else if (args.length > 0) {
-        throw new IllegalArgumentException(
-                "Contract has no constructor but " + args.length + " arguments provided");
+public Bytes {
+    Objects.requireNonNull(value, "value cannot be null");
+    if (!isDynamic && value.value().length() > 66) {
+        // Actually bytesN can be up to 32 bytes.
+        // We don't strictly enforce N here, but we could.
     }
-
-    final HexData encodedArgs = abi.encodeConstructor(args);
-    // ...
 }
 ```
+
+**Acceptance Criteria:**
+- [ ] Either enforce bytesN validation (throw exception for oversized data)
+- [ ] Or remove the empty block entirely
+- [ ] Document validation behavior
+
+---
+
+### 11. Magic Number in LogSanitizer Truncation
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/LogSanitizer.java:31-32`
+
+**Problem:**
+Magic numbers 2000 and 200 for truncation limits without explanation. Also inconsistent: checks `> 2000` but truncates to 200 characters.
+
+**Evidence:**
+```java
+if (sanitized.length() > 2000) {
+    sanitized = sanitized.substring(0, 200) + "...(truncated)";
+}
+```
+
+**Impact:** Confusing behavior - if string is 2001 chars, it gets truncated to 200 chars (losing 1800 chars unnecessarily).
+
+**Acceptance Criteria:**
+- [ ] Extract to named constants with documentation
+- [ ] Fix inconsistency (probably should truncate to ~2000, not 200)
+- [ ] Add tests for truncation behavior
+
+---
+
+### 12. Array.typeName() Returns "unknown" for Empty Arrays
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/abi/Array.java:46`
+
+**Problem:**
+Cannot determine element type for empty arrays, returns "unknown" which breaks ABI encoding.
+
+**Evidence:**
+```java
+String elementTypeName = values.isEmpty() ? "unknown" : values.get(0).typeName();
+```
+
+**Acceptance Criteria:**
+- [ ] Store element type name in constructor
+- [ ] Or derive from Class<T> type parameter
+- [ ] Add test for empty array type name
+
+---
+
+### 13. Eip1559Transaction.encodeForSigning() Ignores chainId Parameter
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/tx/Eip1559Transaction.java:112-113`
+
+**Problem:**
+The method signature accepts a chainId parameter but ignores it, using the record's chainId instead. This is confusing and potentially error-prone.
+
+**Evidence:**
+```java
+@Override
+public byte[] encodeForSigning(final long chainId) {
+    // Note: chainId parameter is ignored; we use the chainId from the record
+```
+
+**Acceptance Criteria:**
+- [ ] Either validate that parameter matches record's chainId (throw if mismatch)
+- [ ] Or change interface to not require chainId for EIP-1559
+- [ ] Or document this behavior prominently
+
+---
+
+### 14. Missing equals/hashCode for AccessListEntry
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/model/AccessListEntry.java`
+
+**Problem:**
+`AccessListEntry` is a regular class, not a record, but doesn't override `equals()` and `hashCode()`. This could cause issues when comparing transactions or using in collections.
+
+**Acceptance Criteria:**
+- [ ] Convert to record (preferred - it's just data)
+- [ ] Or implement equals/hashCode manually
+- [ ] Add equality tests
+
+---
+
+### 15. Hex.decode Duplication in Eip1559Transaction
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/tx/Eip1559Transaction.java:202-211`
+
+**Problem:**
+`hexToBytes()` is reimplemented locally instead of using `io.brane.primitives.Hex.decode()`. Code duplication and potential for divergent behavior.
+
+**Evidence:**
+```java
+private static byte[] hexToBytes(final String hex) {
+    String clean = hex.startsWith("0x") ? hex.substring(2) : hex;
+    // ...manual implementation...
+}
+```
+
+**Acceptance Criteria:**
+- [ ] Replace with `io.brane.primitives.Hex.decode(hex)`
+- [ ] Remove local implementation
+
+---
+
+### 16. Transaction Record Missing Validation
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/model/Transaction.java`
+
+**Problem:**
+The Transaction record has no compact constructor validation. Fields like `hash`, `from`, `input`, `value` should not be null for a valid transaction.
+
+**Acceptance Criteria:**
+- [ ] Add compact constructor with null checks for required fields
+- [ ] Document which fields are optional vs required
+- [ ] Add validation tests
+
+---
+
+### 17. Inconsistent Use of Optional
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/model/Transaction.java` uses `Optional<Address> to`
+- `brane-core/src/main/java/io/brane/core/model/TransactionRequest.java` uses nullable `Address to`
+
+**Problem:**
+Inconsistent handling of nullable `to` field - one uses Optional, one uses nullable. This creates API confusion.
+
+**Acceptance Criteria:**
+- [ ] Standardize on one approach across the codebase
+- [ ] Prefer nullable with `*Opt()` accessors (Brane pattern)
+- [ ] Update affected classes
+
+---
+
+### 18. BytesSchema Missing N Parameter for bytesN
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/abi/TypeSchema.java:83-88`
+
+**Problem:**
+`BytesSchema(boolean isDynamic)` doesn't track the size N for static bytesN types. This makes it impossible to properly validate bytesN decoding.
+
+**Evidence:**
+```java
+record BytesSchema(boolean isDynamic) implements TypeSchema {
+```
+
+**Acceptance Criteria:**
+- [ ] Add `int size` parameter for static bytes (1-32)
+- [ ] Use -1 or Optional for dynamic bytes
+- [ ] Add validation tests
 
 ---
 
 ## LOW PRIORITY
 
-### 4. Missing Tuple/Struct Return Type Support
+### 19. Missing Javadoc on Several Public Classes/Methods
 
-**Files:**
-- `brane-contract/src/main/java/io/brane/contract/BraneContract.java:358-424`
-
-**Problem:**
-The `validateReturnType()` method does not handle tuple/struct return types, which are common in Solidity contracts. If a user creates an interface method that returns a custom record type to match a tuple ABI output, validation will fail with "Unsupported return type" even though the underlying ABI decoder might support it.
-
-**Evidence:**
-```java
-private static void validateReturnType(final Method method, final Abi.FunctionMetadata metadata) {
-    // ... handles BigInteger, Address, Boolean, String, byte[], HexData, List, arrays
-    // But no handling for tuple types or custom record classes
-    throw new IllegalArgumentException(
-            "Unsupported return type for view function "
-                    + method.getName()
-                    + ": "
-                    + returnType.getSimpleName());
-}
-```
-
-**Impact:** Functions returning structs/tuples cannot be bound through the proxy API, limiting usability for complex contracts.
+**Locations:**
+- `TxBuilder` interface methods lack Javadoc
+- `Eip1559Builder` and `LegacyBuilder` methods lack Javadoc
+- `MethodUtils.isObjectMethod()` documentation could be improved
+- `AccessListWithGas` record parameters need `@param` tags
+- `MulticallResult` record needs fuller Javadoc
+- `Call3` record needs fuller Javadoc
 
 **Acceptance Criteria:**
-- [ ] ~~Add validation for record types~~ (not implemented - feature limitation)
-- [x] Document this limitation explicitly in class Javadoc
-- [ ] ~~Validate record component count~~ (not implemented)
-- [ ] ~~Add test for tuple return type~~ (not implemented)
+- [ ] Add Javadoc with @param, @return, @throws tags
+- [ ] Follow pattern established in `Address.java`
 
 ---
 
-### 5. @Payable Silently Falls Back to Zero Value
+### 20. LogFormatter Has Hardcoded Spacing
 
 **Files:**
-- `brane-contract/src/main/java/io/brane/contract/ContractInvocationHandler.java:61-67`
+- `brane-core/src/main/java/io/brane/core/LogFormatter.java:132-133`
 
 **Problem:**
-The payable handling logic silently falls back to `Wei.of(0)` if a method is annotated with `@Payable` but invoked without a `Wei` argument. While bind-time validation should catch interface mismatches, runtime invocation through reflection could bypass this.
+Uses hardcoded 10-space indentation which may not align well in all terminals or log viewers.
 
 **Evidence:**
 ```java
-if (isPayable && invocationArgs.length > 0 && invocationArgs[0] instanceof Wei) {
-    value = (Wei) invocationArgs[0];
-    contractArgs = Arrays.copyOfRange(invocationArgs, 1, invocationArgs.length);
-} else {
-    value = Wei.of(0);  // Silent fallback - no warning or error
-    contractArgs = invocationArgs;
-}
+"[CALL]%s tag=%s\n          to=%s\n          data=%s"
 ```
 
-**Impact:** Minor - validation at bind time should prevent this, but defense-in-depth would be better.
-
 **Acceptance Criteria:**
-- [ ] ~~Throw at runtime~~ (not needed - bind-time validation catches this)
-- [x] Document explicitly that bind-time validation is relied upon
-- [x] Add test verifying behavior when @Payable method called without Wei
+- [ ] Consider using constant for indentation
+- [ ] Or dynamic alignment based on context
 
 ---
 
-### 6. ContractOptions.Builder Allows Zero Timeout
+### 21. Utf8String.contentByteSize() Allocates on Every Call
 
 **Files:**
-- `brane-contract/src/main/java/io/brane/contract/ContractOptions.java:194-200`
+- `brane-core/src/main/java/io/brane/core/abi/Utf8String.java:37-41`
 
 **Problem:**
-The `Builder.timeout()` method only validates that the duration is not negative, but allows `Duration.ZERO`. A zero timeout would cause `sendTransactionAndWait()` to fail immediately without any polling attempts.
+`contentByteSize()` calls `value.getBytes(UTF_8)` which allocates a new array each time. Performance concern for frequently called method.
 
 **Evidence:**
 ```java
-public Builder timeout(final Duration timeout) {
-    Objects.requireNonNull(timeout, "timeout must not be null");
-    if (timeout.isNegative()) {
-        throw new IllegalArgumentException("timeout must not be negative");
-    }
-    this.timeout = timeout;
-    return this;
-}
+public int contentByteSize() {
+    int len = value.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
 ```
 
-**Impact:** Users setting `timeout(Duration.ZERO)` would get confusing behavior where transactions are sent but never waited for.
-
 **Acceptance Criteria:**
-- [x] Reject zero timeout: `if (timeout.isNegative() || timeout.isZero())`
-- [ ] ~~Document that zero timeout means "no waiting"~~ (not needed - rejected)
-- [x] Add test for zero timeout behavior
+- [ ] Cache byte length computation (lazy or eager)
+- [ ] Or document performance characteristics
 
 ---
 
-### 7. Missing equals/hashCode in ContractOptions
+## TEST COVERAGE CONCERNS
 
-**Files:**
-- `brane-contract/src/main/java/io/brane/contract/ContractOptions.java`
+### 22. Missing Tests for Edge Cases
 
-**Problem:**
-`ContractOptions` is an immutable value class but does not override `equals()` or `hashCode()`. This means two `ContractOptions` instances with identical field values will not be equal. While this may be intentional (identity-based comparison), it could surprise users who expect value semantics from an immutable configuration object.
-
-**Evidence:**
-```java
-public final class ContractOptions {
-    // ... fields and methods
-    // No equals() or hashCode() implementations
-}
-```
-
-**Impact:** Users cannot reliably compare or use `ContractOptions` in collections that rely on value equality.
+**Areas lacking tests:**
+- `HexData` concurrent access test
+- `InternalAbi.decodeMulticallResults()` with malformed data
+- `RevertDecoder` with various custom error formats
+- `TransactionRequest.toUnsignedTransaction()` validation paths
+- `Signature.getRecoveryId()` with various v values
+- `PrivateKey.recoverAddress()` with edge case signatures
+- `LogSanitizer` with various sensitive patterns
 
 **Acceptance Criteria:**
-- [ ] ~~Convert to a record~~ (not chosen - would require breaking changes)
-- [x] Implement `equals()` and `hashCode()` based on all field values
-- [ ] ~~Document explicitly that reference equality is intentional~~ (not needed)
-- [x] Add test for equality behavior
-
-**Note:** This is related to the deferred Issue #10 from Round 1 (ContractOptions should be a record).
+- [ ] Add tests for concurrent HexData access
+- [ ] Add tests for ABI decoder edge cases
+- [ ] Add tests for error handling paths
+- [ ] Add tests for signature recovery edge cases
 
 ---
 
-### 8. Duplicate isObjectMethod() Utility
+### 23. No Integration Tests for AbiBinding
 
 **Files:**
-- `brane-contract/src/main/java/io/brane/contract/ContractInvocationHandler.java:129`
-- `brane-core/src/main/java/io/brane/core/abi/AbiBinding.java:45`
-
-**Problem:**
-The utility method `isObjectMethod(Method)` is duplicated in both `ContractInvocationHandler` and `AbiBinding` with identical implementation.
-
-**Evidence:**
-```java
-// In both files:
-private static boolean isObjectMethod(final Method method) {
-    return method.getDeclaringClass() == Object.class;
-}
-```
-
-**Impact:** Minor code duplication; any fix or enhancement must be applied twice.
+- No test file for `brane-core/src/main/java/io/brane/core/abi/AbiBinding.java`
 
 **Acceptance Criteria:**
-- [x] Extract to a shared utility class (MethodUtils in brane-core)
-- [x] Move validation logic to a single location
-- [ ] ~~Document why duplication is acceptable~~ (not needed - extracted)
+- [ ] Add unit tests for AbiBinding
+- [ ] Test method resolution with various interfaces
+- [ ] Test caching behavior
 
 ---
 
@@ -291,44 +504,70 @@ private static boolean isObjectMethod(final Method method) {
 
 | # | Issue | Severity | Type | Status |
 |---|-------|----------|------|--------|
-| 1 | AbiBinding non-thread-safe HashMap | MEDIUM | Thread Safety | FIXED |
-| 2 | ReadWriteContract ignores ContractOptions | MEDIUM | API Inconsistency | FIXED |
-| 3 | deployRequest() missing constructor validation | MEDIUM | Validation | FIXED |
-| 4 | Missing tuple/struct return type support | LOW | Feature Gap | DOCUMENTED |
-| 5 | @Payable silent fallback to zero | LOW | Defensive Programming | FIXED |
-| 6 | Zero timeout allowed | LOW | Validation | FIXED |
-| 7 | Missing equals/hashCode in ContractOptions | LOW | API Design | FIXED |
-| 8 | Duplicate isObjectMethod() | LOW | Code Duplication | FIXED |
+| 1 | Thread-safety bug in HexData.value() | CRITICAL | Thread Safety | TODO |
+| 2 | Private key material not cleared | CRITICAL | Security | TODO |
+| 3 | Static FixedPointCombMultiplier thread safety | HIGH | Thread Safety | TODO |
+| 4 | Duplicate ChainProfile records | HIGH | API Design | TODO |
+| 5 | BraneTxBuilderException not in hierarchy | HIGH | API Consistency | TODO |
+| 6 | Missing null check in TransactionRequest | HIGH | Validation | TODO |
+| 7 | Exception swallowing in decoders | HIGH | Error Handling | TODO |
+| 8 | Missing validation in LegacyTransaction | HIGH | Validation | TODO |
+| 9 | Inconsistent util vs utils packages | MEDIUM | Code Organization | TODO |
+| 10 | Empty validation block in Bytes | MEDIUM | Code Quality | TODO |
+| 11 | Magic numbers in LogSanitizer | MEDIUM | Code Quality | TODO |
+| 12 | Array.typeName() returns "unknown" | MEDIUM | API Design | TODO |
+| 13 | encodeForSigning() ignores chainId | MEDIUM | API Design | TODO |
+| 14 | Missing equals/hashCode in AccessListEntry | MEDIUM | API Design | TODO |
+| 15 | Hex.decode duplication | MEDIUM | Code Duplication | TODO |
+| 16 | Transaction record missing validation | MEDIUM | Validation | TODO |
+| 17 | Inconsistent use of Optional | MEDIUM | API Consistency | TODO |
+| 18 | BytesSchema missing size parameter | MEDIUM | Incomplete Implementation | TODO |
+| 19 | Missing Javadoc | LOW | Documentation | TODO |
+| 20 | Hardcoded spacing in LogFormatter | LOW | Code Quality | TODO |
+| 21 | Utf8String allocates on every call | LOW | Performance | TODO |
+| 22 | Missing edge case tests | MEDIUM | Test Coverage | TODO |
+| 23 | No AbiBinding tests | MEDIUM | Test Coverage | TODO |
 
 ---
 
 ## Recommended Implementation Order
 
-1. **Issue #2** - Add ContractOptions support to ReadWriteContract (API consistency)
-2. **Issue #3** - Add constructor validation to deployRequest() (better errors)
-3. **Issue #1** - Fix AbiBinding thread safety (correctness)
-4. **Issue #7** - Fix ContractOptions equals/hashCode (consider converting to record)
-5. **Issue #6** - Reject zero timeout (validation)
-6. **Issue #5** - Document or enforce @Payable runtime behavior
-7. **Issue #4** - Document tuple limitation or implement support
-8. **Issue #8** - Extract shared utility (cleanup)
+### Phase 1: Critical Security & Thread Safety
+1. **Issue #1** - Fix HexData thread safety (data integrity)
+2. **Issue #2** - Clear private key material (security)
+3. **Issue #3** - Verify FastSigner thread safety (crypto correctness)
+
+### Phase 2: High Priority API Issues
+4. **Issue #5** - Fix BraneTxBuilderException hierarchy (API consistency)
+5. **Issue #6** - Add TransactionRequest validation (developer experience)
+6. **Issue #7** - Fix exception swallowing (debugging)
+7. **Issue #8** - Add LegacyTransaction validation (consistency)
+8. **Issue #4** - Consolidate ChainProfile (API cleanup)
+
+### Phase 3: Medium Priority Improvements
+9. **Issue #9** - Standardize package naming
+10. **Issue #14** - Fix AccessListEntry equals/hashCode
+11. **Issue #15** - Remove Hex.decode duplication
+12. **Issue #16** - Add Transaction validation
+13. **Issue #17** - Standardize Optional usage
+14. **Issue #18** - Fix BytesSchema
+15. **Issue #10-13** - Code quality fixes
+
+### Phase 4: Low Priority & Tests
+16. **Issues #19-21** - Documentation and polish
+17. **Issues #22-23** - Test coverage improvements
 
 ---
 
-## Previously Completed (Round 1)
+## What's Good (Keep Doing)
 
-For reference, the following issues were addressed in the previous review round:
-
-| Issue | Description | Resolution |
-|-------|-------------|------------|
-| ContractOptions fields ignored | gasLimit, transactionType, maxPriorityFee not applied | Fixed in ContractInvocationHandler |
-| ReadWriteContract cannot send ETH | Hardcoded Wei.of(0) | Added overloaded methods with Wei parameter |
-| Missing revert handling in proxy | invokeView() didn't decode reverts | Added try-catch with RevertDecoder |
-| Missing String return type | validateReturnType() rejected String | Added String.class support |
-| No ABI payable validation | @Payable not checked against ABI | Added isPayable() validation |
-| Null check missing in proxy | NPE on null RPC response | Added null/blank check |
-| Missing bytes return types | byte[]/HexData not supported | Added isBytesType() helper |
-| Inconsistent API behaviors | Different error handling across APIs | Unified with revert handling fix |
-| Missing array return types | List/array not supported | Added isArrayType() helper |
-| Missing Javadoc for exceptions | Proxy exceptions undocumented | Added runtime exceptions section |
-| ContractOptions as record | 263 lines of boilerplate | DEFERRED (optional, superseded by Issue #7) |
+1. **Excellent use of Java 21 records** - Immutable data types with validation in compact constructors
+2. **Sealed interfaces** - `AbiType`, `TypeSchema`, `UnsignedTransaction`, `BraneException` properly use sealed types
+3. **Pattern matching** - Good use of switch expressions with pattern matching
+4. **Documentation** - Many classes have excellent Javadoc with examples (e.g., `Address`, `RevertDecoder`)
+5. **Input validation** - Most record compact constructors validate inputs properly
+6. **Defensive copies** - `Signature` makes defensive copies of byte arrays
+7. **Security awareness** - `LogSanitizer` exists to prevent credential leakage
+8. **Performance optimization** - `FastAbiEncoder` and `FastSigner` show attention to performance
+9. **Clear error hierarchy** - `BraneException` sealed hierarchy is well-designed
+10. **Builder pattern** - `TxBuilder` interface with `Eip1559Builder`/`LegacyBuilder` is clean
