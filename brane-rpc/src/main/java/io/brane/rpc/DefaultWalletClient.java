@@ -270,6 +270,10 @@ public final class DefaultWalletClient implements WalletClient {
             if (receipt != null) {
                 DebugLogger.logTx(
                         LogFormatter.formatTxReceipt(txHash.value(), receipt.blockNumber(), receipt.status()));
+                if (!receipt.status()) {
+                    // Transaction was mined but reverted - replay via eth_call to get revert reason
+                    throwRevertException(request, txHash, receipt);
+                }
                 return receipt;
             }
             try {
@@ -284,6 +288,56 @@ public final class DefaultWalletClient implements WalletClient {
                 -32000,
                 "Timed out waiting for transaction receipt for " + txHash.value(),
                 null,
+                null,
+                null);
+    }
+
+    private void throwRevertException(
+            final TransactionRequest request, final Hash txHash, final TransactionReceipt receipt) {
+        // Try to replay the transaction via eth_call to get the revert reason
+        final Map<String, Object> tx = new LinkedHashMap<>();
+        tx.put("from", receipt.from() != null ? receipt.from().value() : senderAddress.value());
+        if (request.to() != null) {
+            tx.put("to", request.to().value());
+        }
+        if (request.value() != null) {
+            tx.put("value", RpcUtils.toQuantityHex(request.value().value()));
+        }
+        if (request.data() != null) {
+            tx.put("data", request.data().value());
+        }
+
+        // Replay at the block where the transaction was mined
+        final String blockNumber = RpcUtils.toQuantityHex(BigInteger.valueOf(receipt.blockNumber()));
+
+        try {
+            final JsonRpcResponse response = provider.send("eth_call", List.of(tx, blockNumber));
+            if (response.hasError()) {
+                final JsonRpcError err = response.error();
+                final String data = RpcUtils.extractErrorData(err.data());
+                if (data != null && data.startsWith("0x") && data.length() > 10) {
+                    final var decoded = RevertDecoder.decode(data);
+                    DebugLogger.logTx(
+                            LogFormatter.formatTxRevert(txHash.value(), decoded.kind().toString(), decoded.reason()));
+                    throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), null);
+                }
+                throw new RevertException(
+                        RevertDecoder.RevertKind.UNKNOWN,
+                        err.message() != null ? err.message() : "Transaction reverted",
+                        null,
+                        null);
+            }
+        } catch (RevertException e) {
+            throw e;
+        } catch (Exception e) {
+            // If eth_call fails for any other reason, throw a generic revert exception
+            DebugLogger.logTx(LogFormatter.formatTxRevert(txHash.value(), "UNKNOWN", "Transaction reverted"));
+        }
+
+        // Fallback: throw generic revert exception if we couldn't get the reason
+        throw new RevertException(
+                RevertDecoder.RevertKind.UNKNOWN,
+                "Transaction reverted (txHash: " + txHash.value() + ")",
                 null,
                 null);
     }
