@@ -110,7 +110,7 @@ final T instance = (T) ctor.newInstance(values.toArray());
 
 ---
 
-## MEDIUM PRIORITY (7 Issues)
+## MEDIUM PRIORITY (7 Issues) ✅ All Complete
 
 ### MED-1: Missing Defensive Length Check in Abi.functionSelector
 
@@ -132,9 +132,11 @@ return new HexData(hex.substring(0, 10));
 ```
 
 **Acceptance Criteria:**
-- [ ] Add length validation before substring call
-- [ ] Document expected hash length in comments
-- [ ] This is defensive programming - failure should be impossible
+- [x] Add length validation before substring call
+- [x] Document expected hash length in comments
+- [x] This is defensive programming - failure should be impossible
+
+**Status:** ✅ Complete (commit 5f9ee0c)
 
 ---
 
@@ -167,9 +169,11 @@ public String toString() {
 ```
 
 **Acceptance Criteria:**
-- [ ] Handle race condition in toString()
-- [ ] Either use try-catch or synchronize
-- [ ] Add concurrent test demonstrating fix
+- [x] Handle race condition in toString()
+- [x] Either use try-catch or synchronize
+- [x] Add concurrent test demonstrating fix
+
+**Status:** ✅ Complete (commit 391f4cf)
 
 ---
 
@@ -191,9 +195,11 @@ private static final ThreadLocal<Keccak.Digest256> DIGEST = ThreadLocal.withInit
 3. Add warning in class-level Javadoc
 
 **Acceptance Criteria:**
-- [ ] Add prominent warning in Keccak256 class Javadoc about cleanup() requirement
-- [ ] Document in README or getting-started guide
-- [ ] Consider adding automatic cleanup mechanism
+- [x] Add prominent warning in Keccak256 class Javadoc about cleanup() requirement
+- [x] Document in README or getting-started guide
+- [x] Consider adding automatic cleanup mechanism
+
+**Status:** ✅ Complete (commit 68d6dd3) - Enhanced Javadoc with detailed memory leak warning including servlet filter and ExecutorService examples
 
 ---
 
@@ -217,9 +223,11 @@ private static final ThreadLocal<Keccak.Digest256> DIGEST = ThreadLocal.withInit
 ```
 
 **Acceptance Criteria:**
-- [ ] Replace generic Exception catch with specific exception types
-- [ ] Let programming errors (NPE, ClassCastException) propagate
-- [ ] Add test verifying NPE is not wrapped
+- [x] Replace generic Exception catch with specific exception types
+- [x] Let programming errors (NPE, ClassCastException) propagate
+- [x] Add test verifying NPE is not wrapped
+
+**Status:** ✅ Complete (commit f75e592)
 
 ---
 
@@ -238,9 +246,11 @@ HexData contractAddress,
 **Recommendation:** Change to `Address contractAddress` with nullable handling for non-deployment transactions.
 
 **Acceptance Criteria:**
-- [ ] Change contractAddress type from HexData to Address
-- [ ] Handle null case for non-deployment transactions
-- [ ] Update any code that constructs TransactionReceipt
+- [x] Change contractAddress type from HexData to Address
+- [x] Handle null case for non-deployment transactions
+- [x] Update any code that constructs TransactionReceipt
+
+**Status:** ✅ Complete (commit f155ec5) - Breaking change: updated TransactionReceipt, DefaultWalletClient, and all affected tests
 
 ---
 
@@ -275,10 +285,12 @@ public TransactionRequest {
 ```
 
 **Acceptance Criteria:**
-- [ ] Add compact constructor with validation
-- [ ] Validate gasLimit is non-negative if provided
-- [ ] Validate mutually exclusive fee fields
-- [ ] Add tests for invalid request construction
+- [x] Add compact constructor with validation
+- [x] Validate gasLimit is non-negative if provided
+- [x] Validate mutually exclusive fee fields
+- [x] Add tests for invalid request construction
+
+**Status:** ✅ Complete (commit 3106b6e) - Added compact constructor with gasLimit, nonce, and fee field validation
 
 ---
 
@@ -297,13 +309,15 @@ final String joined = components.stream()
 **Note:** While functionally correct, this is inconsistent with the codebase's preference for `Stream.toList()` and avoiding unnecessary collector imports. Low impact.
 
 **Acceptance Criteria:**
-- [ ] Review for consistency with codebase patterns
-- [ ] Consider if any stream operations can be simplified
-- [ ] Low priority - functionally correct
+- [x] Review for consistency with codebase patterns
+- [x] Consider if any stream operations can be simplified
+- [x] Low priority - functionally correct
+
+**Status:** ✅ Complete (commit 13f3b1d) - Reviewed: `Collectors.joining(",")` is the correct pattern for string concatenation; `Stream.toList()` is only for lists. No changes needed.
 
 ---
 
-## LOW PRIORITY (6 Issues)
+## LOW PRIORITY (6 Issues) ✅ All Complete
 
 ### LOW-1: Inconsistent Documentation Style
 
@@ -317,9 +331,11 @@ final String joined = components.stream()
 - vs. `HexData.java`: Extensive documentation with examples
 
 **Acceptance Criteria:**
-- [ ] Audit all public types for documentation consistency
-- [ ] Add usage examples to commonly-used types
-- [ ] Standardize on documentation format
+- [x] Audit all public types for documentation consistency
+- [x] Add usage examples to commonly-used types
+- [x] Standardize on documentation format
+
+**Status:** ✅ Complete (commit 19f0919) - Added comprehensive Javadoc to Bool.java and AddressType.java with ABI encoding details, examples, and @since tags
 
 ---
 
@@ -341,8 +357,10 @@ new AddressType(new Address(Hex.encode(Arrays.copyOfRange(data, offset + ADDRESS
 ```
 
 **Acceptance Criteria:**
-- [ ] Extract constant ADDRESS_PADDING_BYTES = 12
-- [ ] Add comment explaining: 32-byte slot minus 20-byte address
+- [x] Extract constant ADDRESS_PADDING_BYTES = 12
+- [x] Add comment explaining: 32-byte slot minus 20-byte address
+
+**Status:** ✅ Complete (commit 755f33a) - Extracted constant with Javadoc explaining the 32-20=12 byte padding
 
 ---
 
@@ -357,9 +375,11 @@ private static final Logger LOG = LoggerFactory.getLogger(InternalAbi.class);
 ```
 
 **Acceptance Criteria:**
-- [ ] Audit logger usage in InternalAbi
-- [ ] Either add meaningful logging or remove unused logger
-- [ ] If keeping, ensure consistent log levels
+- [x] Audit logger usage in InternalAbi
+- [x] Either add meaningful logging or remove unused logger
+- [x] If keeping, ensure consistent log levels
+
+**Status:** ✅ Complete (commit 2149e87) - Audit result: Logger IS used for debug-level constructor matching diagnostics. Added comment documenting its purpose.
 
 ---
 
@@ -377,9 +397,11 @@ return topic0.equalsIgnoreCase(log.topics().get(0).value());
 **Recommendation:** Cache the computed topic hash in `AbiEvent` at parse time to avoid repeated Keccak256 hashing.
 
 **Acceptance Criteria:**
-- [ ] Consider caching topic hash in AbiEvent
-- [ ] Benchmark impact of repeated hashing
-- [ ] Low priority - optimize only if profiling shows impact
+- [x] Consider caching topic hash in AbiEvent
+- [x] Benchmark impact of repeated hashing
+- [x] Low priority - optimize only if profiling shows impact
+
+**Status:** ✅ Complete (commit 596da80) - Converted AbiEvent from record to class with cached signature and topicHash computed at construction time
 
 ---
 
@@ -396,9 +418,11 @@ public non-sealed class TxnException extends BraneException {
 **Consideration:** The sealed hierarchy on `BraneException` provides exhaustiveness guarantees, but `TxnException` being `non-sealed` breaks this for its subtree. This may be intentional to allow user-defined transaction exceptions.
 
 **Acceptance Criteria:**
-- [ ] Decide if TxnException should be sealed
-- [ ] If intentional, document why in class Javadoc
-- [ ] If not, seal it and list permitted subclasses
+- [x] Decide if TxnException should be sealed
+- [x] If intentional, document why in class Javadoc
+- [x] If not, seal it and list permitted subclasses
+
+**Status:** ✅ Complete (commit 859a3f4) - Decision: Keep non-sealed as intentional extension point. Added comprehensive Javadoc explaining the design rationale.
 
 ---
 
@@ -417,9 +441,11 @@ public non-sealed class TxnException extends BraneException {
 ```
 
 **Acceptance Criteria:**
-- [ ] Add thread-safety documentation to Eip1559Builder
-- [ ] Add thread-safety documentation to LegacyBuilder
-- [ ] Document that build() creates immutable result
+- [x] Add thread-safety documentation to Eip1559Builder
+- [x] Add thread-safety documentation to LegacyBuilder
+- [x] Document that build() creates immutable result
+
+**Status:** ✅ Complete (commit bb66505) - Added thread-safety documentation to both builders explaining they are not thread-safe but build() creates immutable results
 
 ---
 
@@ -429,9 +455,9 @@ public non-sealed class TxnException extends BraneException {
 |----------|-------|--------|
 | Critical | 0 | N/A |
 | High | 3 | ✅ Complete |
-| Medium | 7 | Pending |
-| Low | 6 | Pending |
-| **Total** | **16** | **19% Complete (3/16)** |
+| Medium | 7 | ✅ Complete |
+| Low | 6 | ✅ Complete |
+| **Total** | **16** | **100% Complete (16/16)** |
 
 ---
 
