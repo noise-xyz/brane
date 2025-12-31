@@ -40,6 +40,9 @@ public record Utf8String(String value) implements AbiType {
      *
      * <p>This is more efficient than {@code value.getBytes(UTF_8).length} which
      * allocates a new array on every call.
+     *
+     * <p>Handles surrogate pairs correctly: a valid surrogate pair (high + low)
+     * encodes to 4 UTF-8 bytes. Lone surrogates are treated as 3-byte BMP characters.
      */
     private static int utf8ByteLength(String s) {
         int len = 0;
@@ -49,10 +52,14 @@ public record Utf8String(String value) implements AbiType {
                 len += 1;
             } else if (c < 0x800) {
                 len += 2;
-            } else if (Character.isHighSurrogate(c)) {
+            } else if (Character.isHighSurrogate(c)
+                    && i + 1 < s.length()
+                    && Character.isLowSurrogate(s.charAt(i + 1))) {
+                // Valid surrogate pair: encodes to 4 UTF-8 bytes
                 len += 4;
                 i++; // Skip low surrogate
             } else {
+                // BMP character or lone surrogate: 3 bytes
                 len += 3;
             }
         }
