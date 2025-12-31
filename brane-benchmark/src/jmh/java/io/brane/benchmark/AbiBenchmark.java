@@ -102,7 +102,7 @@ public class AbiBenchmark {
                     )),
                     -1 // dynamic array
                 ),
-                new io.brane.core.abi.TypeSchema.BytesSchema(false) // bytes32
+                new io.brane.core.abi.TypeSchema.BytesSchema(32) // bytes32
             ))
         );
     }

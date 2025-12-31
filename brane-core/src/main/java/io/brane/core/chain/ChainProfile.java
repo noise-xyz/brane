@@ -2,28 +2,26 @@ package io.brane.core.chain;
 
 import io.brane.core.types.Wei;
 
-import java.util.Objects;
-
 /**
  * Configuration profile for an Ethereum-compatible blockchain.
  *
  * <p>
  * A chain profile encapsulates network-specific settings that configure how
  * transactions are built and submitted. Each profile defines the chain ID for
- * replay protection, a default RPC endpoint, and transaction format preferences.
+ * replay protection, an optional default RPC endpoint, and transaction format preferences.
  *
  * <p>
  * <strong>Field constraints:</strong>
  * <ul>
  * <li>{@code chainId} - must be positive (greater than 0)</li>
- * <li>{@code defaultRpcUrl} - must be non-null and non-empty</li>
- * <li>{@code defaultPriorityFeePerGas} - must be non-null (required for EIP-1559)</li>
+ * <li>{@code defaultRpcUrl} - optional; if provided, must be non-empty</li>
+ * <li>{@code defaultPriorityFeePerGas} - optional; used for EIP-1559 transactions</li>
  * </ul>
  *
  * @param chainId                  the unique chain identifier (must be &gt; 0)
- * @param defaultRpcUrl            the default RPC endpoint URL (required)
+ * @param defaultRpcUrl            the default RPC endpoint URL (optional, may be null)
  * @param supportsEip1559          true if the chain supports EIP-1559 transactions
- * @param defaultPriorityFeePerGas the default priority fee (tip) for EIP-1559 transactions (required)
+ * @param defaultPriorityFeePerGas the default priority fee (tip) for EIP-1559 transactions (optional)
  *
  * @see ChainProfiles
  */
@@ -33,18 +31,15 @@ public record ChainProfile(
     /**
      * Validates all fields meet their constraints.
      *
-     * @throws IllegalArgumentException if chainId is not positive or defaultRpcUrl is empty
-     * @throws NullPointerException if defaultRpcUrl or defaultPriorityFeePerGas is null
+     * @throws IllegalArgumentException if chainId is not positive or defaultRpcUrl is non-null but empty
      */
     public ChainProfile {
         if (chainId <= 0) {
             throw new IllegalArgumentException("chainId must be positive, got: " + chainId);
         }
-        Objects.requireNonNull(defaultRpcUrl, "defaultRpcUrl cannot be null");
-        if (defaultRpcUrl.isBlank()) {
+        if (defaultRpcUrl != null && defaultRpcUrl.isBlank()) {
             throw new IllegalArgumentException("defaultRpcUrl cannot be empty");
         }
-        Objects.requireNonNull(defaultPriorityFeePerGas, "defaultPriorityFeePerGas cannot be null");
     }
 
     /**

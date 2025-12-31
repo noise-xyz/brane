@@ -1,6 +1,7 @@
 package io.brane.examples;
 
 import io.brane.core.BraneDebug;
+import io.brane.core.chain.ChainProfiles;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;
 import io.brane.core.model.TransactionRequest;
@@ -68,7 +69,8 @@ public final class DebugIntegrationTest {
         final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
         final PublicClient publicClient = PublicClient.from(provider);
         final PrivateKeySigner signer = new PrivateKeySigner(privateKey);
-        final WalletClient wallet = DefaultWalletClient.create(provider, publicClient, signer);
+        final WalletClient wallet = DefaultWalletClient.create(
+                provider, publicClient, signer, ChainProfiles.ANVIL_LOCAL);
 
         try {
             // Trigger RPC logs

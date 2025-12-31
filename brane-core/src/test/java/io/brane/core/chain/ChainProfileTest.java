@@ -61,13 +61,15 @@ class ChainProfileTest {
     }
 
     @Test
-    void rejectsNullDefaultRpcUrl() {
-        assertThrows(NullPointerException.class, () -> new ChainProfile(
+    void acceptsNullDefaultRpcUrl() {
+        ChainProfile profile = new ChainProfile(
                 1L,
-                null,  // null defaultRpcUrl
+                null,  // null defaultRpcUrl is valid (URL must be provided at build time)
                 true,
                 VALID_PRIORITY_FEE
-        ));
+        );
+
+        assertNull(profile.defaultRpcUrl());
     }
 
     @Test
@@ -91,13 +93,15 @@ class ChainProfileTest {
     }
 
     @Test
-    void rejectsNullDefaultPriorityFeePerGas() {
-        assertThrows(NullPointerException.class, () -> new ChainProfile(
+    void acceptsNullDefaultPriorityFeePerGas() {
+        ChainProfile profile = new ChainProfile(
                 1L,
                 "http://localhost:8545",
-                true,
-                null  // null defaultPriorityFeePerGas
-        ));
+                false,  // non-EIP-1559 chain may not have default priority fee
+                null    // null defaultPriorityFeePerGas is valid
+        );
+
+        assertNull(profile.defaultPriorityFeePerGas());
     }
 
     @Test
