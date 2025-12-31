@@ -10,7 +10,7 @@ The `Abi` class provides powerful helpers for working with Ethereum's Applicatio
 Compute the 4-byte function selector for any function signature.
 
 ```java
-import io.brane.contract.Abi;
+import io.brane.core.abi.Abi;
 import io.brane.core.types.HexData;
 
 // "transfer(address,uint256)" -> 0xa9059cbb
@@ -22,7 +22,7 @@ HexData selector = Abi.functionSelector("transfer(address,uint256)");
 Compute the 32-byte topic hash for an event signature.
 
 ```java
-import io.brane.contract.Abi;
+import io.brane.core.abi.Abi;
 import io.brane.core.types.Hash;
 
 // "Transfer(address,address,uint256)" -> 0xddf252...
@@ -36,7 +36,7 @@ Decode raw logs into Java objects using `Abi.decodeEvents`.
 ```java
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.LogFilter;
-import io.brane.contract.Abi;
+import io.brane.core.abi.Abi;
 
 PublicClient client = ...;
 LogFilter filter = ...;

@@ -76,3 +76,115 @@ The binding system automatically maps Solidity types to Java types:
 | `string` | `java.lang.String` |
 | `bytes` | `io.brane.core.types.HexData` |
 | `uint8`...`uint64` | `java.math.BigInteger` |
+| `T[]` (arrays) | `java.util.List<T>` or `T[]` |
+
+## Payable Functions
+
+To send ETH with a contract call, use the `@Payable` annotation. The first parameter must be `Wei`, which specifies the amount to send. This parameter is **not** passed to the contract function.
+
+```java
+import io.brane.contract.Payable;
+import io.brane.core.types.Wei;
+import io.brane.core.types.Address;
+import io.brane.core.model.TransactionReceipt;
+
+public interface WethContract {
+    // deposit() is payable in Solidity - sends ETH to wrap
+    @Payable
+    TransactionReceipt deposit(Wei value);
+
+    // mint(address to) is payable - sends ETH and mints to recipient
+    @Payable
+    TransactionReceipt mint(Wei value, Address to);
+}
+```
+
+**Usage:**
+
+```java
+WethContract weth = BraneContract.bind(address, abiJson, publicClient, walletClient, WethContract.class);
+
+// Wrap 1 ETH
+weth.deposit(Wei.fromEther(new BigDecimal("1.0")));
+
+// Mint with 0.5 ETH
+weth.mint(Wei.fromEther(new BigDecimal("0.5")), recipientAddress);
+```
+
+<Warning>
+The `@Payable` annotation is validated at bind time:
+- The ABI function must have `stateMutability: "payable"`
+- The first Java parameter must be `Wei`
+- Cannot be used on `view` or `pure` functions
+</Warning>
+
+## Contract Options
+
+Customize transaction behavior with `ContractOptions`:
+
+```java
+import io.brane.contract.ContractOptions;
+import io.brane.core.types.Wei;
+import java.time.Duration;
+
+ContractOptions options = ContractOptions.builder()
+    .gasLimit(500_000L)                              // Gas limit for transactions
+    .timeout(Duration.ofSeconds(30))                 // Wait timeout for receipts
+    .pollInterval(Duration.ofMillis(500))            // Polling interval
+    .transactionType(ContractOptions.TransactionType.EIP1559)  // EIP-1559 (default)
+    .maxPriorityFee(Wei.gwei(2))                     // Priority fee (tip)
+    .build();
+
+Erc20 token = BraneContract.bind(
+    address,
+    abiJson,
+    publicClient,
+    walletClient,
+    Erc20.class,
+    options  // Pass custom options
+);
+```
+
+### Available Options
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `gasLimit` | 300,000 | Maximum gas for transactions |
+| `timeout` | 10 seconds | Max wait time for transaction confirmation |
+| `pollInterval` | 500ms | Interval between receipt checks |
+| `transactionType` | EIP1559 | Transaction type (`EIP1559` or `LEGACY`) |
+| `maxPriorityFee` | 2 gwei | Priority fee for EIP-1559 transactions |
+
+## Limitations
+
+### Tuple/Struct Returns
+
+Functions that return Solidity structs or tuples are **not supported** by the proxy binding system. The following will fail at bind time:
+
+```solidity
+// Solidity
+struct Position {
+    uint256 x;
+    uint256 y;
+}
+
+function getPosition() external view returns (Position memory);
+```
+
+```java
+// Java - This will NOT work with BraneContract.bind()
+public record Position(BigInteger x, BigInteger y) {}
+
+public interface MyContract {
+    Position getPosition();  // Throws IllegalArgumentException at bind time
+}
+```
+
+**Workaround:** Use `ReadOnlyContract` or `ReadWriteContract` and manually decode the response:
+
+```java
+ReadOnlyContract contract = ReadOnlyContract.from(address, abi, publicClient);
+// Call returns raw hex, decode manually
+String rawHex = contract.call("getPosition", String.class);
+// Decode using AbiDecoder...
+```
