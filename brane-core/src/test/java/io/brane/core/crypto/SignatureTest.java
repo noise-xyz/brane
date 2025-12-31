@@ -167,4 +167,57 @@ class SignatureTest {
         assertTrue(str.contains("Signature"));
         assertTrue(str.contains("v=27"));
     }
+
+    @Test
+    void testGetRecoveryIdLargeChainId() {
+        // CRIT-2: Test with large chain IDs to verify computation handles overflow correctly
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+
+        // Use a large but realistic chainId (e.g., some L2 chains have IDs in millions)
+        // Maximum chainId where v fits in int: (Integer.MAX_VALUE - 36) / 2 = 1073741805
+        long chainId = 1073741805L;
+        int v0 = (int) (chainId * 2 + 35);      // 2147483645 (yParity=0)
+        int v1 = (int) (chainId * 2 + 35 + 1);  // 2147483646 (yParity=1)
+
+        final Signature sig0 = new Signature(r, s, v0);
+        assertEquals(0, sig0.getRecoveryId(chainId));
+
+        final Signature sig1 = new Signature(r, s, v1);
+        assertEquals(1, sig1.getRecoveryId(chainId));
+
+        // Test with a typical L2 chain ID (e.g., Arbitrum One = 42161)
+        long arbitrumChainId = 42161L;
+        int arbitrumV = (int) (arbitrumChainId * 2 + 35); // 84357
+
+        final Signature arbSig = new Signature(r, s, arbitrumV);
+        assertEquals(0, arbSig.getRecoveryId(arbitrumChainId));
+    }
+
+    @Test
+    void testGetRecoveryIdInvalidRecoveryId() {
+        // CRIT-2: Verify that invalid recovery IDs throw an exception
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+
+        // Create a signature with v that doesn't match the chainId
+        // For chainId=1, valid v values are 37 (yParity=0) or 38 (yParity=1)
+        final Signature sig = new Signature(r, s, 100);
+
+        // Using chainId=1 should compute recoveryId = 100 - 1*2 - 35 = 63, which is invalid
+        assertThrows(IllegalArgumentException.class, () -> sig.getRecoveryId(1L));
+    }
+
+    @Test
+    void testGetRecoveryIdMismatchedChainId() {
+        // Using wrong chainId should throw an exception
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+
+        // Signature for chainId=1, yParity=0: v = 1*2 + 35 = 37
+        final Signature sig = new Signature(r, s, 37);
+
+        // Using chainId=2 would compute: 37 - 2*2 - 35 = -2, which is invalid
+        assertThrows(IllegalArgumentException.class, () -> sig.getRecoveryId(2L));
+    }
 }

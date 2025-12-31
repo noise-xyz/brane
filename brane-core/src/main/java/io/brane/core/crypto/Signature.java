@@ -58,22 +58,28 @@ public record Signature(byte[] r, byte[] s, int v) {
 
     /**
      * Extracts the recovery ID (yParity) from the v value.
-     * 
+     *
      * <p>
      * For EIP-155 signatures: {@code yParity = (v - chainId * 2 - 35)}
      * <br>
      * For simple signatures: {@code yParity = v} (if v is 0 or 1)
-     * 
+     *
      * @param chainId the chain ID (use 0 if not EIP-155)
      * @return 0 or 1
+     * @throws IllegalArgumentException if the computed recovery ID is not 0 or 1
      */
     public int getRecoveryId(final long chainId) {
         if (v == 0 || v == 1) {
             // Simple v (EIP-1559 or pre-EIP-155)
             return v;
         }
-        // EIP-155 format
-        return v - (int) (chainId * 2 + 35);
+        // EIP-155 format: compute in long space to avoid overflow
+        long recoveryId = (long) v - chainId * 2L - 35L;
+        if (recoveryId != 0 && recoveryId != 1) {
+            throw new IllegalArgumentException(
+                    "Invalid recovery ID: " + recoveryId + " (v=" + v + ", chainId=" + chainId + ")");
+        }
+        return (int) recoveryId;
     }
 
     /**
