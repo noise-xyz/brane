@@ -264,7 +264,7 @@ public class SmokeApp {
 
         // Check for Transfer to Recipient
         // Topic 2 is 'to' (indexed)
-        String recipientTopic = io.brane.core.utils.Topics.fromAddress(RECIPIENT).value();
+        String recipientTopic = io.brane.core.util.Topics.fromAddress(RECIPIENT).value();
 
         boolean foundTransfer = logs.stream().anyMatch(log -> log.topics().size() >= 3 &&
                 log.topics().get(2).value().equalsIgnoreCase(recipientTopic));

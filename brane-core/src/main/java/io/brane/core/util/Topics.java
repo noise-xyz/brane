@@ -1,4 +1,4 @@
-package io.brane.core.utils;
+package io.brane.core.util;
 
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
