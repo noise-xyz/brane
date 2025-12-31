@@ -1,6 +1,6 @@
 package io.brane.rpc;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static io.brane.rpc.internal.RpcUtils.MAPPER;
 import io.brane.core.DebugLogger;
 import io.brane.core.LogFormatter;
 import io.brane.core.RevertDecoder;
@@ -68,7 +68,6 @@ public final class DefaultWalletClient implements WalletClient {
     private final long expectedChainId;
 
     private final SmartGasStrategy gasStrategy;
-    private final ObjectMapper mapper = new ObjectMapper();
     private final AtomicReference<Long> cachedChainId = new AtomicReference<>();
 
     private DefaultWalletClient(
@@ -370,7 +369,7 @@ public final class DefaultWalletClient implements WalletClient {
         }
 
         @SuppressWarnings("unchecked")
-        final Map<String, Object> map = mapper.convertValue(result, Map.class);
+        final Map<String, Object> map = MAPPER.convertValue(result, Map.class);
         final String statusHex = RpcUtils.stringValue(map.get("status"));
         final boolean status = statusHex != null && !statusHex.isBlank() && !statusHex.equalsIgnoreCase("0x0");
         final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
@@ -399,7 +398,7 @@ public final class DefaultWalletClient implements WalletClient {
             return List.of();
         }
         @SuppressWarnings("unchecked")
-        final List<Map<String, Object>> rawLogs = mapper.convertValue(value, List.class);
+        final List<Map<String, Object>> rawLogs = MAPPER.convertValue(value, List.class);
         final List<LogEntry> logs = new ArrayList<>(rawLogs.size());
         for (Map<String, Object> log : rawLogs) {
             final String address = RpcUtils.stringValue(log.get("address"));
@@ -408,7 +407,7 @@ public final class DefaultWalletClient implements WalletClient {
             final String txHash = RpcUtils.stringValue(log.get("transactionHash"));
             final Long logIndex = RpcUtils.decodeHexLong(log.get("logIndex"));
             @SuppressWarnings("unchecked")
-            final List<String> topicsHex = mapper.convertValue(log.get("topics"), List.class);
+            final List<String> topicsHex = MAPPER.convertValue(log.get("topics"), List.class);
             final List<Hash> topics = new ArrayList<>();
             if (topicsHex != null) {
                 for (String t : topicsHex) {
@@ -542,7 +541,7 @@ public final class DefaultWalletClient implements WalletClient {
             if (result == null) {
                 return defaultValue;
             }
-            return mapper.convertValue(result, responseType);
+            return MAPPER.convertValue(result, responseType);
         } catch (RpcException e) {
             handlePotentialRevert(e, null);
             throw e;

@@ -25,10 +25,10 @@ import io.netty.handler.ssl.SslContextBuilder;
 
 import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.EventLoopGroup;
+import static io.brane.rpc.internal.RpcUtils.MAPPER;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -72,7 +72,6 @@ import org.slf4j.LoggerFactory;
 public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(WebSocketProvider.class);
-    private static final ObjectMapper mapper = new ObjectMapper();
 
     // ==================== Configuration ====================
     private static final int DEFAULT_MAX_PENDING_REQUESTS = 65536; // Power of 2
@@ -345,7 +344,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      */
     static JsonRpcResponse parseResponseFromByteBuf(ByteBuf buf) {
         try (ByteBufInputStream in = new ByteBufInputStream(buf);
-                JsonParser parser = mapper.getFactory().createParser((java.io.InputStream) in)) {
+                JsonParser parser = MAPPER.getFactory().createParser((java.io.InputStream) in)) {
 
             String jsonrpc = null;
             Object id = null;
@@ -371,9 +370,9 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                         id = null;
                     }
                 } else if ("result".equals(fieldName)) {
-                    result = mapper.readValue(parser, Object.class);
+                    result = MAPPER.readValue(parser, Object.class);
                 } else if ("error".equals(fieldName)) {
-                    error = mapper.readValue(parser, JsonRpcError.class);
+                    error = MAPPER.readValue(parser, JsonRpcError.class);
                 } else {
                     parser.skipChildren();
                 }
@@ -440,9 +439,9 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                     TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
                     ByteBuf content = textFrame.content();
                     try {
-                        try (JsonParser parser = mapper.getFactory()
+                        try (JsonParser parser = MAPPER.getFactory()
                                 .createParser((java.io.InputStream) new ByteBufInputStream(content))) {
-                            JsonNode node = mapper.readTree(parser);
+                            JsonNode node = MAPPER.readTree(parser);
 
                             if (node.has("method") && node.get("method").asText().endsWith("_subscription")) {
                                 handleNotificationNode(node);
@@ -466,7 +465,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 Consumer<JsonRpcResponse> listener = subscriptions.get(subId);
                 if (listener != null) {
                     JsonNode resultNode = params.get("result");
-                    Object result = mapper.convertValue(resultNode, Object.class);
+                    Object result = MAPPER.convertValue(resultNode, Object.class);
                     JsonRpcResponse response = new JsonRpcResponse("2.0", result, null, null);
                     // Dispatch to subscription executor to avoid blocking Netty I/O thread
                     subscriptionExecutor.execute(() -> listener.accept(response));
@@ -497,11 +496,11 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                     JsonNode errorNode = node.get("error");
                     JsonRpcError error = null;
                     if (errorNode != null && !errorNode.isNull()) {
-                        error = mapper.treeToValue(errorNode, JsonRpcError.class);
+                        error = MAPPER.treeToValue(errorNode, JsonRpcError.class);
                     }
                     Object result = null;
                     if (node.has("result")) {
-                        result = mapper.treeToValue(node.get("result"), Object.class);
+                        result = MAPPER.treeToValue(node.get("result"), Object.class);
                     }
                     future.complete(new JsonRpcResponse("2.0", result, error, String.valueOf(id)));
                 }

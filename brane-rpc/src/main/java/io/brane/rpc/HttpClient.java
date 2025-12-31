@@ -1,6 +1,6 @@
 package io.brane.rpc;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static io.brane.rpc.internal.RpcUtils.MAPPER;
 import io.brane.core.error.RpcException;
 import java.math.BigInteger;
 import java.net.URI;
@@ -10,7 +10,6 @@ import java.util.List;
 public final class HttpClient implements Client {
 
     private final BraneProvider provider;
-    private final ObjectMapper mapper = new ObjectMapper();
 
     public HttpClient(final URI endpoint) {
         this(BraneProvider.http(endpoint.toString()));
@@ -44,7 +43,7 @@ public final class HttpClient implements Client {
         if (responseType == BigInteger.class) {
             return responseType.cast(convertToBigInteger(result));
         }
-        return mapper.convertValue(result, responseType);
+        return MAPPER.convertValue(result, responseType);
     }
 
     private BigInteger convertToBigInteger(final Object value) {

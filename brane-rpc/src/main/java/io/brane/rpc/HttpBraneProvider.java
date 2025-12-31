@@ -1,7 +1,7 @@
 package io.brane.rpc;
 
+import static io.brane.rpc.internal.RpcUtils.MAPPER;
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import io.brane.core.DebugLogger;
 import io.brane.core.LogFormatter;
 import io.brane.core.error.RpcException;
@@ -21,7 +21,6 @@ public final class HttpBraneProvider implements BraneProvider {
     private final RpcConfig config;
     private final java.net.http.HttpClient httpClient;
     private final java.util.concurrent.ExecutorService executor;
-    private final ObjectMapper mapper = new ObjectMapper();
     private final AtomicLong ids = new AtomicLong(1L);
 
     private HttpBraneProvider(final RpcConfig config) {
@@ -89,7 +88,7 @@ public final class HttpBraneProvider implements BraneProvider {
 
     private String serialize(final JsonRpcRequest request, final long requestId) throws RpcException {
         try {
-            return mapper.writeValueAsString(request);
+            return MAPPER.writeValueAsString(request);
         } catch (JsonProcessingException e) {
             throw new RpcException(
                     -32700,
@@ -129,7 +128,7 @@ public final class HttpBraneProvider implements BraneProvider {
     private JsonRpcResponse parseResponse(final String method, final String body, final long requestId)
             throws RpcException {
         try {
-            return mapper.readValue(body, JsonRpcResponse.class);
+            return MAPPER.readValue(body, JsonRpcResponse.class);
         } catch (JsonProcessingException e) {
             throw new RpcException(
                     -32700,

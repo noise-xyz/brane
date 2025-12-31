@@ -1,5 +1,6 @@
 package io.brane.rpc.internal;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.brane.core.error.RpcException;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
@@ -7,7 +8,7 @@ import java.util.Map;
 
 /**
  * Internal utility methods for RPC data encoding, decoding, and error handling.
- * 
+ *
  * <p>
  * This class consolidates common RPC-related operations used across the RPC
  * layer:
@@ -15,17 +16,27 @@ import java.util.Map;
  * <li>Hex quantity encoding/decoding (numbers ↔ "0x..." strings)</li>
  * <li>JSON-RPC error data extraction</li>
  * <li>Type conversion helpers</li>
+ * <li>Shared ObjectMapper instance</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Internal Use Only:</strong> This class is package-private and not
  * part
  * of the public API. It exists to eliminate code duplication between RPC
  * implementations.
- * 
+ *
  * @see RpcException
  */
 public final class RpcUtils {
+
+    /**
+     * Shared, thread-safe ObjectMapper instance for JSON serialization/deserialization.
+     * <p>
+     * ObjectMapper is expensive to create and thread-safe after configuration,
+     * so a single shared instance is used across all RPC classes. The default
+     * configuration is suitable for JSON-RPC operations.
+     */
+    public static final ObjectMapper MAPPER = new ObjectMapper();
 
     private RpcUtils() {
         // Utility class - prevent instantiation

@@ -1,6 +1,6 @@
 package io.brane.rpc;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static io.brane.rpc.internal.RpcUtils.MAPPER;
 import com.fasterxml.jackson.core.type.TypeReference;
 import io.brane.core.DebugLogger;
 import io.brane.core.LogFormatter;
@@ -25,7 +25,6 @@ import java.util.Optional;
 final class DefaultPublicClient implements PublicClient {
 
     private final BraneProvider provider;
-    private final ObjectMapper mapper = new ObjectMapper();
 
     DefaultPublicClient(final BraneProvider provider) {
         this.provider = provider;
@@ -50,7 +49,7 @@ final class DefaultPublicClient implements PublicClient {
             return null;
         }
 
-        final var map = mapper.convertValue(result, new TypeReference<Map<String, Object>>() {});
+        final var map = MAPPER.convertValue(result, new TypeReference<Map<String, Object>>() {});
 
         final String hashHex = RpcUtils.stringValue(map.get("hash"));
         final String fromHex = RpcUtils.stringValue(map.get("from"));
@@ -114,7 +113,7 @@ final class DefaultPublicClient implements PublicClient {
             return List.of();
         }
 
-        final List<Map<String, Object>> raw = mapper.convertValue(
+        final List<Map<String, Object>> raw = MAPPER.convertValue(
             result,
             new TypeReference<List<Map<String, Object>>>() {}
         );        
@@ -125,7 +124,7 @@ final class DefaultPublicClient implements PublicClient {
             final String blockHash = RpcUtils.stringValue(map.get("blockHash"));
             final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
             final Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
-            final List<String> topicsHex = mapper.convertValue(
+            final List<String> topicsHex = MAPPER.convertValue(
                 map.get("topics"),
                 new TypeReference<List<String>>() {}
             );
@@ -185,7 +184,7 @@ final class DefaultPublicClient implements PublicClient {
                     (Throwable) null);
         }
 
-        final Map<String, Object> map = mapper.convertValue(result, new TypeReference<Map<String, Object>>() {
+        final Map<String, Object> map = MAPPER.convertValue(result, new TypeReference<Map<String, Object>>() {
         });
 
         final String gasUsedHex = RpcUtils.stringValue(map.get("gasUsed"));
@@ -193,7 +192,7 @@ final class DefaultPublicClient implements PublicClient {
                 ? RpcUtils.decodeHexBigInteger(gasUsedHex)
                 : BigInteger.ZERO;
 
-        final List<Map<String, Object>> accessListRaw = mapper.convertValue(
+        final List<Map<String, Object>> accessListRaw = MAPPER.convertValue(
                 map.get("accessList"),
                 new TypeReference<List<Map<String, Object>>>() {
                 });
@@ -201,7 +200,7 @@ final class DefaultPublicClient implements PublicClient {
         if (accessListRaw != null) {
             for (Map<String, Object> entryMap : accessListRaw) {
                 final String addressHex = RpcUtils.stringValue(entryMap.get("address"));
-                final List<String> storageKeysHex = mapper.convertValue(
+                final List<String> storageKeysHex = MAPPER.convertValue(
                         entryMap.get("storageKeys"),
                         new TypeReference<List<String>>() {
                         });
@@ -297,7 +296,7 @@ final class DefaultPublicClient implements PublicClient {
             return null;
         }
 
-        final Map<String, Object> map = mapper.convertValue(
+        final Map<String, Object> map = MAPPER.convertValue(
             result, new TypeReference<Map<String, Object>>() {}
         );
 
@@ -318,7 +317,7 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public Subscription subscribeToNewHeads(java.util.function.Consumer<BlockHeader> callback) {
         String id = provider.subscribe("newHeads", List.of(), result -> {
-            Map<String, Object> map = mapper.convertValue(
+            Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
             );
 
@@ -344,7 +343,7 @@ final class DefaultPublicClient implements PublicClient {
     public Subscription subscribeToLogs(LogFilter filter, java.util.function.Consumer<LogEntry> callback) {
         Map<String, Object> params = buildLogParams(filter);
         String id = provider.subscribe("logs", List.of(params), result -> {
-            Map<String, Object> map = mapper.convertValue(
+            Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
             );
 
@@ -353,7 +352,7 @@ final class DefaultPublicClient implements PublicClient {
             String blockHash = RpcUtils.stringValue(map.get("blockHash"));
             String txHash = RpcUtils.stringValue(map.get("transactionHash"));
             Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
-            List<String> topicsHex = mapper.convertValue(
+            List<String> topicsHex = MAPPER.convertValue(
                 map.get("topics"),
                 new TypeReference<List<String>>() {}
             );
