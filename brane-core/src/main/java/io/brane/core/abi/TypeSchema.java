@@ -2,6 +2,7 @@ package io.brane.core.abi;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 /**
  * Defines the schema (expected type structure) for ABI decoding.
@@ -174,10 +175,9 @@ public sealed interface TypeSchema permits
 
         @Override
         public String typeName() {
-            return "(" + components.stream()
+            return components.stream()
                     .map(TypeSchema::typeName)
-                    .reduce((a, b) -> a + "," + b)
-                    .orElse("") + ")";
+                    .collect(Collectors.joining(",", "(", ")"));
         }
     }
 }
