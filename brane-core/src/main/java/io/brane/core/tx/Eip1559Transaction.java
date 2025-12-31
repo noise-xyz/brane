@@ -162,7 +162,12 @@ public record Eip1559Transaction(
         if (includeSig) {
             Objects.requireNonNull(signature, "signature is required");
             // For EIP-1559, v is just yParity (0 or 1), not EIP-155 encoded
-            items.add(RlpNumeric.encodeLongUnsignedItem(signature.v()));
+            final int yParity = signature.v();
+            if (yParity != 0 && yParity != 1) {
+                throw new IllegalArgumentException(
+                        "EIP-1559 signature v must be yParity (0 or 1), got: " + yParity);
+            }
+            items.add(RlpNumeric.encodeLongUnsignedItem(yParity));
             items.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.r())));
             items.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.s())));
         }

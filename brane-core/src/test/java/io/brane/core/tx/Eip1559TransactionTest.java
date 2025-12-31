@@ -241,6 +241,49 @@ class Eip1559TransactionTest {
     }
 
     @Test
+    void testInvalidVValue_throwsException() {
+        final Eip1559Transaction tx = new Eip1559Transaction(
+                1L,
+                0L,
+                Wei.of(2000000000L),
+                Wei.of(100000000000L),
+                21000L,
+                Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
+                Wei.of(1000000000000000000L),
+                HexData.EMPTY,
+                List.of());
+
+        // Create signature with EIP-155 encoded v (invalid for EIP-1559)
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+        r[0] = 0x01;
+        s[0] = 0x02;
+
+        // v=27 is legacy pre-EIP-155 format, not valid for EIP-1559
+        final Signature legacySignature = new Signature(r, s, 27);
+        IllegalArgumentException exception = assertThrows(
+                IllegalArgumentException.class,
+                () -> tx.encodeAsEnvelope(legacySignature));
+        assertTrue(exception.getMessage().contains("yParity (0 or 1)"));
+        assertTrue(exception.getMessage().contains("27"));
+
+        // v=28 is also invalid
+        final Signature legacySignature28 = new Signature(r, s, 28);
+        assertThrows(IllegalArgumentException.class, () -> tx.encodeAsEnvelope(legacySignature28));
+
+        // v=37 is EIP-155 mainnet, also invalid for EIP-1559
+        final Signature eip155Signature = new Signature(r, s, 37);
+        assertThrows(IllegalArgumentException.class, () -> tx.encodeAsEnvelope(eip155Signature));
+
+        // v=0 and v=1 should work (yParity values)
+        final Signature validSig0 = new Signature(r, s, 0);
+        assertDoesNotThrow(() -> tx.encodeAsEnvelope(validSig0));
+
+        final Signature validSig1 = new Signature(r, s, 1);
+        assertDoesNotThrow(() -> tx.encodeAsEnvelope(validSig1));
+    }
+
+    @Test
     void testAccessListIsImmutable() {
         final Address contractAddr = Address.fromBytes(hexToBytes("a0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"));
         final Hash storageKey = new Hash("0x0000000000000000000000000000000000000000000000000000000000000001");
