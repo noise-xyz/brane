@@ -111,7 +111,20 @@ import static io.brane.core.AnsiColors.*;
  */
 public final class LogFormatter {
 
-    /** Indentation for multi-line log continuation. Aligns with [CALL] prefix. */
+    /**
+     * Indentation for multi-line log continuation.
+     *
+     * <p>This 10-space indent aligns continuation lines with the value portion of
+     * the first line in multi-line logs. For example:
+     * <pre>
+     * [CALL] tag=latest
+     *           to=0x1234...
+     *           data=0xabcd...
+     * </pre>
+     *
+     * <p>The indent accounts for "[CALL] " (7 chars) plus "tag" (3 chars) to align
+     * the "=" signs. Adjust if the log prefix format changes.
+     */
     private static final String CONTINUATION_INDENT = "          ";
 
     private LogFormatter() {
