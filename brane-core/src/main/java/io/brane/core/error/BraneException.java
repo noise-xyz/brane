@@ -2,25 +2,29 @@ package io.brane.core.error;
 
 /**
  * Base runtime exception for all Brane SDK failures.
- * 
+ *
  * <p>
  * This sealed class forms the root of Brane's exception hierarchy, ensuring
  * all Brane-specific errors can be caught with a single catch clause while
  * maintaining type safety through sealed types.
- * 
+ *
  * <p>
  * <strong>Exception Hierarchy:</strong>
- * <ul>
- * <li>{@link RpcException} - JSON-RPC communication failures</li>
- * <li>{@link RevertException} - EVM execution reverts</li>
- * <li>{@link AbiEncodingException} - ABI encoding failures</li>
- * <li>{@link AbiDecodingException} - ABI decoding failures</li>
- * <li>{@link TxnException} - Transaction-specific failures</li>
- * </ul>
- * 
+ * <pre>
+ * BraneException
+ * ├── {@link AbiDecodingException} - ABI decoding failures
+ * ├── {@link AbiEncodingException} - ABI encoding failures
+ * ├── {@link RevertException} - EVM execution reverts
+ * ├── {@link RpcException} - JSON-RPC communication failures
+ * └── {@link TxnException} - Transaction-specific failures
+ *     ├── {@link io.brane.core.builder.BraneTxBuilderException BraneTxBuilderException} - Transaction building failures
+ *     ├── {@link ChainMismatchException} - Chain ID mismatch errors
+ *     └── {@link InvalidSenderException} - Invalid sender address errors
+ * </pre>
+ *
  * <p>
  * <strong>Usage:</strong>
- * 
+ *
  * <pre>{@code
  * try {
  *     client.sendTransaction(request);
