@@ -1020,7 +1020,9 @@ final class InternalAbi implements Abi {
                 results.add(new MulticallResult(success, returnData));
             }
             return results;
-        } catch (Exception e) {
+        } catch (AbiDecodingException e) {
+            throw e;
+        } catch (IllegalArgumentException | ArrayIndexOutOfBoundsException e) {
             throw new AbiDecodingException("Failed to decode Multicall3 results", e);
         }
     }
