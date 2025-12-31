@@ -63,6 +63,30 @@ public record Signature(byte[] r, byte[] s, int v) {
     }
 
     /**
+     * Returns the r component of the signature.
+     * <p>
+     * A defensive copy is returned to preserve immutability.
+     *
+     * @return a copy of the r bytes (32 bytes)
+     */
+    @Override
+    public byte[] r() {
+        return Arrays.copyOf(r, r.length);
+    }
+
+    /**
+     * Returns the s component of the signature.
+     * <p>
+     * A defensive copy is returned to preserve immutability.
+     *
+     * @return a copy of the s bytes (32 bytes)
+     */
+    @Override
+    public byte[] s() {
+        return Arrays.copyOf(s, s.length);
+    }
+
+    /**
      * Extracts the recovery ID (yParity) from the v value.
      *
      * <p>

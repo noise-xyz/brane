@@ -220,4 +220,29 @@ class SignatureTest {
         // Using chainId=2 would compute: 37 - 2*2 - 35 = -2, which is invalid
         assertThrows(IllegalArgumentException.class, () -> sig.getRecoveryId(2L));
     }
+
+    @Test
+    void testAccessorDefensiveCopy() {
+        // HIGH-3: Verify that modifying returned arrays doesn't affect the Signature
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+        r[0] = 0x01;
+        s[0] = 0x02;
+
+        final Signature sig = new Signature(r, s, 27);
+
+        // Get the arrays and mutate them
+        byte[] retrievedR = sig.r();
+        byte[] retrievedS = sig.s();
+        retrievedR[0] = (byte) 0xFF;
+        retrievedS[0] = (byte) 0xFF;
+
+        // Subsequent calls should return original values (new defensive copies)
+        assertEquals(0x01, sig.r()[0], "r() should return defensive copy");
+        assertEquals(0x02, sig.s()[0], "s() should return defensive copy");
+
+        // Verify the retrieved arrays were actually modified (sanity check)
+        assertEquals((byte) 0xFF, retrievedR[0]);
+        assertEquals((byte) 0xFF, retrievedS[0]);
+    }
 }
