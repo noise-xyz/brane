@@ -56,7 +56,17 @@ public record Wei(BigInteger value) {
 
     private static final BigInteger GWEI_MULTIPLIER = BigInteger.valueOf(1_000_000_000L);
 
+    /**
+     * Creates a Wei value from a gwei amount.
+     *
+     * @param gwei the gwei amount (must be non-negative)
+     * @return the equivalent Wei value
+     * @throws IllegalArgumentException if gwei is negative
+     */
     public static Wei gwei(final long gwei) {
+        if (gwei < 0) {
+            throw new IllegalArgumentException("gwei cannot be negative: " + gwei);
+        }
         return new Wei(BigInteger.valueOf(gwei).multiply(GWEI_MULTIPLIER));
     }
 

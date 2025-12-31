@@ -35,4 +35,12 @@ class WeiTest {
                 () -> Wei.fromEther(fractionalEther));
         assertTrue(ex.getMessage().contains("fractional wei"));
     }
+
+    @Test
+    void gweiRejectsNegative() {
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> Wei.gwei(-1));
+        assertTrue(ex.getMessage().contains("gwei cannot be negative"));
+    }
 }
