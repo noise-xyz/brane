@@ -22,7 +22,7 @@ class DefaultPublicClientErrorTest {
                                 "1"));
 
         PublicClient client = PublicClient.from(provider);
-        LogFilter filter = new LogFilter(Optional.empty(), Optional.empty(), Optional.of(new Address("0x" + "1".repeat(40))), Optional.empty());
+        LogFilter filter = new LogFilter(Optional.empty(), Optional.empty(), Optional.of(List.of(new Address("0x" + "1".repeat(40)))), Optional.empty());
 
         RpcException ex = assertThrows(RpcException.class, () -> client.getLogs(filter));
         assertTrue(ex.isBlockRangeTooLarge());
@@ -39,7 +39,7 @@ class DefaultPublicClientErrorTest {
                                 "1"));
 
         PublicClient client = PublicClient.from(provider);
-        LogFilter filter = new LogFilter(Optional.empty(), Optional.empty(), Optional.of(new Address("0x" + "1".repeat(40))), Optional.empty());
+        LogFilter filter = new LogFilter(Optional.empty(), Optional.empty(), Optional.of(List.of(new Address("0x" + "1".repeat(40)))), Optional.empty());
 
         RpcException ex = assertThrows(RpcException.class, () -> client.getLogs(filter));
         assertTrue(ex.isFilterNotFound());

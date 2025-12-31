@@ -169,7 +169,7 @@ public class WebSocketIntegrationTest {
         CompletableFuture<LogEntry> received = new CompletableFuture<>();
         Subscription sub = client.subscribeToLogs(
                 new io.brane.rpc.LogFilter(java.util.Optional.empty(), java.util.Optional.empty(),
-                        java.util.Optional.of(contractAddress), java.util.Optional.empty()),
+                        java.util.Optional.of(java.util.List.of(contractAddress)), java.util.Optional.empty()),
                 log -> received.complete(log));
 
         // Wait for subscription to be active

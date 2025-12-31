@@ -223,7 +223,14 @@ final class DefaultPublicClient implements PublicClient {
                                 req.put("toBlock", hex);
                             }
                         });
-        filter.address().ifPresent(a -> req.put("address", a.value()));
+        // Serialize addresses: single address as string, multiple as array (per eth_getLogs spec)
+        filter.addresses().ifPresent(addrs -> {
+            if (addrs.size() == 1) {
+                req.put("address", addrs.get(0).value());
+            } else {
+                req.put("address", addrs.stream().map(Address::value).toList());
+            }
+        });
         filter.topics()
                 .ifPresent(
                         topics -> {

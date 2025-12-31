@@ -70,7 +70,7 @@ public final class Erc20TransferLogExample {
     final LogFilter filter = new LogFilter(
         java.util.Optional.ofNullable(fromBlock),
         java.util.Optional.ofNullable(toBlock),
-        java.util.Optional.of(token),
+        java.util.Optional.of(List.of(token)),
         java.util.Optional.of(topics));
 
     System.out.println(

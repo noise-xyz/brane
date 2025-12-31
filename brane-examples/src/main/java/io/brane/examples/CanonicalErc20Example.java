@@ -172,7 +172,7 @@ public final class CanonicalErc20Example {
       final LogFilter filter = new LogFilter(
           Optional.of(receipt.blockNumber()),
           Optional.of(receipt.blockNumber()),
-          Optional.of(tokenAddress),
+          Optional.of(List.of(tokenAddress)),
           Optional.of(topics));
 
       final var logs = publicClient.getLogs(filter);
