@@ -38,6 +38,21 @@ class HexDataTest {
     }
 
     @Test
+    void fromBytesDefensiveCopy() {
+        // CRIT-1: Verify that mutation of original array does not affect HexData
+        byte[] original = new byte[] {(byte) 0xAB, (byte) 0xCD};
+        HexData data = HexData.fromBytes(original);
+
+        // Mutate the original array
+        original[0] = (byte) 0x00;
+        original[1] = (byte) 0x00;
+
+        // HexData should still have the original values
+        assertEquals("0xabcd", data.value());
+        assertArrayEquals(new byte[] {(byte) 0xAB, (byte) 0xCD}, data.toBytes());
+    }
+
+    @Test
     void concurrentAccessToValueIsThreadSafe() throws Exception {
         // Create HexData from bytes (lazy string initialization)
         byte[] bytes = new byte[] {(byte) 0xDE, (byte) 0xAD, (byte) 0xBE, (byte) 0xEF};

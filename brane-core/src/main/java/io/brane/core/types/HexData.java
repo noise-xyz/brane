@@ -182,7 +182,7 @@ public final class HexData {
         if (bytes == null || bytes.length == 0) {
             return EMPTY;
         }
-        return new HexData(bytes);
+        return new HexData(bytes.clone()); // Defensive copy to preserve immutability
     }
 
     @Override
