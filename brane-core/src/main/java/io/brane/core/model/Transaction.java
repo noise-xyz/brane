@@ -26,6 +26,16 @@ import java.util.Optional;
  *   <li>{@code blockNumber} - the block number (null if pending)</li>
  * </ul>
  *
+ * <h2>API Design Note</h2>
+ * <p>Optional fields use nullable types with explicit {@code *Opt()} accessor methods
+ * (e.g., {@link #toOpt()}, {@link #blockNumberOpt()}) rather than {@code Optional<T>}
+ * record components. This design:
+ * <ul>
+ *   <li>Keeps record components simple and serialization-friendly</li>
+ *   <li>Provides explicit opt-in for Optional handling when needed</li>
+ *   <li>Allows null checks with standard {@code == null} patterns</li>
+ * </ul>
+ *
  * @param hash        the transaction hash (required)
  * @param from        the sender address (required)
  * @param to          the recipient address (null for contract creation)
