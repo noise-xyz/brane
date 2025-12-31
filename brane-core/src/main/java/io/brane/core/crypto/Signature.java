@@ -40,6 +40,12 @@ import java.util.Objects;
  */
 public record Signature(byte[] r, byte[] s, int v) {
 
+    /**
+     * Maximum bytes to display in full hex in toString().
+     * Beyond this, just show the byte count to keep logs readable.
+     */
+    private static final int MAX_BYTES_TO_DISPLAY = 8;
+
     public Signature {
         Objects.requireNonNull(r, "r cannot be null");
         Objects.requireNonNull(s, "s cannot be null");
@@ -111,7 +117,7 @@ public record Signature(byte[] r, byte[] s, int v) {
     }
 
     private static String bytesToHex(byte[] bytes) {
-        if (bytes.length > 8) {
+        if (bytes.length > MAX_BYTES_TO_DISPLAY) {
             return bytes.length + " bytes";
         }
         StringBuilder sb = new StringBuilder();
