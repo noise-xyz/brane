@@ -119,7 +119,9 @@ public final class AbiDecoder {
                 List<AbiType> components = decodeTuple(data, offset, s.components());
                 yield new Tuple(components);
             }
-            default -> throw new IllegalArgumentException("Unknown static schema: " + schema);
+            // StringSchema is always dynamic, so it should never reach decodeStatic
+            case TypeSchema.StringSchema s ->
+                throw new IllegalStateException("StringSchema is always dynamic and should not be decoded as static");
         };
     }
 
@@ -130,7 +132,14 @@ public final class AbiDecoder {
         return switch (schema) {
             case TypeSchema.TupleSchema t -> t.components().stream().mapToInt(AbiDecoder::getStaticSize).sum();
             case TypeSchema.ArraySchema a -> a.fixedLength() * getStaticSize(a.element());
-            default -> 32;
+            // All other static types are 32 bytes (single slot)
+            case TypeSchema.UIntSchema s -> 32;
+            case TypeSchema.IntSchema s -> 32;
+            case TypeSchema.AddressSchema s -> 32;
+            case TypeSchema.BoolSchema s -> 32;
+            case TypeSchema.BytesSchema s -> 32;
+            // StringSchema is always dynamic, handled by early return above
+            case TypeSchema.StringSchema s -> 32;
         };
     }
 
@@ -198,7 +207,17 @@ public final class AbiDecoder {
                 List<AbiType> components = decodeTuple(data, offset, s.components());
                 yield new Tuple(components);
             }
-            default -> throw new IllegalArgumentException("Unknown dynamic schema: " + schema);
+            // These types are always static (isDynamic() returns false), so they should never
+            // reach decodeDynamic. Include them for exhaustiveness to get compile-time warnings
+            // if new types are added to the sealed hierarchy.
+            case TypeSchema.UIntSchema s ->
+                throw new IllegalStateException("UIntSchema is always static and should not be decoded as dynamic");
+            case TypeSchema.IntSchema s ->
+                throw new IllegalStateException("IntSchema is always static and should not be decoded as dynamic");
+            case TypeSchema.AddressSchema s ->
+                throw new IllegalStateException("AddressSchema is always static and should not be decoded as dynamic");
+            case TypeSchema.BoolSchema s ->
+                throw new IllegalStateException("BoolSchema is always static and should not be decoded as dynamic");
         };
     }
 
