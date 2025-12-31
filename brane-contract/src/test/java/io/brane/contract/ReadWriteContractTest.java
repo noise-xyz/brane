@@ -261,7 +261,7 @@ class ReadWriteContractTest {
                     0L,
                     new Address("0x" + "1".repeat(40)),  // from address
                     null,  // to can be null for contract creation
-                    HexData.EMPTY,
+                    null,  // contractAddress null for non-deployment
                     java.util.List.of(),
                     true,
                     Wei.of(21000L));

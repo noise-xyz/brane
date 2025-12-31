@@ -372,7 +372,7 @@ public final class DefaultWalletClient implements WalletClient {
                 blockNumber != null ? blockNumber : 0L,
                 fromHex != null ? new Address(fromHex) : null,
                 toHex != null ? new Address(toHex) : null,
-                contractAddress != null ? new HexData(contractAddress) : HexData.EMPTY,
+                contractAddress != null ? new Address(contractAddress) : null,
                 logs,
                 status,
                 cumulativeGasUsed != null ? new Wei(RpcUtils.decodeHexBigInteger(cumulativeGasUsed)) : null);

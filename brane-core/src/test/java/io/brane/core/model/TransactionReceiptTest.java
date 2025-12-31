@@ -2,7 +2,6 @@ package io.brane.core.model;
 
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
-import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import org.junit.jupiter.api.Test;
 
@@ -42,20 +41,21 @@ class TransactionReceiptTest {
 
     @Test
     void allowsNullToForContractCreation() {
+        Address deployedContract = new Address("0x" + "c".repeat(40));
         TransactionReceipt receipt = new TransactionReceipt(
                 VALID_HASH,
                 VALID_HASH,
                 12345L,
                 VALID_ADDRESS,
                 null,  // null to for contract creation
-                HexData.fromBytes(VALID_ADDRESS.toBytes()),
+                deployedContract,
                 Collections.emptyList(),
                 true,
                 VALID_GAS
         );
 
         assertNull(receipt.to());
-        assertNotNull(receipt.contractAddress());
+        assertEquals(deployedContract, receipt.contractAddress());
     }
 
     @Test

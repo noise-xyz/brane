@@ -2,7 +2,6 @@ package io.brane.core.model;
 
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
-import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import java.util.List;
 import java.util.Objects;
@@ -37,7 +36,7 @@ import java.util.Objects;
  * @param from              the address that sent the transaction
  * @param to                the recipient address, or null for contract creation
  * @param contractAddress   the address of the deployed contract (for contract
- *                          creation), or empty
+ *                          creation), or null for non-deployment transactions
  * @param logs              the list of event logs emitted during transaction
  *                          execution
  * @param status            {@code true} if execution succeeded, {@code false}
@@ -52,7 +51,7 @@ public record TransactionReceipt(
                 long blockNumber,
                 Address from,
                 Address to,
-                HexData contractAddress,
+                Address contractAddress,
                 List<LogEntry> logs,
                 boolean status,
                 Wei cumulativeGasUsed) {

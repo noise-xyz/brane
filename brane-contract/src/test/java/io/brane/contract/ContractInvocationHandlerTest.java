@@ -119,7 +119,7 @@ class ContractInvocationHandlerTest {
                         1L,
                         new Address("0x" + "1".repeat(40)),
                         new Address("0x" + "2".repeat(40)),
-                        new io.brane.core.types.HexData("0x"),
+                        null,
                         java.util.List.of(),
                         true,
                         io.brane.core.types.Wei.of(21000));
@@ -387,7 +387,7 @@ class ContractInvocationHandlerTest {
                         1L,
                         new Address("0x" + "1".repeat(40)),
                         new Address("0x" + "2".repeat(40)),
-                        new io.brane.core.types.HexData("0x"),
+                        null,
                         java.util.List.of(),
                         true,
                         Wei.of(21000));
@@ -450,7 +450,7 @@ class ContractInvocationHandlerTest {
                         1L,
                         new Address("0x" + "1".repeat(40)),
                         new Address("0x" + "2".repeat(40)),
-                        new io.brane.core.types.HexData("0x"),
+                        null,
                         java.util.List.of(),
                         true,
                         Wei.of(21000));
@@ -515,7 +515,7 @@ class ContractInvocationHandlerTest {
                         1L,
                         new Address("0x" + "1".repeat(40)),
                         new Address("0x" + "2".repeat(40)),
-                        new io.brane.core.types.HexData("0x"),
+                        null,
                         java.util.List.of(),
                         true,
                         Wei.of(21000));
