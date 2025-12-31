@@ -146,30 +146,40 @@ public sealed interface TypeSchema permits
         }
     }
 
+    /**
+     * Schema for Solidity array types (both fixed-size and dynamic).
+     *
+     * @param element     the schema for each element in the array
+     * @param fixedLength the array size for fixed-size arrays (0 or more), or {@link #DYNAMIC} (-1)
+     *                    for dynamic arrays
+     */
     record ArraySchema(TypeSchema element, int fixedLength) implements TypeSchema {
+        /** Length value indicating a dynamic array (e.g., {@code uint256[]}). */
+        public static final int DYNAMIC = -1;
+
         /**
          * Validates the array schema.
          *
-         * @throws NullPointerException if element is null
+         * @throws NullPointerException     if element is null
          * @throws IllegalArgumentException if fixedLength is less than -1
          */
         public ArraySchema {
             Objects.requireNonNull(element, "element schema cannot be null");
-            if (fixedLength < -1) {
+            if (fixedLength < DYNAMIC) {
                 throw new IllegalArgumentException(
-                        "fixedLength must be >= -1 (use -1 for dynamic arrays), got: " + fixedLength);
+                        "fixedLength must be >= -1 (use DYNAMIC for dynamic arrays), got: " + fixedLength);
             }
         }
 
         @Override
         public boolean isDynamic() {
-            return fixedLength == -1 || element.isDynamic();
+            return fixedLength == DYNAMIC || element.isDynamic();
         }
 
         @Override
         public String typeName() {
             String elemType = element.typeName();
-            return fixedLength == -1 ? elemType + "[]" : elemType + "[" + fixedLength + "]";
+            return fixedLength == DYNAMIC ? elemType + "[]" : elemType + "[" + fixedLength + "]";
         }
     }
 
