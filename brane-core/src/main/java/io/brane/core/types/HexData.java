@@ -61,7 +61,8 @@ public final class HexData {
     private static final Pattern HEX = Pattern.compile("^0x([0-9a-fA-F]{2})*$");
     public static final HexData EMPTY = new HexData("0x", true);
 
-    private String value;
+    /** Volatile for thread-safe lazy initialization via double-checked locking. */
+    private volatile String value;
     private final byte[] raw;
 
     /**
@@ -116,10 +117,16 @@ public final class HexData {
      */
     @com.fasterxml.jackson.annotation.JsonValue
     public String value() {
-        if (value == null) {
-            value = Hex.encode(raw);
+        String v = value;
+        if (v == null) {
+            synchronized (this) {
+                v = value;
+                if (v == null) {
+                    value = v = Hex.encode(raw);
+                }
+            }
         }
-        return value;
+        return v;
     }
 
     /**
