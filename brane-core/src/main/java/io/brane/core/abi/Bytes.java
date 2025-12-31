@@ -35,8 +35,7 @@ public record Bytes(HexData value, boolean isDynamic) implements AbiType {
         if (isDynamic) {
             return "bytes";
         }
-        int n = (value.value().length() - 2) / 2;
-        return "bytes" + n;
+        return "bytes" + value.byteLength();
     }
 
     @Override
