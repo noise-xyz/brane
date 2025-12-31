@@ -50,8 +50,12 @@ public record Array<T extends AbiType>(List<T> values, Class<T> type, boolean is
             return 32;
         }
         // Static array: length * element size
-        if (values.isEmpty())
+        // Edge case: empty static array (T[0]) has 0 byte size since there are no elements
+        // to encode. While Solidity doesn't allow T[0] declarations, this is correct per
+        // the ABI spec where head size = length * element_size = 0 * 32 = 0.
+        if (values.isEmpty()) {
             return 0;
+        }
         return values.size() * values.get(0).byteSize();
     }
 
