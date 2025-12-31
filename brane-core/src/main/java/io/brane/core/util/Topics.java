@@ -4,6 +4,8 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.primitives.Hex;
 
+import java.util.Objects;
+
 /**
  * Utility class for creating event topics from typed values.
  *
@@ -47,12 +49,10 @@ public final class Topics {
      *
      * @param address the address to convert (must not be null)
      * @return the 32-byte topic hash
-     * @throws IllegalArgumentException if address is null
+     * @throws NullPointerException if address is null
      */
     public static Hash fromAddress(Address address) {
-        if (address == null) {
-            throw new IllegalArgumentException("Address cannot be null");
-        }
+        Objects.requireNonNull(address, "address cannot be null");
         // Address is 20 bytes, we need 32 bytes - pad with 12 bytes of zeros on the left
         String cleanAddress = Hex.cleanPrefix(address.value());
         String padded = ADDRESS_ZERO_PADDING + cleanAddress;
