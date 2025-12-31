@@ -39,6 +39,12 @@ import java.util.List;
  */
 public final class AbiDecoder {
 
+    /**
+     * Number of padding bytes before an address in a 32-byte ABI slot.
+     * Addresses are 20 bytes, so they are left-padded with 12 zero bytes (32 - 20 = 12).
+     */
+    private static final int ADDRESS_PADDING_BYTES = 12;
+
     private AbiDecoder() {
     }
 
@@ -95,7 +101,7 @@ public final class AbiDecoder {
             case TypeSchema.UIntSchema s -> new UInt(s.width(), decodeUInt(data, offset));
             case TypeSchema.IntSchema s -> new Int(s.width(), decodeInt(data, offset));
             case TypeSchema.AddressSchema s ->
-                new AddressType(new Address(Hex.encode(Arrays.copyOfRange(data, offset + 12, offset + 32))));
+                new AddressType(new Address(Hex.encode(Arrays.copyOfRange(data, offset + ADDRESS_PADDING_BYTES, offset + 32))));
             case TypeSchema.BoolSchema s -> new Bool(decodeUInt(data, offset).equals(BigInteger.ONE));
             case TypeSchema.BytesSchema s -> {
                 // Static bytesN: value is left-aligned in 32 bytes, extract only N bytes
