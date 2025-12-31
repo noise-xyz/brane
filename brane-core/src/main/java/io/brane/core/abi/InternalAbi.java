@@ -701,7 +701,6 @@ final class InternalAbi implements Abi {
                 @Override
                 public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
                     // Static bytes are just right-padded
-                    // Static bytes are just right-padded
                     byte[] data;
                     if (value instanceof byte[]) {
                         data = (byte[]) value;
