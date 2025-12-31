@@ -32,6 +32,18 @@ import java.math.BigInteger;
  * <p>
  * This signer enforces <b>Low-S</b> values (EIP-2) to prevent signature
  * malleability.
+ *
+ * <h2>Thread Safety</h2>
+ * <p>
+ * This class is <b>thread-safe</b>. The static {@link FixedPointCombMultiplier} is
+ * safe for concurrent use because:
+ * <ul>
+ * <li>Bouncy Castle's precomputed multiplication tables are stored in a
+ * {@link java.util.concurrent.ConcurrentHashMap} on the ECCurve.</li>
+ * <li>The multiplier itself maintains no mutable state between calls.</li>
+ * <li>Each call to {@link #sign(byte[], BigInteger)} creates its own
+ * {@link HMacDSAKCalculator} instance, so there is no shared mutable state.</li>
+ * </ul>
  */
 public final class FastSigner {
 
@@ -42,6 +54,11 @@ public final class FastSigner {
             CURVE_PARAMS.getN(),
             CURVE_PARAMS.getH());
     private static final BigInteger HALF_CURVE_ORDER = CURVE_PARAMS.getN().shiftRight(1);
+
+    /**
+     * Shared multiplier instance. Thread-safe per Bouncy Castle's implementation which uses
+     * ConcurrentHashMap for precomputed table caching and maintains no mutable state.
+     */
     private static final FixedPointCombMultiplier MULTIPLIER = new FixedPointCombMultiplier();
 
     private FastSigner() {
