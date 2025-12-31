@@ -42,6 +42,7 @@ public record Array<T extends AbiType>(List<T> values, Class<T> type, boolean is
         Objects.requireNonNull(values, "values cannot be null");
         Objects.requireNonNull(type, "type cannot be null");
         Objects.requireNonNull(elementTypeName, "elementTypeName cannot be null");
+        values = List.copyOf(values);
     }
 
     @Override

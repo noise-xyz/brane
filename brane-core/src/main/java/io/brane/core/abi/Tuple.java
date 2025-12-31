@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 public record Tuple(List<AbiType> components) implements AbiType {
     public Tuple {
         Objects.requireNonNull(components, "components cannot be null");
+        components = List.copyOf(components);
     }
 
     @Override

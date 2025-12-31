@@ -3,6 +3,7 @@ package io.brane.core.abi;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -47,5 +48,42 @@ class ArrayTest {
         assertEquals(64, staticArray.byteSize()); // 2 * 32 bytes
         assertFalse(staticArray.isDynamic());
         assertEquals("uint256[2]", staticArray.typeName());
+    }
+
+    @Test
+    void defensiveCopyPreventsExternalMutation() {
+        // Create a mutable list
+        List<UInt> mutableList = new ArrayList<>();
+        mutableList.add(new UInt(256, BigInteger.ONE));
+        mutableList.add(new UInt(256, BigInteger.TWO));
+
+        // Create Array from the mutable list
+        Array<UInt> array = new Array<>(mutableList, UInt.class, false, "uint256");
+
+        // Verify initial size
+        assertEquals(2, array.values().size());
+
+        // Modify the original list
+        mutableList.add(new UInt(256, BigInteger.TEN));
+        mutableList.clear();
+
+        // Array should be unaffected
+        assertEquals(2, array.values().size());
+        assertEquals(BigInteger.ONE, array.values().get(0).value());
+        assertEquals(BigInteger.TWO, array.values().get(1).value());
+    }
+
+    @Test
+    void valuesListIsImmutable() {
+        Array<UInt> array = new Array<>(
+                List.of(new UInt(256, BigInteger.ONE)),
+                UInt.class,
+                false,
+                "uint256");
+
+        // Attempting to modify the values list should throw
+        assertThrows(UnsupportedOperationException.class, () -> {
+            array.values().add(new UInt(256, BigInteger.TWO));
+        });
     }
 }
