@@ -85,8 +85,13 @@ public final class FastSigner {
         BigInteger z = new BigInteger(1, messageHash);
 
         // RFC 6979 loop: iterate until we get valid r and s (both non-zero).
-        // Probability of r==0 or s==0 is ~2^-256, practically unreachable.
-        // The loop handles both cases per RFC 6979 section 3.2 step h.
+        // Per RFC 6979 section 3.2 step h: if r==0 or s==0, generate next K value.
+        // The HMacDSAKCalculator.nextK() deterministically generates successive k values,
+        // ensuring we never get stuck in an infinite loop with the same invalid k.
+        //
+        // In practice, r==0 or s==0 probability is ~2^-256 (negligible) since:
+        // - r==0 requires k*G to have x-coordinate == 0 mod n
+        // - s==0 requires (z + r*d) == 0 mod n, which depends on the message hash
         do {
             do {
                 k = kCalculator.nextK();
