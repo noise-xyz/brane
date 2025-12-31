@@ -2,349 +2,306 @@
 
 **Review Date:** 2025-12-30
 **Reviewer:** Principal Engineer (Opus 4.5)
-**Files Reviewed:** 61 Java files in `brane-core/src/main/java/io/brane/core/`
+**Module:** `brane-core/src/main/java/io/brane/core/`
+**Files Reviewed:** 60 Java files across 9 packages
 
 ---
 
-## CRITICAL PRIORITY (3 Issues)
+## CRITICAL PRIORITY (3 Issues) ✅ ALL FIXED
 
-### CRIT-1: HexData Stores Raw Bytes Without Defensive Copy
+### CRIT-1: AbiDecoder Edge Case Bug - Empty Bytes Validation ✅ FIXED
 
-**File:** `brane-core/src/main/java/io/brane/core/types/HexData.java:103-106`
+**File:** `brane-core/src/main/java/io/brane/core/abi/AbiDecoder.java:144,152`
 
-**Problem:** The private constructor stores the raw byte array reference directly without making a defensive copy. Any external caller with access to the original array can mutate HexData's internal state, breaking immutability guarantees.
+**Problem:** When decoding dynamic bytes or string with length 0, the code validates `dataOffset + length - 1`, which becomes `dataOffset - 1`. For empty data (length=0), this underflows the intended validation logic.
 
-```java
-private HexData(byte[] raw) {
-    this.raw = raw;  // No defensive copy!
-    this.value = null;
-}
-```
-
-**Why Critical:** HexData is documented as immutable and thread-safe. External mutation could corrupt transaction data, signatures, or addresses causing incorrect blockchain operations.
+**Fix:** Added `if (length > 0)` check before offset validation for both bytes and string decoding.
 
 **Acceptance Criteria:**
-- [ ] Make a defensive copy of the byte array in the constructor: `this.raw = raw.clone();`
-- [ ] Verify that `fromBytes()` callers do not rely on shared array semantics
-- [ ] Add test proving mutation of original array does not affect HexData
+- [x] Add explicit check for length=0 case to skip validation or adjust calculation
+- [x] Add unit test for decoding empty bytes and empty strings
+- [x] Verify behavior matches Solidity ABI specification
 
 ---
 
-### CRIT-2: Integer Overflow Risk in Signature.getRecoveryId()
+### CRIT-2: InternalAbi Catches Generic Exception in Decode Path ✅ FIXED
 
-**File:** `brane-core/src/main/java/io/brane/core/crypto/Signature.java:70-77`
+**File:** `brane-core/src/main/java/io/brane/core/abi/InternalAbi.java:1023`
 
-**Problem:** The method casts `chainId * 2 + 35` to `int`, which can overflow for large chain IDs. Some L2 chains have chain IDs exceeding 2^30, and the multiplication by 2 plus 35 can exceed Integer.MAX_VALUE.
+**Problem:** Catches `Exception` which is too broad and masks programming errors like NPE.
 
-```java
-public int getRecoveryId(final long chainId) {
-    if (v == 0 || v == 1) {
-        return v;
-    }
-    return v - (int) (chainId * 2 + 35);  // Overflow for large chainId
-}
-```
-
-**Why Critical:** Incorrect recovery ID calculation means signature verification fails, potentially accepting invalid signatures or rejecting valid ones.
+**Fix:** Replaced generic catch with specific catches for `AbiDecodingException`, `IllegalArgumentException`, and `ArrayIndexOutOfBoundsException`.
 
 **Acceptance Criteria:**
-- [ ] Change return type to `long` or keep as `int` with validation that result is 0 or 1
-- [ ] Add validation that the computed result is actually 0 or 1 (valid recovery IDs)
-- [ ] Add test cases with chain IDs > 2^30 (e.g., chain ID 4294967295)
-- [ ] Document the valid range of chain IDs supported
+- [x] Catch specific exceptions: `IllegalArgumentException`, `AbiDecodingException`, `ArrayIndexOutOfBoundsException`
+- [x] Let programming errors (NPE, ClassCastException) propagate unwrapped
+- [x] Add test verifying NPE is not wrapped
 
 ---
 
-### CRIT-3: Keccak256 ThreadLocal Never Cleaned Up
+### CRIT-3: HexData.equals() Forces Lazy Initialization ✅ FIXED
 
-**File:** `brane-core/src/main/java/io/brane/core/crypto/Keccak256.java:26`
+**File:** `brane-core/src/main/java/io/brane/core/types/HexData.java:189-200`
 
-**Problem:** The ThreadLocal digest instance is never removed. In application server environments with thread pools, this causes memory leaks as digest instances accumulate.
+**Problem:** `HexData.equals()` calls `value()` which triggers lazy string computation.
 
-```java
-private static final ThreadLocal<Keccak.Digest256> DIGEST = ThreadLocal.withInitial(Keccak.Digest256::new);
-```
-
-**Why Critical:** Memory leaks in long-running applications, especially web servers using thread pools where threads are reused.
+**Fix:** Added fast path in `equals()` to compare raw bytes directly using `Arrays.equals()` when both instances have raw bytes. Falls back to string comparison for mixed cases.
 
 **Acceptance Criteria:**
-- [ ] Document the ThreadLocal lifetime behavior in class Javadoc
-- [ ] Add guidance for users on when to call `DIGEST.remove()` in servlet/application server environments
-- [ ] OR provide a `Keccak256.cleanup()` method that calls `DIGEST.remove()`
-- [ ] OR evaluate switching to per-call instantiation (benchmark performance trade-off)
+- [x] Compare raw bytes directly when both instances have raw bytes
+- [x] Only fall back to string comparison when necessary
+- [x] Update hashCode() to be consistent with new equals()
+- [x] Add performance test verifying no allocation in bytes-to-bytes comparison
 
 ---
 
-## HIGH PRIORITY (10 Issues)
+## HIGH PRIORITY (6 Issues)
 
-### HIGH-1: TransactionReceipt Missing Validation in Compact Constructor
-
-**File:** `brane-core/src/main/java/io/brane/core/model/TransactionReceipt.java:47-57`
-
-**Problem:** TransactionReceipt has no compact constructor, allowing null values for required fields like `transactionHash`, `from`, and `blockHash`. Also `logs` list is not defensively copied.
-
-**Acceptance Criteria:**
-- [ ] Add compact constructor with `Objects.requireNonNull()` for: transactionHash, blockHash, from, cumulativeGasUsed
-- [ ] Make defensive copy of `logs` list: `logs = List.copyOf(logs)`
-- [ ] Document which fields can be null (only `to` for contract creation, `contractAddress` for non-creation)
-- [ ] Add test verifying null rejection for required fields
-
----
-
-### HIGH-2: BlockHeader Missing All Validation
-
-**File:** `brane-core/src/main/java/io/brane/core/model/BlockHeader.java:15`
-
-**Problem:** BlockHeader is an empty record with no validation. All fields use boxed types (`Long`) suggesting they can be null, but there's no documentation of when.
-
-```java
-public record BlockHeader(Hash hash, Long number, Hash parentHash, Long timestamp, Wei baseFeePerGas) {}
-```
-
-**Acceptance Criteria:**
-- [ ] Add compact constructor validating required fields (hash, number, parentHash, timestamp)
-- [ ] Use primitive `long` for `number` and `timestamp` if never null
-- [ ] Add Javadoc explaining when `baseFeePerGas` is null (pre-London blocks)
-- [ ] Add test verifying validation
-
----
-
-### HIGH-3: LogEntry Missing Validation
-
-**File:** `brane-core/src/main/java/io/brane/core/model/LogEntry.java:21-29`
-
-**Problem:** LogEntry has no validation. Fields like `address`, `data`, `topics` should never be null.
-
-**Acceptance Criteria:**
-- [ ] Add compact constructor with null checks for: address, data, topics, transactionHash
-- [ ] Make defensive copy of `topics`: `topics = List.copyOf(topics)`
-- [ ] Document nullability of `blockHash` (null for pending logs)
-- [ ] Add test for validation
-
----
-
-### HIGH-4: Call3 and MulticallResult Missing Validation
+### HIGH-1: Missing @throws Javadoc on Public API Methods
 
 **Files:**
-- `brane-core/src/main/java/io/brane/core/model/Call3.java:13-17`
-- `brane-core/src/main/java/io/brane/core/model/MulticallResult.java:11-14`
+- `brane-core/src/main/java/io/brane/core/abi/Abi.java:112,147`
+- `brane-core/src/main/java/io/brane/core/crypto/Signer.java:31,44`
 
-**Problem:** Neither record validates its fields.
-
-**Acceptance Criteria:**
-- [ ] Call3: Add compact constructor validating `target` and `callData` are non-null
-- [ ] MulticallResult: Add compact constructor validating `returnData` is non-null
-- [ ] Add tests for both
-
----
-
-### HIGH-5: AccessListWithGas Missing Validation
-
-**File:** `brane-core/src/main/java/io/brane/core/model/AccessListWithGas.java:42-44`
-
-**Problem:** No validation, and `accessList` should be defensively copied.
-
-**Acceptance Criteria:**
-- [ ] Add compact constructor with null checks for `accessList` and `gasUsed`
-- [ ] Make defensive copy: `accessList = List.copyOf(accessList)`
-- [ ] Add test for validation
-
----
-
-### HIGH-6: ChainProfile Missing Validation and Documentation
-
-**File:** `brane-core/src/main/java/io/brane/core/chain/ChainProfile.java:5-15`
-
-**Problem:** No validation for chainId (should be positive), no null check for defaultRpcUrl.
-
-**Acceptance Criteria:**
-- [ ] Add compact constructor validating `chainId > 0`
-- [ ] Validate `defaultRpcUrl` is non-null and non-empty
-- [ ] Validate `defaultPriorityFeePerGas` is non-null
-- [ ] Add Javadoc documenting each field's purpose and constraints
-
----
-
-### HIGH-7: ChainProfiles Hardcoded API Key Placeholder
-
-**File:** `brane-core/src/main/java/io/brane/core/chain/ChainProfiles.java:12`
-
-**Problem:** Sepolia profile has hardcoded `YOUR_KEY` placeholder which will fail at runtime.
+**Problem:** Public API methods lack `@throws` documentation for exceptions they throw.
 
 ```java
-public static final ChainProfile ETH_SEPOLIA =
-        ChainProfile.of(11155111L, "https://sepolia.infura.io/v3/YOUR_KEY", true, Wei.of(1_000_000_000L));
+// Missing @throws AbiEncodingException
+FunctionCall encodeFunction(String name, Object... args);
+
+// Missing @throws for signTransaction
+Signature signTransaction(UnsignedTransaction tx, long chainId);
 ```
 
 **Acceptance Criteria:**
-- [ ] Replace with a public RPC endpoint OR remove Sepolia profile entirely
-- [ ] Add Javadoc warning that users must configure their own RPC URL
-- [ ] Consider making `defaultRpcUrl` nullable with documentation that users should provide their own
+- [ ] Add `@throws` tags documenting all significant exceptions in Abi.java
+- [ ] Add `@throws` tags documenting all significant exceptions in Signer.java
+- [ ] Audit all public interfaces for missing exception documentation
+- [ ] Include both checked and unchecked exceptions that callers should handle
 
 ---
 
-### HIGH-8: AbiDecoder Missing Array Bounds Validation
+### HIGH-2: PrivateKeySigner Missing Null Check on Message Parameter
 
-**File:** `brane-core/src/main/java/io/brane/core/abi/AbiDecoder.java:77-78`
+**File:** `brane-core/src/main/java/io/brane/core/crypto/PrivateKeySigner.java:45`
 
-**Problem:** When decoding dynamic types, `intValueExact()` is used on offset which can throw `ArithmeticException` without a clear error message. Also no validation that offset is within data bounds.
-
-**Acceptance Criteria:**
-- [ ] Validate `absoluteOffset < data.length` before passing to decodeDynamic
-- [ ] Wrap `intValueExact()` to throw `AbiDecodingException` with context: "Offset too large for int: {value}"
-- [ ] Add test for malicious/corrupted ABI data with out-of-bounds offsets
-- [ ] Add test for offset that exceeds Integer.MAX_VALUE
-
----
-
-### HIGH-9: InternalAbi Duplicate Conversion of Value to BigInteger
-
-**File:** `brane-core/src/main/java/io/brane/core/abi/InternalAbi.java:650-655`
-
-**Problem:** In the bytes converter, `getContentSize` calls `toBytes(value, true)` to get length, then `encodeContent` calls it again. This is wasteful for large byte arrays.
-
-**Acceptance Criteria:**
-- [ ] Optimize `getContentSize` to calculate byte length directly from input type without creating intermediate Bytes object
-- [ ] For `byte[]` input: use `array.length` directly
-- [ ] For `HexData` input: use `hexData.byteLength()` directly
-- [ ] Add benchmark or test verifying no regression
-
----
-
-### HIGH-10: RevertException Constructor Allows Null Kind
-
-**File:** `brane-core/src/main/java/io/brane/core/error/RevertException.java:44-53`
-
-**Problem:** The constructor doesn't validate parameters. `kind` can be null which affects the message formatting.
-
-**Acceptance Criteria:**
-- [ ] Add `Objects.requireNonNull(kind, "kind")` in constructor
-- [ ] Document expected nullability of `revertReason`, `rawDataHex`, and `cause` parameters
-- [ ] Add test for null kind rejection
-
----
-
-## MEDIUM PRIORITY (16 Issues)
-
-### MED-1: Int Record Has Duplicated Comment Lines
-
-**File:** `brane-core/src/main/java/io/brane/core/abi/Int.java:18-23`
-
-**Problem:** Copy-paste error with duplicated comments.
-
-**Acceptance Criteria:**
-- [ ] Remove duplicate comment block (lines 21-23)
-
----
-
-### MED-2: FastAbiEncoder Has Orphaned Javadoc Comment
-
-**File:** `brane-core/src/main/java/io/brane/core/abi/FastAbiEncoder.java:259-266`
-
-**Problem:** Two consecutive Javadoc comments for the same method, and a comment `// ... primitives ...` that appears leftover.
-
-**Acceptance Criteria:**
-- [ ] Remove duplicate Javadoc comment at line 259-265
-- [ ] Remove orphaned `// ... primitives ...` comment at line 339 if present
-
----
-
-### MED-3: InternalAbi TypeConverter Has Duplicate Comment
-
-**File:** `brane-core/src/main/java/io/brane/core/abi/InternalAbi.java:696-697`
-
-**Problem:** Duplicate comment in bytesN encoding.
-
-**Acceptance Criteria:**
-- [ ] Remove duplicate comment "// Static bytes are just right-padded"
-
----
-
-### MED-4: Topics.fromAddress Uses String Concatenation Instead of Hex Utilities
-
-**File:** `brane-core/src/main/java/io/brane/core/util/Topics.java:52-54`
-
-**Problem:** Hardcoded padding string is error-prone.
+**Problem:** `signMessage(byte[] message)` does not validate input, will throw confusing NPE.
 
 ```java
-String padded = "000000000000000000000000" + cleanAddress;  // Magic string
+@Override
+public Signature signMessage(final byte[] message) {
+    // No null check on message - NPE on message.length
+    byte[] prefix = ("\u0019Ethereum Signed Message:\n" + message.length)
 ```
 
 **Acceptance Criteria:**
-- [ ] Extract padding to named constant: `private static final String ZERO_PADDING_12_BYTES = "0".repeat(24);`
-- [ ] Add comment explaining why 12 bytes (24 hex chars) of padding is needed
+- [ ] Add `Objects.requireNonNull(message, "message cannot be null")`
+- [ ] Document in interface Javadoc that message must not be null
+- [ ] Add test for null message handling
 
 ---
 
-### MED-5: Wei.fromEther Can Throw ArithmeticException Without Context
+### HIGH-3: Signature Record Exposes Mutable Internal Arrays
 
-**File:** `brane-core/src/main/java/io/brane/core/types/Wei.java:40-43`
+**File:** `brane-core/src/main/java/io/brane/core/crypto/Signature.java:41,61-62`
 
-**Problem:** `toBigIntegerExact()` throws `ArithmeticException` if the value has a fractional part after multiplication. Users get no context.
-
-**Acceptance Criteria:**
-- [ ] Wrap in try-catch and throw `IllegalArgumentException` with message: "Ether value {value} results in fractional wei"
-- [ ] OR document the @throws ArithmeticException in Javadoc
-- [ ] Add test for fractional ether conversion
-
----
-
-### MED-6: Wei.gwei Allows Negative Values (Late Validation)
-
-**File:** `brane-core/src/main/java/io/brane/core/types/Wei.java:47-49`
-
-**Problem:** Validation happens in constructor, but error message won't mention "gwei" - just says "Wei value cannot be negative".
-
-**Acceptance Criteria:**
-- [ ] Add early validation: `if (gwei < 0) throw new IllegalArgumentException("gwei cannot be negative")`
-- [ ] Add test for negative gwei input
-
----
-
-### MED-7: Signature.bytesToHex Magic Number
-
-**File:** `brane-core/src/main/java/io/brane/core/crypto/Signature.java:107-116`
-
-**Problem:** Magic number 8 in toString logic is unexplained.
+**Problem:** Record makes defensive copies in constructor, but accessor methods return the internal arrays directly, allowing mutation.
 
 ```java
-if (bytes.length > 8) {  // Why 8?
+public record Signature(byte[] r, byte[] s, int v) {
+    public Signature {
+        // Makes defensive copies
+        r = Arrays.copyOf(r, 32);
+        s = Arrays.copyOf(s, 32);
+    }
+    // But r() and s() return the actual array, not a copy!
+}
 ```
 
 **Acceptance Criteria:**
-- [ ] Extract to constant: `private static final int MAX_BYTES_TO_DISPLAY = 8;`
-- [ ] Add comment explaining the choice (e.g., "8 bytes = 16 hex chars, fits nicely in logs")
+- [ ] Override `r()` and `s()` to return defensive copies: `return Arrays.copyOf(r, r.length);`
+- [ ] Add test verifying mutation of returned array does not affect Signature
+- [ ] Document immutability guarantee in class Javadoc
 
 ---
 
-### MED-8: FastSigner Recursive Call on s == 0
+### HIGH-4: BraneException Javadoc Missing Full Hierarchy
+
+**File:** `brane-core/src/main/java/io/brane/core/error/BraneException.java:36-41`
+
+**Problem:** `ChainMismatchException` and `InvalidSenderException` extend `TxnException`, but the Javadoc only lists direct subclasses, not the full hierarchy.
+
+**Acceptance Criteria:**
+- [ ] Update Javadoc to document the full exception hierarchy including nested subclasses
+- [ ] Format as tree structure for clarity:
+  ```
+  BraneException
+  ├── RpcException
+  ├── RevertException
+  ├── AbiEncodingException
+  ├── AbiDecodingException
+  └── TxnException
+      ├── ChainMismatchException
+      └── InvalidSenderException
+  ```
+
+---
+
+### HIGH-5: InternalAbi.mapToEventType Duplicated Logic
+
+**File:** `brane-core/src/main/java/io/brane/core/abi/InternalAbi.java:1082-1110,1245-1258`
+
+**Problem:** `mapToEventType` method is duplicated - once in `InternalAbi` and once in inner class `Call` with slightly different logic.
+
+**Acceptance Criteria:**
+- [ ] Consolidate into a single shared private method
+- [ ] Ensure consistent behavior between event and function return decoding
+- [ ] Add tests verifying both call sites produce identical results
+
+---
+
+### HIGH-6: Topics.fromAddress Uses Manual Null Check
+
+**File:** `brane-core/src/main/java/io/brane/core/util/Topics.java:52-55`
+
+**Problem:** Uses explicit null check with IllegalArgumentException instead of the standard pattern.
+
+```java
+if (address == null) {
+    throw new IllegalArgumentException("Address cannot be null");
+}
+```
+
+**Acceptance Criteria:**
+- [ ] Use `Objects.requireNonNull(address, "address cannot be null")` for consistency
+- [ ] Note: This changes exception type from IAE to NPE - verify callers don't catch IAE specifically
+
+---
+
+## MEDIUM PRIORITY (8 Issues)
+
+### MED-1: Array and Tuple Records Missing Defensive Copy
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/abi/Array.java:41-45`
+- `brane-core/src/main/java/io/brane/core/abi/Tuple.java:13-15`
+
+**Problem:** Both records validate non-null but don't make defensive copies of their lists.
+
+```java
+public Array {
+    Objects.requireNonNull(values, "values cannot be null");
+    // Missing: values = List.copyOf(values);
+}
+```
+
+**Acceptance Criteria:**
+- [ ] Add `values = List.copyOf(values)` to Array compact constructor
+- [ ] Add `components = List.copyOf(components)` to Tuple compact constructor
+- [ ] Add tests verifying modification of original list doesn't affect record
+
+---
+
+### MED-2: BuilderValidation.validateTarget Incorrect isEmpty Check
+
+**File:** `brane-core/src/main/java/io/brane/core/builder/BuilderValidation.java:29`
+
+**Problem:** Uses `data.value().isBlank()` which checks for whitespace, but hex data should use `byteLength() == 0`.
+
+```java
+if (to == null && data != null && data.value().isBlank()) {
+```
+
+**Acceptance Criteria:**
+- [ ] Use `data.byteLength() == 0` or `data.equals(HexData.EMPTY)` instead
+- [ ] Add test for edge case where data = "0x" (empty but not blank)
+
+---
+
+### MED-3: FastAbiEncoder.encodeInt256 Bit Length Check
+
+**File:** `brane-core/src/main/java/io/brane/core/abi/FastAbiEncoder.java:192-193`
+
+**Problem:** Uses `bitLength() > 255` but int256 representation needs verification for edge cases.
+
+```java
+if (value.bitLength() > 255) {
+    throw new IllegalArgumentException("Value too large for int256");
+}
+```
+
+**Acceptance Criteria:**
+- [ ] Verify the correct bound for int256 (signed 256-bit integer)
+- [ ] Add edge case tests for MIN_INT256 (-2^255) and MAX_INT256 (2^255 - 1)
+- [ ] Document the valid range in Javadoc
+
+---
+
+### MED-4: RevertDecoder.mapPanicReason intValue() Without Bounds Check
+
+**File:** `brane-core/src/main/java/io/brane/core/RevertDecoder.java:211`
+
+**Problem:** Uses `code.intValue()` directly in switch without checking if value fits in int.
+
+```java
+return switch (code.intValue()) {
+    case 0x01 -> "assertion failed";
+```
+
+**Acceptance Criteria:**
+- [ ] Add bounds check: `if (code.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0) return "Unknown panic";`
+- [ ] Handle unknown codes that don't fit in int range
+- [ ] Add test with panic code > Integer.MAX_VALUE
+
+---
+
+### MED-5: AbiDecoder Uses Default in Exhaustive Switch
+
+**File:** `brane-core/src/main/java/io/brane/core/abi/AbiDecoder.java:122,195`
+
+**Problem:** Uses `default` case in switch expressions on sealed types, defeating compile-time exhaustiveness check.
+
+```java
+default -> throw new IllegalArgumentException("Unknown static schema: " + schema);
+```
+
+**Acceptance Criteria:**
+- [ ] Remove `default` cases and handle all permitted subtypes explicitly
+- [ ] This enables compiler warnings if new subtypes are added to sealed hierarchy
+- [ ] Verify all sealed subtypes are handled
+
+---
+
+### MED-6: Missing Class-Level Javadoc on Public Classes
+
+**Files:**
+- `brane-core/src/main/java/io/brane/core/abi/AbiBinding.java`
+- `brane-core/src/main/java/io/brane/core/abi/PackedSizeCalculator.java`
+
+**Problem:** Public classes lack class-level Javadoc.
+
+**Acceptance Criteria:**
+- [ ] Add descriptive class-level Javadoc to AbiBinding with usage example
+- [ ] Add descriptive class-level Javadoc to PackedSizeCalculator
+- [ ] Document thread-safety guarantees for both
+
+---
+
+### MED-7: FastSigner s == 0 Recursive Call
 
 **File:** `brane-core/src/main/java/io/brane/core/crypto/FastSigner.java:99-107`
 
-**Problem:** If s == 0 (extremely rare), the method recursively calls itself with the same inputs. RFC 6979 says to continue with next K, not restart. Since k is deterministic from inputs, this would infinite loop.
+**Problem:** If s == 0 (extremely rare), the method recursively calls itself. Since k is deterministic from inputs, this could infinite loop. RFC 6979 specifies iterating to next K.
 
 **Acceptance Criteria:**
 - [ ] Review RFC 6979 specification for handling s == 0
-- [ ] If recursive call is correct, add comment explaining why
-- [ ] If not, implement proper K iteration per RFC 6979
-- [ ] Add comment explaining why this case is practically unreachable
+- [ ] If recursive call is intentional, add comment explaining correctness
+- [ ] If not, implement proper K iteration per RFC 6979 section 3.2 step k
+- [ ] Add comment explaining why s == 0 is practically unreachable
 
 ---
 
-### MED-9: TxBuilder.from() Allows Null Without Documentation
-
-**File:** `brane-core/src/main/java/io/brane/core/builder/TxBuilder.java:38-40`
-
-**Problem:** The `from()` method allows setting null, but a transaction requires a sender.
-
-**Acceptance Criteria:**
-- [ ] Document that `from` must be non-null for transaction to build successfully
-- [ ] Ensure error message in `build()` is clear: "from address is required"
-- [ ] Add @param Javadoc with nullability info
-
----
-
-### MED-10: LegacyBuilder and Eip1559Builder Have Identical validateTarget()
+### MED-8: Inconsistent Builder validateTarget Duplication
 
 **Files:**
 - `brane-core/src/main/java/io/brane/core/builder/LegacyBuilder.java:104-112`
@@ -353,240 +310,141 @@ if (bytes.length > 8) {  // Why 8?
 **Problem:** Both builders have identical `validateTarget()` methods, violating DRY.
 
 **Acceptance Criteria:**
-- [ ] Extract to a static utility method or default method in shared interface
-- [ ] OR document why duplication is intentional (if it is)
+- [ ] Extract to `BuilderValidation.validateTarget(Address to, HexData data)`
+- [ ] Call shared method from both builders
+- [ ] Remove duplicate implementations
 
 ---
 
-### MED-11: Eip1559Builder.validateTarget Has Inconsistent Formatting
+## LOW PRIORITY (6 Issues)
 
-**File:** `brane-core/src/main/java/io/brane/core/builder/Eip1559Builder.java:138-146`
+### LOW-1: Signature.bytesToHex Could Use Hex.encode
 
-**Problem:** Empty line before `if (to == null && data == null)` that's not in LegacyBuilder.
+**File:** `brane-core/src/main/java/io/brane/core/crypto/Signature.java:119-128`
 
-**Acceptance Criteria:**
-- [ ] Remove empty line for consistency with LegacyBuilder
-
----
-
-### MED-12: Array Record byteSize() Returns 0 for Empty Static Arrays
-
-**File:** `brane-core/src/main/java/io/brane/core/abi/Array.java:48-56`
-
-**Problem:** `byteSize()` returns 0 for empty static arrays. Need to verify if this is correct per ABI spec.
-
-**Acceptance Criteria:**
-- [ ] Verify ABI spec behavior for empty static arrays (`T[0]`)
-- [ ] Add test case for `T[0]` type arrays
-- [ ] Document the edge case behavior
-
----
-
-### MED-13: TransactionRequest Does Not Validate from in Record
-
-**File:** `brane-core/src/main/java/io/brane/core/model/TransactionRequest.java:63-74`
-
-**Problem:** While `toUnsignedTransaction()` validates `from`, the record itself allows null `from` which is documented as "(required)".
-
-**Acceptance Criteria:**
-- [ ] Either add compact constructor with `Objects.requireNonNull(from, "from is required")`
-- [ ] OR update documentation to clarify when null is acceptable
-
----
-
-### MED-14: InternalAbi Redundant Null Check After asText("")
-
-**File:** `brane-core/src/main/java/io/brane/core/abi/InternalAbi.java:833`
-
-**Problem:** `asText("")` never returns null, making the null check dead code.
+**Problem:** Reimplements hex encoding instead of using existing `Hex.encode()` utility.
 
 ```java
-if (stateMutability == null || stateMutability.isBlank()) {
+private static String bytesToHex(byte[] bytes) {
+    StringBuilder sb = new StringBuilder();
+    for (byte b : bytes) {
+        sb.append(String.format("%02x", b));
+    }
+    return sb.toString();
+}
 ```
 
 **Acceptance Criteria:**
-- [ ] Remove redundant null check: `if (stateMutability.isBlank())`
+- [ ] Use `Hex.encodeNoPrefix(bytes)` for consistency
+- [ ] Keep the length check logic
 
 ---
 
-### MED-15: BraneDebug.isEnabled() Non-Atomic Read
+### LOW-2: AnsiColors.IS_TTY Could Be Overridable for Testing
 
-**File:** `brane-core/src/main/java/io/brane/core/BraneDebug.java:14-16`
+**File:** `brane-core/src/main/java/io/brane/core/AnsiColors.java:54-55`
 
-**Problem:** While fields are volatile, the compound check `rpcLogging || txLogging` is not atomic.
+**Problem:** TTY detection is `static final` evaluated at class load time, making it hard to test colored vs. non-colored output.
 
 **Acceptance Criteria:**
-- [ ] Document that this is acceptable (best-effort logging, no correctness impact)
-- [ ] OR use AtomicInteger with bit flags for atomic check
+- [ ] Consider making configurable via system property: `brane.force.color=true`
+- [ ] Document that `FORCE_COLOR=true` environment variable enables colors
+- [ ] Add test demonstrating override mechanism
 
 ---
 
-### MED-16: LogSanitizer Regex Not Precompiled
+### LOW-3: ChainProfile.of Factory Method Is Redundant
 
-**File:** `brane-core/src/main/java/io/brane/core/LogSanitizer.java:34-45`
+**File:** `brane-core/src/main/java/io/brane/core/chain/ChainProfile.java:59-65`
 
-**Problem:** Regex patterns are compiled on every call to `sanitize()`.
+**Problem:** Factory method `ChainProfile.of(...)` just calls the constructor with the same parameters.
+
+```java
+public static ChainProfile of(final long chainId, ...) {
+    return new ChainProfile(chainId, ...);
+}
+```
 
 **Acceptance Criteria:**
-- [ ] Precompile patterns as `private static final Pattern` constants
-- [ ] Use `pattern.matcher(input).replaceAll(replacement)` for better performance
-- [ ] Add benchmark or test verifying improvement
+- [ ] Either remove the factory method (prefer canonical constructor)
+- [ ] OR add value (e.g., caching common profiles, parameter transformation)
+- [ ] Document why both exist if intentional (API evolution, future-proofing)
 
 ---
 
-## LOW PRIORITY (10 Issues)
+### LOW-4: Magic Numbers in LogFormatter
 
-### LOW-1: Missing Javadoc on Several Public Records
+**File:** `brane-core/src/main/java/io/brane/core/LogFormatter.java:6,10`
 
-**Files:**
-- `ChainProfile.java` - No class-level Javadoc
-- `AccessListWithGas.java` - Has Javadoc but missing `@param` tags
-- `Call3.java` - Minimal documentation
+**Problem:** Various magic numbers for string slicing without named constants.
+
+```java
+return fullHash.substring(0, 6) + "..." + fullHash.substring(fullHash.length() - 4);
+```
 
 **Acceptance Criteria:**
-- [ ] Add comprehensive Javadoc with `@param` tags to all three files
+- [ ] Extract constants: `HASH_PREFIX_LENGTH = 6`, `HASH_SUFFIX_LENGTH = 4`
+- [ ] Document the format being produced: "0xabcd...ef12"
 
 ---
 
-### LOW-2: AnsiColors.hash() Method Does Nothing Useful
-
-**File:** `brane-core/src/main/java/io/brane/core/AnsiColors.java:105-109`
-
-**Problem:** The method claims to "possibly shorten" the hash but always returns it unchanged.
-
-**Acceptance Criteria:**
-- [ ] Either implement shortening logic (first 8 chars + ... + last 4)
-- [ ] OR rename to `nullSafe()` if that's the intent
-- [ ] OR remove misleading comment
-
----
-
-### LOW-3: DebugLogger Duplicates TTY Check from AnsiColors
-
-**File:** `brane-core/src/main/java/io/brane/core/DebugLogger.java:14-15`
-
-**Problem:** Same TTY detection logic exists in both classes.
-
-**Acceptance Criteria:**
-- [ ] Extract to shared constant in AnsiColors: `public static final boolean IS_TTY`
-- [ ] Reuse in DebugLogger
-
----
-
-### LOW-4: LogFormatter.CONTINUATION_INDENT Documentation Incorrect
-
-**File:** `brane-core/src/main/java/io/brane/core/LogFormatter.java:128`
-
-**Problem:** The 10-space indent documentation doesn't match the actual alignment calculation.
-
-**Acceptance Criteria:**
-- [ ] Fix documentation to accurately explain the indent purpose
-- [ ] OR make indent dynamically calculated based on prefix length
-
----
-
-### LOW-5: RevertDecoder mapPanicReason Uses Ambiguous Hex Codes
-
-**File:** `brane-core/src/main/java/io/brane/core/RevertDecoder.java:208-222`
-
-**Problem:** Using string comparison for hex codes is ambiguous (is "11" hex 0x11=17 or decimal 11?).
-
-**Acceptance Criteria:**
-- [ ] Compare against BigInteger constants for clarity
-- [ ] OR compare integer values: `switch (code.intValue())`
-- [ ] Add comment clarifying these are hex values (0x01, 0x11, 0x12, etc.)
-
----
-
-### LOW-6: TypeSchema.ArraySchema Missing fixedLength Validation
+### LOW-5: TypeSchema.ArraySchema Missing fixedLength Validation
 
 **File:** `brane-core/src/main/java/io/brane/core/abi/TypeSchema.java:149-152`
 
 **Problem:** `fixedLength` can be any negative number, but only -1 is documented as meaning "dynamic".
 
 **Acceptance Criteria:**
-- [ ] Validate `fixedLength >= -1`: `if (fixedLength < -1) throw new IllegalArgumentException()`
-- [ ] OR use a separate boolean `isDynamic` instead of magic value
+- [ ] Validate `fixedLength >= -1` in compact constructor
+- [ ] Throw clear error: "fixedLength must be >= -1, got: " + fixedLength
+- [ ] Document that -1 means dynamic array in Javadoc
 
 ---
 
-### LOW-7: Bytes.typeName() Recalculates Length Each Call
-
-**File:** `brane-core/src/main/java/io/brane/core/abi/Bytes.java:37-39`
-
-**Problem:** Calculates byte length from hex string length every time instead of using `value.byteLength()`.
-
-**Acceptance Criteria:**
-- [ ] Use `value.byteLength()` instead of manual calculation
-- [ ] Consider caching typeName for static bytes types if called frequently
-
----
-
-### LOW-8: Transaction.nonce Uses Boxed Long Despite Being Required
-
-**File:** `brane-core/src/main/java/io/brane/core/model/Transaction.java:54`
-
-**Problem:** `nonce` is documented as required and validated non-null, but uses `Long` instead of primitive `long`.
-
-**Acceptance Criteria:**
-- [ ] Use primitive `long nonce` since it's always required
-- [ ] Keep `Long blockNumber` since it can be null for pending transactions
-
----
-
-### LOW-9: Missing @since Tags on Public Classes
+### LOW-6: Missing @since Tags on Public Classes
 
 **Files:** Most files in `io.brane.core.model`, `io.brane.core.builder`, `io.brane.core.util`
 
-**Problem:** Inconsistent use of `@since` Javadoc tags.
+**Problem:** Inconsistent use of `@since` Javadoc tags for API versioning.
 
 **Acceptance Criteria:**
-- [ ] Add `@since 0.1.0` (or appropriate version) to all public classes
-
----
-
-### LOW-10: Inconsistent Collectors.joining() Usage
-
-**File:** `brane-core/src/main/java/io/brane/core/abi/Tuple.java:33`
-
-**Problem:** Uses `Collectors.joining()` which is fine, but pattern varies across codebase.
-
-**Acceptance Criteria:**
-- [ ] Standardize on `Collectors.joining()` pattern throughout codebase
-- [ ] OR document preferred approach in style guide
+- [ ] Add `@since 0.1.0-alpha` (or appropriate version) to all public classes
+- [ ] Maintain consistently going forward
 
 ---
 
 ## Summary
 
-| Severity | Count | Status |
-|----------|-------|--------|
-| Critical | 3 | TODO |
-| High | 10 | TODO |
-| Medium | 16 | TODO |
-| Low | 10 | TODO |
-| **Total** | **39** | |
+| Severity | Count | Description |
+|----------|-------|-------------|
+| Critical | 3 | Must fix before release - correctness & security |
+| High | 6 | Should fix before release - API quality |
+| Medium | 8 | Recommend fixing - maintainability |
+| Low | 6 | Nice to have - polish |
+| **Total** | **23** | |
 
 ---
 
 ## What's Well Done
 
-1. **Strong Java 21 Adoption** - Excellent use of records, sealed interfaces, pattern matching in switch expressions, and text blocks.
+The brane-core module demonstrates excellent engineering practices:
+
+1. **Strong Java 21 Adoption** - Excellent use of records, sealed interfaces, pattern matching in switch expressions, and text blocks throughout.
 
 2. **Well-Designed Exception Hierarchy** - `BraneException` as a sealed base class with specific subclasses enables exhaustive handling.
 
-3. **Thread-Safety Considerations** - ThreadLocal for Keccak256, volatile fields in BraneDebug, defensive copies in Signature.
+3. **Thread-Safety Considerations** - ThreadLocal for Keccak256 with cleanup method, volatile fields in BraneDebug, defensive copies in Signature.
 
-4. **Immutability Focus** - Most types are records or have immutable semantics.
+4. **Immutability Focus** - Most types are records or have immutable semantics, following best practices.
 
-5. **Security Awareness** - LogSanitizer for redacting private keys, PrivateKey implementing Destroyable, zeroing key material.
+5. **Security Awareness** - LogSanitizer for redacting private keys, PrivateKey implementing Destroyable, zeroing key material after use.
 
-6. **Performance Optimizations** - FastAbiEncoder's two-pass encoding, HexData's lazy string generation, FastSigner avoiding recovery.
+6. **Performance Optimizations** - FastAbiEncoder's two-pass encoding, HexData's lazy string generation, FastSigner avoiding expensive recovery calculation.
 
 7. **Good Documentation** - Several classes have excellent Javadoc with examples (Abi, Signature, PrivateKey, RevertDecoder).
 
-8. **Consistent Validation Patterns** - Types like Address, Hash, Wei all validate in compact constructors.
+8. **Consistent Validation Patterns** - Types like Address, Hash, Wei all validate in compact constructors with clear error messages.
 
-9. **Clean Builder Pattern** - TxBuilder interface with LegacyBuilder and Eip1559Builder implementations.
+9. **Clean Builder Pattern** - TxBuilder sealed interface with LegacyBuilder and Eip1559Builder implementations.
 
-10. **Comprehensive Logging** - BraneDebug, LogFormatter, LogSanitizer provide good observability.
+10. **Comprehensive Logging** - BraneDebug, LogFormatter, LogSanitizer provide good observability without leaking sensitive data.
