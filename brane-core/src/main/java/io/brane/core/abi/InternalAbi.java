@@ -24,9 +24,12 @@ import java.util.Objects;
 import java.util.Optional;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 final class InternalAbi implements Abi {
 
+    private static final Logger LOG = LoggerFactory.getLogger(InternalAbi.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
     private final Map<String, AbiFunction> functionsByName;
@@ -1087,8 +1090,10 @@ final class InternalAbi implements Abi {
                     @SuppressWarnings("unchecked")
                     final T instance = (T) ctor.newInstance(values.toArray());
                     return instance;
-                } catch (Exception ignore) {
-                    // try next
+                } catch (Exception e) {
+                    // Try next constructor - type mismatch or invocation failure
+                    LOG.debug("Constructor {} failed for event '{}': {}",
+                            ctor.toGenericString(), eventName, e.getMessage());
                 }
             }
         }

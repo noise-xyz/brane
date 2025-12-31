@@ -14,6 +14,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Decodes EVM revert reasons from raw transaction revert data.
@@ -81,6 +83,8 @@ import java.util.stream.Collectors;
  */
 public final class RevertDecoder {
 
+    private static final Logger LOG = LoggerFactory.getLogger(RevertDecoder.class);
+
     private static final String ERROR_STRING_SELECTOR = "08c379a0";
     private static final String PANIC_SELECTOR = "4e487b71";
 
@@ -143,7 +147,8 @@ public final class RevertDecoder {
                             RevertKind.ERROR_STRING, str.value(), rawDataHex);
                 }
             } catch (Exception e) {
-                // fallthrough
+                // Fallthrough to UNKNOWN - selector matched but payload was malformed
+                LOG.debug("Failed to decode Error(string) revert data: {}", e.getMessage());
             }
             return new Decoded(RevertKind.UNKNOWN, null, rawDataHex);
         }
@@ -157,7 +162,8 @@ public final class RevertDecoder {
                     return new Decoded(RevertKind.PANIC, mapPanicReason(code), rawDataHex);
                 }
             } catch (Exception e) {
-                // fallthrough
+                // Fallthrough to UNKNOWN - selector matched but payload was malformed
+                LOG.debug("Failed to decode Panic(uint256) revert data: {}", e.getMessage());
             }
             return new Decoded(RevertKind.UNKNOWN, null, rawDataHex);
         }
@@ -173,7 +179,8 @@ public final class RevertDecoder {
                 final String reason = formatCustomReason(custom.name(), results);
                 return new Decoded(RevertKind.CUSTOM, reason, rawDataHex);
             } catch (Exception e) {
-                // fallthrough
+                // Fallthrough to UNKNOWN - custom error matched but payload was malformed
+                LOG.debug("Failed to decode custom error '{}': {}", custom.name(), e.getMessage());
             }
         }
 
