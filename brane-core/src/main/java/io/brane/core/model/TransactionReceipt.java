@@ -44,6 +44,7 @@ import java.util.Objects;
  *                          if reverted
  * @param cumulativeGasUsed the total gas used by all transactions up to and
  *                          including this one in the block
+ * @since 0.1.0-alpha
  */
 public record TransactionReceipt(
                 Hash transactionHash,

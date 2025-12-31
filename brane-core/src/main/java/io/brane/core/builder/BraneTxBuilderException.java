@@ -17,6 +17,7 @@ import io.brane.core.error.TxnException;
  * <li>Conflicting fields are set (e.g., both legacy gasPrice and EIP-1559 fees)</li>
  * <li>Invalid field values (e.g., negative gas limit)</li>
  * </ul>
+ * @since 0.1.0-alpha
  */
 public final class BraneTxBuilderException extends TxnException {
 

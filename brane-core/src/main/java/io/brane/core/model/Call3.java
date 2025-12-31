@@ -11,6 +11,7 @@ import java.util.Objects;
  * @param target       the contract address to call (required)
  * @param allowFailure if true, the batch will not revert if this specific call fails
  * @param callData     the encoded function data (required, may be empty)
+ * @since 0.1.0-alpha
  */
 public record Call3(
         Address target,

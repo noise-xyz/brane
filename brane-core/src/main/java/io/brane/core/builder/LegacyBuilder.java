@@ -23,6 +23,7 @@ import io.brane.core.types.Wei;
  * }</pre>
  *
  * @see TxBuilder#legacy()
+ * @since 0.1.0-alpha
  */
 public final class LegacyBuilder implements TxBuilder<LegacyBuilder> {
     private Address from;

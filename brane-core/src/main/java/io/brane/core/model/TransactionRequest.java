@@ -61,6 +61,7 @@ import java.util.Optional;
  * @param isEip1559            {@code true} for EIP-1559 transactions,
  *                             {@code false} for legacy
  * @param accessList           the EIP-2930 access list, or null/empty
+ * @since 0.1.0-alpha
  */
 public record TransactionRequest(
         Address from,

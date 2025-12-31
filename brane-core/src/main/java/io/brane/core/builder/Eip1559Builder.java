@@ -27,6 +27,7 @@ import java.util.List;
  * }</pre>
  *
  * @see TxBuilder#eip1559()
+ * @since 0.1.0-alpha
  */
 public final class Eip1559Builder implements TxBuilder<Eip1559Builder> {
     private Address from;

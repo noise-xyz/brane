@@ -26,6 +26,7 @@ import io.brane.core.types.Wei;
  * }</pre>
  *
  * @param <T> the concrete builder type for fluent chaining
+ * @since 0.1.0-alpha
  */
 public sealed interface TxBuilder<T extends TxBuilder<T>> permits LegacyBuilder, Eip1559Builder {
 

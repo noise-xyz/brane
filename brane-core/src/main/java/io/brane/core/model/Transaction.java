@@ -43,6 +43,7 @@ import java.util.Optional;
  * @param value       the value transferred (required)
  * @param nonce       the transaction nonce (required)
  * @param blockNumber the block number containing this transaction (null if pending)
+ * @since 0.1.0-alpha
  */
 public record Transaction(
         Hash hash,

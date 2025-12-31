@@ -29,6 +29,7 @@ import java.util.Objects;
  * @param transactionHash the hash of the transaction that generated this log (required)
  * @param logIndex        the index of this log within the block
  * @param removed         true if this log was removed due to a chain reorganization
+ * @since 0.1.0-alpha
  */
 public record LogEntry(
                 Address address,

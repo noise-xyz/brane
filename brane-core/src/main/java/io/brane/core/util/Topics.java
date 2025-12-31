@@ -26,6 +26,7 @@ import io.brane.primitives.Hex;
  * }</pre>
  *
  * @see io.brane.core.abi.Abi#eventTopic(String)
+ * @since 0.1.0-alpha
  */
 public final class Topics {
 

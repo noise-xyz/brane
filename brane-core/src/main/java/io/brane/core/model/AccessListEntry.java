@@ -33,6 +33,7 @@ import java.util.Objects;
  * @param address     the contract address to access
  * @param storageKeys the list of storage slot keys (as 32-byte hashes) to access
  * @see <a href="https://eips.ethereum.org/EIPS/eip-2930">EIP-2930</a>
+ * @since 0.1.0-alpha
  */
 public record AccessListEntry(Address address, List<Hash> storageKeys) {
 

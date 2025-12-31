@@ -9,6 +9,7 @@ import java.util.Objects;
  *
  * @param success    true if the call was successful, false if it reverted
  * @param returnData the raw bytes returned by the call (or revert reason, required)
+ * @since 0.1.0-alpha
  */
 public record MulticallResult(
         boolean success,

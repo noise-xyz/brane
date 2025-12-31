@@ -23,6 +23,7 @@ import java.util.Objects;
  * @param parentHash    the hash of the parent block (required)
  * @param timestamp     the block timestamp in seconds since Unix epoch (required)
  * @param baseFeePerGas the base fee per gas (EIP-1559), {@code null} for pre-London blocks
+ * @since 0.1.0-alpha
  */
 public record BlockHeader(Hash hash, long number, Hash parentHash, long timestamp, Wei baseFeePerGas) {
 

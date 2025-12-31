@@ -38,6 +38,7 @@ import java.util.Objects;
  *
  * @see AccessListEntry
  * @see <a href="https://eips.ethereum.org/EIPS/eip-2930">EIP-2930</a>
+ * @since 0.1.0-alpha
  */
 public record AccessListWithGas(
         List<AccessListEntry> accessList,
