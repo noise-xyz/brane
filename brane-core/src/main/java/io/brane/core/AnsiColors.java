@@ -45,14 +45,21 @@ public final class AnsiColors {
     /**
      * Whether standard output is a TTY (terminal) environment.
      *
-     * <p>This is true when either {@code System.console()} is non-null (indicating an
-     * interactive terminal) or the {@code FORCE_COLOR=true} environment variable is set
-     * (for CI/CD pipelines that support colors).
+     * <p>This is determined in the following order:
+     * <ol>
+     *   <li>If system property {@code brane.force.color=true} is set, colors are enabled
+     *       (useful for testing)</li>
+     *   <li>If environment variable {@code FORCE_COLOR=true} is set, colors are enabled
+     *       (for CI/CD pipelines)</li>
+     *   <li>If {@code System.console()} is non-null, colors are enabled (interactive terminal)</li>
+     *   <li>Otherwise, colors are disabled</li>
+     * </ol>
      *
      * <p>Other classes should use this constant instead of duplicating the TTY detection logic.
      */
-    public static final boolean IS_TTY = System.console() != null
-            || "true".equals(System.getenv("FORCE_COLOR"));
+    public static final boolean IS_TTY = "true".equals(System.getProperty("brane.force.color"))
+            || "true".equals(System.getenv("FORCE_COLOR"))
+            || System.console() != null;
 
     // Reset
     /** ANSI reset code - clears all formatting */
