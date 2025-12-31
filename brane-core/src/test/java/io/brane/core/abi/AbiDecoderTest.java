@@ -100,7 +100,7 @@ class AbiDecoderTest {
         AbiType input = Bytes.ofStatic(data);
         byte[] encoded = AbiEncoder.encode(List.of(input));
 
-        List<AbiType> decoded = AbiDecoder.decode(encoded, List.of(new TypeSchema.BytesSchema(false)));
+        List<AbiType> decoded = AbiDecoder.decode(encoded, List.of(new TypeSchema.BytesSchema(32)));
         Assertions.assertEquals(1, decoded.size());
         // Bytes.ofStatic might wrap differently but equality should hold if implemented
         // correctly

@@ -991,7 +991,7 @@ final class InternalAbi implements Abi {
         final TypeSchema multicallResultSchema = new TypeSchema.ArraySchema(
                 new TypeSchema.TupleSchema(List.of(
                         new TypeSchema.BoolSchema(),
-                        new TypeSchema.BytesSchema(true))),
+                        new TypeSchema.BytesSchema(TypeSchema.BytesSchema.DYNAMIC))),
                 -1);
 
         try {
@@ -1164,9 +1164,11 @@ final class InternalAbi implements Abi {
         if (normalized.equals("string"))
             return new TypeSchema.StringSchema();
         if (normalized.equals("bytes"))
-            return new TypeSchema.BytesSchema(true);
-        if (normalized.startsWith("bytes"))
-            return new TypeSchema.BytesSchema(false);
+            return new TypeSchema.BytesSchema(TypeSchema.BytesSchema.DYNAMIC);
+        if (normalized.startsWith("bytes")) {
+            int size = Integer.parseInt(normalized.substring(5));
+            return new TypeSchema.BytesSchema(size);
+        }
 
         throw new AbiEncodingException("Unsupported type schema: " + solidityType);
     }

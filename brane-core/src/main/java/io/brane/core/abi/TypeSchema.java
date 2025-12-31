@@ -107,16 +107,29 @@ public sealed interface TypeSchema permits
         }
     }
 
-    record BytesSchema(boolean isDynamic) implements TypeSchema {
+    /**
+     * Schema for Solidity bytes or bytesN types.
+     *
+     * @param size the byte size for static types (1-32), or -1 for dynamic bytes
+     */
+    record BytesSchema(int size) implements TypeSchema {
+        /** Size value indicating dynamic bytes type. */
+        public static final int DYNAMIC = -1;
+
+        public BytesSchema {
+            if (size != DYNAMIC && (size < 1 || size > 32)) {
+                throw new IllegalArgumentException("bytesN size must be 1-32 or DYNAMIC (-1), got: " + size);
+            }
+        }
+
         @Override
         public boolean isDynamic() {
-            return isDynamic;
+            return size == DYNAMIC;
         }
 
         @Override
         public String typeName() {
-            // Dynamic bytes returns "bytes"; static bytesN would need size info (see Issue #18)
-            return "bytes";
+            return size == DYNAMIC ? "bytes" : "bytes" + size;
         }
     }
 
