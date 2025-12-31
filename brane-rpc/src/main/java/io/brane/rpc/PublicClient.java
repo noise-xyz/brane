@@ -9,6 +9,7 @@ import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import java.util.Map;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A client for interacting with an Ethereum node via JSON-RPC.
@@ -63,25 +64,25 @@ public interface PublicClient {
     /**
      * Retrieves the latest block header.
      *
-     * @return the latest block header, or null if not found
+     * @return the latest block header, or {@code null} if not found
      */
-    BlockHeader getLatestBlock();
+    @Nullable BlockHeader getLatestBlock();
 
     /**
      * Retrieves a block header by its number.
      *
      * @param blockNumber the block number
-     * @return the block header, or null if not found
+     * @return the block header, or {@code null} if not found
      */
-    BlockHeader getBlockByNumber(long blockNumber);
+    @Nullable BlockHeader getBlockByNumber(long blockNumber);
 
     /**
      * Retrieves a transaction by its hash.
      *
      * @param hash the transaction hash
-     * @return the transaction, or null if not found
+     * @return the transaction, or {@code null} if not found
      */
-    Transaction getTransactionByHash(Hash hash);
+    @Nullable Transaction getTransactionByHash(Hash hash);
 
     /**
      * Executes a read-only call on the blockchain.
@@ -107,11 +108,11 @@ public interface PublicClient {
      *
      * @param callObject the call parameters (e.g., "to", "data")
      * @param blockTag   the block tag (e.g., "latest")
-     * @return the raw hex return value
+     * @return the raw hex return value, or {@code null} if the call returns empty data
      * @deprecated Use {@link #call(CallRequest, BlockTag)} for type-safe calls
      */
     @Deprecated(since = "0.1.0-alpha", forRemoval = true)
-    String call(Map<String, Object> callObject, String blockTag);
+    @Nullable String call(Map<String, Object> callObject, String blockTag);
 
     /**
      * Retrieves logs matching the given filter.
