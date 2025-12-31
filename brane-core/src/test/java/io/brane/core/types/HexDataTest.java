@@ -82,4 +82,71 @@ class HexDataTest {
 
         executor.shutdown();
     }
+
+    @Test
+    void equalsBytesToBytesComparison() {
+        // CRIT-3: Test that two bytes-based HexData compare correctly
+        byte[] bytes = new byte[] {(byte) 0x12, (byte) 0x34};
+        HexData a = HexData.fromBytes(bytes);
+        HexData b = HexData.fromBytes(bytes);
+
+        assertTrue(a.equals(b));
+        assertTrue(b.equals(a));
+        assertEquals(a.hashCode(), b.hashCode());
+    }
+
+    @Test
+    void equalsStringToStringComparison() {
+        // CRIT-3: Test that two string-based HexData compare correctly
+        HexData a = new HexData("0x1234");
+        HexData b = new HexData("0x1234");
+
+        assertTrue(a.equals(b));
+        assertTrue(b.equals(a));
+        assertEquals(a.hashCode(), b.hashCode());
+    }
+
+    @Test
+    void equalsMixedComparison() {
+        // CRIT-3: Test that bytes-based and string-based HexData with same content are equal
+        byte[] bytes = new byte[] {(byte) 0x12, (byte) 0x34};
+        HexData fromBytes = HexData.fromBytes(bytes);
+        HexData fromString = new HexData("0x1234");
+
+        assertTrue(fromBytes.equals(fromString));
+        assertTrue(fromString.equals(fromBytes));
+        assertEquals(fromBytes.hashCode(), fromString.hashCode());
+    }
+
+    @Test
+    void equalsReturnsFalseForDifferentContent() {
+        // CRIT-3: Test that different content returns false
+        HexData a = HexData.fromBytes(new byte[] {(byte) 0x12, (byte) 0x34});
+        HexData b = HexData.fromBytes(new byte[] {(byte) 0xAB, (byte) 0xCD});
+
+        assertFalse(a.equals(b));
+        assertFalse(b.equals(a));
+    }
+
+    @Test
+    void equalsHandlesEdgeCases() {
+        // CRIT-3: Test edge cases
+        HexData data = HexData.fromBytes(new byte[] {0x01});
+
+        assertFalse(data.equals(null));
+        assertFalse(data.equals("not a HexData"));
+        assertTrue(data.equals(data)); // same instance
+    }
+
+    @Test
+    void equalsEmptyData() {
+        // CRIT-3: Test equality for empty data
+        HexData empty1 = HexData.EMPTY;
+        HexData empty2 = HexData.fromBytes(new byte[0]);
+        HexData empty3 = new HexData("0x");
+
+        assertTrue(empty1.equals(empty2));
+        assertTrue(empty2.equals(empty3));
+        assertTrue(empty1.equals(empty3));
+    }
 }

@@ -2,6 +2,7 @@ package io.brane.core.types;
 
 import io.brane.primitives.Hex;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
@@ -185,19 +186,45 @@ public final class HexData {
         return new HexData(bytes.clone()); // Defensive copy to preserve immutability
     }
 
+    /**
+     * Compares this HexData with another for equality.
+     * <p>
+     * This implementation is optimized for performance by comparing raw bytes
+     * directly when both instances have them, avoiding expensive hex string
+     * generation.
+     *
+     * @param o the object to compare with
+     * @return true if the objects represent the same byte data
+     */
     @Override
     public boolean equals(Object o) {
         if (this == o)
             return true;
         if (o == null || getClass() != o.getClass())
             return false;
-        HexData hexData = (HexData) o;
-        return Objects.equals(value(), hexData.value());
+        HexData other = (HexData) o;
+        // Fast path: both have raw bytes - compare directly without string generation
+        if (this.raw != null && other.raw != null) {
+            return Arrays.equals(this.raw, other.raw);
+        }
+        // Slow path: fall back to string comparison (triggers lazy init if needed)
+        return Objects.equals(value(), other.value());
     }
 
+    /**
+     * Returns a hash code consistent with {@link #equals(Object)}.
+     * <p>
+     * Note: This triggers lazy string generation for bytes-based instances to ensure
+     * consistent hashing between string-based and bytes-based HexData representing
+     * the same content.
+     *
+     * @return a hash code value for this object
+     */
     @Override
     public int hashCode() {
-        return Objects.hash(value());
+        // Must use string-based hash to ensure consistency between string-based
+        // and bytes-based HexData with the same content
+        return value().hashCode();
     }
 
     @Override
