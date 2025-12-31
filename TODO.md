@@ -268,15 +268,15 @@ private static final String CONTINUATION_INDENT = "          ";
 
 | # | Issue | Priority | Status |
 |---|-------|----------|--------|
-| 1 | PrivateKey.destroy() race condition | CRITICAL | TODO |
-| 2 | PrivateKey zeros input array | CRITICAL | TODO |
-| 3 | Utf8String surrogate handling | HIGH | TODO |
-| 4 | LogSanitizer edge case | HIGH | TODO |
-| 5 | Transaction `to` breaking change | HIGH | TODO |
-| 6 | TupleSchema O(n^2) string concat | MEDIUM | TODO |
-| 7 | Array record breaking change | MEDIUM | TODO |
-| 8 | Bytes size enforcement | MEDIUM | TODO |
-| 9 | LogFormatter fragile indent | LOW | TODO |
+| 1 | PrivateKey.destroy() race condition | CRITICAL | DONE |
+| 2 | PrivateKey zeros input array | CRITICAL | DONE |
+| 3 | Utf8String surrogate handling | HIGH | DONE |
+| 4 | LogSanitizer edge case | HIGH | DONE |
+| 5 | Transaction `to` breaking change | HIGH | DONE |
+| 6 | TupleSchema O(n^2) string concat | MEDIUM | DONE |
+| 7 | Array record breaking change | MEDIUM | DONE |
+| 8 | Bytes size enforcement | MEDIUM | DONE |
+| 9 | LogFormatter fragile indent | LOW | DONE |
 
 ---
 
