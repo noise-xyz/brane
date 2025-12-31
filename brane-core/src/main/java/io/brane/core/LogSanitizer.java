@@ -1,5 +1,7 @@
 package io.brane.core;
 
+import java.util.regex.Pattern;
+
 /**
  * Utility that removes sensitive data from debug log payloads.
  *
@@ -21,6 +23,20 @@ public final class LogSanitizer {
     /** Suffix appended to truncated logs. */
     private static final String TRUNCATION_SUFFIX = "...(truncated)";
 
+    /** Precompiled pattern for matching "privateKey":"0x..." JSON values. */
+    private static final Pattern PRIVATE_KEY_PATTERN =
+            Pattern.compile("\"privateKey\"\\s*:\\s*\"0x[^\"]+\"");
+
+    /** Replacement string for redacted private keys. */
+    private static final String PRIVATE_KEY_REPLACEMENT = "\"privateKey\":\"0x***[REDACTED]***\"";
+
+    /** Precompiled pattern for matching "raw":"0x..." JSON values (often contains signed tx). */
+    private static final Pattern RAW_PATTERN =
+            Pattern.compile("\"raw\"\\s*:\\s*\"0x[^\"]+\"");
+
+    /** Replacement string for redacted raw data. */
+    private static final String RAW_REPLACEMENT = "\"raw\":\"0x***[REDACTED]***\"";
+
     private LogSanitizer() {}
 
     public static String sanitize(final String input) {
@@ -31,17 +47,11 @@ public final class LogSanitizer {
         String sanitized = input;
 
         if (sanitized.contains("\"privateKey\"")) {
-            sanitized =
-                    sanitized.replaceAll(
-                            "\\\"privateKey\\\"\\s*:\\s*\\\"0x[^\\\"]+\\\"",
-                            "\"privateKey\":\"0x***[REDACTED]***\"");
+            sanitized = PRIVATE_KEY_PATTERN.matcher(sanitized).replaceAll(PRIVATE_KEY_REPLACEMENT);
         }
 
         if (sanitized.contains("\"raw\"")) {
-            sanitized =
-                    sanitized.replaceAll(
-                            "\\\"raw\\\"\\s*:\\s*\\\"0x[^\\\"]+\\\"",
-                            "\"raw\":\"0x***[REDACTED]***\"");
+            sanitized = RAW_PATTERN.matcher(sanitized).replaceAll(RAW_REPLACEMENT);
         }
 
         if (sanitized.length() > MAX_LOG_LENGTH) {
