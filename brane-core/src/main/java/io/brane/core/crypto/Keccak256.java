@@ -19,27 +19,50 @@ import java.util.Objects;
  * String hashHex = Hex.encode(hash);
  * }</pre>
  *
- * <h2>Thread Safety and Memory Management</h2>
+ * <h2>⚠️ IMPORTANT: ThreadLocal Memory Management</h2>
  *
  * <p>
- * This class uses a {@link ThreadLocal} to cache digest instances for performance.
- * In long-running applications with thread pools (e.g., servlet containers, application
- * servers), the cached digest will remain in memory for the lifetime of each thread.
+ * <b>Memory Leak Warning:</b> This class uses {@link ThreadLocal} to cache digest
+ * instances for performance. In thread pool environments (servlet containers,
+ * application servers, executors), failure to call {@link #cleanup()} can cause
+ * memory leaks and classloader leaks during hot redeployment.
  *
- * <p>
- * <strong>For application server environments:</strong> Call {@link #cleanup()} when
- * undeploying your application or when a thread is about to be returned to the pool
- * after completing request processing. This is typically done in a servlet filter's
- * {@code finally} block or a {@code ServletContextListener.contextDestroyed()} handler.
+ * <h3>When to Call cleanup()</h3>
+ * <ul>
+ * <li><b>Servlet/Web Applications:</b> In a filter's {@code finally} block or
+ *     {@code ServletContextListener.contextDestroyed()}</li>
+ * <li><b>Custom Thread Pools:</b> When returning threads to the pool or shutting down</li>
+ * <li><b>Application Shutdown:</b> In shutdown hooks or lifecycle callbacks</li>
+ * </ul>
  *
+ * <h3>Example: Servlet Filter</h3>
  * <pre>{@code
- * // In a servlet filter
- * try {
- *     chain.doFilter(request, response);
- * } finally {
- *     Keccak256.cleanup();
+ * public class BraneCleanupFilter implements Filter {
+ *     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
+ *             throws IOException, ServletException {
+ *         try {
+ *             chain.doFilter(req, res);
+ *         } finally {
+ *             Keccak256.cleanup();  // Prevent memory leak
+ *         }
+ *     }
  * }
  * }</pre>
+ *
+ * <h3>Example: ExecutorService</h3>
+ * <pre>{@code
+ * executor.submit(() -> {
+ *     try {
+ *         // ... use Keccak256.hash() ...
+ *     } finally {
+ *         Keccak256.cleanup();
+ *     }
+ * });
+ * }</pre>
+ *
+ * <p>
+ * <b>Note:</b> For simple CLI applications or short-lived processes, cleanup is
+ * not strictly necessary as ThreadLocal values are released when the JVM exits.
  *
  * @since 0.2.0
  */
