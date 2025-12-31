@@ -140,18 +140,22 @@ public interface Abi {
 
     /**
      * Encodes a function call with arguments into calldata.
-     * 
+     *
      * @param name the function name
      * @param args the function arguments in order
      * @return the encoded function call
+     * @throws io.brane.core.error.AbiEncodingException if the function is not found in the ABI,
+     *         argument count doesn't match, or argument types cannot be encoded
      */
     FunctionCall encodeFunction(String name, Object... args);
 
     /**
      * Encodes constructor arguments into hex data.
-     * 
+     *
      * @param args the constructor arguments in order
      * @return the encoded constructor arguments (without bytecode)
+     * @throws io.brane.core.error.AbiEncodingException if the constructor is not defined but arguments
+     *         are provided, argument count doesn't match, or argument types cannot be encoded
      */
     HexData encodeConstructor(Object... args);
 
