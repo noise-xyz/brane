@@ -50,6 +50,12 @@ public record ChainProfile(
     /**
      * Creates a new ChainProfile with the specified settings.
      *
+     * <p>This factory method is provided alongside the canonical constructor for API consistency
+     * and to allow for potential future enhancements (e.g., caching common profiles, validation
+     * in a central location, or parameter transformation). Both the factory method and constructor
+     * are valid ways to create instances; the factory method is preferred in application code
+     * for readability.
+     *
      * @param chainId                  the unique chain identifier (must be &gt; 0)
      * @param defaultRpcUrl            the default RPC endpoint URL
      * @param supportsEip1559          true if the chain supports EIP-1559
