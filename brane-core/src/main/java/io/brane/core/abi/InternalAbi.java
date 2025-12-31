@@ -648,8 +648,15 @@ final class InternalAbi implements Abi {
 
                 @Override
                 public int getContentSize(Object value) {
-                    Bytes b = toBytes(value, true);
-                    int len = Hex.decode(b.value().value()).length;
+                    // Calculate length directly without intermediate Bytes object
+                    int len;
+                    if (value instanceof byte[] b) {
+                        len = b.length;
+                    } else if (value instanceof HexData h) {
+                        len = h.byteLength();
+                    } else {
+                        throw new AbiEncodingException("Expected byte[] or HexData for bytes");
+                    }
                     int padding = (32 - (len % 32)) % 32;
                     return 32 + len + padding;
                 }
