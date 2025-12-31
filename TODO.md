@@ -169,10 +169,10 @@ private static void validateReturnType(final Method method, final Abi.FunctionMe
 **Impact:** Functions returning structs/tuples cannot be bound through the proxy API, limiting usability for complex contracts.
 
 **Acceptance Criteria:**
-- [ ] Either add validation for record types mapping to tuple outputs, OR
-- [ ] Document this limitation explicitly in class Javadoc
-- [ ] If implementing: validate record component count matches tuple output count
-- [ ] Add test for tuple return type (if implemented)
+- [ ] ~~Add validation for record types~~ (not implemented - feature limitation)
+- [x] Document this limitation explicitly in class Javadoc
+- [ ] ~~Validate record component count~~ (not implemented)
+- [ ] ~~Add test for tuple return type~~ (not implemented)
 
 ---
 
@@ -294,7 +294,7 @@ private static boolean isObjectMethod(final Method method) {
 | 1 | AbiBinding non-thread-safe HashMap | MEDIUM | Thread Safety | FIXED |
 | 2 | ReadWriteContract ignores ContractOptions | MEDIUM | API Inconsistency | FIXED |
 | 3 | deployRequest() missing constructor validation | MEDIUM | Validation | FIXED |
-| 4 | Missing tuple/struct return type support | LOW | Feature Gap | OPEN |
+| 4 | Missing tuple/struct return type support | LOW | Feature Gap | DOCUMENTED |
 | 5 | @Payable silent fallback to zero | LOW | Defensive Programming | FIXED |
 | 6 | Zero timeout allowed | LOW | Validation | FIXED |
 | 7 | Missing equals/hashCode in ContractOptions | LOW | API Design | FIXED |

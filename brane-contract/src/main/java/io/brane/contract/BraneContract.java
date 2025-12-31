@@ -42,6 +42,16 @@ import java.util.regex.Pattern;
  * <li>{@code bytes, bytes32} → {@code byte[]}/{@link HexData}</li>
  * <li>{@code T[]} → {@code T[]}/{@link List}&lt;T&gt;</li>
  * </ul>
+ *
+ * <p>
+ * <strong>Limitations:</strong>
+ * <ul>
+ * <li><strong>Tuple/Struct return types:</strong> Functions returning Solidity structs
+ * or tuples are not currently supported. The proxy binding will fail at bind time
+ * with "Unsupported return type" for methods that return Java record types or custom
+ * classes. Use {@link ReadOnlyContract} or {@link ReadWriteContract} for contracts
+ * with tuple returns, and manually decode the results.</li>
+ * </ul>
  * 
  * <p>
  * <strong>Method Return Types:</strong>
