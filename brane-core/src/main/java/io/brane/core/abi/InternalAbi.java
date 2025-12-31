@@ -836,7 +836,8 @@ final class InternalAbi implements Abi {
 
     private static String parseStateMutability(final JsonNode node) {
         String stateMutability = node.path("stateMutability").asText("");
-        if (stateMutability == null || stateMutability.isBlank()) {
+        // asText("") never returns null, only check for blank
+        if (stateMutability.isBlank()) {
             final boolean constant = node.path("constant").asBoolean(false);
             stateMutability = constant ? "view" : "nonpayable";
         }
