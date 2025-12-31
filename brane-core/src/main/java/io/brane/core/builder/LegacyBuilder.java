@@ -85,7 +85,7 @@ public final class LegacyBuilder implements TxBuilder<LegacyBuilder> {
 
     @Override
     public TransactionRequest build() {
-        validateTarget();
+        BuilderValidation.validateTarget(to, data);
 
         return new TransactionRequest(
                 from,
@@ -99,15 +99,5 @@ public final class LegacyBuilder implements TxBuilder<LegacyBuilder> {
                 data,
                 false,
                 null);
-    }
-
-    private void validateTarget() {
-        if (to == null && data == null) {
-            throw new BraneTxBuilderException("Transaction must have a recipient or data");
-        }
-
-        if (to == null && data != null && data.value().isBlank()) {
-            throw new BraneTxBuilderException("Contract creation requires non-empty data");
-        }
     }
 }

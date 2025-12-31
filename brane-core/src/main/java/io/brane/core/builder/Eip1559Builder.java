@@ -119,7 +119,7 @@ public final class Eip1559Builder implements TxBuilder<Eip1559Builder> {
 
     @Override
     public TransactionRequest build() {
-        validateTarget();
+        BuilderValidation.validateTarget(to, data);
 
         return new TransactionRequest(
                 from,
@@ -133,15 +133,5 @@ public final class Eip1559Builder implements TxBuilder<Eip1559Builder> {
                 data,
                 true,
                 accessList);
-    }
-
-    private void validateTarget() {
-
-        if (to == null && data == null) {
-            throw new BraneTxBuilderException("Transaction must have a recipient or data");
-        }
-        if (to == null && data != null && data.value().isBlank()) {
-            throw new BraneTxBuilderException("Contract creation requires non-empty data");
-        }
     }
 }
