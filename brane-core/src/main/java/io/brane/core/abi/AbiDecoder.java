@@ -95,15 +95,9 @@ public final class AbiDecoder {
                 new AddressType(new Address(Hex.encode(Arrays.copyOfRange(data, offset + 12, offset + 32))));
             case TypeSchema.BoolSchema s -> new Bool(decodeUInt(data, offset).equals(BigInteger.ONE));
             case TypeSchema.BytesSchema s -> {
-                // Static bytesN
-                // Read 32 bytes, but value is left-aligned.
-                // We don't know N here easily unless we parse it from schema or assume 32.
-                // BytesSchema doesn't have N.
-                // Let's assume we take all 32 bytes and trim? No, bytesN is fixed.
-                // If schema is static BytesSchema, it implies bytesN.
-                // We should probably store N in BytesSchema for correctness.
-                // For now, let's return 32 bytes.
-                yield Bytes.ofStatic(Arrays.copyOfRange(data, offset, offset + 32));
+                // Static bytesN: value is left-aligned in 32 bytes, extract only N bytes
+                int size = s.size();
+                yield Bytes.ofStatic(Arrays.copyOfRange(data, offset, offset + size));
             }
             case TypeSchema.ArraySchema s -> {
                 // Static array: sequence of N elements
