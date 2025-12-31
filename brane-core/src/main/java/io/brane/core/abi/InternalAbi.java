@@ -30,6 +30,7 @@ import org.slf4j.LoggerFactory;
 
 final class InternalAbi implements Abi {
 
+    /** Logger for debug-level diagnostics, e.g., constructor matching failures during event decoding. */
     private static final Logger LOG = LoggerFactory.getLogger(InternalAbi.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
 
