@@ -113,8 +113,14 @@ public interface Abi {
         final String signature = requireNonEmpty(functionSignature, "functionSignature");
         final byte[] digest = Keccak256.hash(
                 signature.getBytes(StandardCharsets.UTF_8));
-        final String hex = Hex.encode(digest).substring(0, 10);
-        return new HexData(hex);
+        // Keccak256 always produces 32 bytes = 66 hex chars with 0x prefix
+        // We need first 10 chars (0x + 8 hex chars = 4 byte selector)
+        final String hex = Hex.encode(digest);
+        if (hex.length() < 10) {
+            throw new IllegalStateException(
+                    "Keccak256 hash too short for function selector: expected at least 10 chars, got " + hex.length());
+        }
+        return new HexData(hex.substring(0, 10));
     }
 
     /**
