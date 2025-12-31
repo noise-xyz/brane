@@ -56,17 +56,27 @@ final class RpcRetry {
 
     /**
      * Executes the supplier with retry on transient failures.
-     * 
+     *
      * <p>
      * Only retries on network errors and specific RPC errors.
      * Reverts and user errors are thrown immediately without retry.
-     * 
+     *
+     * <p>
+     * <strong>Exception Context:</strong> When all retries are exhausted, this method
+     * throws a {@link RetryExhaustedException} that includes:
+     * <ul>
+     * <li>The total number of attempts made</li>
+     * <li>The total time spent retrying (including backoff delays)</li>
+     * <li>All failed attempts as suppressed exceptions (in order)</li>
+     * </ul>
+     *
      * @param <T>         the return type
      * @param supplier    the operation to retry
      * @param maxAttempts maximum number of attempts (must be >= 1)
      * @return the result from the supplier
      * @throws RpcException             if all retries fail or error is
      *                                  non-retryable
+     * @throws RetryExhaustedException  if all retry attempts were exhausted
      * @throws RevertException          if the operation reverts (never retried)
      * @throws IllegalArgumentException if maxAttempts < 1
      */
@@ -75,8 +85,11 @@ final class RpcRetry {
         if (maxAttempts < 1) {
             throw new IllegalArgumentException("maxAttempts must be >= 1");
         }
-        RpcException lastException = null;
-        IOException lastIo = null;
+
+        final java.util.List<Throwable> failedAttempts = new java.util.ArrayList<>();
+        final long startTime = System.currentTimeMillis();
+        Throwable lastException = null;
+
         for (int attempt = 1; attempt <= maxAttempts; attempt++) {
             try {
                 return supplier.get();
@@ -84,15 +97,23 @@ final class RpcRetry {
                 throw e;
             } catch (RpcException e) {
                 lastException = e;
-                if (!isRetryableRpcError(e) || attempt == maxAttempts) {
+                failedAttempts.add(e);
+                if (!isRetryableRpcError(e)) {
                     throw e;
+                }
+                if (attempt == maxAttempts) {
+                    throw createRetryExhaustedException(failedAttempts, startTime);
                 }
             } catch (RuntimeException e) {
                 final IOException io = unwrapIo(e);
-                if (io == null || attempt == maxAttempts) {
+                if (io == null) {
                     throw e;
                 }
-                lastIo = io;
+                lastException = e;
+                failedAttempts.add(e);
+                if (attempt == maxAttempts) {
+                    throw createRetryExhaustedException(failedAttempts, startTime);
+                }
             }
 
             final long delayMillis = backoff(attempt);
@@ -101,21 +122,39 @@ final class RpcRetry {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 if (lastException != null) {
-                    throw lastException;
-                }
-                if (lastIo != null) {
-                    throw new RuntimeException(lastIo);
+                    if (lastException instanceof RuntimeException re) {
+                        throw re;
+                    }
+                    throw new RuntimeException(lastException);
                 }
                 throw new RuntimeException("Interrupted while retrying", e);
             }
         }
-        if (lastException != null) {
-            throw lastException;
-        }
-        if (lastIo != null) {
-            throw new RuntimeException(lastIo);
+
+        if (!failedAttempts.isEmpty()) {
+            throw createRetryExhaustedException(failedAttempts, startTime);
         }
         throw new IllegalStateException("Retry finished without result or exception");
+    }
+
+    private static RetryExhaustedException createRetryExhaustedException(
+            final java.util.List<Throwable> failedAttempts,
+            final long startTime) {
+        final long totalDuration = System.currentTimeMillis() - startTime;
+        final Throwable lastFailure = failedAttempts.get(failedAttempts.size() - 1);
+
+        final RetryExhaustedException exhausted = new RetryExhaustedException(
+                failedAttempts.size(),
+                totalDuration,
+                lastFailure
+        );
+
+        // Add all previous failures as suppressed exceptions
+        for (int i = 0; i < failedAttempts.size() - 1; i++) {
+            exhausted.addSuppressed(failedAttempts.get(i));
+        }
+
+        return exhausted;
     }
 
     static boolean isRetryableRpcError(final RpcException e) {

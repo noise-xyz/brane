@@ -2,6 +2,7 @@ package io.brane.rpc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.brane.core.error.RpcException;
 import java.io.IOException;
@@ -82,8 +83,8 @@ class RpcRetryTest {
     @Test
     void exhaustsRetries() {
         final AtomicInteger calls = new AtomicInteger();
-        assertThrows(
-                RpcException.class,
+        final RetryExhaustedException ex = assertThrows(
+                RetryExhaustedException.class,
                 () ->
                         RpcRetry.run(
                                 () -> {
@@ -92,5 +93,8 @@ class RpcRetryTest {
                                 },
                                 3));
         assertEquals(3, calls.get());
+        assertEquals(3, ex.getAttemptCount());
+        assertTrue(ex.getCause() instanceof RpcException);
+        assertEquals(2, ex.getSuppressed().length); // 2 suppressed + 1 cause = 3 attempts
     }
 }
