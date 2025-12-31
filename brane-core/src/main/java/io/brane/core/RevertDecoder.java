@@ -206,18 +206,19 @@ public final class RevertDecoder {
     }
 
     private static String mapPanicReason(final BigInteger code) {
-        final String hexCode = code.toString(16);
-        return switch (hexCode) {
-            case "1" -> "assertion failed";
-            case "11" -> "arithmetic overflow or underflow";
-            case "12" -> "division or modulo by zero";
-            case "21" -> "enum conversion out of range";
-            case "22" -> "invalid storage byte array indexing";
-            case "31" -> "pop on empty array";
-            case "32" -> "array index out of bounds";
-            case "41" -> "memory allocation overflow";
-            case "51" -> "zero-initialized variable of internal function type";
-            default -> "panic with code 0x" + hexCode;
+        // Solidity panic codes - switch on integer value for clarity
+        // See: https://docs.soliditylang.org/en/latest/control-structures.html#panic-via-assert-and-error-via-require
+        return switch (code.intValue()) {
+            case 0x01 -> "assertion failed";
+            case 0x11 -> "arithmetic overflow or underflow";
+            case 0x12 -> "division or modulo by zero";
+            case 0x21 -> "enum conversion out of range";
+            case 0x22 -> "invalid storage byte array indexing";
+            case 0x31 -> "pop on empty array";
+            case 0x32 -> "array index out of bounds";
+            case 0x41 -> "memory allocation overflow";
+            case 0x51 -> "zero-initialized variable of internal function type";
+            default -> "panic with code 0x" + code.toString(16);
         };
     }
 
