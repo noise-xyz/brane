@@ -18,9 +18,6 @@ public record Int(int width, BigInteger value) implements AbiType {
         // Check bounds for signed integer
         // Max: 2^(width-1) - 1
         // Min: -2^(width-1)
-        // Check bounds for signed integer
-        // Max: 2^(width-1) - 1
-        // Min: -2^(width-1)
         BigInteger max = BigInteger.TWO.pow(width - 1).subtract(BigInteger.ONE);
         BigInteger min = BigInteger.TWO.pow(width - 1).negate();
         if (value.compareTo(max) > 0 || value.compareTo(min) < 0) {
