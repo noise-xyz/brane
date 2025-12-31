@@ -142,7 +142,11 @@ final class SmartGasStrategy {
             throw new RpcException(
                     err.code(), err.message(), err.data() != null ? err.data().toString() : null, null, null);
         }
-        final String result = response.result().toString();
+        final Object resultObj = response.result();
+        if (resultObj == null) {
+            throw new RpcException(-32000, "eth_estimateGas returned null result", (String) null, (Throwable) null);
+        }
+        final String result = resultObj.toString();
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
         DebugLogger.logTx(LogFormatter.formatEstimateGasResult(durationMicros, result));
         return result;
@@ -217,7 +221,11 @@ final class SmartGasStrategy {
             throw new RpcException(
                     err.code(), err.message(), err.data() != null ? err.data().toString() : null, null, null);
         }
-        return response.result().toString();
+        final Object resultObj = response.result();
+        if (resultObj == null) {
+            throw new RpcException(-32000, "eth_gasPrice returned null result", (String) null, (Throwable) null);
+        }
+        return resultObj.toString();
     }
 
     private Wei defaultPriority() {
