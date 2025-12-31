@@ -6,6 +6,30 @@ import java.util.Objects;
 /**
  * Represents a Solidity array (static T[N] or dynamic T[]).
  *
+ * <p>The {@code elementTypeName} parameter is required to correctly generate the
+ * Solidity type signature for the array (e.g., "uint256[]", "address[5]").
+ * This is necessary because Java's type erasure prevents inferring the element
+ * type name at runtime, especially for empty arrays.
+ *
+ * <h2>Example</h2>
+ * <pre>{@code
+ * // Dynamic array of uint256
+ * Array<UInt> dynamicArray = new Array<>(
+ *     List.of(new UInt(1), new UInt(2)),
+ *     UInt.class,
+ *     true,  // isDynamicLength
+ *     "uint256"
+ * );
+ *
+ * // Static array of 3 addresses
+ * Array<io.brane.core.abi.Address> staticArray = new Array<>(
+ *     List.of(addr1, addr2, addr3),
+ *     io.brane.core.abi.Address.class,
+ *     false,  // isDynamicLength
+ *     "address"
+ * );
+ * }</pre>
+ *
  * @param values          the list of elements
  * @param type            the class of the elements (e.g., UInt.class)
  * @param isDynamicLength true for 'T[]', false for 'T[N]'
