@@ -1,5 +1,6 @@
 package io.brane.core.abi;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -7,6 +8,12 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.brane.core.error.AbiDecodingException;
 import io.brane.core.error.AbiEncodingException;
+import io.brane.core.model.LogEntry;
+import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
+import io.brane.core.types.HexData;
+import java.math.BigInteger;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class AbiTest {
@@ -87,6 +94,131 @@ class AbiTest {
         assertTrue(ex.getCause() == null ||
                    ex.getCause() instanceof IllegalArgumentException ||
                    ex.getCause() instanceof ArrayIndexOutOfBoundsException);
+    }
+
+    // ERC-20 Transfer event ABI for testing
+    private static final String TRANSFER_EVENT_ABI = """
+            [
+              {
+                "anonymous": false,
+                "inputs": [
+                  {"indexed": true, "name": "from", "type": "address"},
+                  {"indexed": true, "name": "to", "type": "address"},
+                  {"indexed": false, "name": "value", "type": "uint256"}
+                ],
+                "name": "Transfer",
+                "type": "event"
+              }
+            ]
+            """;
+
+    // Transfer event topic0 = keccak256("Transfer(address,address,uint256)")
+    private static final String TRANSFER_TOPIC = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
+
+    @Test
+    void decodeEventsToListClass() {
+        final Abi abi = Abi.fromJson(TRANSFER_EVENT_ABI);
+
+        // Create a Transfer event log
+        // topic[0] = event signature
+        // topic[1] = indexed from address (padded to 32 bytes)
+        // topic[2] = indexed to address (padded to 32 bytes)
+        // data = non-indexed value (uint256)
+        final LogEntry log = new LogEntry(
+                new Address("0x0000000000000000000000000000000000000000"),
+                new HexData("0x00000000000000000000000000000000000000000000000000000000000f4240"), // 1000000
+                List.of(
+                        new Hash(TRANSFER_TOPIC),
+                        new Hash("0x0000000000000000000000001111111111111111111111111111111111111111"),
+                        new Hash("0x0000000000000000000000002222222222222222222222222222222222222222")),
+                new Hash("0x0000000000000000000000000000000000000000000000000000000000000001"),
+                new Hash("0x0000000000000000000000000000000000000000000000000000000000000002"),
+                0,
+                false);
+
+        // Test decoding to List.class - should work without accessibility issues
+        List<List> events = assertDoesNotThrow(() -> abi.decodeEvents("Transfer", List.of(log), List.class));
+        assertEquals(1, events.size());
+        List<?> event = events.get(0);
+        assertEquals(3, event.size());
+    }
+
+    @Test
+    void decodeEventsToObjectArray() {
+        final Abi abi = Abi.fromJson(TRANSFER_EVENT_ABI);
+
+        final LogEntry log = new LogEntry(
+                new Address("0x0000000000000000000000000000000000000000"),
+                new HexData("0x00000000000000000000000000000000000000000000000000000000000f4240"),
+                List.of(
+                        new Hash(TRANSFER_TOPIC),
+                        new Hash("0x0000000000000000000000001111111111111111111111111111111111111111"),
+                        new Hash("0x0000000000000000000000002222222222222222222222222222222222222222")),
+                new Hash("0x0000000000000000000000000000000000000000000000000000000000000001"),
+                new Hash("0x0000000000000000000000000000000000000000000000000000000000000002"),
+                0,
+                false);
+
+        // Test decoding to Object[].class - should work without accessibility issues
+        List<Object[]> events = assertDoesNotThrow(() -> abi.decodeEvents("Transfer", List.of(log), Object[].class));
+        assertEquals(1, events.size());
+        Object[] event = events.get(0);
+        assertEquals(3, event.length);
+    }
+
+    @Test
+    void decodeEventsToPublicRecord() {
+        final Abi abi = Abi.fromJson(TRANSFER_EVENT_ABI);
+
+        final LogEntry log = new LogEntry(
+                new Address("0x0000000000000000000000000000000000000000"),
+                new HexData("0x00000000000000000000000000000000000000000000000000000000000f4240"),
+                List.of(
+                        new Hash(TRANSFER_TOPIC),
+                        new Hash("0x0000000000000000000000001111111111111111111111111111111111111111"),
+                        new Hash("0x0000000000000000000000002222222222222222222222222222222222222222")),
+                new Hash("0x0000000000000000000000000000000000000000000000000000000000000001"),
+                new Hash("0x0000000000000000000000000000000000000000000000000000000000000002"),
+                0,
+                false);
+
+        // Test decoding to a public record - should work as this is in an open module (test code)
+        List<TransferEvent> events = assertDoesNotThrow(
+                () -> abi.decodeEvents("Transfer", List.of(log), TransferEvent.class));
+        assertEquals(1, events.size());
+        TransferEvent event = events.get(0);
+        assertEquals(new Address("0x1111111111111111111111111111111111111111"), event.from());
+        assertEquals(new Address("0x2222222222222222222222222222222222222222"), event.to());
+        assertEquals(BigInteger.valueOf(1000000), event.value());
+    }
+
+    @Test
+    void decodeEventsReturnsEmptyListForNonMatchingLogs() {
+        final Abi abi = Abi.fromJson(TRANSFER_EVENT_ABI);
+
+        // Log with different topic (not a Transfer event)
+        final LogEntry nonMatchingLog = new LogEntry(
+                new Address("0x0000000000000000000000000000000000000000"),
+                new HexData("0x00000000000000000000000000000000000000000000000000000000000f4240"),
+                List.of(new Hash("0x0000000000000000000000000000000000000000000000000000000000000000")),
+                new Hash("0x0000000000000000000000000000000000000000000000000000000000000001"),
+                new Hash("0x0000000000000000000000000000000000000000000000000000000000000002"),
+                0,
+                false);
+
+        List<List> events = abi.decodeEvents("Transfer", List.of(nonMatchingLog), List.class);
+        assertTrue(events.isEmpty());
+    }
+
+    /**
+     * Public record for testing event decoding.
+     *
+     * <p>
+     * Note: This record must be public for reflection-based instantiation to work
+     * in all module configurations. This demonstrates the documented requirement
+     * for event types.
+     */
+    public record TransferEvent(Address from, Address to, BigInteger value) {
     }
 }
 

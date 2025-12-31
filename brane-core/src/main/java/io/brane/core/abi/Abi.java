@@ -161,6 +161,54 @@ public interface Abi {
 
     Optional<FunctionMetadata> getFunction(String name);
 
+    /**
+     * Decodes matching event logs into instances of the specified type.
+     *
+     * <p>
+     * Filters the provided logs to those matching the event signature, then decodes
+     * each matching log into an instance of {@code eventType}.
+     *
+     * <h3>Type Mapping</h3>
+     * <p>
+     * The {@code eventType} can be:
+     * <ul>
+     * <li>{@code List.class} - returns decoded values as a List</li>
+     * <li>{@code Object[].class} - returns decoded values as an array</li>
+     * <li>A record or class with a constructor matching the event parameters</li>
+     * </ul>
+     *
+     * <h3>Java Module System Requirements</h3>
+     * <p>
+     * <b>Important:</b> When using custom event types (records or classes), the type
+     * and its constructor must be accessible:
+     * <ul>
+     * <li>The event type must be {@code public}</li>
+     * <li>The constructor must be {@code public}</li>
+     * <li>For modular applications (Java 9+), the package must be exported or opened</li>
+     * </ul>
+     *
+     * <p>
+     * If using the Java module system with strong encapsulation, you may need to add
+     * {@code --add-opens} JVM arguments or use {@code opens} directives in your
+     * {@code module-info.java}.
+     *
+     * <h3>Example</h3>
+     * <pre>{@code
+     * // Define a public record matching the event
+     * public record Transfer(Address from, Address to, BigInteger value) {}
+     *
+     * // Decode Transfer events from transaction logs
+     * List<Transfer> transfers = abi.decodeEvents("Transfer", receipt.logs(), Transfer.class);
+     * }</pre>
+     *
+     * @param eventName the name of the event to decode
+     * @param logs      the logs to filter and decode
+     * @param eventType the type to decode events into
+     * @param <T>       the event type
+     * @return list of decoded events (empty if no matching logs)
+     * @throws io.brane.core.error.AbiDecodingException if decoding fails or the event
+     *         type cannot be instantiated (e.g., non-public constructor, module access denied)
+     */
     <T> java.util.List<T> decodeEvents(String eventName, java.util.List<io.brane.core.model.LogEntry> logs,
             Class<T> eventType);
 

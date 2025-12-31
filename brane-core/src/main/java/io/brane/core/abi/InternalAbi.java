@@ -11,6 +11,7 @@ import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.primitives.Hex;
 import java.io.IOException;
+import java.lang.reflect.InaccessibleObjectException;
 import java.math.BigInteger;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -1081,6 +1082,28 @@ final class InternalAbi implements Abi {
         return mapToEventType(values, eventType, event.name());
     }
 
+    /**
+     * Maps decoded event values to the specified type.
+     *
+     * <p>
+     * <b>Module System Note:</b> This method uses reflection to instantiate event types.
+     * On Java 9+ with the module system, {@code setAccessible(true)} may fail with
+     * {@link InaccessibleObjectException} if:
+     * <ul>
+     * <li>The event type or its constructor is not public</li>
+     * <li>The package is not exported/opened to the brane module</li>
+     * </ul>
+     *
+     * <p>
+     * To avoid issues, ensure event types are public records/classes with public constructors.
+     *
+     * @param values    the decoded event values
+     * @param eventType the target type
+     * @param eventName the event name (for error messages)
+     * @param <T>       the event type
+     * @return the mapped event instance
+     * @throws AbiDecodingException if mapping fails
+     */
     private <T> T mapToEventType(List<Object> values, Class<T> eventType, String eventName) {
         // Try common collection mappings first
         T result = tryMapToCollection(values, eventType);
@@ -1096,6 +1119,14 @@ final class InternalAbi implements Abi {
                     @SuppressWarnings("unchecked")
                     final T instance = (T) ctor.newInstance(values.toArray());
                     return instance;
+                } catch (InaccessibleObjectException e) {
+                    // Java 9+ module system denied access
+                    throw new AbiDecodingException(
+                            "Cannot access constructor for event type '" + eventType.getName() + "'. "
+                                    + "Ensure the type and constructor are public, and for modular applications, "
+                                    + "the package is exported or opened. "
+                                    + "Alternatively, use List.class or Object[].class as the event type.",
+                            e);
                 } catch (Exception e) {
                     // Try next constructor - type mismatch or invocation failure
                     LOG.debug("Constructor {} failed for event '{}': {}",
