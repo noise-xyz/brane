@@ -98,6 +98,8 @@ public record LegacyTransaction(
 
     @Override
     public byte[] encodeAsEnvelope(final Signature signature) {
+        Objects.requireNonNull(signature, "signature is required");
+
         final List<RlpItem> items = new ArrayList<>(9);
 
         items.add(RlpNumeric.encodeLongUnsignedItem(nonce));
