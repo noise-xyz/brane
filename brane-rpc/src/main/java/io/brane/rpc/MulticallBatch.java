@@ -17,11 +17,27 @@ import java.util.Objects;
 
 /**
  * Orchestrates a batch of Multicall3 requests.
- * 
+ *
  * <p>
  * This class captures multiple contract calls and bundles them into a single
  * {@code eth_call} using the Multicall3 contract.
- * 
+ *
+ * <p><b>Exception Safety:</b> If an exception occurs between a proxy method call
+ * and the subsequent {@code add()} call, you MUST call {@link #clearPending()} in a
+ * finally block to prevent ThreadLocal leaks. Example:
+ * <pre>{@code
+ * var handle = batch.add(myContract.myMethod(arg));  // Safe - add() clears pending
+ *
+ * // If you catch exceptions, always clear pending:
+ * try {
+ *     var result = myContract.myMethod(arg);
+ *     handle = batch.add(result);
+ * } catch (Exception e) {
+ *     batch.clearPending();  // Prevent ThreadLocal leak
+ *     throw e;
+ * }
+ * }</pre>
+ *
  * @implNote This class is <strong>not thread-safe</strong>. A batch instance
  *           must be used from a single thread only. The recording pattern uses
  *           ThreadLocal to temporarily store call metadata between the proxy
@@ -183,6 +199,39 @@ public final class MulticallBatch {
             calls.add(call);
         }
         return handle;
+    }
+
+    /**
+     * Clears any pending call that was recorded but not added to the batch.
+     *
+     * <p>
+     * Call this method in a finally block if you catch exceptions between
+     * a proxy method call and {@link #add(Object)} to prevent ThreadLocal leaks.
+     *
+     * <p>
+     * This method is safe to call even if there is no pending call.
+     *
+     * @return true if a pending call was cleared, false if there was nothing to clear
+     */
+    public boolean clearPending() {
+        final CallContext<?> pending = pendingCall.get();
+        if (pending != null) {
+            pendingCall.remove();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if there is a pending call that was recorded but not yet added.
+     *
+     * <p>
+     * This can be useful for debugging or asserting state in tests.
+     *
+     * @return true if a call is pending, false otherwise
+     */
+    public boolean hasPending() {
+        return pendingCall.get() != null;
     }
 
     /**
