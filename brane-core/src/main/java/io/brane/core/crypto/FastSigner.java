@@ -80,31 +80,26 @@ public final class FastSigner {
         BigInteger k;
         ECPoint p;
 
-        do {
-            k = kCalculator.nextK();
-            p = MULTIPLIER.multiply(CURVE.getG(), k).normalize();
-
-            // r = x1 mod n
-            r = p.getAffineXCoord().toBigInteger().mod(CURVE.getN());
-        } while (r.equals(BigInteger.ZERO));
-
         // s = k^-1 * (z + r * d) mod n
         BigInteger d = privateKey;
         BigInteger z = new BigInteger(1, messageHash);
 
-        BigInteger kInv = k.modInverse(CURVE.getN());
-        BigInteger rd = r.multiply(d);
-        s = kInv.multiply(z.add(rd)).mod(CURVE.getN());
+        // RFC 6979 loop: iterate until we get valid r and s (both non-zero).
+        // Probability of r==0 or s==0 is ~2^-256, practically unreachable.
+        // The loop handles both cases per RFC 6979 section 3.2 step h.
+        do {
+            do {
+                k = kCalculator.nextK();
+                p = MULTIPLIER.multiply(CURVE.getG(), k).normalize();
 
-        if (s.equals(BigInteger.ZERO)) {
-            // Extremely rare, but technically possible. Should retry loop in a real impl,
-            // but for deterministic K, this means the key/msg combo is bad.
-            // However, RFC 6979 handles this by updating K.
-            // For simplicity in this fast path, we'll just recurse or throw.
-            // Let's recurse (it will re-init kCalculator, which is fine but slightly
-            // inefficient).
-            return sign(messageHash, privateKey);
-        }
+                // r = x1 mod n
+                r = p.getAffineXCoord().toBigInteger().mod(CURVE.getN());
+            } while (r.equals(BigInteger.ZERO));
+
+            BigInteger kInv = k.modInverse(CURVE.getN());
+            BigInteger rd = r.multiply(d);
+            s = kInv.multiply(z.add(rd)).mod(CURVE.getN());
+        } while (s.equals(BigInteger.ZERO));
 
         // Calculate v (recovery ID) based on the original point R = k*G.
         // v = 0 if R.y is even, 1 if R.y is odd.
