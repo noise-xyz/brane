@@ -4,6 +4,7 @@ import io.brane.core.RevertDecoder;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.abi.Abi;
 import io.brane.core.abi.AbiBinding;
+import io.brane.core.util.MethodUtils;
 import io.brane.core.error.AbiDecodingException;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
@@ -46,7 +47,7 @@ final class ContractInvocationHandler implements InvocationHandler {
 
     @Override
     public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
-        if (isObjectMethod(method)) {
+        if (MethodUtils.isObjectMethod(method)) {
             return handleObjectMethod(proxy, method, args);
         }
 
@@ -128,10 +129,6 @@ final class ContractInvocationHandler implements InvocationHandler {
                 .gasLimit(options.gasLimit())
                 .maxPriorityFeePerGas(options.maxPriorityFee())
                 .build();
-    }
-
-    private static boolean isObjectMethod(final Method method) {
-        return method.getDeclaringClass() == Object.class;
     }
 
     private Object handleObjectMethod(

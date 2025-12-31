@@ -1,5 +1,6 @@
 package io.brane.core.abi;
 
+import io.brane.core.util.MethodUtils;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
@@ -16,7 +17,7 @@ public final class AbiBinding {
 
         final Map<Method, Abi.FunctionMetadata> mutableCache = new HashMap<>();
         for (Method method : contractInterface.getMethods()) {
-            if (isObjectMethod(method)) {
+            if (MethodUtils.isObjectMethod(method)) {
                 continue;
             }
             final Abi.FunctionMetadata metadata = resolveMetadata(method);
@@ -42,10 +43,6 @@ public final class AbiBinding {
                         () ->
                                 new IllegalArgumentException(
                                         "No ABI function named '" + method.getName() + "'"));
-    }
-
-    private static boolean isObjectMethod(final Method method) {
-        return method.getDeclaringClass() == Object.class;
     }
 }
 

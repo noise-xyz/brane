@@ -281,9 +281,9 @@ private static boolean isObjectMethod(final Method method) {
 **Impact:** Minor code duplication; any fix or enhancement must be applied twice.
 
 **Acceptance Criteria:**
-- [ ] Extract to a shared utility class (e.g., `MethodUtils` or `ReflectionUtils`), OR
-- [ ] Move validation logic to a single location, OR
-- [ ] Document why duplication is acceptable (e.g., to avoid cross-module dependency)
+- [x] Extract to a shared utility class (MethodUtils in brane-core)
+- [x] Move validation logic to a single location
+- [ ] ~~Document why duplication is acceptable~~ (not needed - extracted)
 
 ---
 
@@ -298,7 +298,7 @@ private static boolean isObjectMethod(final Method method) {
 | 5 | @Payable silent fallback to zero | LOW | Defensive Programming | FIXED |
 | 6 | Zero timeout allowed | LOW | Validation | FIXED |
 | 7 | Missing equals/hashCode in ContractOptions | LOW | API Design | FIXED |
-| 8 | Duplicate isObjectMethod() | LOW | Code Duplication | OPEN |
+| 8 | Duplicate isObjectMethod() | LOW | Code Duplication | FIXED |
 
 ---
 
