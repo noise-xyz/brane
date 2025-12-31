@@ -111,6 +111,9 @@ import static io.brane.core.AnsiColors.*;
  */
 public final class LogFormatter {
 
+    /** Indentation for multi-line log continuation. Aligns with [CALL] prefix. */
+    private static final String CONTINUATION_INDENT = "          ";
+
     private LogFormatter() {
     }
 
@@ -129,11 +132,11 @@ public final class LogFormatter {
             String dataValue = extractValue(requestStr, "data=");
 
             return String.format(
-                    "%s[CALL]%s tag=%s\n          to=%s\n          data=%s",
+                    "%s[CALL]%s tag=%s\n%sto=%s\n%sdata=%s",
                     INDIGO, RESET,
                     tag,
-                    toValue != null ? shortenHash(toValue) : "?",
-                    dataValue != null ? shortenHash(dataValue) : "?");
+                    CONTINUATION_INDENT, toValue != null ? shortenHash(toValue) : "?",
+                    CONTINUATION_INDENT, dataValue != null ? shortenHash(dataValue) : "?");
         }
 
         // Fallback: single line if request isn't structured
