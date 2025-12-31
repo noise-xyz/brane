@@ -29,15 +29,33 @@ public record Utf8String(String value) implements AbiType {
 
     @Override
     public int contentByteSize() {
-        // We calculate UTF-8 length.
-        // Optimization: Avoid full array allocation if possible, but standard library
-        // is fast.
-        // For now, standard getBytes is fine, but we could cache it if we changed to a
-        // class.
-        // Since this is a record, we just calculate.
-        int len = value.getBytes(java.nio.charset.StandardCharsets.UTF_8).length;
+        int len = utf8ByteLength(value);
         int remainder = len % 32;
         int padding = remainder == 0 ? 0 : 32 - remainder;
         return 32 + len + padding; // Length (32) + Data + Padding
+    }
+
+    /**
+     * Computes UTF-8 byte length without allocating a byte array.
+     *
+     * <p>This is more efficient than {@code value.getBytes(UTF_8).length} which
+     * allocates a new array on every call.
+     */
+    private static int utf8ByteLength(String s) {
+        int len = 0;
+        for (int i = 0; i < s.length(); i++) {
+            char c = s.charAt(i);
+            if (c < 0x80) {
+                len += 1;
+            } else if (c < 0x800) {
+                len += 2;
+            } else if (Character.isHighSurrogate(c)) {
+                len += 4;
+                i++; // Skip low surrogate
+            } else {
+                len += 3;
+            }
+        }
+        return len;
     }
 }
