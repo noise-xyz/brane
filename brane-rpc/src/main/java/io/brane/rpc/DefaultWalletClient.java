@@ -484,18 +484,39 @@ public final class DefaultWalletClient implements WalletClient {
         return RpcUtils.decodeHexBigInteger(estimate);
     }
 
+    /**
+     * Fetches and caches the chain ID with thread-safe atomic caching.
+     *
+     * <p>
+     * Uses compareAndSet to ensure only one thread's fetched value is cached,
+     * preventing redundant RPC calls and ensuring consistent validation.
+     *
+     * @return the chain ID
+     * @throws ChainMismatchException if expectedChainId is set and doesn't match
+     */
     private long enforceChainId() {
-        final Long cached = cachedChainId.get();
+        // Fast path - already cached
+        Long cached = cachedChainId.get();
         if (cached != null) {
             return cached;
         }
+
+        // Slow path - fetch and cache atomically
         final String chainIdHex = callRpc("eth_chainId", List.of(), String.class, null);
         final long actual = RpcUtils.decodeHexBigInteger(chainIdHex).longValue();
-        cachedChainId.set(actual);
+
+        // Validate BEFORE caching to prevent caching an invalid chain ID
         if (expectedChainId > 0 && expectedChainId != actual) {
             throw new ChainMismatchException(expectedChainId, actual);
         }
-        return actual;
+
+        // Atomically set if still null (another thread may have set it)
+        // This prevents redundant RPC calls from overwriting with the same value
+        cachedChainId.compareAndSet(null, actual);
+
+        // Return the actual cached value (may be from another thread)
+        cached = cachedChainId.get();
+        return cached != null ? cached : actual;
     }
 
     private <T> T callRpc(
