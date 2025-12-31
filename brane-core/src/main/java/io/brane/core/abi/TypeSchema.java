@@ -186,6 +186,7 @@ public sealed interface TypeSchema permits
     record TupleSchema(List<TypeSchema> components) implements TypeSchema {
         public TupleSchema {
             Objects.requireNonNull(components, "components cannot be null");
+            components = List.copyOf(components);
         }
 
         @Override
