@@ -45,7 +45,7 @@ public final class LogSanitizer {
         }
 
         if (sanitized.length() > MAX_LOG_LENGTH) {
-            int truncateAt = MAX_LOG_LENGTH - TRUNCATION_SUFFIX.length();
+            int truncateAt = Math.max(0, MAX_LOG_LENGTH - TRUNCATION_SUFFIX.length());
             sanitized = sanitized.substring(0, truncateAt) + TRUNCATION_SUFFIX;
         }
 
