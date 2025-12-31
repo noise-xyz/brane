@@ -88,6 +88,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private final String url;
     private final URI uri;
     private final EventLoopGroup group;
+    /** True if we created the EventLoopGroup internally and are responsible for shutting it down. */
+    private final boolean ownsEventLoopGroup;
     private Channel channel;
     private final WebSocketClientHandler handler;
     private final AtomicBoolean connected = new AtomicBoolean(false);
@@ -186,12 +188,14 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         // Use provided EventLoopGroup or create default
         if (config.eventLoopGroup() != null) {
             this.group = config.eventLoopGroup();
+            this.ownsEventLoopGroup = false; // External group - caller is responsible for lifecycle
         } else {
             this.group = new NioEventLoopGroup(config.ioThreads(), r -> {
                 Thread t = new Thread(r, "brane-netty-io");
                 t.setDaemon(true);
                 return t;
             });
+            this.ownsEventLoopGroup = true; // Internal group - we manage lifecycle
         }
 
         // Configurable wait strategy
@@ -799,9 +803,15 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * <ul>
      * <li>Shuts down the Disruptor</li>
      * <li>Closes the WebSocket channel</li>
-     * <li>Shuts down the Netty event loop group</li>
+     * <li>Shuts down the Netty event loop group (only if created internally)</li>
      * <li>Fails any pending requests with an exception</li>
      * </ul>
+     *
+     * <p>
+     * <b>EventLoopGroup ownership:</b> If an {@code EventLoopGroup} was provided via
+     * {@link WebSocketConfig#eventLoopGroup()}, it will NOT be shut down by this method.
+     * The caller is responsible for managing the lifecycle of externally-provided groups.
+     * </p>
      *
      * <p>
      * After calling close(), this provider cannot be reused.
@@ -814,7 +824,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         if (channel != null) {
             channel.close();
         }
-        group.shutdownGracefully();
+        // Only shutdown the EventLoopGroup if we created it internally
+        if (ownsEventLoopGroup) {
+            group.shutdownGracefully();
+        }
     }
 
     private void reconnect() {
