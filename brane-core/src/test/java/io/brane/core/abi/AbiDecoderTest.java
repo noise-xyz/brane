@@ -120,7 +120,7 @@ class AbiDecoderTest {
         // uint256[] = [1, 2]
         UInt e1 = new UInt(256, BigInteger.ONE);
         UInt e2 = new UInt(256, BigInteger.TWO);
-        AbiType array = new Array<>(List.of(e1, e2), UInt.class, true);
+        AbiType array = new Array<>(List.of(e1, e2), UInt.class, true, "uint256");
 
         byte[] encoded = AbiEncoder.encode(List.of(array));
 
@@ -147,7 +147,7 @@ class AbiDecoderTest {
 
         Utf8String s1 = new Utf8String("a");
         Utf8String s2 = new Utf8String("b");
-        AbiType array = new Array<>(List.of(s1, s2), Utf8String.class, false); // false = fixed length
+        AbiType array = new Array<>(List.of(s1, s2), Utf8String.class, false, "string"); // false = fixed length
 
         // We need to encode it manually or trust AbiEncoder?
         // AbiEncoder might also have issues with fixed array of dynamic types if not

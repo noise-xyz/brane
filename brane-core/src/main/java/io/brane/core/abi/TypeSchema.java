@@ -36,6 +36,13 @@ public sealed interface TypeSchema permits
 
     boolean isDynamic();
 
+    /**
+     * Returns the Solidity type name for this schema.
+     *
+     * @return the type name (e.g., "uint256", "address", "bytes32[]")
+     */
+    String typeName();
+
     default int headSize() {
         return 32;
     }
@@ -51,6 +58,11 @@ public sealed interface TypeSchema permits
         public boolean isDynamic() {
             return false;
         }
+
+        @Override
+        public String typeName() {
+            return "uint" + width;
+        }
     }
 
     record IntSchema(int width) implements TypeSchema {
@@ -64,12 +76,22 @@ public sealed interface TypeSchema permits
         public boolean isDynamic() {
             return false;
         }
+
+        @Override
+        public String typeName() {
+            return "int" + width;
+        }
     }
 
     record AddressSchema() implements TypeSchema {
         @Override
         public boolean isDynamic() {
             return false;
+        }
+
+        @Override
+        public String typeName() {
+            return "address";
         }
     }
 
@@ -78,6 +100,11 @@ public sealed interface TypeSchema permits
         public boolean isDynamic() {
             return false;
         }
+
+        @Override
+        public String typeName() {
+            return "bool";
+        }
     }
 
     record BytesSchema(boolean isDynamic) implements TypeSchema {
@@ -85,12 +112,23 @@ public sealed interface TypeSchema permits
         public boolean isDynamic() {
             return isDynamic;
         }
+
+        @Override
+        public String typeName() {
+            // Dynamic bytes returns "bytes"; static bytesN would need size info (see Issue #18)
+            return "bytes";
+        }
     }
 
     record StringSchema() implements TypeSchema {
         @Override
         public boolean isDynamic() {
             return true;
+        }
+
+        @Override
+        public String typeName() {
+            return "string";
         }
     }
 
@@ -103,6 +141,12 @@ public sealed interface TypeSchema permits
         public boolean isDynamic() {
             return fixedLength == -1 || element.isDynamic();
         }
+
+        @Override
+        public String typeName() {
+            String elemType = element.typeName();
+            return fixedLength == -1 ? elemType + "[]" : elemType + "[" + fixedLength + "]";
+        }
     }
 
     record TupleSchema(List<TypeSchema> components) implements TypeSchema {
@@ -113,6 +157,14 @@ public sealed interface TypeSchema permits
         @Override
         public boolean isDynamic() {
             return components.stream().anyMatch(TypeSchema::isDynamic);
+        }
+
+        @Override
+        public String typeName() {
+            return "(" + components.stream()
+                    .map(TypeSchema::typeName)
+                    .reduce((a, b) -> a + "," + b)
+                    .orElse("") + ")";
         }
     }
 }

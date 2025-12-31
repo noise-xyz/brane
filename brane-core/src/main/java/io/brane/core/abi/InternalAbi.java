@@ -272,6 +272,7 @@ final class InternalAbi implements Abi {
             final TypeConverter elementConverter = createConverter(elementParam);
 
             final int elementHeadSize = elementConverter.getHeadSize();
+            final String elementTypeName = baseType;
 
             return new TypeConverter() {
                 @Override
@@ -283,7 +284,7 @@ final class InternalAbi implements Abi {
                     for (Object element : listValue) {
                         elements.add(elementConverter.convert(element));
                     }
-                    return new Array<AbiType>(elements, AbiType.class, true);
+                    return new Array<AbiType>(elements, AbiType.class, true, elementTypeName);
                 }
 
                 @Override

@@ -115,7 +115,7 @@ public final class AbiDecoder {
                 @SuppressWarnings("unchecked")
                 Class<AbiType> elemClass = (Class<AbiType>) (elements.isEmpty() ? AbiType.class
                         : elements.get(0).getClass());
-                yield new Array<>(elements, elemClass, false);
+                yield new Array<>(elements, elemClass, false, s.element().typeName());
             }
             case TypeSchema.TupleSchema s -> {
                 // Static tuple: sequence of components
@@ -183,7 +183,7 @@ public final class AbiDecoder {
                 @SuppressWarnings("unchecked")
                 Class<AbiType> elemClass = (Class<AbiType>) (elements.isEmpty() ? AbiType.class
                         : elements.get(0).getClass());
-                yield new Array<>(elements, elemClass, true);
+                yield new Array<>(elements, elemClass, true, s.element().typeName());
             }
             case TypeSchema.TupleSchema s -> {
                 // Dynamic tuple is encoded as a tuple at the offset
