@@ -934,10 +934,41 @@ final class InternalAbi implements Abi {
         }
     }
 
-    private record AbiEvent(String name, List<AbiParameter> inputs) {
-        String signature() {
+    /**
+     * Internal representation of an ABI event with cached topic hash for performance.
+     * The topic hash (Keccak256 of the signature) is computed once at construction time
+     * to avoid repeated hashing during log filtering.
+     */
+    private static final class AbiEvent {
+        private final String name;
+        private final List<AbiParameter> inputs;
+        private final String signature;
+        private final String topicHash;
+
+        AbiEvent(String name, List<AbiParameter> inputs) {
+            this.name = name;
+            this.inputs = inputs;
+            // Compute and cache signature
             final String joined = inputs.stream().map(AbiParameter::canonicalType).collect(Collectors.joining(","));
-            return name + "(" + joined + ")";
+            this.signature = name + "(" + joined + ")";
+            // Compute and cache topic hash (Keccak256 of signature)
+            this.topicHash = Abi.eventTopic(this.signature).value();
+        }
+
+        String name() {
+            return name;
+        }
+
+        List<AbiParameter> inputs() {
+            return inputs;
+        }
+
+        String signature() {
+            return signature;
+        }
+
+        String topicHash() {
+            return topicHash;
         }
     }
 
@@ -1033,8 +1064,8 @@ final class InternalAbi implements Abi {
         if (log.topics() == null || log.topics().isEmpty()) {
             return false;
         }
-        final String topic0 = Abi.eventTopic(event.signature()).value();
-        return topic0.equalsIgnoreCase(log.topics().get(0).value());
+        // Use cached topic hash to avoid repeated Keccak256 hashing
+        return event.topicHash().equalsIgnoreCase(log.topics().get(0).value());
     }
 
     private <T> T decodeEvent(
