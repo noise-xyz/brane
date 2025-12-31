@@ -42,7 +42,16 @@ package io.brane.core;
  */
 public final class AnsiColors {
 
-    private static final boolean IS_TTY = System.console() != null
+    /**
+     * Whether standard output is a TTY (terminal) environment.
+     *
+     * <p>This is true when either {@code System.console()} is non-null (indicating an
+     * interactive terminal) or the {@code FORCE_COLOR=true} environment variable is set
+     * (for CI/CD pipelines that support colors).
+     *
+     * <p>Other classes should use this constant instead of duplicating the TTY detection logic.
+     */
+    public static final boolean IS_TTY = System.console() != null
             || "true".equals(System.getenv("FORCE_COLOR"));
 
     // Reset
