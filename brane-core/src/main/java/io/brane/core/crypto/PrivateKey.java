@@ -341,11 +341,25 @@ public final class PrivateKey implements Destroyable {
         }
     }
 
+    /**
+     * Returns a string representation of this private key.
+     *
+     * <p>
+     * For security, the actual private key bytes are never included.
+     * Instead, the derived address is shown to help identify the key.
+     * If the key has been destroyed, returns "PrivateKey[destroyed]".
+     *
+     * <p>
+     * This method is thread-safe with respect to concurrent {@link #destroy()} calls.
+     *
+     * @return string representation showing address or destroyed status
+     */
     @Override
     public String toString() {
-        if (destroyed) {
+        try {
+            return "PrivateKey[address=" + toAddress() + "]";
+        } catch (IllegalStateException e) {
             return "PrivateKey[destroyed]";
         }
-        return "PrivateKey[address=" + toAddress() + "]";
     }
 }
