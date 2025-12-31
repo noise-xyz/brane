@@ -819,14 +819,44 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      */
     @Override
     public void close() {
-        closed.set(true);
-        disruptor.shutdown();
-        if (channel != null) {
-            channel.close();
+        if (!closed.compareAndSet(false, true)) {
+            return; // Already closed
         }
+
+        // Fail all pending requests before shutting down
+        RpcException shutdownException = new RpcException(-32000, "WebSocketProvider is shutting down", null);
+        failAllPending(shutdownException);
+
+        // Shutdown Disruptor - halt() stops immediately, shutdown() waits for drain
+        // Use halt() since we've already failed all pending requests
+        try {
+            disruptor.halt();
+        } catch (Exception e) {
+            log.warn("Error halting Disruptor", e);
+        }
+
+        // Close the WebSocket channel
+        if (channel != null) {
+            try {
+                channel.close().sync();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Interrupted while closing channel", e);
+            } catch (Exception e) {
+                log.warn("Error closing channel", e);
+            }
+        }
+
         // Only shutdown the EventLoopGroup if we created it internally
         if (ownsEventLoopGroup) {
-            group.shutdownGracefully();
+            try {
+                group.shutdownGracefully(0, 5, TimeUnit.SECONDS).sync();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Interrupted while shutting down EventLoopGroup", e);
+            } catch (Exception e) {
+                log.warn("Error shutting down EventLoopGroup", e);
+            }
         }
     }
 
