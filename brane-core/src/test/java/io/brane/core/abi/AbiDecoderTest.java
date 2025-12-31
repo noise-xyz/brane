@@ -274,4 +274,30 @@ class AbiDecoderTest {
                    exception.getMessage().contains("too large"),
                 "Error message should indicate size issue: " + exception.getMessage());
     }
+
+    @Test
+    void testDecodeEmptyBytes() {
+        // CRIT-1: Test decoding empty bytes (length = 0)
+        // Empty bytes should decode successfully without validation underflow
+        AbiType input = Bytes.of(new byte[0]);
+        byte[] encoded = AbiEncoder.encode(List.of(input));
+
+        List<AbiType> decoded = AbiDecoder.decode(encoded, List.of(new TypeSchema.BytesSchema(TypeSchema.BytesSchema.DYNAMIC)));
+        Assertions.assertEquals(1, decoded.size());
+        Bytes decodedBytes = (Bytes) decoded.get(0);
+        Assertions.assertEquals(0, decodedBytes.value().byteLength());
+    }
+
+    @Test
+    void testDecodeEmptyString() {
+        // CRIT-1: Test decoding empty string (length = 0)
+        // Empty string should decode successfully without validation underflow
+        AbiType input = new Utf8String("");
+        byte[] encoded = AbiEncoder.encode(List.of(input));
+
+        List<AbiType> decoded = AbiDecoder.decode(encoded, List.of(new TypeSchema.StringSchema()));
+        Assertions.assertEquals(1, decoded.size());
+        Utf8String decodedString = (Utf8String) decoded.get(0);
+        Assertions.assertEquals("", decodedString.value());
+    }
 }

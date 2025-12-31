@@ -141,7 +141,10 @@ public final class AbiDecoder {
                 BigInteger lengthValue = decodeInt(data, offset);
                 int length = toIntExact(lengthValue, "bytes length");
                 int dataOffset = offset + 32;
-                validateOffset(data, dataOffset + length - 1, "bytes data");
+                // Only validate if length > 0 to avoid underflow when length == 0
+                if (length > 0) {
+                    validateOffset(data, dataOffset + length - 1, "bytes data");
+                }
                 byte[] bytes = Arrays.copyOfRange(data, dataOffset, dataOffset + length);
                 yield Bytes.of(bytes);
             }
@@ -149,7 +152,10 @@ public final class AbiDecoder {
                 BigInteger lengthValue = decodeInt(data, offset);
                 int length = toIntExact(lengthValue, "string length");
                 int dataOffset = offset + 32;
-                validateOffset(data, dataOffset + length - 1, "string data");
+                // Only validate if length > 0 to avoid underflow when length == 0
+                if (length > 0) {
+                    validateOffset(data, dataOffset + length - 1, "string data");
+                }
                 byte[] bytes = Arrays.copyOfRange(data, dataOffset, dataOffset + length);
                 yield new Utf8String(new String(bytes, StandardCharsets.UTF_8));
             }
