@@ -147,8 +147,18 @@ public sealed interface TypeSchema permits
     }
 
     record ArraySchema(TypeSchema element, int fixedLength) implements TypeSchema {
+        /**
+         * Validates the array schema.
+         *
+         * @throws NullPointerException if element is null
+         * @throws IllegalArgumentException if fixedLength is less than -1
+         */
         public ArraySchema {
             Objects.requireNonNull(element, "element schema cannot be null");
+            if (fixedLength < -1) {
+                throw new IllegalArgumentException(
+                        "fixedLength must be >= -1 (use -1 for dynamic arrays), got: " + fixedLength);
+            }
         }
 
         @Override
