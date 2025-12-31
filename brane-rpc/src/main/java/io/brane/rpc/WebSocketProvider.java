@@ -41,6 +41,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReferenceArray;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
 import java.util.concurrent.TimeUnit;
@@ -50,14 +51,23 @@ import org.slf4j.LoggerFactory;
 
 /**
  * Ultra-low latency WebSocket provider using Netty and LMAX Disruptor.
- * 
- * Optimizations:
- * - Zero-allocation JSON serialization directly to ByteBuf
- * - Low-allocation response parsing from ByteBuf
- * - Lock-free request ID generation
- * - Batched writes with flush on end-of-batch
- * - Optimized Netty channel options (TCP_NODELAY, etc.)
- * - Large ring buffer for high throughput bursts
+ *
+ * <p><b>Thread Safety:</b> This class is thread-safe. Multiple threads can
+ * safely call {@link #send}, {@link #sendAsync}, and {@link #sendAsyncBatch}
+ * concurrently. Request tracking uses an {@link AtomicReferenceArray} with
+ * CAS-based slot allocation to prevent race conditions between the caller
+ * threads, Disruptor thread, and Netty I/O thread.
+ *
+ * <p><b>Optimizations:</b>
+ * <ul>
+ *   <li>Zero-allocation JSON serialization directly to ByteBuf</li>
+ *   <li>Low-allocation response parsing from ByteBuf</li>
+ *   <li>Lock-free request ID generation using AtomicLong</li>
+ *   <li>CAS-based slot allocation for thread-safe request tracking</li>
+ *   <li>Batched writes with flush on end-of-batch</li>
+ *   <li>Optimized Netty channel options (TCP_NODELAY, etc.)</li>
+ *   <li>Large ring buffer for high throughput bursts</li>
+ * </ul>
  */
 public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
@@ -84,7 +94,11 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
     // ==================== Request Tracking ====================
-    private final CompletableFuture<JsonRpcResponse>[] slots;
+    /**
+     * Thread-safe slot array for tracking pending requests.
+     * Uses AtomicReferenceArray to ensure proper visibility and CAS-based allocation.
+     */
+    private final AtomicReferenceArray<CompletableFuture<JsonRpcResponse>> slots;
 
     // ==================== Subscriptions ====================
     private final ConcurrentHashMap<String, Consumer<JsonRpcResponse>> subscriptions = new ConcurrentHashMap<>();
@@ -157,14 +171,13 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private static final byte[] TRUE_BYTES = "true".getBytes(StandardCharsets.UTF_8);
     private static final byte[] FALSE_BYTES = "false".getBytes(StandardCharsets.UTF_8);
 
-    @SuppressWarnings("unchecked")
     private WebSocketProvider(WebSocketConfig config) {
         this.url = config.url();
         this.uri = URI.create(config.url());
         this.maxPendingRequests = config.maxPendingRequests();
         this.slotMask = maxPendingRequests - 1;
         this.defaultRequestTimeout = config.defaultRequestTimeout();
-        this.slots = new CompletableFuture[maxPendingRequests];
+        this.slots = new AtomicReferenceArray<>(maxPendingRequests);
 
         this.handler = new WebSocketClientHandler(
                 WebSocketClientHandshakerFactory.newHandshaker(
@@ -210,7 +223,6 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     /**
      * Backward-compatible constructor using defaults.
      */
-    @SuppressWarnings("unchecked")
     private WebSocketProvider(String url) {
         this(WebSocketConfig.withDefaults(url));
     }
@@ -475,9 +487,9 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
             if (id != -1) {
                 int slot = (int) (id & slotMask);
-                CompletableFuture<JsonRpcResponse> future = slots[slot];
+                // Atomically get and clear the slot to prevent race conditions
+                CompletableFuture<JsonRpcResponse> future = slots.getAndSet(slot, null);
                 if (future != null) {
-                    slots[slot] = null;
                     JsonNode errorNode = node.get("error");
                     JsonRpcError error = null;
                     if (errorNode != null && !errorNode.isNull()) {
@@ -532,23 +544,32 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
     /**
      * Allocates a slot for a new request with backpressure handling.
-     * 
+     * Uses CAS-based allocation to ensure thread-safety.
+     *
      * @param id the request ID
      * @return the allocated future, or a failed future if backpressure is triggered
      */
     private CompletableFuture<JsonRpcResponse> allocateSlot(long id) {
         int slot = (int) (id & slotMask);
-        CompletableFuture<JsonRpcResponse> existing = slots[slot];
-        if (existing != null && !existing.isDone()) {
-            metrics.onBackpressure();
-            return CompletableFuture.failedFuture(new io.brane.core.error.RpcException(
-                    -32000,
-                    "Too many pending requests (" + maxPendingRequests + " limit reached, slot " + slot + " in use)",
-                    null));
-        }
         CompletableFuture<JsonRpcResponse> future = new CompletableFuture<>();
-        slots[slot] = future;
-        return future;
+
+        // CAS loop to atomically allocate slot
+        while (true) {
+            CompletableFuture<JsonRpcResponse> existing = slots.get(slot);
+            if (existing != null && !existing.isDone()) {
+                // Slot is in use by an active request - backpressure
+                metrics.onBackpressure();
+                return CompletableFuture.failedFuture(new io.brane.core.error.RpcException(
+                        -32000,
+                        "Too many pending requests (" + maxPendingRequests + " limit reached, slot " + slot + " in use)",
+                        null));
+            }
+            // Slot is either null or contains a completed future - try to claim it
+            if (slots.compareAndSet(slot, existing, future)) {
+                return future;
+            }
+            // CAS failed, another thread modified the slot - retry
+        }
     }
 
     /**
@@ -604,7 +625,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             if (timeout != null && timeout.toMillis() > 0) {
                 ch.eventLoop().schedule(() -> {
                     if (!future.isDone()) {
-                        slots[slot] = null; // Clear slot
+                        // Use CAS to only clear if slot still contains our future
+                        slots.compareAndSet(slot, future, null);
                         metrics.onRequestTimeout(method);
                         future.completeExceptionally(new io.brane.core.error.RpcException(
                                 -32000,
@@ -813,10 +835,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
     private void failAllPending(RpcException e) {
         connected.set(false);
-        for (int i = 0; i < slots.length; i++) {
-            CompletableFuture<JsonRpcResponse> f = slots[i];
+        for (int i = 0; i < slots.length(); i++) {
+            // Atomically get and clear each slot
+            CompletableFuture<JsonRpcResponse> f = slots.getAndSet(i, null);
             if (f != null) {
-                slots[i] = null;
                 f.completeExceptionally(e);
             }
         }
@@ -852,9 +874,9 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             } catch (Exception e) {
                 buffer.release();
                 int slot = (int) (event.id & slotMask);
-                CompletableFuture<JsonRpcResponse> future = slots[slot];
+                // Atomically get and clear the slot
+                CompletableFuture<JsonRpcResponse> future = slots.getAndSet(slot, null);
                 if (future != null) {
-                    slots[slot] = null;
                     future.completeExceptionally(e);
                 }
             }
@@ -866,9 +888,9 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         } else {
             // Channel not active - fail the request
             int slot = (int) (event.id & slotMask);
-            CompletableFuture<JsonRpcResponse> future = slots[slot];
+            // Atomically get and clear the slot
+            CompletableFuture<JsonRpcResponse> future = slots.getAndSet(slot, null);
             if (future != null) {
-                slots[slot] = null;
                 future.completeExceptionally(new RpcException(-1, "Channel not active", null));
             }
         }
