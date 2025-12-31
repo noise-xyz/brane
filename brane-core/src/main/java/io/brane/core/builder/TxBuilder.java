@@ -32,7 +32,11 @@ public sealed interface TxBuilder<T extends TxBuilder<T>> permits LegacyBuilder,
     /**
      * Sets the sender address.
      *
-     * @param address the sender address
+     * <p>The sender address is required for all transactions. Calling {@link #build()}
+     * without setting a from address will result in incomplete transaction data that
+     * cannot be signed or submitted.
+     *
+     * @param address the sender address (must not be null)
      * @return this builder for chaining
      */
     T from(Address address);
