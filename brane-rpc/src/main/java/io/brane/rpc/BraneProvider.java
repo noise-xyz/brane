@@ -33,7 +33,7 @@ import java.util.List;
  * @see HttpBraneProvider
  * @see PublicClient#from(BraneProvider)
  */
-public interface BraneProvider {
+public interface BraneProvider extends AutoCloseable {
 
     /**
      * Sends a JSON-RPC request.
@@ -82,5 +82,17 @@ public interface BraneProvider {
      */
     static BraneProvider http(final String url) {
         return HttpBraneProvider.builder(url).build();
+    }
+
+    /**
+     * Closes this provider and releases any associated resources.
+     * <p>
+     * After calling this method, the provider should not be used for further requests.
+     * The default implementation does nothing. Implementations that hold resources
+     * (e.g., thread pools, connections) should override this method.
+     */
+    @Override
+    default void close() {
+        // Default no-op for providers that don't need cleanup
     }
 }

@@ -20,15 +20,29 @@ public final class HttpBraneProvider implements BraneProvider {
 
     private final RpcConfig config;
     private final java.net.http.HttpClient httpClient;
+    private final java.util.concurrent.ExecutorService executor;
     private final ObjectMapper mapper = new ObjectMapper();
     private final AtomicLong ids = new AtomicLong(1L);
 
     private HttpBraneProvider(final RpcConfig config) {
         this.config = config;
+        this.executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
         this.httpClient = java.net.http.HttpClient.newBuilder()
-                .executor(java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor())
+                .executor(executor)
                 .connectTimeout(config.connectTimeout())
                 .build();
+    }
+
+    /**
+     * Closes this provider and releases associated resources.
+     * <p>
+     * This method shuts down the internal HTTP client and its executor service.
+     * After calling this method, the provider should not be used for further requests.
+     */
+    @Override
+    public void close() {
+        httpClient.close();
+        executor.close();
     }
 
     public static Builder builder(final String url) {
