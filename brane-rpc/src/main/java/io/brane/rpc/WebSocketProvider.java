@@ -128,6 +128,14 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private final AtomicBoolean connected = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
+    // ==================== Reconnect Configuration ====================
+    /** Maximum number of reconnect attempts before giving up. */
+    private static final int MAX_RECONNECT_ATTEMPTS = 10;
+    /** Maximum delay between reconnect attempts (32 seconds). */
+    private static final long MAX_RECONNECT_DELAY_MS = 32_000;
+    /** Current reconnect attempt counter. Reset to 0 on successful connection. */
+    private final AtomicLong reconnectAttempts = new AtomicLong(0);
+
     // ==================== Request Tracking ====================
     /**
      * Thread-safe map for tracking pending requests by ID.
@@ -899,19 +907,36 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     }
 
     private void reconnect() {
-        if (!closed.get()) {
-            group.schedule(() -> {
-                if (!connected.get() && !closed.get()) {
-                    log.info("Attempting reconnect to {}", uri);
-                    try {
-                        connect();
-                    } catch (Exception e) {
-                        log.error("Reconnect failed", e);
-                        reconnect();
-                    }
-                }
-            }, 1, TimeUnit.SECONDS);
+        if (closed.get()) {
+            return;
         }
+
+        long attempt = reconnectAttempts.incrementAndGet();
+        if (attempt > MAX_RECONNECT_ATTEMPTS) {
+            log.error("Max reconnect attempts ({}) exceeded, giving up on {}", MAX_RECONNECT_ATTEMPTS, uri);
+            closed.set(true);
+            failAllPending(new RpcException(-32000,
+                "WebSocket connection permanently failed after " + MAX_RECONNECT_ATTEMPTS + " reconnect attempts", null));
+            return;
+        }
+
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s (capped)
+        long delayMs = Math.min(1000L * (1L << (attempt - 1)), MAX_RECONNECT_DELAY_MS);
+        log.info("Scheduling reconnect attempt {}/{} to {} in {}ms", attempt, MAX_RECONNECT_ATTEMPTS, uri, delayMs);
+
+        group.schedule(() -> {
+            if (!connected.get() && !closed.get()) {
+                try {
+                    connect();
+                    // Reset counter on successful connection
+                    reconnectAttempts.set(0);
+                    log.info("Reconnected successfully to {}", uri);
+                } catch (Exception e) {
+                    log.error("Reconnect attempt {} failed: {}", attempt, e.getMessage());
+                    reconnect();
+                }
+            }
+        }, delayMs, TimeUnit.MILLISECONDS);
     }
 
     private void failAllPending(RpcException e) {
