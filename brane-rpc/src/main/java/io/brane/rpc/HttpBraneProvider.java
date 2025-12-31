@@ -1,11 +1,12 @@
 package io.brane.rpc;
 
 import static io.brane.rpc.internal.RpcUtils.MAPPER;
+
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.brane.core.DebugLogger;
 import io.brane.core.LogFormatter;
 import io.brane.core.error.RpcException;
-import java.lang.reflect.Array;
+import io.brane.rpc.internal.RpcUtils;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -79,7 +80,7 @@ public final class HttpBraneProvider implements BraneProvider {
             final JsonRpcError err = rpcResponse.error();
             DebugLogger.logRpc(
                     LogFormatter.formatRpcError(method, err.code(), err.message(), durationMicros));
-            throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), requestId);
+            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), requestId);
         }
 
         DebugLogger.logRpc(LogFormatter.formatRpc(method, durationMicros));
@@ -137,38 +138,6 @@ public final class HttpBraneProvider implements BraneProvider {
                     requestId,
                     e);
         }
-    }
-
-    private String extractErrorData(final Object dataValue) {
-        return switch (dataValue) {
-            case null -> null;
-            case String s when s.trim().startsWith("0x") -> s;
-            case Map<?, ?> map -> extractFromIterable(map.values(), dataValue);
-            case Iterable<?> iterable -> extractFromIterable(iterable, dataValue);
-            case Object array when dataValue.getClass().isArray() -> extractFromArray(array, dataValue);
-            default -> dataValue.toString();
-        };
-    }
-
-    private String extractFromIterable(final Iterable<?> iterable, final Object fallback) {
-        for (Object value : iterable) {
-            final String nested = extractErrorData(value);
-            if (nested != null) {
-                return nested;
-            }
-        }
-        return fallback.toString();
-    }
-
-    private String extractFromArray(final Object array, final Object fallback) {
-        final int length = Array.getLength(array);
-        for (int i = 0; i < length; i++) {
-            final String nested = extractErrorData(Array.get(array, i));
-            if (nested != null) {
-                return nested;
-            }
-        }
-        return fallback.toString();
     }
 
     public static final class Builder {

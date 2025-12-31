@@ -280,23 +280,9 @@ final class SmartGasStrategy {
             tx.put("data", request.data().value());
         }
         if (request.accessList() != null && !request.accessList().isEmpty()) {
-            tx.put("accessList", toJsonAccessList(request.accessList()));
+            tx.put("accessList", RpcUtils.toJsonAccessList(request.accessList()));
         }
         return tx;
-    }
-
-    private List<Map<String, Object>> toJsonAccessList(final List<AccessListEntry> entries) {
-        return entries.stream()
-                .map(
-                        entry -> {
-                            final Map<String, Object> map = new LinkedHashMap<>();
-                            map.put("address", entry.address().value());
-                            map.put(
-                                    "storageKeys",
-                                    entry.storageKeys().stream().map(Hash::value).toList());
-                            return map;
-                        })
-                .toList();
     }
 
     private BigInteger requirePositive(final BigInteger value, final String name) {

@@ -16,11 +16,11 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import io.brane.rpc.internal.LogParser;
 import io.brane.rpc.internal.RpcUtils;
 import java.math.BigInteger;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -378,7 +378,7 @@ public final class DefaultWalletClient implements WalletClient {
         final String fromHex = RpcUtils.stringValue(map.get("from"));
         final String toHex = RpcUtils.stringValue(map.get("to"));
         final String contractAddress = RpcUtils.stringValue(map.get("contractAddress"));
-        final List<LogEntry> logs = parseLogs(map.get("logs"));
+        final List<LogEntry> logs = LogParser.parseLogs(map.get("logs"));
         final String cumulativeGasUsed = RpcUtils.stringValue(map.get("cumulativeGasUsed"));
 
         return new TransactionReceipt(
@@ -391,40 +391,6 @@ public final class DefaultWalletClient implements WalletClient {
                 logs,
                 status,
                 cumulativeGasUsed != null ? new Wei(RpcUtils.decodeHexBigInteger(cumulativeGasUsed)) : null);
-    }
-
-    private List<LogEntry> parseLogs(final Object value) {
-        if (value == null) {
-            return List.of();
-        }
-        @SuppressWarnings("unchecked")
-        final List<Map<String, Object>> rawLogs = MAPPER.convertValue(value, List.class);
-        final List<LogEntry> logs = new ArrayList<>(rawLogs.size());
-        for (Map<String, Object> log : rawLogs) {
-            final String address = RpcUtils.stringValue(log.get("address"));
-            final String data = RpcUtils.stringValue(log.get("data"));
-            final String blockHash = RpcUtils.stringValue(log.get("blockHash"));
-            final String txHash = RpcUtils.stringValue(log.get("transactionHash"));
-            final Long logIndex = RpcUtils.decodeHexLong(log.get("logIndex"));
-            @SuppressWarnings("unchecked")
-            final List<String> topicsHex = MAPPER.convertValue(log.get("topics"), List.class);
-            final List<Hash> topics = new ArrayList<>();
-            if (topicsHex != null) {
-                for (String t : topicsHex) {
-                    topics.add(new Hash(t));
-                }
-            }
-            logs.add(
-                    new LogEntry(
-                            address != null ? new Address(address) : null,
-                            data != null ? new HexData(data) : HexData.EMPTY,
-                            topics,
-                            blockHash != null ? new Hash(blockHash) : null,
-                            txHash != null ? new Hash(txHash) : null,
-                            logIndex != null ? logIndex : 0L,
-                            Boolean.TRUE.equals(log.get("removed"))));
-        }
-        return logs;
     }
 
     private ValueParts buildValueParts(final TransactionRequest request, final Address from) {
@@ -466,7 +432,7 @@ public final class DefaultWalletClient implements WalletClient {
             tx.put("data", request.data().value());
         }
         if (request.accessList() != null && !request.accessList().isEmpty()) {
-            tx.put("accessList", toJsonAccessList(request.accessList()));
+            tx.put("accessList", RpcUtils.toJsonAccessList(request.accessList()));
         }
         DebugLogger.logTx(LogFormatter.formatEstimateGas(
                 String.valueOf(from), String.valueOf(tx.get("to")), String.valueOf(tx.get("data"))));
@@ -546,17 +512,6 @@ public final class DefaultWalletClient implements WalletClient {
             handlePotentialRevert(e, null);
             throw e;
         }
-    }
-
-    private List<Map<String, Object>> toJsonAccessList(final List<io.brane.core.model.AccessListEntry> entries) {
-        final List<Map<String, Object>> list = new ArrayList<>(entries.size());
-        for (var entry : entries) {
-            final Map<String, Object> map = new LinkedHashMap<>();
-            map.put("address", entry.address().value());
-            map.put("storageKeys", entry.storageKeys().stream().map(Hash::value).toList());
-            list.add(map);
-        }
-        return list;
     }
 
     private record ValueParts(

@@ -14,6 +14,7 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import io.brane.rpc.internal.LogParser;
 import io.brane.rpc.internal.RpcUtils;
 import java.math.BigInteger;
 import java.util.ArrayList;
@@ -109,43 +110,7 @@ final class DefaultPublicClient implements PublicClient {
                     err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
         }
         final Object result = response.result();
-        if (result == null) {
-            return List.of();
-        }
-
-        final List<Map<String, Object>> raw = MAPPER.convertValue(
-            result,
-            new TypeReference<List<Map<String, Object>>>() {}
-        );        
-        final List<LogEntry> logs = new ArrayList<>(raw.size());
-        for (Map<String, Object> map : raw) {
-            final String address = RpcUtils.stringValue(map.get("address"));
-            final String data = RpcUtils.stringValue(map.get("data"));
-            final String blockHash = RpcUtils.stringValue(map.get("blockHash"));
-            final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
-            final Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
-            final List<String> topicsHex = MAPPER.convertValue(
-                map.get("topics"),
-                new TypeReference<List<String>>() {}
-            );
-            final List<Hash> topics = new ArrayList<>();
-            if (topicsHex != null) {
-                for (String t : topicsHex) {
-                    topics.add(new Hash(t));
-                }
-            }
-
-            logs.add(
-                    new LogEntry(
-                            address != null ? new Address(address) : null,
-                            data != null ? new HexData(data) : HexData.EMPTY,
-                            topics,
-                            blockHash != null ? new Hash(blockHash) : null,
-                            txHash != null ? new Hash(txHash) : null,
-                            requireLogIndex(logIndex, map),
-                            Boolean.TRUE.equals(map.get("removed"))));
-        }
-        return logs;
+        return LogParser.parseLogs(result, true);
     }
 
     @Override
@@ -235,23 +200,9 @@ final class DefaultPublicClient implements PublicClient {
             tx.put("data", request.data().value());
         }
         if (request.accessList() != null && !request.accessList().isEmpty()) {
-            tx.put("accessList", toJsonAccessList(request.accessList()));
+            tx.put("accessList", RpcUtils.toJsonAccessList(request.accessList()));
         }
         return tx;
-    }
-
-    private List<Map<String, Object>> toJsonAccessList(final List<AccessListEntry> entries) {
-        return entries.stream()
-                .map(
-                        entry -> {
-                            final Map<String, Object> map = new LinkedHashMap<>();
-                            map.put("address", entry.address().value());
-                            map.put(
-                                    "storageKeys",
-                                    entry.storageKeys().stream().map(Hash::value).toList());
-                            return map;
-                        })
-                .toList();
     }
 
     private Map<String, Object> buildLogParams(final LogFilter filter) {
@@ -343,35 +294,11 @@ final class DefaultPublicClient implements PublicClient {
     public Subscription subscribeToLogs(LogFilter filter, java.util.function.Consumer<LogEntry> callback) {
         Map<String, Object> params = buildLogParams(filter);
         String id = provider.subscribe("logs", List.of(params), result -> {
+            @SuppressWarnings("unchecked")
             Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
             );
-
-            String address = RpcUtils.stringValue(map.get("address"));
-            String data = RpcUtils.stringValue(map.get("data"));
-            String blockHash = RpcUtils.stringValue(map.get("blockHash"));
-            String txHash = RpcUtils.stringValue(map.get("transactionHash"));
-            Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
-            List<String> topicsHex = MAPPER.convertValue(
-                map.get("topics"),
-                new TypeReference<List<String>>() {}
-            );
-            List<Hash> topics = new ArrayList<>();
-            if (topicsHex != null) {
-                for (String t : topicsHex) {
-                    topics.add(new Hash(t));
-                }
-            }
-
-            LogEntry log = new LogEntry(
-                    address != null ? new Address(address) : null,
-                    data != null ? new HexData(data) : HexData.EMPTY,
-                    topics,
-                    blockHash != null ? new Hash(blockHash) : null,
-                    txHash != null ? new Hash(txHash) : null,
-                    requireLogIndex(logIndex, map),
-                    Boolean.TRUE.equals(map.get("removed")));
-
+            LogEntry log = LogParser.parseLogStrict(map);
             callback.accept(log);
         });
         return new SubscriptionImpl(id, provider);
@@ -386,13 +313,5 @@ final class DefaultPublicClient implements PublicClient {
 
     private JsonRpcResponse sendWithRetry(final String method, final List<?> params) {
         return RpcRetry.run(() -> provider.send(method, params), 3);
-    }
-
-    private Long requireLogIndex(Long logIndex, Map<String, Object> map) {
-        if (logIndex == null) {
-            throw new io.brane.core.error.RpcException(-32000, "Missing logIndex in log entry", map.toString(),
-                    (Throwable) null);
-        }
-        return logIndex;
     }
 }

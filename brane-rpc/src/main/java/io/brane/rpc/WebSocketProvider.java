@@ -74,9 +74,44 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private static final Logger log = LoggerFactory.getLogger(WebSocketProvider.class);
 
     // ==================== Configuration ====================
-    private static final int DEFAULT_MAX_PENDING_REQUESTS = 65536; // Power of 2
+    /**
+     * Default maximum pending requests before backpressure triggers.
+     * <p>
+     * Value is 65536 (2^16) because:
+     * <ul>
+     *   <li>Must be power of 2 for efficient slot indexing via bitwise AND mask</li>
+     *   <li>Large enough for high-throughput scenarios (65K concurrent requests)</li>
+     *   <li>Matches typical WebSocket connection capacity before server-side limits</li>
+     * </ul>
+     */
+    private static final int DEFAULT_MAX_PENDING_REQUESTS = 65536;
+
+    /**
+     * Default timeout for requests in milliseconds.
+     * <p>
+     * 60 seconds provides sufficient time for:
+     * <ul>
+     *   <li>Slow RPC endpoints under load</li>
+     *   <li>Network latency variations</li>
+     *   <li>Block finality waiting (some methods wait for confirmations)</li>
+     * </ul>
+     */
     private static final long DEFAULT_TIMEOUT_MS = 60_000;
-    private static final long RESPONSE_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB
+
+    /**
+     * Ring buffer saturation threshold (10% remaining capacity).
+     * <p>
+     * When remaining capacity drops below this fraction of total buffer size,
+     * the metrics callback is invoked to warn of impending backpressure.
+     * <p>
+     * 10% threshold chosen because:
+     * <ul>
+     *   <li>Early warning before hitting 0% (backpressure limit)</li>
+     *   <li>Small enough to avoid false alarms during normal bursts</li>
+     *   <li>Allows time for producers to slow down gracefully</li>
+     * </ul>
+     */
+    private static final double RING_BUFFER_SATURATION_THRESHOLD = 0.1;
 
     // Instance configuration (from WebSocketConfig or defaults)
     private final int maxPendingRequests;
@@ -700,11 +735,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             return future; // Backpressure triggered
         }
 
-        // Check ring buffer saturation before publishing (metrics hook for early
-        // warning)
+        // Check ring buffer saturation before publishing (metrics hook for early warning)
         int bufferSize = ringBuffer.getBufferSize();
         long remainingCapacity = ringBuffer.remainingCapacity();
-        if (remainingCapacity < bufferSize * 0.1) { // 10% threshold
+        if (remainingCapacity < bufferSize * RING_BUFFER_SATURATION_THRESHOLD) {
             metrics.onRingBufferSaturation(remainingCapacity, bufferSize);
         }
 

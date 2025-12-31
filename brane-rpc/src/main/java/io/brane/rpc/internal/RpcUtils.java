@@ -2,8 +2,12 @@ package io.brane.rpc.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.brane.core.error.RpcException;
+import io.brane.core.model.AccessListEntry;
+import io.brane.core.types.Hash;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -44,52 +48,58 @@ public final class RpcUtils {
 
     /**
      * Recursively extracts error data from complex JSON-RPC error responses.
-     * 
      * <p>
      * JSON-RPC errors can have nested data structures. This method:
      * <ul>
-     * <li>Returns strings immediately (already extracted)</li>
-     * <li>Recursively searches maps, arrays, and iterables for nested data</li>
-     * <li>Falls back to string representation if no specific data found</li>
+     *   <li>Returns hex strings (starting with "0x") immediately as revert data</li>
+     *   <li>Recursively searches maps, arrays, and iterables for nested hex data</li>
+     *   <li>Falls back to string representation if no hex data found</li>
      * </ul>
-     * 
      * <p>
-     * Common pattern: Node returns {@code {data: {data: "0x..."}}}, this flattens
-     * to "0x...".
-     * 
+     * Common patterns:
+     * <ul>
+     *   <li>Node returns {@code {data: "0x..."}}, extracts to "0x..."</li>
+     *   <li>Node returns {@code {data: {data: "0x..."}}}, extracts nested "0x..."</li>
+     *   <li>Non-hex strings fall through as error messages</li>
+     * </ul>
+     *
      * @param dataValue the error data object from JSON-RPC response
-     * @return extracted error data string, or null if dataValue is null
+     * @return extracted error data string (hex preferred), or null if dataValue is null
      */
     public static String extractErrorData(final Object dataValue) {
         return switch (dataValue) {
             case null -> null;
-            case String s -> s;
-            case Map<?, ?> map -> map.values().stream()
-                    .map(RpcUtils::extractErrorData)
-                    .filter(java.util.Objects::nonNull)
-                    .findFirst()
-                    .orElseGet(dataValue::toString);
+            case String s when s.trim().startsWith("0x") -> s;
+            case Map<?, ?> map -> extractFromIterable(map.values(), dataValue);
             case Object array when dataValue.getClass().isArray() -> extractFromArray(array, dataValue);
             case Iterable<?> iterable -> extractFromIterable(iterable, dataValue);
             default -> dataValue.toString();
         };
     }
 
+    /**
+     * Extracts hex error data from an iterable, preferring "0x..." values.
+     */
     public static String extractFromIterable(final Iterable<?> iterable, final Object fallback) {
         for (final Object item : iterable) {
             final String extracted = extractErrorData(item);
-            if (extracted != null) {
+            // Only return if we found a hex string (actual revert data)
+            if (extracted != null && extracted.trim().startsWith("0x")) {
                 return extracted;
             }
         }
         return fallback.toString();
     }
 
+    /**
+     * Extracts hex error data from an array, preferring "0x..." values.
+     */
     public static String extractFromArray(final Object array, final Object fallback) {
         final int length = Array.getLength(array);
         for (int i = 0; i < length; i++) {
             final String extracted = extractErrorData(Array.get(array, i));
-            if (extracted != null) {
+            // Only return if we found a hex string (actual revert data)
+            if (extracted != null && extracted.trim().startsWith("0x")) {
                 return extracted;
             }
         }
@@ -152,5 +162,28 @@ public final class RpcUtils {
             return null;
         }
         return "0x" + Long.toHexString(block).toLowerCase();
+    }
+
+    /**
+     * Converts an access list to JSON-RPC format for transaction calls.
+     * <p>
+     * Each entry is converted to a map with:
+     * <ul>
+     *   <li>{@code address}: The contract address as hex string</li>
+     *   <li>{@code storageKeys}: List of storage slot hashes as hex strings</li>
+     * </ul>
+     *
+     * @param entries the access list entries
+     * @return list of maps suitable for JSON-RPC serialization
+     */
+    public static List<Map<String, Object>> toJsonAccessList(final List<AccessListEntry> entries) {
+        return entries.stream()
+                .map(entry -> {
+                    final Map<String, Object> map = new LinkedHashMap<>();
+                    map.put("address", entry.address().value());
+                    map.put("storageKeys", entry.storageKeys().stream().map(Hash::value).toList());
+                    return map;
+                })
+                .toList();
     }
 }
