@@ -63,7 +63,7 @@ final class DefaultPublicClient implements PublicClient {
         return new Transaction(
                 hashHex != null ? new Hash(hashHex) : null,
                 fromHex != null ? new Address(fromHex) : null,
-                Optional.ofNullable(toHex).map(Address::new),
+                toHex != null ? new Address(toHex) : null,
                 inputHex != null ? new HexData(inputHex) : HexData.EMPTY,
                 valueHex != null ? new Wei(RpcUtils.decodeHexBigInteger(valueHex)) : null,
                 nonce,

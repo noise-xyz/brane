@@ -400,7 +400,7 @@ public class SmokeApp {
 
         runSepoliaTask(() -> {
             io.brane.core.model.BlockHeader block = publicClient.getLatestBlock();
-            if (block == null || block.number() == null) {
+            if (block == null) {
                 throw new RuntimeException("Failed to get latest block");
             }
             System.out.println("  ✓ Latest Block: " + block.number());

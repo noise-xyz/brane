@@ -27,6 +27,9 @@ import org.junit.jupiter.api.Test;
 
 class DefaultWalletClientTest {
 
+        private static final Hash TEST_HASH = new Hash("0x" + "a".repeat(64));
+        private static final Hash TEST_PARENT_HASH = new Hash("0x" + "b".repeat(64));
+
         @Test
         void sendsLegacyTransactionWithAutoFields() {
                 final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
@@ -67,7 +70,7 @@ class DefaultWalletClientTest {
         void sendsTransactionWithCustomGasBuffer() {
                 final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
                 final FakePublicClient publicClient = new FakePublicClient()
-                                .withLatestBlock(new BlockHeader(null, 1L, null, 0L, Wei.of(10_000_000_000L)));
+                                .withLatestBlock(new BlockHeader(TEST_HASH, 1L, TEST_PARENT_HASH, 0L, Wei.of(10_000_000_000L)));
 
                 final FakeBraneProvider provider = new FakeBraneProvider()
                                 .respond("eth_chainId", "0x1")
@@ -104,9 +107,9 @@ class DefaultWalletClientTest {
                 final FakePublicClient publicClient = new FakePublicClient()
                                 .withLatestBlock(
                                                 new BlockHeader(
-                                                                null,
+                                                                TEST_HASH,
                                                                 1L,
-                                                                null,
+                                                                TEST_PARENT_HASH,
                                                                 0L,
                                                                 Wei.of(BigInteger.valueOf(10_000_000_000L))));
 
@@ -148,9 +151,9 @@ class DefaultWalletClientTest {
                 final FakePublicClient publicClient = new FakePublicClient()
                                 .withLatestBlock(
                                                 new BlockHeader(
-                                                                null,
+                                                                TEST_HASH,
                                                                 1L,
-                                                                null,
+                                                                TEST_PARENT_HASH,
                                                                 0L,
                                                                 Wei.of(BigInteger.valueOf(20_000_000_000L))));
 
@@ -256,9 +259,9 @@ class DefaultWalletClientTest {
                 final FakePublicClient publicClient = new FakePublicClient()
                                 .withLatestBlock(
                                                 new BlockHeader(
-                                                                null,
+                                                                TEST_HASH,
                                                                 1L,
-                                                                null,
+                                                                TEST_PARENT_HASH,
                                                                 0L,
                                                                 Wei.of(BigInteger.valueOf(10_000_000_000L))));
 
@@ -301,7 +304,7 @@ class DefaultWalletClientTest {
                 final FakeSigner signer = new FakeSigner(new Address("0x" + "1".repeat(40)));
                 final FakePublicClient publicClient = new FakePublicClient()
                                 .withLatestBlock(
-                                                new BlockHeader(null, 1L, null, 0L, Wei.of(10_000_000_000L)));
+                                                new BlockHeader(TEST_HASH, 1L, TEST_PARENT_HASH, 0L, Wei.of(10_000_000_000L)));
 
                 final FakeBraneProvider provider = new FakeBraneProvider()
                                 .respond("eth_chainId", "0x1")
