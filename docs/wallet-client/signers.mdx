@@ -40,6 +40,58 @@ var signer = new PrivateKeySigner("0x...");
 System.out.println("Address: " + signer.address());
 ```
 
+## PrivateKey
+
+The underlying `PrivateKey` class handles secp256k1 key operations directly.
+
+### Creating Keys
+
+```java
+import io.brane.core.crypto.PrivateKey;
+
+// From hex string (most common)
+PrivateKey key = PrivateKey.fromHex("0x...");
+
+// From raw bytes
+byte[] keyBytes = loadKeyFromSecureStorage();
+PrivateKey key = PrivateKey.fromBytes(keyBytes);
+// Note: keyBytes is zeroed after this call for security
+```
+
+### Byte Array Ownership
+
+`PrivateKey.fromBytes()` takes ownership of the input byte array and zeros it after extracting the key material. This minimizes exposure of sensitive data in memory.
+
+```java
+byte[] keyBytes = loadKeyFromSecureStorage();
+PrivateKey key = PrivateKey.fromBytes(keyBytes);
+// keyBytes is now all zeros!
+
+// If you need to retain the original bytes, clone first:
+byte[] keyBytes = loadKeyFromSecureStorage();
+PrivateKey key = PrivateKey.fromBytes(keyBytes.clone());
+// keyBytes still contains original data
+```
+
+### Key Destruction
+
+`PrivateKey` implements `Destroyable` for explicit cleanup of sensitive material:
+
+```java
+PrivateKey key = PrivateKey.fromHex("0x...");
+try {
+    Address address = key.toAddress();
+    Signature sig = key.sign(messageHash);
+} finally {
+    key.destroy();  // Clear internal references
+}
+
+// After destroy(), any operation throws IllegalStateException
+key.sign(hash);  // throws IllegalStateException
+```
+
+All `PrivateKey` operations are thread-safe. Concurrent signing and destruction are handled correctly.
+
 ### Signing Transactions
 
 When using `WalletClient`, the signer is handled automatically. However, you can also sign directly:

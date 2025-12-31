@@ -5,6 +5,7 @@ import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Receipt for an executed transaction containing execution results and emitted
@@ -54,4 +55,33 @@ public record TransactionReceipt(
                 List<LogEntry> logs,
                 boolean status,
                 Wei cumulativeGasUsed) {
+
+    /**
+     * Validates required fields and makes defensive copy of logs.
+     *
+     * <p>
+     * Required fields that cannot be null:
+     * <ul>
+     * <li>{@code transactionHash} - every receipt has a transaction</li>
+     * <li>{@code blockHash} - receipt only exists for mined transactions</li>
+     * <li>{@code from} - every transaction has a sender</li>
+     * <li>{@code cumulativeGasUsed} - always present</li>
+     * <li>{@code logs} - may be empty but never null</li>
+     * </ul>
+     *
+     * <p>
+     * Fields that can be null:
+     * <ul>
+     * <li>{@code to} - null for contract creation transactions</li>
+     * <li>{@code contractAddress} - null for non-contract-creation transactions</li>
+     * </ul>
+     */
+    public TransactionReceipt {
+        Objects.requireNonNull(transactionHash, "transactionHash cannot be null");
+        Objects.requireNonNull(blockHash, "blockHash cannot be null");
+        Objects.requireNonNull(from, "from cannot be null");
+        Objects.requireNonNull(cumulativeGasUsed, "cumulativeGasUsed cannot be null");
+        Objects.requireNonNull(logs, "logs cannot be null");
+        logs = List.copyOf(logs);  // Defensive copy for immutability
+    }
 }
