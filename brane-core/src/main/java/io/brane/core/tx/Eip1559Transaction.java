@@ -5,6 +5,7 @@ import io.brane.core.model.AccessListEntry;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import io.brane.primitives.Hex;
 import io.brane.primitives.rlp.Rlp;
 import io.brane.primitives.rlp.RlpItem;
 import io.brane.primitives.rlp.RlpList;
@@ -185,7 +186,7 @@ public record Eip1559Transaction(
             final List<RlpItem> storageKeys = new ArrayList<>(entry.storageKeys().size());
             for (io.brane.core.types.Hash key : entry.storageKeys()) {
                 // Storage keys are 32-byte hashes
-                final byte[] keyBytes = hexToBytes(key.value());
+                final byte[] keyBytes = Hex.decode(key.value());
                 storageKeys.add(new RlpString(keyBytes));
             }
             entryItems.add(new RlpList(storageKeys));
@@ -194,19 +195,5 @@ public record Eip1559Transaction(
         }
 
         return new RlpList(entries);
-    }
-
-    /**
-     * Converts hex string to bytes (helper for access list encoding).
-     */
-    private static byte[] hexToBytes(final String hex) {
-        String clean = hex.startsWith("0x") ? hex.substring(2) : hex;
-        final int len = clean.length();
-        final byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(clean.charAt(i), 16) << 4)
-                    + Character.digit(clean.charAt(i + 1), 16));
-        }
-        return data;
     }
 }
