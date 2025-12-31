@@ -101,7 +101,7 @@ public final class LogParser {
      * @param value the raw value from JSON-RPC response
      * @param requireLogIndex if true, throws exception when logIndex is missing
      * @return list of parsed LogEntry objects
-     * @throws io.brane.core.error.RpcException if requireLogIndex is true and logIndex is missing
+     * @throws io.brane.core.error.AbiDecodingException if requireLogIndex is true and logIndex is missing
      */
     public static List<LogEntry> parseLogs(final Object value, final boolean requireLogIndex) {
         if (!requireLogIndex) {
@@ -125,9 +125,13 @@ public final class LogParser {
     /**
      * Parses a single log entry with strict validation.
      *
+     * <p>This method validates that logIndex is present in the log entry. Missing logIndex
+     * indicates a malformed response from the RPC node, not an RPC protocol error, hence
+     * {@link io.brane.core.error.AbiDecodingException} is thrown rather than RpcException.
+     *
      * @param map the raw map from JSON-RPC response
      * @return parsed LogEntry
-     * @throws io.brane.core.error.RpcException if logIndex is missing
+     * @throws io.brane.core.error.AbiDecodingException if logIndex is missing (malformed response)
      */
     public static LogEntry parseLogStrict(final Map<String, Object> map) {
         final String address = RpcUtils.stringValue(map.get("address"));
@@ -137,8 +141,8 @@ public final class LogParser {
         final Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
 
         if (logIndex == null) {
-            throw new io.brane.core.error.RpcException(
-                    -32000, "Missing logIndex in log entry", map.toString(), (Throwable) null);
+            throw new io.brane.core.error.AbiDecodingException(
+                    "Missing logIndex in log entry: " + map);
         }
 
         @SuppressWarnings("unchecked")

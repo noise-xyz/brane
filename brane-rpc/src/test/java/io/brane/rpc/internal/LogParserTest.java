@@ -2,7 +2,7 @@ package io.brane.rpc.internal;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.brane.core.error.RpcException;
+import io.brane.core.error.AbiDecodingException;
 import io.brane.core.model.LogEntry;
 import java.util.HashMap;
 import java.util.List;
@@ -104,7 +104,7 @@ class LogParserTest {
         logMap.put("logIndex", null);
         logMap.put("transactionHash", SAMPLE_TX_HASH);
 
-        RpcException ex = assertThrows(RpcException.class,
+        AbiDecodingException ex = assertThrows(AbiDecodingException.class,
                 () -> LogParser.parseLogs(List.of(logMap), true));
 
         assertTrue(ex.getMessage().contains("Missing logIndex"));
