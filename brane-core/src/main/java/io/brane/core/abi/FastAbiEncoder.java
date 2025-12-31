@@ -257,14 +257,6 @@ public final class FastAbiEncoder {
     }
 
     /**
-     * Encodes dynamic bytes directly into the buffer.
-     * Writes length (uint256) followed by data, right-padded to 32 bytes.
-     *
-     * @param bytes  the bytes object
-     * @param buffer the destination buffer
-     */
-
-    /**
      * Encodes dynamic bytes (HexData) directly into the buffer.
      * Writes length (uint256) followed by data, right-padded to 32 bytes.
      *
@@ -335,8 +327,6 @@ public final class FastAbiEncoder {
         System.arraycopy(data, 0, result, 0, data.length);
         return result;
     }
-
-    // ... primitives ...
 
     /**
      * Encodes an array of ABI types directly into the buffer.
