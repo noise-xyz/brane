@@ -1082,17 +1082,13 @@ final class InternalAbi implements Abi {
     }
 
     private <T> T mapToEventType(List<Object> values, Class<T> eventType, String eventName) {
-        if (eventType == List.class || List.class.isAssignableFrom(eventType)) {
-            @SuppressWarnings("unchecked")
-            final T cast = (T) values;
-            return cast;
-        }
-        if (eventType == Object[].class) {
-            @SuppressWarnings("unchecked")
-            final T cast = (T) values.toArray();
-            return cast;
+        // Try common collection mappings first
+        T result = tryMapToCollection(values, eventType);
+        if (result != null) {
+            return result;
         }
 
+        // For events, try to instantiate custom types via constructor matching
         for (var ctor : eventType.getDeclaredConstructors()) {
             if (ctor.getParameterCount() == values.size()) {
                 try {
@@ -1109,6 +1105,24 @@ final class InternalAbi implements Abi {
         }
         throw new AbiDecodingException(
                 "Cannot map event '" + eventName + "' to " + eventType.getName());
+    }
+
+    /**
+     * Tries to map values to List or Object[] collection types.
+     *
+     * @param values the decoded values
+     * @param targetType the target type
+     * @return the mapped collection, or null if targetType is not a collection type
+     */
+    @SuppressWarnings("unchecked")
+    private static <T> T tryMapToCollection(List<Object> values, Class<T> targetType) {
+        if (targetType == List.class || List.class.isAssignableFrom(targetType)) {
+            return (T) values;
+        }
+        if (targetType == Object[].class) {
+            return (T) values.toArray();
+        }
+        return null;
     }
 
     private static Object toJavaValue(final AbiType type) {
@@ -1231,7 +1245,7 @@ final class InternalAbi implements Abi {
                     final List<Object> mapped = decoded.stream()
                             .map(InternalAbi::toJavaValue)
                             .toList();
-                    return mapToEventType(mapped, returnType, abiFunction.name());
+                    return mapMultipleReturns(mapped, returnType, abiFunction.name());
                 }
 
                 final Object mapped = toJavaValue(decoded.get(0));
@@ -1244,19 +1258,14 @@ final class InternalAbi implements Abi {
             }
         }
 
-        private <T> T mapToEventType(List<Object> values, Class<T> eventType, String eventName) {
-            if (eventType == List.class || List.class.isAssignableFrom(eventType)) {
-                @SuppressWarnings("unchecked")
-                final T cast = (T) values;
-                return cast;
-            }
-            if (eventType == Object[].class) {
-                @SuppressWarnings("unchecked")
-                final T cast = (T) values.toArray();
-                return cast;
+        private <T> T mapMultipleReturns(List<Object> values, Class<T> returnType, String functionName) {
+            // Use the shared collection mapping helper
+            T result = tryMapToCollection(values, returnType);
+            if (result != null) {
+                return result;
             }
             throw new AbiDecodingException(
-                    "Function " + eventName + " returns multiple values; use List or Object[]");
+                    "Function " + functionName + " returns multiple values; use List or Object[]");
         }
 
         private <T> T mapValue(final Object value, final Class<T> targetType) {
