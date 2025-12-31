@@ -7,6 +7,7 @@ import io.brane.core.model.LogEntry;
 import io.brane.core.model.Transaction;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Hash;
+import io.brane.core.types.HexData;
 import java.util.List;
 import io.brane.rpc.Subscription;
 import java.util.Map;
@@ -95,6 +96,13 @@ public final class BranePublicClient implements PublicClient {
     }
 
     @Override
+    public HexData call(final CallRequest request, final BlockTag blockTag) {
+        return delegate.call(request, blockTag);
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    @Deprecated(since = "0.1.0-alpha", forRemoval = true)
     public String call(final Map<String, Object> callObject, final String blockTag) {
         return delegate.call(callObject, blockTag);
     }

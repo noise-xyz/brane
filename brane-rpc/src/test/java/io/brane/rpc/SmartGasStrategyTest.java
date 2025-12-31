@@ -76,6 +76,12 @@ class SmartGasStrategyTest {
         }
 
         @Override
+        public io.brane.core.types.HexData call(CallRequest request, BlockTag blockTag) {
+            return io.brane.core.types.HexData.EMPTY;
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
         public String call(final Map<String, Object> callObject, final String blockTag) {
             return null;
         }

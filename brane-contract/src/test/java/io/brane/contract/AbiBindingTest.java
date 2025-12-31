@@ -555,6 +555,12 @@ class AbiBindingTest {
         }
 
         @Override
+        public io.brane.core.types.HexData call(io.brane.rpc.CallRequest request, io.brane.rpc.BlockTag blockTag) {
+            return io.brane.core.types.HexData.EMPTY;
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
         public String call(java.util.Map<String, Object> callObject, String blockTag) {
             return "0x";
         }

@@ -587,6 +587,12 @@ class DefaultWalletClientTest {
                 }
 
                 @Override
+                public io.brane.core.types.HexData call(CallRequest request, BlockTag blockTag) {
+                        throw new UnsupportedOperationException();
+                }
+
+                @SuppressWarnings("deprecation")
+                @Override
                 public String call(java.util.Map<String, Object> callObject, String blockTag) {
                         throw new UnsupportedOperationException();
                 }

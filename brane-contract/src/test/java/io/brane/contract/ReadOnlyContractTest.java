@@ -129,6 +129,15 @@ class ReadOnlyContractTest {
         }
 
         @Override
+        public io.brane.core.types.HexData call(io.brane.rpc.CallRequest request, io.brane.rpc.BlockTag blockTag) {
+            if (toThrow != null) {
+                throw toThrow;
+            }
+            return callResult != null ? new io.brane.core.types.HexData(callResult) : io.brane.core.types.HexData.EMPTY;
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
         public String call(final Map<String, Object> callObject, final String blockTag)
                 throws RpcException {
             if (toThrow != null) {

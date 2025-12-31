@@ -4,7 +4,9 @@ import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.Transaction;
 import io.brane.core.model.TransactionRequest;
+import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
+import io.brane.core.types.HexData;
 import java.util.Map;
 import java.util.List;
 
@@ -83,11 +85,32 @@ public interface PublicClient {
 
     /**
      * Executes a read-only call on the blockchain.
+     * <p>
+     * <strong>Example:</strong>
+     * <pre>{@code
+     * CallRequest request = CallRequest.builder()
+     *     .to(contractAddress)
+     *     .data(encodedFunctionCall)
+     *     .build();
+     * HexData result = client.call(request, BlockTag.LATEST);
+     * }</pre>
+     *
+     * @param request  the type-safe call request
+     * @param blockTag the block tag (e.g., BlockTag.LATEST)
+     * @return the raw hex return value as HexData
+     * @since 0.1.0-alpha
+     */
+    HexData call(CallRequest request, BlockTag blockTag);
+
+    /**
+     * Executes a read-only call on the blockchain.
      *
      * @param callObject the call parameters (e.g., "to", "data")
      * @param blockTag   the block tag (e.g., "latest")
      * @return the raw hex return value
+     * @deprecated Use {@link #call(CallRequest, BlockTag)} for type-safe calls
      */
+    @Deprecated(since = "0.1.0-alpha", forRemoval = true)
     String call(Map<String, Object> callObject, String blockTag);
 
     /**

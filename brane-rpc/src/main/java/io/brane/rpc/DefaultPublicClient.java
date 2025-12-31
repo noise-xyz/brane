@@ -71,6 +71,18 @@ final class DefaultPublicClient implements PublicClient {
     }
 
     @Override
+    public HexData call(final CallRequest request, final BlockTag blockTag) {
+        final Map<String, Object> callObject = request.toMap();
+        final String blockTagStr = blockTag.toRpcValue();
+        final String result = call(callObject, blockTagStr);
+        if (result == null || result.isEmpty() || "0x".equals(result)) {
+            return HexData.EMPTY;
+        }
+        return new HexData(result);
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
     public String call(final Map<String, Object> callObject, final String blockTag) {
         final long start = System.nanoTime();
         DebugLogger.log(LogFormatter.formatCall(blockTag, callObject));
