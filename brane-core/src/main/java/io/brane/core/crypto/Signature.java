@@ -1,5 +1,7 @@
 package io.brane.core.crypto;
 
+import io.brane.primitives.Hex;
+
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -144,10 +146,6 @@ public record Signature(byte[] r, byte[] s, int v) {
         if (bytes.length > MAX_BYTES_TO_DISPLAY) {
             return bytes.length + " bytes";
         }
-        StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
+        return Hex.encodeNoPrefix(bytes);
     }
 }
