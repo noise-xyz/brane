@@ -30,7 +30,9 @@ public record Tuple(List<AbiType> components) implements AbiType {
 
     @Override
     public String typeName() {
-        return "(" + components.stream().map(AbiType::typeName).collect(Collectors.joining(",")) + ")";
+        return components.stream()
+                .map(AbiType::typeName)
+                .collect(Collectors.joining(",", "(", ")"));
     }
 
     @Override
