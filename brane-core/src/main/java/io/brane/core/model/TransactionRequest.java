@@ -76,6 +76,28 @@ public record TransactionRequest(
         boolean isEip1559,
         List<AccessListEntry> accessList) {
 
+    /**
+     * Validates transaction request parameters.
+     *
+     * @throws IllegalArgumentException if gasLimit is negative, or if both legacy
+     *         (gasPrice) and EIP-1559 (maxFeePerGas/maxPriorityFeePerGas) fee fields are set
+     */
+    public TransactionRequest {
+        if (gasLimit != null && gasLimit < 0) {
+            throw new IllegalArgumentException("gasLimit cannot be negative: " + gasLimit);
+        }
+        if (nonce != null && nonce < 0) {
+            throw new IllegalArgumentException("nonce cannot be negative: " + nonce);
+        }
+        // Validate mutually exclusive fee fields
+        boolean hasLegacyGas = gasPrice != null;
+        boolean hasEip1559Gas = maxFeePerGas != null || maxPriorityFeePerGas != null;
+        if (hasLegacyGas && hasEip1559Gas) {
+            throw new IllegalArgumentException(
+                    "Cannot specify both gasPrice and EIP-1559 fee fields (maxFeePerGas/maxPriorityFeePerGas)");
+        }
+    }
+
     public Optional<Address> toOpt() {
         return Optional.ofNullable(to);
     }
