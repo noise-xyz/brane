@@ -208,6 +208,10 @@ public final class RevertDecoder {
     private static String mapPanicReason(final BigInteger code) {
         // Solidity panic codes - switch on integer value for clarity
         // See: https://docs.soliditylang.org/en/latest/control-structures.html#panic-via-assert-and-error-via-require
+        // Guard against overflow: known panic codes fit in an int
+        if (code.compareTo(BigInteger.valueOf(Integer.MAX_VALUE)) > 0 || code.signum() < 0) {
+            return "panic with code 0x" + code.toString(16);
+        }
         return switch (code.intValue()) {
             case 0x01 -> "assertion failed";
             case 0x11 -> "arithmetic overflow or underflow";

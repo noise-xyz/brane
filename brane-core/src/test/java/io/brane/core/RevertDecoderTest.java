@@ -71,4 +71,32 @@ class RevertDecoderTest {
         assertNull(decoded.reason());
         assertEquals(rawData, decoded.rawDataHex());
     }
+
+    @Test
+    void decodesPanicWithLargeCode() {
+        // Test panic code larger than Integer.MAX_VALUE to verify bounds check
+        BigInteger largeCode = BigInteger.valueOf(Long.MAX_VALUE);
+        String rawData = Hex.encode(
+                AbiEncoder.encodeFunction("Panic(uint256)",
+                        List.of(new UInt(256, largeCode))));
+
+        RevertDecoder.Decoded decoded = RevertDecoder.decode(rawData);
+
+        assertSame(RevertDecoder.RevertKind.PANIC, decoded.kind());
+        // Should return generic "panic with code 0x..." without overflow
+        assertEquals("panic with code 0x" + largeCode.toString(16), decoded.reason());
+    }
+
+    @Test
+    void decodesPanicWithUnknownCode() {
+        // Test unknown panic code that fits in int range
+        String rawData = Hex.encode(
+                AbiEncoder.encodeFunction("Panic(uint256)",
+                        List.of(new UInt(256, BigInteger.valueOf(0xFF)))));
+
+        RevertDecoder.Decoded decoded = RevertDecoder.decode(rawData);
+
+        assertSame(RevertDecoder.RevertKind.PANIC, decoded.kind());
+        assertEquals("panic with code 0xff", decoded.reason());
+    }
 }
