@@ -193,6 +193,57 @@ class PrivateKeyTest {
         assertTrue(str.contains(key.toAddress().value()));
     }
 
+    @Test
+    void testDestroyable() {
+        final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
+
+        // Key should not be destroyed initially
+        assertFalse(key.isDestroyed());
+
+        // Destroy the key
+        key.destroy();
+
+        // Key should now be destroyed
+        assertTrue(key.isDestroyed());
+    }
+
+    @Test
+    void testDestroyedKeyThrowsOnToAddress() {
+        final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
+        key.destroy();
+
+        assertThrows(IllegalStateException.class, key::toAddress);
+    }
+
+    @Test
+    void testDestroyedKeyThrowsOnSign() {
+        final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
+        key.destroy();
+
+        final byte[] messageHash = Keccak256.hash("test".getBytes(StandardCharsets.UTF_8));
+        assertThrows(IllegalStateException.class, () -> key.sign(messageHash));
+    }
+
+    @Test
+    void testDestroyedKeyToString() {
+        final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
+        key.destroy();
+
+        assertEquals("PrivateKey[destroyed]", key.toString());
+    }
+
+    @Test
+    void testDestroyIsIdempotent() {
+        final PrivateKey key = PrivateKey.fromHex(TEST_PRIVATE_KEY);
+
+        // Multiple destroy calls should be safe
+        key.destroy();
+        key.destroy();
+        key.destroy();
+
+        assertTrue(key.isDestroyed());
+    }
+
     // Helper method
 
     private static byte[] hexToBytes(String hex) {
