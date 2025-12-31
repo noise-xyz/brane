@@ -36,6 +36,8 @@ package io.brane.core.error;
  *     // Catch-all for any other Brane error
  * }
  * }</pre>
+ *
+ * @since 0.1.0-alpha
  */
 public sealed class BraneException extends RuntimeException
         permits AbiDecodingException,

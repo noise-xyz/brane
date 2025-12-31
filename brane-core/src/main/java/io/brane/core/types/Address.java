@@ -17,6 +17,8 @@ import java.util.regex.Pattern;
  * </ul>
  * <p>
  * The value is stored in lowercase.
+ *
+ * @since 0.1.0-alpha
  */
 public record Address(@com.fasterxml.jackson.annotation.JsonValue String value) {
     private static final Pattern HEX = Pattern.compile("^0x[0-9a-fA-F]{40}$");

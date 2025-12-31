@@ -35,6 +35,7 @@ package io.brane.core.error;
  * 
  * @see <a href="https://www.jsonrpc.org/specification#error_object">JSON-RPC
  *      Error Specification</a>
+ * @since 0.1.0-alpha
  */
 public final class RpcException extends BraneException {
 

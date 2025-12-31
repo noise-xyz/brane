@@ -15,6 +15,8 @@ import java.util.regex.Pattern;
  * <li>Must start with "0x"</li>
  * <li>Must be exactly 64 hex characters long (32 bytes)</li>
  * </ul>
+ *
+ * @since 0.1.0-alpha
  */
 public record Hash(@com.fasterxml.jackson.annotation.JsonValue String value) {
     private static final Pattern HEX = Pattern.compile("^0x[0-9a-fA-F]{64}$");

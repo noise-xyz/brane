@@ -57,6 +57,8 @@ import java.util.regex.Pattern;
  * <li><b>Zero-Copy Encoding</b>: Can write directly to a
  * {@link java.nio.ByteBuffer} via {@link #putTo(java.nio.ByteBuffer)}.</li>
  * </ul>
+ *
+ * @since 0.1.0-alpha
  */
 public final class HexData {
     private static final Pattern HEX = Pattern.compile("^0x([0-9a-fA-F]{2})*$");

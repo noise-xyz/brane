@@ -2,6 +2,8 @@ package io.brane.core.error;
 
 /**
  * Base class for transaction-related failures (signing, validation, send).
+ *
+ * @since 0.1.0-alpha
  */
 public non-sealed class TxnException extends BraneException {
 

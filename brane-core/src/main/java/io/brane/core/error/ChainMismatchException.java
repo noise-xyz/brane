@@ -2,6 +2,8 @@ package io.brane.core.error;
 
 /**
  * Thrown when the connected chainId does not match the expected one.
+ *
+ * @since 0.1.0-alpha
  */
 public final class ChainMismatchException extends TxnException {
 

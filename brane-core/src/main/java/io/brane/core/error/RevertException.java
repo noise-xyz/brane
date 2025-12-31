@@ -36,6 +36,7 @@ import java.util.Objects;
  * }</pre>
  *
  * @see io.brane.core.RevertDecoder
+ * @since 0.1.0-alpha
  */
 public final class RevertException extends BraneException {
 

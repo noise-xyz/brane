@@ -18,6 +18,8 @@ import java.util.Objects;
  * <p>
  * Use {@link #fromEther(BigDecimal)} and {@link #toEther()} for convenient
  * conversions.
+ *
+ * @since 0.1.0-alpha
  */
 public record Wei(BigInteger value) {
     private static final BigDecimal WEI_PER_ETHER = BigDecimal.TEN.pow(18);
