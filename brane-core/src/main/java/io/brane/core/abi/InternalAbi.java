@@ -1062,7 +1062,8 @@ final class InternalAbi implements Abi {
                     // Let's wrap in tuple.
                     final List<AbiType> decoded = AbiDecoder.decode(topicBytes, List.of(schema));
                     values.add(toJavaValue(decoded.get(0)));
-                } catch (Exception e) {
+                } catch (AbiDecodingException | IllegalArgumentException | ArrayIndexOutOfBoundsException e) {
+                    // Catch expected decoding failures; let programming errors (NPE, etc.) propagate
                     throw new AbiDecodingException("Failed to decode indexed param '" + param.name + "'", e);
                 }
                 topicIdx++;
