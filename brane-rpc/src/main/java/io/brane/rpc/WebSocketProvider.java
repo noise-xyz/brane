@@ -970,6 +970,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 future.completeExceptionally(new RpcException(-1, "Channel not active", null));
             }
         }
+        // Clear event data to prevent stale references when Disruptor reuses this event object.
+        // This is important for memory hygiene: params may reference large objects that should
+        // be eligible for GC after the request is processed.
+        event.clear();
     }
 
     /**
@@ -1152,18 +1156,40 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         buf.writeBytes(digitBuf, 0, digits);
     }
 
-    // Event class for Disruptor - pre-allocated and reused
+    /**
+     * Event class for LMAX Disruptor - instances are pre-allocated and reused.
+     *
+     * <p>The Disruptor maintains a fixed pool of RequestEvent objects in its ring buffer.
+     * Each event is reused across multiple requests, so {@link #clear()} must be called
+     * after processing to prevent stale data leakage and allow referenced objects to be
+     * garbage collected.
+     */
     public static class RequestEvent {
         String method;
         List<?> params;
         long id;
 
+        /**
+         * Populates this event with request data before publishing to the ring buffer.
+         *
+         * @param method the JSON-RPC method name
+         * @param params the method parameters
+         * @param id     the request ID used to correlate responses
+         */
         public void set(String method, List<?> params, long id) {
             this.method = method;
             this.params = params;
             this.id = id;
         }
 
+        /**
+         * Clears all fields to release references for garbage collection.
+         *
+         * <p>This method is called after event processing in {@code handleEvent()}
+         * to ensure that the params list and any objects it references can be GC'd.
+         * Without clearing, large parameter objects would remain referenced until
+         * the next request reuses this event slot.
+         */
         public void clear() {
             this.method = null;
             this.params = null;
