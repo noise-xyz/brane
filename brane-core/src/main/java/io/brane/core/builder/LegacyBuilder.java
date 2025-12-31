@@ -22,6 +22,10 @@ import io.brane.core.types.Wei;
  *     .build();
  * }</pre>
  *
+ * <p><strong>Thread Safety:</strong> This builder is <em>not</em> thread-safe. Each thread
+ * should use its own builder instance. The {@link #build()} method creates an immutable
+ * {@link TransactionRequest} that is safe to share across threads.
+ *
  * @see TxBuilder#legacy()
  * @since 0.1.0-alpha
  */
