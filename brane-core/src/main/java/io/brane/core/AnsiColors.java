@@ -97,14 +97,23 @@ public final class AnsiColors {
 
     // Helper methods for formatted output
     /**
-     * Returns the given hash value, possibly shortened for display.
-     * 
+     * Shortens a hash or address value for readable log display.
+     *
+     * <p>Values longer than 16 characters are shortened to show the first 10
+     * characters (including "0x" prefix) followed by "..." and the last 4 characters.
+     * For example, a 66-character hash becomes: {@code 0x12345678...abcd}
+     *
      * @param value the hash or address value to format
-     * @return the formatted value
+     * @return the shortened value, or "null" if value is null
      */
     public static String hash(final String value) {
-        if (value == null)
+        if (value == null) {
             return "null";
+        }
+        // Shorten hashes longer than 16 chars: "0x12345678...abcd"
+        if (value.length() > 16) {
+            return value.substring(0, 10) + "..." + value.substring(value.length() - 4);
+        }
         return value;
     }
 
