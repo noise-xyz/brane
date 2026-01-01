@@ -83,9 +83,11 @@ class RpcUtilsTest {
 
     @Test
     void decodeHexBigIntegerHandlesNullAndEmpty() {
+        // Explicit documentation: null/empty values return ZERO (lenient RPC parsing)
         assertEquals(BigInteger.ZERO, RpcUtils.decodeHexBigInteger(null));
         assertEquals(BigInteger.ZERO, RpcUtils.decodeHexBigInteger(""));
         assertEquals(BigInteger.ZERO, RpcUtils.decodeHexBigInteger("0x"));
+        assertEquals(BigInteger.ZERO, RpcUtils.decodeHexBigInteger("0x0"));
     }
 
     @Test

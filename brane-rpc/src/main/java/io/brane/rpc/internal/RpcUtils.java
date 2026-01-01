@@ -133,8 +133,28 @@ public final class RpcUtils {
     }
 
     /**
-     * Decodes hex quantity string to BigInteger, handling "0x" prefix and
-     * null/empty values.
+     * Decodes a hex quantity string to {@link BigInteger}.
+     *
+     * <p>This method handles the "0x" prefix and treats null/empty values as zero,
+     * which aligns with JSON-RPC conventions where absent or empty fields often
+     * represent zero values.
+     *
+     * <p><strong>Null/Empty Handling:</strong>
+     * <ul>
+     *   <li>{@code null} → {@link BigInteger#ZERO}</li>
+     *   <li>{@code ""} (empty string) → {@link BigInteger#ZERO}</li>
+     *   <li>{@code "0x"} (prefix only) → {@link BigInteger#ZERO}</li>
+     *   <li>{@code "0x0"} → {@link BigInteger#ZERO}</li>
+     *   <li>{@code "0x1a"} → {@code BigInteger.valueOf(26)}</li>
+     * </ul>
+     *
+     * <p><strong>Note:</strong> This lenient behavior is intentional for RPC parsing.
+     * If you need strict validation that rejects empty strings, validate the input
+     * before calling this method.
+     *
+     * @param hex the hex string to decode, may be null or empty
+     * @return the decoded value, never null (returns {@link BigInteger#ZERO} for null/empty input)
+     * @throws NumberFormatException if the string contains invalid hex characters
      */
     public static BigInteger decodeHexBigInteger(final String hex) {
         if (hex == null || hex.isEmpty()) {
