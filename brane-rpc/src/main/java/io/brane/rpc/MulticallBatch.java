@@ -311,39 +311,48 @@ public final class MulticallBatch {
     }
 
     private void executeChunk(final List<CallContext<?>> chunk) {
-        // 1. Prepare Call3 objects as a list of tuples
-        final List<Object> call3List = new ArrayList<>(chunk.size());
-        for (final CallContext<?> call : chunk) {
-            final Call3 call3 = call.toCall3(globalAllowFailure);
-            // Each Call3 is a tuple (address string, bool, HexData callData)
-            // Note: address is extracted as string, but callData stays as HexData for ABI
-            // encoding
-            call3List.add(List.of(
-                    call3.target().value(),
-                    call3.allowFailure(),
-                    call3.callData()));
-        }
+        try {
+            // 1. Prepare Call3 objects as a list of tuples
+            final List<Object> call3List = new ArrayList<>(chunk.size());
+            for (final CallContext<?> call : chunk) {
+                final Call3 call3 = call.toCall3(globalAllowFailure);
+                // Each Call3 is a tuple (address string, bool, HexData callData)
+                // Note: address is extracted as string, but callData stays as HexData for ABI
+                // encoding
+                call3List.add(List.of(
+                        call3.target().value(),
+                        call3.allowFailure(),
+                        call3.callData()));
+            }
 
-        // 2. Encode aggregate3 call
-        final Abi.FunctionCall aggregate3Call = MULTICALL_ABI.encodeFunction("aggregate3", call3List);
+            // 2. Encode aggregate3 call
+            final Abi.FunctionCall aggregate3Call = MULTICALL_ABI.encodeFunction("aggregate3", call3List);
 
-        // 3. Send eth_call
-        final Map<String, Object> callObject = Map.of(
-                "to", MULTICALL_ADDRESS.value(),
-                "data", aggregate3Call.data());
+            // 3. Send eth_call
+            final Map<String, Object> callObject = Map.of(
+                    "to", MULTICALL_ADDRESS.value(),
+                    "data", aggregate3Call.data());
 
-        final String resultHex = publicClient.call(callObject, "latest");
+            final String resultHex = publicClient.call(callObject, "latest");
 
-        // 4. Decode results and update handles
-        final List<MulticallResult> results = Abi.decodeMulticallResults(resultHex);
+            // 4. Decode results and update handles
+            final List<MulticallResult> results = Abi.decodeMulticallResults(resultHex);
 
-        if (results.size() != chunk.size()) {
-            throw new IllegalStateException("Multicall3 returned " + results.size()
-                    + " results, but we sent " + chunk.size() + " calls");
-        }
+            if (results.size() != chunk.size()) {
+                throw new IllegalStateException("Multicall3 returned " + results.size()
+                        + " results, but we sent " + chunk.size() + " calls");
+            }
 
-        for (int i = 0; i < chunk.size(); i++) {
-            chunk.get(i).complete(results.get(i));
+            for (int i = 0; i < chunk.size(); i++) {
+                chunk.get(i).complete(results.get(i));
+            }
+        } catch (Exception e) {
+            // Fail all handles in this chunk so callers don't hang waiting for results
+            final String errorMessage = "Chunk execution failed: " + e.getMessage();
+            for (final CallContext<?> call : chunk) {
+                call.failWithError(errorMessage);
+            }
+            throw e;
         }
     }
 
@@ -392,6 +401,20 @@ public final class MulticallBatch {
             }
 
             handle().complete(new BatchResult<>(data, success, revertReason));
+        }
+
+        /**
+         * Fails this call's handle with an error message.
+         *
+         * <p>Used when chunk execution fails (e.g., network error, invalid response)
+         * to ensure callers don't hang waiting for results.
+         *
+         * @param errorMessage the error message to include in the result
+         */
+        void failWithError(String errorMessage) {
+            if (handle() != null) {
+                handle().complete(new BatchResult<>(null, false, errorMessage));
+            }
         }
 
     }
