@@ -347,15 +347,15 @@ public final class DefaultWalletClient implements WalletClient {
             throw e;
         } catch (Exception e) {
             // If eth_call fails for any other reason, throw a generic revert exception
-            DebugLogger.logTx(LogFormatter.formatTxRevert(txHash.value(), "UNKNOWN", "Transaction reverted"));
+            // but preserve the original exception as the cause for debugging
+            DebugLogger.logTx(LogFormatter.formatTxRevert(txHash.value(), "UNKNOWN",
+                    "Transaction reverted (eth_call replay failed: " + e.getMessage() + ")"));
+            throw new RevertException(
+                    RevertDecoder.RevertKind.UNKNOWN,
+                    "Transaction reverted (txHash: " + txHash.value() + ")",
+                    null,
+                    e);
         }
-
-        // Fallback: throw generic revert exception if we couldn't get the reason
-        throw new RevertException(
-                RevertDecoder.RevertKind.UNKNOWN,
-                "Transaction reverted (txHash: " + txHash.value() + ")",
-                null,
-                null);
     }
 
     private TransactionReceipt fetchReceipt(final Hash hash) {
