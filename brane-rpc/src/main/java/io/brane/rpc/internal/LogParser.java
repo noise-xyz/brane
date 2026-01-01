@@ -47,8 +47,10 @@ public final class LogParser {
         if (value == null) {
             return List.of();
         }
-        @SuppressWarnings("unchecked")
-        final List<Map<String, Object>> rawLogs = MAPPER.convertValue(value, List.class);
+        final List<Map<String, Object>> rawLogs = MAPPER.convertValue(
+                value,
+                new TypeReference<List<Map<String, Object>>>() {}
+        );
         final List<LogEntry> logs = new ArrayList<>(rawLogs.size());
         for (Map<String, Object> map : rawLogs) {
             logs.add(parseLog(map));
