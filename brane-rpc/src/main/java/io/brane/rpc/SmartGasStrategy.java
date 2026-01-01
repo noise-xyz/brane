@@ -75,11 +75,35 @@ final class SmartGasStrategy {
     static final BigInteger DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR = BigInteger.valueOf(100);
     static final BigInteger BASE_FEE_MULTIPLIER = BigInteger.valueOf(2);
 
+    /**
+     * Configures behavior when EIP-1559 is requested but baseFeePerGas is unavailable.
+     */
+    public enum Eip1559FallbackBehavior {
+        /**
+         * Throw {@link RpcException} when EIP-1559 requested but unavailable.
+         * Use this when you want explicit failures rather than silent degradation.
+         */
+        THROW,
+
+        /**
+         * Silently fall back to legacy gas pricing without logging.
+         * Use this when fallback is expected (e.g., multi-chain apps).
+         */
+        FALLBACK_SILENT,
+
+        /**
+         * Log a warning and fall back to legacy gas pricing (default).
+         * Use this for debugging unexpected fallbacks.
+         */
+        FALLBACK_WARN
+    }
+
     private final PublicClient publicClient;
     private final BraneProvider provider;
     private final ChainProfile profile;
     private final BigInteger gasLimitBufferNumerator;
     private final BigInteger gasLimitBufferDenominator;
+    private final Eip1559FallbackBehavior eip1559FallbackBehavior;
 
     SmartGasStrategy(
             final PublicClient publicClient, final BraneProvider provider, final ChainProfile profile) {
@@ -88,7 +112,8 @@ final class SmartGasStrategy {
                 provider,
                 profile,
                 DEFAULT_GAS_LIMIT_BUFFER_NUMERATOR,
-                DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR);
+                DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR,
+                Eip1559FallbackBehavior.FALLBACK_WARN);
     }
 
     SmartGasStrategy(
@@ -97,11 +122,23 @@ final class SmartGasStrategy {
             final ChainProfile profile,
             final BigInteger gasLimitBufferNumerator,
             final BigInteger gasLimitBufferDenominator) {
+        this(publicClient, provider, profile, gasLimitBufferNumerator, gasLimitBufferDenominator,
+                Eip1559FallbackBehavior.FALLBACK_WARN);
+    }
+
+    SmartGasStrategy(
+            final PublicClient publicClient,
+            final BraneProvider provider,
+            final ChainProfile profile,
+            final BigInteger gasLimitBufferNumerator,
+            final BigInteger gasLimitBufferDenominator,
+            final Eip1559FallbackBehavior eip1559FallbackBehavior) {
         this.publicClient = Objects.requireNonNull(publicClient, "publicClient");
         this.provider = Objects.requireNonNull(provider, "provider");
         this.profile = Objects.requireNonNull(profile, "profile");
         this.gasLimitBufferNumerator = requirePositive(gasLimitBufferNumerator, "gasLimitBufferNumerator");
         this.gasLimitBufferDenominator = requirePositive(gasLimitBufferDenominator, "gasLimitBufferDenominator");
+        this.eip1559FallbackBehavior = Objects.requireNonNull(eip1559FallbackBehavior, "eip1559FallbackBehavior");
     }
 
     /**
@@ -202,14 +239,27 @@ final class SmartGasStrategy {
                     true);
         }
 
-        // Fallback: If node doesn't provide baseFee (non-EIP-1559 chain), use legacy pricing.
+        // Fallback: If node doesn't provide baseFee (non-EIP-1559 chain), handle per config.
         // This can happen when:
         // 1. The chain doesn't support EIP-1559 (pre-London fork)
         // 2. The node returns null baseFeePerGas for the latest block
-        log.warn("EIP-1559 transaction requested but baseFeePerGas unavailable from node; " +
-                "falling back to legacy gas pricing. Chain may not support EIP-1559.");
-        final TransactionRequest legacy = copyWithGasFields(request, request.gasLimit(), request.gasPrice(), null, null,
-                false);
+        return handleEip1559Fallback(request);
+    }
+
+    private TransactionRequest handleEip1559Fallback(final TransactionRequest request) {
+        switch (eip1559FallbackBehavior) {
+            case THROW -> throw new RpcException(
+                    -32000,
+                    "EIP-1559 transaction requested but baseFeePerGas unavailable from node. " +
+                    "Chain may not support EIP-1559.",
+                    (String) null);
+            case FALLBACK_WARN -> log.warn(
+                    "EIP-1559 transaction requested but baseFeePerGas unavailable from node; " +
+                    "falling back to legacy gas pricing. Chain may not support EIP-1559.");
+            case FALLBACK_SILENT -> { /* no logging */ }
+        }
+        final TransactionRequest legacy = copyWithGasFields(
+                request, request.gasLimit(), request.gasPrice(), null, null, false);
         return ensureLegacyFees(legacy);
     }
 
