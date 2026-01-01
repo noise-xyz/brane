@@ -75,7 +75,7 @@ final class MulticallInvocationHandler implements InvocationHandler {
         return switch (method.getName()) {
             case "toString" -> "MulticallRecordingProxy{" + "address=" + address.value() + "}";
             case "hashCode" -> System.identityHashCode(proxy);
-            case "equals" -> proxy == (args == null || args.length == 0 ? null : args[0]);
+            case "equals" -> args != null && args.length > 0 && proxy == args[0];
             default -> method.invoke(proxy, args);
         };
     }
