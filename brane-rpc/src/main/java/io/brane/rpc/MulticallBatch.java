@@ -147,13 +147,40 @@ public final class MulticallBatch {
     }
 
     /**
-     * Binds a contract interface to a recording proxy.
-     * 
+     * Binds a contract interface to a recording proxy for batched calls.
+     *
+     * <p>The returned proxy records all method invocations without executing them.
+     * Calls are batched and executed together when {@link #execute()} is called.
+     * Method return values are wrapped in {@link CompletableFuture} to retrieve
+     * results after batch execution.
+     *
+     * <p><strong>Example usage:</strong>
+     * <pre>{@code
+     * MulticallBatch batch = publicClient.createBatch();
+     *
+     * // Bind contracts
+     * ERC20 token = batch.bind(ERC20.class, tokenAddress, ERC20_ABI);
+     *
+     * // Record calls (these don't execute yet)
+     * CompletableFuture<BigInteger> balance1 = batch.add(token.balanceOf(addr1));
+     * CompletableFuture<BigInteger> balance2 = batch.add(token.balanceOf(addr2));
+     *
+     * // Execute all calls in a single RPC request
+     * batch.execute();
+     *
+     * // Get results
+     * BigInteger b1 = balance1.get();
+     * BigInteger b2 = balance2.get();
+     * }</pre>
+     *
      * @param <T>               the contract interface type
-     * @param contractInterface the interface to bind
+     * @param contractInterface the interface to bind (must be an interface)
      * @param address           the contract address
      * @param abiJson           the contract ABI in JSON format
      * @return a recording proxy instance
+     * @throws NullPointerException if any argument is null
+     * @see #add(Object)
+     * @see #execute()
      */
     @SuppressWarnings("unchecked") // Safe: Proxy creates correct type for contractInterface
     public <T> T bind(final Class<T> contractInterface, final Address address, final String abiJson) {

@@ -72,6 +72,27 @@ public final class HttpBraneProvider implements BraneProvider {
         }
     }
 
+    /**
+     * Creates a new builder for configuring an {@link HttpBraneProvider}.
+     *
+     * <p>This is the primary entry point for creating HTTP-based RPC providers.
+     * The builder allows configuration of timeouts, custom headers, and chain ID.
+     *
+     * <p><strong>Example usage:</strong>
+     * <pre>{@code
+     * HttpBraneProvider provider = HttpBraneProvider.builder("https://eth-mainnet.g.alchemy.com/v2/key")
+     *     .connectTimeout(Duration.ofSeconds(5))
+     *     .readTimeout(Duration.ofSeconds(30))
+     *     .header("Authorization", "Bearer token")
+     *     .build();
+     * }</pre>
+     *
+     * @param url the HTTP or HTTPS URL of the Ethereum JSON-RPC endpoint
+     * @return a new builder instance
+     * @throws NullPointerException if url is null
+     * @throws IllegalArgumentException if url is not a valid HTTP/HTTPS URL
+     * @see Builder#build()
+     */
     public static Builder builder(final String url) {
         return new Builder(url);
     }
