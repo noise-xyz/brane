@@ -176,6 +176,24 @@ public final class HttpBraneProvider implements BraneProvider {
         private final Map<String, String> headers = new LinkedHashMap<>();
 
         private Builder(final String url) {
+            Objects.requireNonNull(url, "url");
+            // Validate URL format immediately for better error locality
+            try {
+                URI uri = URI.create(url);
+                String scheme = uri.getScheme();
+                if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
+                    throw new IllegalArgumentException(
+                            "url must use http or https scheme, got: " + (scheme == null ? "null" : scheme));
+                }
+                if (uri.getHost() == null || uri.getHost().isEmpty()) {
+                    throw new IllegalArgumentException("url must have a valid host");
+                }
+            } catch (IllegalArgumentException e) {
+                if (e.getMessage().startsWith("url must")) {
+                    throw e;
+                }
+                throw new IllegalArgumentException("url is not a valid URI: " + e.getMessage(), e);
+            }
             this.url = url;
         }
 
