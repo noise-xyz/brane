@@ -17,6 +17,8 @@ import java.util.Map;
 import java.util.Objects;
 
 import io.brane.rpc.internal.RpcUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Automatically fills missing gas parameters (limit, price, fees) for
@@ -66,6 +68,8 @@ import io.brane.rpc.internal.RpcUtils;
  * @see WalletClient
  */
 final class SmartGasStrategy {
+
+    private static final Logger log = LoggerFactory.getLogger(SmartGasStrategy.class);
 
     static final BigInteger DEFAULT_GAS_LIMIT_BUFFER_NUMERATOR = BigInteger.valueOf(120);
     static final BigInteger DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR = BigInteger.valueOf(100);
@@ -198,8 +202,12 @@ final class SmartGasStrategy {
                     true);
         }
 
-        // Fallback: If node doesn't provide baseFee (non-EIP-1559 chain), use legacy
-        // pricing
+        // Fallback: If node doesn't provide baseFee (non-EIP-1559 chain), use legacy pricing.
+        // This can happen when:
+        // 1. The chain doesn't support EIP-1559 (pre-London fork)
+        // 2. The node returns null baseFeePerGas for the latest block
+        log.warn("EIP-1559 transaction requested but baseFeePerGas unavailable from node; " +
+                "falling back to legacy gas pricing. Chain may not support EIP-1559.");
         final TransactionRequest legacy = copyWithGasFields(request, request.gasLimit(), request.gasPrice(), null, null,
                 false);
         return ensureLegacyFees(legacy);
