@@ -248,7 +248,7 @@ failedAttempts.add(e);
 
 ---
 
-### MED-2: JsonRpcResponse.resultAsMap() Throws Generic IllegalArgumentException
+### MED-2: [DONE] JsonRpcResponse.resultAsMap() Throws Generic IllegalArgumentException
 
 **File:** `JsonRpcResponse.java:67-89`
 **Severity:** MEDIUM
