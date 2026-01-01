@@ -89,7 +89,8 @@ final class RpcRetry {
             throw new IllegalArgumentException("maxAttempts must be >= 1");
         }
 
-        final java.util.List<Throwable> failedAttempts = new java.util.ArrayList<>();
+        // Lazy-initialized on first failure to avoid allocation on success path
+        java.util.List<Throwable> failedAttempts = null;
         final long startTime = System.currentTimeMillis();
         Throwable lastException = null;
 
@@ -100,6 +101,9 @@ final class RpcRetry {
                 throw e;
             } catch (RpcException e) {
                 lastException = e;
+                if (failedAttempts == null) {
+                    failedAttempts = new java.util.ArrayList<>();
+                }
                 failedAttempts.add(e);
                 if (!isRetryableRpcError(e)) {
                     throw e;
@@ -113,6 +117,9 @@ final class RpcRetry {
                     throw e;
                 }
                 lastException = e;
+                if (failedAttempts == null) {
+                    failedAttempts = new java.util.ArrayList<>();
+                }
                 failedAttempts.add(e);
                 if (attempt == maxAttempts) {
                     throw createRetryExhaustedException(failedAttempts, startTime);
@@ -138,7 +145,7 @@ final class RpcRetry {
             }
         }
 
-        if (!failedAttempts.isEmpty()) {
+        if (failedAttempts != null && !failedAttempts.isEmpty()) {
             throw createRetryExhaustedException(failedAttempts, startTime);
         }
         throw new IllegalStateException("Retry finished without result or exception");
@@ -238,7 +245,8 @@ final class RpcRetry {
             throw new IllegalArgumentException("maxAttempts must be >= 1");
         }
 
-        final java.util.List<Throwable> failedAttempts = new java.util.ArrayList<>();
+        // Lazy-initialized on first failure to avoid allocation on success path
+        java.util.List<Throwable> failedAttempts = null;
         final long startTime = System.currentTimeMillis();
         Throwable lastException = null;
 
@@ -263,6 +271,9 @@ final class RpcRetry {
 
                     // Retryable error - treat like an exception for retry purposes
                     lastException = rpcEx;
+                    if (failedAttempts == null) {
+                        failedAttempts = new java.util.ArrayList<>();
+                    }
                     failedAttempts.add(rpcEx);
                     if (attempt == maxAttempts) {
                         throw createRetryExhaustedException(failedAttempts, startTime);
@@ -275,6 +286,9 @@ final class RpcRetry {
                 throw e;
             } catch (RpcException e) {
                 lastException = e;
+                if (failedAttempts == null) {
+                    failedAttempts = new java.util.ArrayList<>();
+                }
                 failedAttempts.add(e);
                 if (!isRetryableRpcError(e)) {
                     throw e;
@@ -288,6 +302,9 @@ final class RpcRetry {
                     throw e;
                 }
                 lastException = e;
+                if (failedAttempts == null) {
+                    failedAttempts = new java.util.ArrayList<>();
+                }
                 failedAttempts.add(e);
                 if (attempt == maxAttempts) {
                     throw createRetryExhaustedException(failedAttempts, startTime);
@@ -312,7 +329,7 @@ final class RpcRetry {
             }
         }
 
-        if (!failedAttempts.isEmpty()) {
+        if (failedAttempts != null && !failedAttempts.isEmpty()) {
             throw createRetryExhaustedException(failedAttempts, startTime);
         }
         throw new IllegalStateException("Retry finished without result or exception");
