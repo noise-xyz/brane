@@ -128,7 +128,6 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * caller threads (sendAsync), Netty I/O thread, and reconnect scheduler.
      */
     private volatile Channel channel;
-    private final WebSocketClientHandler handler;
     private final AtomicBoolean connected = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
@@ -256,10 +255,6 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         this.subscriptionExecutor = Executors.newVirtualThreadPerTaskExecutor();
         this.ownsSubscriptionExecutor = true;
 
-        this.handler = new WebSocketClientHandler(
-                WebSocketClientHandshakerFactory.newHandshaker(
-                        uri, WebSocketVersion.V13, null, false, new DefaultHttpHeaders()));
-
         // Use provided EventLoopGroup or create default
         if (config.eventLoopGroup() != null) {
             this.group = config.eventLoopGroup();
@@ -355,28 +350,6 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 sslContext = null;
             }
 
-            Bootstrap b = new Bootstrap();
-            b.group(group)
-                    .channel(NioSocketChannel.class)
-                    .option(ChannelOption.TCP_NODELAY, true)
-                    .option(ChannelOption.SO_KEEPALIVE, true)
-                    .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
-                    .option(ChannelOption.WRITE_BUFFER_WATER_MARK,
-                            new WriteBufferWaterMark(8 * 1024, 32 * 1024))
-                    .handler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel ch) {
-                            ChannelPipeline p = ch.pipeline();
-                            if (sslContext != null) {
-                                p.addLast(sslContext.newHandler(ch.alloc(), uri.getHost(),
-                                        uri.getPort() == -1 ? 443 : uri.getPort()));
-                            }
-                            p.addLast(new HttpClientCodec());
-                            p.addLast(new HttpObjectAggregator(65536));
-                            p.addLast(handler);
-                        }
-                    });
-
             int port = uri.getPort();
             if (port == -1) {
                 port = "wss".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
@@ -387,9 +360,40 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             Exception lastError = null;
 
             while (attempt < MAX_RECONNECT_ATTEMPTS && !closed.get()) {
+                // Create a fresh handler for each connection attempt.
+                // This is critical for thread safety: the WebSocketClientHandshaker tracks
+                // handshake state internally, and the handshakeFuture is a ChannelPromise
+                // tied to a specific channel. Reusing the same handler across reconnections
+                // would leave the handshaker in an inconsistent state.
+                final WebSocketClientHandler connectionHandler = new WebSocketClientHandler(
+                        WebSocketClientHandshakerFactory.newHandshaker(
+                                uri, WebSocketVersion.V13, null, false, new DefaultHttpHeaders()));
+
+                Bootstrap b = new Bootstrap();
+                b.group(group)
+                        .channel(NioSocketChannel.class)
+                        .option(ChannelOption.TCP_NODELAY, true)
+                        .option(ChannelOption.SO_KEEPALIVE, true)
+                        .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+                        .option(ChannelOption.WRITE_BUFFER_WATER_MARK,
+                                new WriteBufferWaterMark(8 * 1024, 32 * 1024))
+                        .handler(new ChannelInitializer<SocketChannel>() {
+                            @Override
+                            protected void initChannel(SocketChannel ch) {
+                                ChannelPipeline p = ch.pipeline();
+                                if (sslContext != null) {
+                                    p.addLast(sslContext.newHandler(ch.alloc(), uri.getHost(),
+                                            uri.getPort() == -1 ? 443 : uri.getPort()));
+                                }
+                                p.addLast(new HttpClientCodec());
+                                p.addLast(new HttpObjectAggregator(65536));
+                                p.addLast(connectionHandler);
+                            }
+                        });
+
                 try {
                     this.channel = b.connect(uri.getHost(), port).sync().channel();
-                    handler.handshakeFuture().sync();
+                    connectionHandler.handshakeFuture().sync();
                     connected.set(true);
                     return;
                 } catch (Exception e) {
