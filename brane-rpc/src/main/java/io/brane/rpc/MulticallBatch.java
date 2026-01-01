@@ -313,7 +313,7 @@ public final class MulticallBatch {
     private void executeChunk(final List<CallContext<?>> chunk) {
         try {
             // 1. Prepare Call3 objects as a list of tuples
-            final List<Object> call3List = new ArrayList<>(chunk.size());
+            final var call3List = new ArrayList<Object>(chunk.size());
             for (final CallContext<?> call : chunk) {
                 final Call3 call3 = call.toCall3(globalAllowFailure);
                 // Each Call3 is a tuple (address string, bool, HexData callData)

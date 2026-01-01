@@ -51,7 +51,7 @@ public final class LogParser {
                 value,
                 new TypeReference<List<Map<String, Object>>>() {}
         );
-        final List<LogEntry> logs = new ArrayList<>(rawLogs.size());
+        final var logs = new ArrayList<LogEntry>(rawLogs.size());
         for (Map<String, Object> map : rawLogs) {
             logs.add(parseLog(map));
         }
@@ -76,7 +76,7 @@ public final class LogParser {
                 map.get("topics"),
                 new TypeReference<List<String>>() {}
         );
-        final List<Hash> topics = new ArrayList<>();
+        final var topics = new ArrayList<Hash>();
         if (topicsHex != null) {
             for (String t : topicsHex) {
                 topics.add(new Hash(t));
@@ -117,7 +117,7 @@ public final class LogParser {
                 value,
                 new TypeReference<List<Map<String, Object>>>() {}
         );
-        final List<LogEntry> logs = new ArrayList<>(raw.size());
+        final var logs = new ArrayList<LogEntry>(raw.size());
         for (Map<String, Object> map : raw) {
             logs.add(parseLogStrict(map));
         }
@@ -154,7 +154,7 @@ public final class LogParser {
                 map.get("topics"),
                 new TypeReference<List<String>>() {}
         );
-        final List<Hash> topics = new ArrayList<>();
+        final var topics = new ArrayList<Hash>();
         if (topicsHex != null) {
             for (String t : topicsHex) {
                 topics.add(new Hash(t));

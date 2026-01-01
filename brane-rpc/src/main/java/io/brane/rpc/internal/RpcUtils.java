@@ -225,6 +225,7 @@ public final class RpcUtils {
     public static List<Map<String, Object>> toJsonAccessList(final List<AccessListEntry> entries) {
         return entries.stream()
                 .map(entry -> {
+                    // Explicit type required: var would infer LinkedHashMap, causing List<Map> incompatibility
                     final Map<String, Object> map = new LinkedHashMap<>();
                     map.put("address", entry.address().value());
                     map.put("storageKeys", entry.storageKeys().stream().map(Hash::value).toList());
@@ -254,7 +255,7 @@ public final class RpcUtils {
      * @return map suitable for JSON-RPC serialization
      */
     public static Map<String, Object> buildTxObject(final TransactionRequest request, final Address from) {
-        final Map<String, Object> tx = new LinkedHashMap<>();
+        final var tx = new LinkedHashMap<String, Object>();
         tx.put("from", from.value());
         request.toOpt().ifPresent(address -> tx.put("to", address.value()));
         request.valueOpt().ifPresent(v -> tx.put("value", toQuantityHex(v.value())));

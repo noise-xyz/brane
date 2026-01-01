@@ -219,7 +219,7 @@ final class DefaultPublicClient implements PublicClient {
                 map.get("accessList"),
                 new TypeReference<List<Map<String, Object>>>() {
                 });
-        final List<AccessListEntry> accessList = new ArrayList<>();
+        final var accessList = new ArrayList<AccessListEntry>();
         if (accessListRaw != null) {
             for (Map<String, Object> entryMap : accessListRaw) {
                 final String addressHex = RpcUtils.stringValue(entryMap.get("address"));
@@ -248,7 +248,7 @@ final class DefaultPublicClient implements PublicClient {
     }
 
     private Map<String, Object> buildTxObject(final TransactionRequest request) {
-        final Map<String, Object> tx = new LinkedHashMap<>();
+        final var tx = new LinkedHashMap<String, Object>();
         if (request.from() != null) {
             tx.put("from", request.from().value());
         }
@@ -264,7 +264,7 @@ final class DefaultPublicClient implements PublicClient {
     }
 
     private Map<String, Object> buildLogParams(final LogFilter filter) {
-        final Map<String, Object> req = new java.util.LinkedHashMap<>();
+        final var req = new LinkedHashMap<String, Object>();
         filter.fromBlock()
                 .ifPresent(
                         v -> {
@@ -292,7 +292,7 @@ final class DefaultPublicClient implements PublicClient {
         filter.topics()
                 .ifPresent(
                         topics -> {
-                            final List<String> topicHex = new ArrayList<>();
+                            final var topicHex = new ArrayList<String>();
                             for (Hash h : topics) {
                                 if (h != null) {
                                     topicHex.add(h.value());

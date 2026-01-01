@@ -82,7 +82,7 @@ public record CallRequest(
      */
     public Map<String, Object> toMap() {
         // Pre-size for max 8 fields: from, to, data, value, gas, gasPrice, maxFeePerGas, maxPriorityFeePerGas
-        final Map<String, Object> map = new LinkedHashMap<>(8);
+        final var map = new LinkedHashMap<String, Object>(8);
         if (from != null) {
             map.put("from", from.value());
         }
