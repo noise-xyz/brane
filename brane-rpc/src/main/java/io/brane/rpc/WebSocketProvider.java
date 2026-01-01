@@ -27,7 +27,6 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.channel.EventLoopGroup;
 import static io.brane.rpc.internal.RpcUtils.MAPPER;
 import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.net.URI;
@@ -412,52 +411,6 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             throw new RuntimeException("Failed to connect to " + uri + " after " + attempt + " attempts", lastError);
         } catch (Exception e) {
             throw new RuntimeException("Failed to connect to " + uri, e);
-        }
-    }
-
-    /**
-     * Parse JSON-RPC response from ByteBuf using Jackson Streaming API.
-     * Visible for testing.
-     */
-    static JsonRpcResponse parseResponseFromByteBuf(ByteBuf buf) {
-        try (ByteBufInputStream in = new ByteBufInputStream(buf);
-                JsonParser parser = MAPPER.getFactory().createParser((java.io.InputStream) in)) {
-
-            String jsonrpc = null;
-            Object id = null;
-            Object result = null;
-            JsonRpcError error = null;
-
-            if (parser.nextToken() != JsonToken.START_OBJECT) {
-                return new JsonRpcResponse("2.0", null, null, null);
-            }
-
-            while (parser.nextToken() != JsonToken.END_OBJECT) {
-                String fieldName = parser.currentName();
-                parser.nextToken();
-
-                if ("jsonrpc".equals(fieldName)) {
-                    jsonrpc = parser.getText();
-                } else if ("id".equals(fieldName)) {
-                    if (parser.currentToken() == JsonToken.VALUE_NUMBER_INT) {
-                        id = String.valueOf(parser.getLongValue());
-                    } else if (parser.currentToken() == JsonToken.VALUE_STRING) {
-                        id = parser.getText();
-                    } else {
-                        id = null;
-                    }
-                } else if ("result".equals(fieldName)) {
-                    result = MAPPER.readValue(parser, Object.class);
-                } else if ("error".equals(fieldName)) {
-                    error = MAPPER.readValue(parser, JsonRpcError.class);
-                } else {
-                    parser.skipChildren();
-                }
-            }
-            return new JsonRpcResponse(jsonrpc, result, error, (String) id);
-        } catch (Exception e) {
-            return new JsonRpcResponse("2.0", null, new JsonRpcError(-32700, "Parse error: " + e.getMessage(), null),
-                    null);
         }
     }
 
