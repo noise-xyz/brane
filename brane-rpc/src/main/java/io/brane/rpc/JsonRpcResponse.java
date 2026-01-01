@@ -69,7 +69,14 @@ public record JsonRpcResponse(
         if (result == null) {
             return null;
         }
-        if (result instanceof Map<?, ?>) {
+        if (result instanceof Map<?, ?> map) {
+            // Validate all keys are Strings to prevent ClassCastException at access time
+            for (Object key : map.keySet()) {
+                if (key != null && !(key instanceof String)) {
+                    throw new IllegalArgumentException(
+                            "Map contains non-String key of type " + key.getClass().getName());
+                }
+            }
             return (Map<String, Object>) result;
         }
         try {
