@@ -40,8 +40,15 @@ public final class BraneAsyncClient {
 
     /**
      * Shared default executor for async operations.
-     * Virtual thread executors are lightweight, but sharing avoids unnecessary
-     * object creation. Named threads aid debugging and profiling.
+     *
+     * <p>This executor is intentionally static and long-lived (JVM lifetime).
+     * Virtual thread executors are extremely lightweight - the overhead is just
+     * a thread factory and naming counter. Sharing this single executor across
+     * all BraneAsyncClient instances avoids unnecessary object creation.
+     *
+     * <p>If you need lifecycle control over the executor (e.g., for testing or
+     * container environments), use {@link #BraneAsyncClient(BraneProvider, Executor)}
+     * with your own executor instance.
      */
     private static final Executor DEFAULT_EXECUTOR = Executors.newThreadPerTaskExecutor(
             Thread.ofVirtual().name("brane-async-", 0).factory());
