@@ -521,9 +521,20 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         }
 
         private void handleNotificationNode(JsonNode node) {
-            JsonNode params = node.get("params");
-            if (params != null) {
-                String subId = params.get("subscription").asText();
+            try {
+                JsonNode params = node.get("params");
+                if (params == null) {
+                    log.warn("Malformed subscription notification: missing 'params' field");
+                    return;
+                }
+
+                JsonNode subscriptionNode = params.get("subscription");
+                if (subscriptionNode == null || subscriptionNode.isNull()) {
+                    log.warn("Malformed subscription notification: missing 'subscription' field in params");
+                    return;
+                }
+
+                String subId = subscriptionNode.asText();
                 Consumer<JsonRpcResponse> listener = subscriptions.get(subId);
                 if (listener != null) {
                     JsonNode resultNode = params.get("result");
@@ -532,6 +543,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                     // Dispatch to subscription executor to avoid blocking Netty I/O thread
                     subscriptionExecutor.execute(() -> listener.accept(response));
                 }
+            } catch (Exception e) {
+                // Never let exceptions escape to Netty's exceptionCaught handler,
+                // as that would disconnect the WebSocket and lose all in-flight requests
+                log.error("Error handling subscription notification", e);
             }
         }
 
