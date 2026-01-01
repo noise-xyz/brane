@@ -25,19 +25,19 @@ package io.brane.rpc;
 public sealed interface BlockTag permits BlockTag.Named, BlockTag.Number {
 
     /** The latest mined block. */
-    BlockTag LATEST = new Named("latest");
+    public static final BlockTag LATEST = new Named("latest");
 
     /** The pending state/transactions. */
-    BlockTag PENDING = new Named("pending");
+    public static final BlockTag PENDING = new Named("pending");
 
     /** The earliest/genesis block. */
-    BlockTag EARLIEST = new Named("earliest");
+    public static final BlockTag EARLIEST = new Named("earliest");
 
     /** The safe head block (post-merge). */
-    BlockTag SAFE = new Named("safe");
+    public static final BlockTag SAFE = new Named("safe");
 
     /** The finalized block (post-merge). */
-    BlockTag FINALIZED = new Named("finalized");
+    public static final BlockTag FINALIZED = new Named("finalized");
 
     /**
      * Creates a block tag for a specific block number.
