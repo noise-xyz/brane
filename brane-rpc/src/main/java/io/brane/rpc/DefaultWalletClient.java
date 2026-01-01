@@ -19,14 +19,13 @@ import io.brane.core.types.Wei;
 import io.brane.rpc.internal.LogParser;
 import io.brane.rpc.internal.RpcUtils;
 import java.math.BigInteger;
-import java.time.Duration;
-import java.time.Instant;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
-import io.brane.core.crypto.Signer;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
+import io.brane.core.crypto.Signer;
 
 /**
  * Default implementation of {@link WalletClient} with automatic transaction
@@ -278,9 +277,11 @@ public final class DefaultWalletClient implements WalletClient {
             final TransactionRequest request, final long timeoutMillis, final long pollIntervalMillis) {
         final Hash txHash = sendTransaction(request);
         DebugLogger.logTx(LogFormatter.formatTxWait(txHash.value(), timeoutMillis));
-        final Instant deadline = Instant.now().plus(Duration.ofMillis(timeoutMillis));
+        // Use monotonic clock (System.nanoTime) instead of wall clock (Instant.now)
+        // to avoid issues with NTP adjustments or VM clock skew
+        final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
 
-        while (Instant.now().isBefore(deadline)) {
+        while (System.nanoTime() - deadlineNanos < 0) {
             final TransactionReceipt receipt = fetchReceipt(txHash);
             if (receipt != null) {
                 DebugLogger.logTx(
