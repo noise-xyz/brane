@@ -69,7 +69,7 @@ public final class LogParser {
         final String data = RpcUtils.stringValue(map.get("data"));
         final String blockHash = RpcUtils.stringValue(map.get("blockHash"));
         final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
-        final Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
+        final long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
 
         @SuppressWarnings("unchecked")
         final List<String> topicsHex = MAPPER.convertValue(
@@ -89,7 +89,7 @@ public final class LogParser {
                 topics,
                 blockHash != null ? new Hash(blockHash) : null,
                 txHash != null ? new Hash(txHash) : null,
-                logIndex != null ? logIndex : 0L,
+                logIndex,
                 Boolean.TRUE.equals(map.get("removed")));
     }
 
@@ -140,12 +140,14 @@ public final class LogParser {
         final String data = RpcUtils.stringValue(map.get("data"));
         final String blockHash = RpcUtils.stringValue(map.get("blockHash"));
         final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
-        final Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
 
-        if (logIndex == null) {
+        // Check for missing logIndex before decoding (decodeHexLong returns 0 for null)
+        final Object rawLogIndex = map.get("logIndex");
+        if (rawLogIndex == null) {
             throw new io.brane.core.error.AbiDecodingException(
                     "Missing logIndex in log entry: " + map);
         }
+        final long logIndex = RpcUtils.decodeHexLong(rawLogIndex);
 
         @SuppressWarnings("unchecked")
         final List<String> topicsHex = MAPPER.convertValue(

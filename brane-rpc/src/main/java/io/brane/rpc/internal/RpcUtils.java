@@ -119,12 +119,33 @@ public final class RpcUtils {
     }
 
     /**
-     * Decodes hex quantity string to Long, handling "0x" prefix and null/empty
-     * values.
+     * Decodes a hex quantity string to {@code long}.
+     *
+     * <p>This method handles the "0x" prefix and treats null/empty values as zero,
+     * which aligns with JSON-RPC conventions where absent or empty fields often
+     * represent zero values.
+     *
+     * <p><strong>Null/Empty Handling:</strong>
+     * <ul>
+     *   <li>{@code null} → {@code 0L}</li>
+     *   <li>{@code ""} (empty string) → {@code 0L}</li>
+     *   <li>{@code "0x"} (prefix only) → {@code 0L}</li>
+     *   <li>{@code "0x0"} → {@code 0L}</li>
+     *   <li>{@code "0x1a"} → {@code 26L}</li>
+     * </ul>
+     *
+     * <p><strong>Note:</strong> This lenient behavior is intentional for RPC parsing.
+     * If you need strict validation that rejects null/empty strings, validate the input
+     * before calling this method.
+     *
+     * @param value the hex string to decode, may be null or empty
+     * @return the decoded value (returns {@code 0L} for null/empty input)
+     * @throws NumberFormatException if the string contains invalid hex characters
+     * @see #decodeHexBigInteger(String)
      */
-    public static Long decodeHexLong(final Object value) {
+    public static long decodeHexLong(final Object value) {
         if (value == null) {
-            return null;
+            return 0L;
         }
         final String hex = value.toString();
         if (hex.isEmpty()) {
