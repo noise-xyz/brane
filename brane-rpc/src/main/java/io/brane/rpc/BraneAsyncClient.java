@@ -41,9 +41,10 @@ public final class BraneAsyncClient {
     /**
      * Shared default executor for async operations.
      * Virtual thread executors are lightweight, but sharing avoids unnecessary
-     * object creation.
+     * object creation. Named threads aid debugging and profiling.
      */
-    private static final Executor DEFAULT_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
+    private static final Executor DEFAULT_EXECUTOR = Executors.newThreadPerTaskExecutor(
+            Thread.ofVirtual().name("brane-async-", 0).factory());
 
     private final BraneProvider provider;
     private final Executor executor;
