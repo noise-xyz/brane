@@ -435,7 +435,7 @@ Items 1-3 require mock Netty channel infrastructure (out of scope for LOW priori
 
 ---
 
-### LOW-5: RetryExhaustedException serialVersionUID Comment Is Verbose
+### LOW-5: [DONE] RetryExhaustedException serialVersionUID Comment Is Verbose
 
 **File:** `RetryExhaustedException.java:39-50`
 **Severity:** LOW
