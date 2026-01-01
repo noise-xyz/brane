@@ -35,6 +35,19 @@ import org.jspecify.annotations.Nullable;
  */
 public final class RetryExhaustedException extends RuntimeException {
 
+    /**
+     * Serial version UID for serialization compatibility.
+     * <p>
+     * We use an explicit fixed value (1L) rather than a generated UID because:
+     * <ul>
+     *   <li>This exception is unlikely to be serialized across JVM boundaries</li>
+     *   <li>Adding new fields (like attemptCount, totalRetryDurationMs) should not
+     *       break deserialization - missing fields get default values</li>
+     *   <li>A fixed UID allows controlled evolution of the class structure</li>
+     * </ul>
+     * Increment this value only if making incompatible changes to serialized form
+     * (e.g., changing field types or removing fields).
+     */
     private static final long serialVersionUID = 1L;
 
     private final int attemptCount;
