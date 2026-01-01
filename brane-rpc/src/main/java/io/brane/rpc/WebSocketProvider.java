@@ -225,8 +225,32 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * Orphaned responses are logged at ERROR level for debugging. This counter provides
      * visibility into how often this occurs. High counts may indicate network issues,
      * server-side delays, or timeout values that are too aggressive.
+     *
+     * @see #getOrphanedResponseCount()
      */
     private final LongAdder orphanedResponses = new LongAdder();
+
+    /**
+     * Returns the total count of orphaned responses received since this provider was created.
+     *
+     * <p>Orphaned responses are responses received with no matching pending request.
+     * This typically occurs when:
+     * <ul>
+     *   <li>The response ID cannot be parsed</li>
+     *   <li>The request timed out before the response arrived</li>
+     *   <li>The request was cancelled</li>
+     * </ul>
+     *
+     * <p>This metric is useful for monitoring connection health. High orphan counts
+     * may indicate network issues, server-side delays, or timeout values that are
+     * too aggressive.
+     *
+     * @return the total count of orphaned responses
+     * @since 0.5.0
+     */
+    public long getOrphanedResponseCount() {
+        return orphanedResponses.sum();
+    }
 
     // Lock-free ID generator
     private final AtomicLong idGenerator = new AtomicLong(1);
@@ -536,6 +560,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                     log.error("Orphaned response: could not parse ID '{}' as long - caller future will never complete",
                             idNode.asText(), e);
                     orphanedResponses.increment();
+                    metrics.onOrphanedResponse("unparseable ID: " + idNode.asText());
                     return;
                 }
             }
@@ -545,6 +570,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 log.error("Orphaned response: ID node has unexpected type '{}' - caller future will never complete",
                         idNode.getNodeType());
                 orphanedResponses.increment();
+                metrics.onOrphanedResponse("unexpected ID type: " + idNode.getNodeType());
                 return;
             }
 
@@ -554,6 +580,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 // Response received but no pending request found - may have timed out or been cancelled
                 log.error("Orphaned response: no pending request found for ID {} - response dropped", id);
                 orphanedResponses.increment();
+                metrics.onOrphanedResponse("no pending request for ID: " + id);
                 return;
             }
 

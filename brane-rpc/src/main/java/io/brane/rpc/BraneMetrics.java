@@ -96,15 +96,14 @@ public interface BraneMetrics {
      * Called when a request is rejected due to backpressure.
      *
      * <p>This method provides context about the current queue state to help
-     * diagnose backpressure issues. The slot ID indicates which slot collision
-     * caused the rejection.
+     * diagnose backpressure issues.
      *
-     * @param slotId           the slot ID that caused the collision (for debugging)
+     * @param pendingCount       the current number of pending requests when backpressure triggered
      * @param maxPendingRequests the maximum number of pending requests allowed
      * @since 0.5.0
      */
     @SuppressWarnings("deprecation")
-    default void onBackpressure(int slotId, int maxPendingRequests) {
+    default void onBackpressure(int pendingCount, int maxPendingRequests) {
         // Default implementation calls legacy method for backward compatibility
         onBackpressure();
     }
@@ -141,6 +140,27 @@ public interface BraneMetrics {
      * @param bufferSize        the total ring buffer size
      */
     default void onRingBufferSaturation(long remainingCapacity, int bufferSize) {
+    }
+
+    /**
+     * Called when an orphaned response is received.
+     *
+     * <p>An orphaned response is a response received with no matching pending request.
+     * This typically occurs when:
+     * <ul>
+     *   <li>The response ID cannot be parsed</li>
+     *   <li>The request timed out before the response arrived</li>
+     *   <li>The request was cancelled</li>
+     * </ul>
+     *
+     * <p>High orphan counts may indicate network issues, server-side delays, or
+     * timeout values that are too aggressive.
+     *
+     * @param reason a description of why the response was orphaned (e.g., "no pending request",
+     *               "unparseable ID")
+     * @since 0.5.0
+     */
+    default void onOrphanedResponse(String reason) {
     }
 
     /**
