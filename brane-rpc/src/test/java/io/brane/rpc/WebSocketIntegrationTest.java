@@ -301,7 +301,10 @@ public class WebSocketIntegrationTest {
         assertNotNull(quickResponse.result());
     }
 
-    // ==================== LOW-5: WebSocket Edge Case Tests ====================
+    // ==================== LOW-4: WebSocket Edge Case Tests ====================
+    // These integration tests cover concurrency, stress, close behavior, and timeout races.
+    // Note: Reconnection, orphaned response handling, and backpressure tests would require
+    // mock Netty channels which is out of scope for integration tests.
 
     /**
      * Stress test: High-concurrency concurrent request submission.

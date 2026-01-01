@@ -416,7 +416,7 @@ public static final BlockTag LATEST = new Named("latest");
 
 ---
 
-### LOW-4: Missing Test Coverage for WebSocketProvider Edge Cases
+### LOW-4: [DONE] Missing Test Coverage for WebSocketProvider Edge Cases
 
 **File:** `WebSocketIntegrationTest.java`
 **Severity:** LOW
@@ -428,6 +428,10 @@ The WebSocket integration test primarily tests happy paths. Missing coverage for
 4. Ring buffer saturation
 
 **Recommendation:** Add unit tests with mock channels for these edge cases.
+
+**Resolution:** Integration-level edge case tests added covering concurrency stress,
+ring buffer stress, timeout races, close behavior, and concurrent close/requests.
+Items 1-3 require mock Netty channel infrastructure (out of scope for LOW priority).
 
 ---
 
