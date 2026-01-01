@@ -116,7 +116,9 @@ public final class BraneExecutors {
             throw new IllegalArgumentException("threads must be at least 1, got: " + threads);
         }
         return Executors.newFixedThreadPool(threads, r -> {
-            Thread t = new Thread(r, "brane-cpu-worker-" + CPU_THREAD_ID.getAndIncrement());
+            // Mask off sign bit to ensure non-negative thread IDs even after integer overflow
+            int id = CPU_THREAD_ID.getAndIncrement() & 0x7FFFFFFF;
+            Thread t = new Thread(r, "brane-cpu-worker-" + id);
             t.setDaemon(true);
             return t;
         });
