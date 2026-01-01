@@ -161,7 +161,7 @@ if (witness == executor) {
 
 ---
 
-### HIGH-4: WebSocketProvider Orphaned Response Counter Not Exposed
+### HIGH-4: [DONE] WebSocketProvider Orphaned Response Counter Not Exposed
 
 **File:** `WebSocketProvider.java:230`
 **Severity:** HIGH
