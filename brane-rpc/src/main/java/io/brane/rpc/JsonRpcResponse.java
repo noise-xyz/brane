@@ -72,7 +72,13 @@ public record JsonRpcResponse(
         if (result instanceof Map<?, ?>) {
             return (Map<String, Object>) result;
         }
-        return MAPPER.convertValue(result, new TypeReference<Map<String, Object>>() {});
+        try {
+            return MAPPER.convertValue(result, new TypeReference<Map<String, Object>>() {});
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot convert result to Map: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -92,7 +98,13 @@ public record JsonRpcResponse(
         if (result instanceof List<?>) {
             return (List<Object>) result;
         }
-        return MAPPER.convertValue(result, new TypeReference<List<Object>>() {});
+        try {
+            return MAPPER.convertValue(result, new TypeReference<List<Object>>() {});
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot convert result to List: " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -109,7 +121,13 @@ public record JsonRpcResponse(
         if (result == null) {
             return null;
         }
-        return MAPPER.convertValue(result, type);
+        try {
+            return MAPPER.convertValue(result, type);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot convert result to " + type.getName() + ": " + e.getMessage(), e);
+        }
     }
 
     /**
@@ -126,6 +144,12 @@ public record JsonRpcResponse(
         if (result == null) {
             return null;
         }
-        return MAPPER.convertValue(result, typeRef);
+        try {
+            return MAPPER.convertValue(result, typeRef);
+        } catch (IllegalArgumentException e) {
+            throw e;
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Cannot convert result to specified type: " + e.getMessage(), e);
+        }
     }
 }
