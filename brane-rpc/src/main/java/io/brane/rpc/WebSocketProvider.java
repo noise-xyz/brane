@@ -1075,6 +1075,13 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
     /**
      * Write a string with JSON escaping directly to ByteBuf.
+     * <p>
+     * Properly handles:
+     * <ul>
+     *   <li>ASCII characters (0x00-0x7F) - written as single bytes</li>
+     *   <li>Non-ASCII BMP characters (0x80-0xFFFF) - encoded as UTF-8</li>
+     *   <li>Supplementary characters (emoji, etc.) - detected via surrogate pairs and encoded as UTF-8</li>
+     * </ul>
      */
     private void writeEscapedString(ByteBuf buf, String s) {
         for (int i = 0; i < s.length(); i++) {
@@ -1109,10 +1116,52 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                         buf.writeByte(HEX[(c >> 8) & 0xF]);
                         buf.writeByte(HEX[(c >> 4) & 0xF]);
                         buf.writeByte(HEX[c & 0xF]);
-                    } else {
+                    } else if (c < 128) {
+                        // ASCII - single byte
                         buf.writeByte(c);
+                    } else {
+                        // Non-ASCII: encode as UTF-8
+                        writeUtf8Char(buf, s, i);
+                        // If this was a surrogate pair, skip the low surrogate
+                        if (Character.isHighSurrogate(c) && i + 1 < s.length()
+                                && Character.isLowSurrogate(s.charAt(i + 1))) {
+                            i++;
+                        }
                     }
             }
+        }
+    }
+
+    /**
+     * Write a character (possibly a surrogate pair) as UTF-8 bytes.
+     */
+    private void writeUtf8Char(ByteBuf buf, String s, int index) {
+        char c = s.charAt(index);
+
+        // Handle surrogate pairs for supplementary characters (emoji, etc.)
+        if (Character.isHighSurrogate(c) && index + 1 < s.length()) {
+            char low = s.charAt(index + 1);
+            if (Character.isLowSurrogate(low)) {
+                // Valid surrogate pair - decode to codepoint and encode as 4-byte UTF-8
+                int codePoint = Character.toCodePoint(c, low);
+                buf.writeByte(0xF0 | (codePoint >> 18));
+                buf.writeByte(0x80 | ((codePoint >> 12) & 0x3F));
+                buf.writeByte(0x80 | ((codePoint >> 6) & 0x3F));
+                buf.writeByte(0x80 | (codePoint & 0x3F));
+                return;
+            }
+        }
+
+        // BMP character (or unpaired surrogate - encode as-is per CESU-8/WTF-8)
+        if (c < 0x800) {
+            // 2-byte UTF-8
+            buf.writeByte(0xC0 | (c >> 6));
+            buf.writeByte(0x80 | (c & 0x3F));
+        } else {
+            // 3-byte UTF-8
+            buf.writeByte(0xE0 | (c >> 12));
+            buf.writeByte(0x80 | ((c >> 6) & 0x3F));
+            buf.writeByte(0x80 | (c & 0x3F));
         }
     }
 
