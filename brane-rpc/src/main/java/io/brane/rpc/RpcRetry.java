@@ -3,7 +3,6 @@ package io.brane.rpc;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import java.io.IOException;
-import java.time.Duration;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.function.Supplier;
@@ -18,7 +17,7 @@ import java.util.function.Supplier;
  * temporary node unavailability</li>
  * <li><strong>Non-retryable errors:</strong> Reverts, insufficient funds,
  * invalid parameters</li>
- * <li><strong>Backoff:</strong> Linear backoff (200ms × attempt number)</li>
+ * <li><strong>Backoff:</strong> Exponential backoff (200ms × 2^(attempt-1), max 5s)</li>
  * </ul>
  * 
  * <p>
@@ -41,7 +40,8 @@ import java.util.function.Supplier;
  * <li>Attempt 1: No delay</li>
  * <li>Attempt 2: 200ms delay</li>
  * <li>Attempt 3: 400ms delay</li>
- * <li>Total delay for 3 attempts: 600ms</li>
+ * <li>Attempt 4: 800ms delay</li>
+ * <li>Attempt 5+: Capped at 5000ms</li>
  * </ul>
  * 
  * <p>
@@ -193,9 +193,13 @@ final class RpcRetry {
                 || message.contains("overloaded");
     }
 
+    private static final long BACKOFF_BASE_MS = 200;
+    private static final long BACKOFF_MAX_MS = 5000;
+
     private static long backoff(final int attempt) {
-        final long base = Duration.ofMillis(200).toMillis();
-        return base * attempt;
+        // Exponential backoff: base * 2^(attempt-1), capped at max
+        final long delay = BACKOFF_BASE_MS * (1L << (attempt - 1));
+        return Math.min(delay, BACKOFF_MAX_MS);
     }
 
     private static boolean isLikelyRevert(final String data) {
