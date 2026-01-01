@@ -352,7 +352,7 @@ public void close() {
 
 ## LOW Issues (5)
 
-### LOW-1: Inconsistent Use of `var` Across Codebase
+### LOW-1: [DONE] Inconsistent Use of `var` Across Codebase
 
 **File:** Multiple files
 **Severity:** LOW
