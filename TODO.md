@@ -302,7 +302,7 @@ final Map<String, Object> map = new LinkedHashMap<>(8);
 
 ---
 
-### MED-5: WebSocketProvider.writeInt() Allocates byte[] Array Inside Loop
+### MED-5: [DONE] WebSocketProvider.writeInt() Allocates byte[] Array Inside Loop
 
 **File:** `WebSocketProvider.java:1208`
 **Severity:** MEDIUM
