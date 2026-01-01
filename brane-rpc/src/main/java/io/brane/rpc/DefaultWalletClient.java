@@ -272,6 +272,9 @@ public final class DefaultWalletClient implements WalletClient {
         return new Hash(txHash);
     }
 
+    /** Maximum poll interval for exponential backoff (10 seconds). */
+    private static final long MAX_POLL_INTERVAL_MILLIS = 10_000L;
+
     @Override
     public TransactionReceipt sendTransactionAndWait(
             final TransactionRequest request, final long timeoutMillis, final long pollIntervalMillis) {
@@ -280,6 +283,9 @@ public final class DefaultWalletClient implements WalletClient {
         // Use monotonic clock (System.nanoTime) instead of wall clock (Instant.now)
         // to avoid issues with NTP adjustments or VM clock skew
         final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+
+        // Exponential backoff: start with user-provided interval, double each time, cap at MAX
+        long currentInterval = pollIntervalMillis;
 
         while (System.nanoTime() - deadlineNanos < 0) {
             final TransactionReceipt receipt = fetchReceipt(txHash);
@@ -293,7 +299,9 @@ public final class DefaultWalletClient implements WalletClient {
                 return receipt;
             }
             try {
-                Thread.sleep(pollIntervalMillis);
+                Thread.sleep(currentInterval);
+                // Double the interval for next iteration, capped at MAX_POLL_INTERVAL_MILLIS
+                currentInterval = Math.min(currentInterval * 2, MAX_POLL_INTERVAL_MILLIS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new RpcException(-32000, "Interrupted while waiting for receipt", null, e);
