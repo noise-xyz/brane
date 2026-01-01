@@ -74,12 +74,12 @@ public record LogFilter(
     /**
      * Creates a filter for a single contract address.
      *
+     * <p>For filtering by multiple addresses, use {@link #byContracts(List, List)}.
+     *
      * @param address the contract address to filter by
      * @param topics  the event topics to filter by (empty list for all events)
      * @return a new LogFilter
-     * @deprecated Use {@link #byContract(Address, List)} instead (method renamed for clarity)
      */
-    @Deprecated(since = "0.5.0", forRemoval = true)
     public static LogFilter byContract(final Address address, final List<Hash> topics) {
         Objects.requireNonNull(address, "address");
         return new LogFilter(Optional.empty(), Optional.empty(), Optional.of(List.of(address)), Optional.of(topics));
