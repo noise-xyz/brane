@@ -264,7 +264,7 @@ throw new IllegalArgumentException(
 
 ---
 
-### MED-3: LogParser Creates Mutable ArrayList Instead of Immutable List
+### MED-3: [DONE] LogParser Creates Mutable ArrayList Instead of Immutable List
 
 **File:** `LogParser.java:54, 79, 120, 157`
 **Severity:** MEDIUM
