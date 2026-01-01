@@ -6,13 +6,13 @@ import io.brane.core.error.RpcException;
 import java.math.BigInteger;
 import org.junit.jupiter.api.Test;
 
-class HttpClientTest {
+class RpcClientTest {
 
     @Test
     void convertsStringResult() throws RpcException {
         BraneProvider provider =
                 (method, params) -> new JsonRpcResponse("2.0", "0x1", null, "1");
-        HttpClient client = new HttpClient(provider);
+        RpcClient client = new RpcClient(provider);
 
         String result = client.call("eth_blockNumber", String.class);
         assertEquals("0x1", result);
@@ -22,7 +22,7 @@ class HttpClientTest {
     void convertsHexStringToBigInteger() throws RpcException {
         BraneProvider provider =
                 (method, params) -> new JsonRpcResponse("2.0", "0x2a", null, "1");
-        HttpClient client = new HttpClient(provider);
+        RpcClient client = new RpcClient(provider);
 
         BigInteger result = client.call("eth_call", BigInteger.class);
         assertEquals(BigInteger.valueOf(42), result);
@@ -34,7 +34,7 @@ class HttpClientTest {
         BraneProvider provider = (method, params) -> {
             throw failure;
         };
-        HttpClient client = new HttpClient(provider);
+        RpcClient client = new RpcClient(provider);
 
         RpcException ex =
                 assertThrows(

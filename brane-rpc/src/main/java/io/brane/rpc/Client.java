@@ -19,7 +19,7 @@ import io.brane.core.error.RpcException;
  *
  * <h2>Example usage:</h2>
  * <pre>{@code
- * Client client = new HttpClient(provider);
+ * Client client = new RpcClient(provider);
  * BigInteger blockNumber = client.call("eth_blockNumber", BigInteger.class);
  * String chainId = client.call("eth_chainId", String.class);
  * }</pre>
@@ -29,7 +29,7 @@ import io.brane.core.error.RpcException;
  *
  * <p><b>Thread Safety:</b> Implementations should be thread-safe for concurrent use.
  *
- * @see HttpClient
+ * @see RpcClient
  * @see BraneProvider
  * @see PublicClient
  */

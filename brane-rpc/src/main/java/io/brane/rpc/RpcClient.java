@@ -18,13 +18,13 @@ import java.util.List;
  * <h2>Example usage:</h2>
  * <pre>{@code
  * // Using URI directly (provider created internally, closed automatically)
- * try (HttpClient client = new HttpClient(URI.create("http://localhost:8545"))) {
+ * try (RpcClient client = new RpcClient(URI.create("http://localhost:8545"))) {
  *     BigInteger blockNumber = client.call("eth_blockNumber", BigInteger.class);
  * }
  *
  * // Using existing provider (caller manages provider lifecycle)
  * BraneProvider provider = HttpBraneProvider.create("http://localhost:8545");
- * HttpClient client = new HttpClient(provider);
+ * RpcClient client = new RpcClient(provider);
  * String chainId = client.call("eth_chainId", String.class);
  * }</pre>
  *
@@ -52,7 +52,7 @@ import java.util.List;
  * @see BraneProvider
  * @see PublicClient
  */
-public final class HttpClient implements Client, AutoCloseable {
+public final class RpcClient implements Client, AutoCloseable {
 
     private final BraneProvider provider;
     private final boolean ownsProvider;
@@ -65,7 +65,7 @@ public final class HttpClient implements Client, AutoCloseable {
      *
      * @param endpoint the JSON-RPC endpoint URI
      */
-    public HttpClient(final URI endpoint) {
+    public RpcClient(final URI endpoint) {
         this.provider = BraneProvider.http(endpoint.toString());
         this.ownsProvider = true;
     }
@@ -81,7 +81,7 @@ public final class HttpClient implements Client, AutoCloseable {
      *
      * @param provider the RPC provider to use for calls
      */
-    public HttpClient(final BraneProvider provider) {
+    public RpcClient(final BraneProvider provider) {
         this.provider = provider;
         this.ownsProvider = false;
     }
