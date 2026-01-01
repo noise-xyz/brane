@@ -63,19 +63,19 @@ public final class BatchHandle<T> {
     }
 
     /**
-     * Completes this handle with the given result.
+     * Attempts to complete this handle with the given result.
      *
-     * <p>This method is thread-safe. If called concurrently, only the first
-     * call will succeed; subsequent calls will throw {@link IllegalStateException}.
+     * <p>This method is thread-safe and idempotent. If called concurrently, only the first
+     * call will succeed; subsequent calls will return {@code false} without modifying state.
+     * This design allows safe completion from multiple sources (e.g., timeout handler and
+     * normal completion) without requiring external synchronization.
      *
      * @param result the result to set
-     * @throws IllegalStateException if already completed
+     * @return {@code true} if this call completed the handle, {@code false} if already completed
      * @throws NullPointerException if result is null
      */
-    void complete(final BatchResult<T> result) {
+    boolean complete(final BatchResult<T> result) {
         Objects.requireNonNull(result, "result");
-        if (!this.result.compareAndSet(null, result)) {
-            throw new IllegalStateException("BatchHandle has already been completed");
-        }
+        return this.result.compareAndSet(null, result);
     }
 }
