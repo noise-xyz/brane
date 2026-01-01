@@ -6,7 +6,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import io.brane.core.error.RpcException;
 import java.io.IOException;
+import java.util.Arrays;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 class RpcRetryTest {
@@ -96,5 +100,45 @@ class RpcRetryTest {
         assertEquals(3, ex.getAttemptCount());
         assertTrue(ex.getCause() instanceof RpcException);
         assertEquals(2, ex.getSuppressed().length); // 2 suppressed + 1 cause = 3 attempts
+    }
+
+    @Test
+    void interruptPreservesExceptionContext() throws Exception {
+        final CountDownLatch failedOnce = new CountDownLatch(1);
+        final CountDownLatch inSleep = new CountDownLatch(1);
+        final AtomicReference<Throwable> caughtException = new AtomicReference<>();
+        final AtomicReference<Boolean> wasInterrupted = new AtomicReference<>(false);
+
+        Thread worker = new Thread(() -> {
+            try {
+                RpcRetry.run(
+                        () -> {
+                            failedOnce.countDown();
+                            inSleep.countDown();
+                            throw new RpcException(-32000, "header not found", null, null, null);
+                        },
+                        3);
+            } catch (Exception e) {
+                caughtException.set(e);
+                wasInterrupted.set(Thread.currentThread().isInterrupted());
+            }
+        });
+
+        worker.start();
+        assertTrue(failedOnce.await(5, TimeUnit.SECONDS));
+        // Give time to enter sleep
+        Thread.sleep(50);
+        worker.interrupt();
+        worker.join(5000);
+
+        // Verify interrupt status was preserved
+        assertTrue(wasInterrupted.get(), "Thread interrupt status should be preserved");
+
+        // Verify exception was thrown with InterruptedException as suppressed
+        Throwable caught = caughtException.get();
+        assertTrue(caught instanceof RpcException, "Should throw RpcException");
+        boolean hasInterruptedSuppressed = Arrays.stream(caught.getSuppressed())
+                .anyMatch(s -> s instanceof InterruptedException);
+        assertTrue(hasInterruptedSuppressed, "InterruptedException should be suppressed");
     }
 }

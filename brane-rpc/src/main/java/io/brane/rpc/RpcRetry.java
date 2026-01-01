@@ -122,10 +122,14 @@ final class RpcRetry {
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 if (lastException != null) {
+                    // Preserve InterruptedException context by adding it as suppressed
                     if (lastException instanceof RuntimeException re) {
+                        re.addSuppressed(e);
                         throw re;
                     }
-                    throw new RuntimeException(lastException);
+                    final RuntimeException wrapper = new RuntimeException(lastException);
+                    wrapper.addSuppressed(e);
+                    throw wrapper;
                 }
                 throw new RuntimeException("Interrupted while retrying", e);
             }
