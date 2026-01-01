@@ -58,9 +58,21 @@ public record CallRequest(
 ) {
     /**
      * Creates a new CallRequest with validation.
+     *
+     * @throws IllegalArgumentException if both legacy (gasPrice) and EIP-1559
+     *         (maxFeePerGas/maxPriorityFeePerGas) gas fields are set
      */
     public CallRequest {
         Objects.requireNonNull(to, "Target address (to) is required for eth_call");
+
+        // Validate mutually exclusive gas pricing fields
+        boolean hasLegacyGas = gasPrice != null;
+        boolean hasEip1559Gas = maxFeePerGas != null || maxPriorityFeePerGas != null;
+        if (hasLegacyGas && hasEip1559Gas) {
+            throw new IllegalArgumentException(
+                    "Cannot set both legacy gasPrice and EIP-1559 gas fields " +
+                    "(maxFeePerGas/maxPriorityFeePerGas). Use one or the other.");
+        }
     }
 
     /**
