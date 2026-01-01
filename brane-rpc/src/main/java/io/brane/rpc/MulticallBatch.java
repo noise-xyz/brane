@@ -64,10 +64,28 @@ public final class MulticallBatch {
     private static final Address MULTICALL_ADDRESS = new Address("0xca11bde05977b3631167028862be2a173976ca11");
 
     /**
-     * Default chunk size for batching. 500 balances RPC payload size with
-     * efficiency.
-     * Most RPC providers support payloads up to 1MB; 500 calls typically stays well
-     * under.
+     * Default maximum number of calls per chunk when batching via Multicall3.
+     *
+     * <p><strong>Derivation:</strong> This value balances payload size against efficiency:
+     * <ul>
+     *   <li>Each Call3 tuple is ~120-200 bytes (address + bool + calldata)</li>
+     *   <li>A typical ERC-20 balanceOf call is ~68 bytes of calldata</li>
+     *   <li>500 calls × ~170 bytes ≈ 85KB request payload</li>
+     *   <li>Most RPC providers support 1-10MB payloads; 85KB provides 10x headroom</li>
+     *   <li>Response payload is typically smaller (32-byte returns per call)</li>
+     * </ul>
+     *
+     * <p><strong>Trade-offs:</strong>
+     * <ul>
+     *   <li>Smaller chunks: More RPC round-trips, higher latency</li>
+     *   <li>Larger chunks: Risk of timeouts, payload size limits, memory pressure</li>
+     * </ul>
+     *
+     * <p>Use {@link #chunkSize(int)} to override this default if your use case requires
+     * different batching characteristics (e.g., complex calls with large calldata).
+     *
+     * @see #chunkSize(int)
+     * @see #MAX_CHUNK_SIZE
      */
     private static final int DEFAULT_CHUNK_SIZE = 500;
 
