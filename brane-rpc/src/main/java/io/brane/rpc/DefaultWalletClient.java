@@ -453,20 +453,22 @@ public final class DefaultWalletClient implements WalletClient {
      * Fetches and caches the chain ID with thread-safe atomic caching.
      *
      * <p>
-     * Uses compareAndSet to ensure only one thread's fetched value is cached,
-     * preventing redundant RPC calls and ensuring consistent validation.
+     * Uses {@link AtomicReference#compareAndExchange} to ensure exactly one
+     * thread's value is cached, and all threads return the same cached value.
+     * This eliminates the TOCTOU race condition that could occur with separate
+     * compareAndSet + get operations.
      *
-     * @return the chain ID
+     * @return the chain ID (guaranteed consistent across all concurrent callers)
      * @throws ChainMismatchException if expectedChainId is set and doesn't match
      */
     private long enforceChainId() {
         // Fast path - already cached
-        Long cached = cachedChainId.get();
+        final Long cached = cachedChainId.get();
         if (cached != null) {
             return cached;
         }
 
-        // Slow path - fetch and cache atomically
+        // Slow path - fetch from network
         final String chainIdHex = callRpc("eth_chainId", List.of(), String.class, null);
         final long actual = RpcUtils.decodeHexBigInteger(chainIdHex).longValue();
 
@@ -475,13 +477,11 @@ public final class DefaultWalletClient implements WalletClient {
             throw new ChainMismatchException(expectedChainId, actual);
         }
 
-        // Atomically set if still null (another thread may have set it)
-        // This prevents redundant RPC calls from overwriting with the same value
-        cachedChainId.compareAndSet(null, actual);
-
-        // Return the actual cached value (may be from another thread)
-        cached = cachedChainId.get();
-        return cached != null ? cached : actual;
+        // Atomically set if still null, using compareAndExchange to get the witness value.
+        // If another thread already cached a value, witness will be non-null and we use it.
+        // If we win the race, witness will be null and we return our fetched value.
+        final Long witness = cachedChainId.compareAndExchange(null, actual);
+        return witness != null ? witness : actual;
     }
 
     private <T> T callRpc(
