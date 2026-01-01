@@ -55,7 +55,7 @@ public final class LogParser {
         for (Map<String, Object> map : rawLogs) {
             logs.add(parseLog(map));
         }
-        return logs;
+        return List.copyOf(logs);
     }
 
     /**
@@ -86,7 +86,7 @@ public final class LogParser {
         return new LogEntry(
                 address != null ? new Address(address) : null,
                 data != null ? new HexData(data) : HexData.EMPTY,
-                topics,
+                List.copyOf(topics),
                 blockHash != null ? new Hash(blockHash) : null,
                 txHash != null ? new Hash(txHash) : null,
                 logIndex,
@@ -121,7 +121,7 @@ public final class LogParser {
         for (Map<String, Object> map : raw) {
             logs.add(parseLogStrict(map));
         }
-        return logs;
+        return List.copyOf(logs);
     }
 
     /**
@@ -164,7 +164,7 @@ public final class LogParser {
         return new LogEntry(
                 address != null ? new Address(address) : null,
                 data != null ? new HexData(data) : HexData.EMPTY,
-                topics,
+                List.copyOf(topics),
                 blockHash != null ? new Hash(blockHash) : null,
                 txHash != null ? new Hash(txHash) : null,
                 logIndex,
