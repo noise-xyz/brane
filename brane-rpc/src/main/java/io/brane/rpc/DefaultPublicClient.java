@@ -350,7 +350,11 @@ final class DefaultPublicClient implements PublicClient {
                     timestamp,
                     baseFeeHex != null ? new Wei(RpcUtils.decodeHexBigInteger(baseFeeHex)) : null);
 
-            callback.accept(header);
+            try {
+                callback.accept(header);
+            } catch (Exception e) {
+                log.error("Exception in newHeads subscription callback (block {})", number, e);
+            }
         });
         return new SubscriptionImpl(id, provider);
     }
@@ -363,8 +367,12 @@ final class DefaultPublicClient implements PublicClient {
             Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
             );
-            LogEntry log = LogParser.parseLogStrict(map);
-            callback.accept(log);
+            LogEntry logEntry = LogParser.parseLogStrict(map);
+            try {
+                callback.accept(logEntry);
+            } catch (Exception e) {
+                log.error("Exception in logs subscription callback (tx {})", logEntry.transactionHash(), e);
+            }
         });
         return new SubscriptionImpl(id, provider);
     }
