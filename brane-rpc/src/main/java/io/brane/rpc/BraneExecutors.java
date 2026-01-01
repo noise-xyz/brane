@@ -66,11 +66,15 @@ public final class BraneExecutors {
      *
      * <p>
      * The returned executor creates a new virtual thread for each task.
+     * Threads are named {@code brane-io-N} for easier debugging.
      *
      * @return a virtual-thread-per-task executor
      */
     public static ExecutorService newIoBoundExecutor() {
-        return Executors.newVirtualThreadPerTaskExecutor();
+        return Executors.newThreadPerTaskExecutor(
+                Thread.ofVirtual()
+                        .name("brane-io-", 0)
+                        .factory());
     }
 
     /**
