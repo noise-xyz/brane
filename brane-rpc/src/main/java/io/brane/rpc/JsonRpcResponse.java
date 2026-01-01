@@ -74,7 +74,7 @@ public record JsonRpcResponse(
             for (Object key : map.keySet()) {
                 if (key != null && !(key instanceof String)) {
                     throw new IllegalArgumentException(
-                            "Map contains non-String key of type " + key.getClass().getName());
+                            "Map contains non-String key: value='" + key + "', type=" + key.getClass().getName());
                 }
             }
             return (Map<String, Object>) result;
