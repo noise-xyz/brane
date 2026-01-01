@@ -341,7 +341,7 @@ final class DefaultPublicClient implements PublicClient {
     public Subscription subscribeToLogs(LogFilter filter, java.util.function.Consumer<LogEntry> callback) {
         Map<String, Object> params = buildLogParams(filter);
         String id = provider.subscribe("logs", List.of(params), result -> {
-            @SuppressWarnings("unchecked")
+            // TypeReference provides full type information, so convertValue is type-safe here
             Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
             );
