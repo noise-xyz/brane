@@ -181,6 +181,16 @@ class HttpBraneProviderTest {
         assertEquals(1L, ex.requestId());
     }
 
+    @Test
+    void nullMethodThrowsNPE() {
+        BraneProvider provider = HttpBraneProvider.builder(baseUri.toString()).build();
+        NullPointerException ex =
+                assertThrows(
+                        NullPointerException.class,
+                        () -> provider.send(null, List.of()));
+        assertEquals("method", ex.getMessage());
+    }
+
     private void respond(final HttpExchange exchange, final int statusCode, final String body)
             throws IOException {
         exchange.getResponseHeaders().add("Content-Type", "application/json");
