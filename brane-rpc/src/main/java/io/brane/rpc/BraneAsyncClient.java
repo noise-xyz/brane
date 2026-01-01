@@ -3,8 +3,11 @@ package io.brane.rpc;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Async wrapper around {@link BraneProvider} for users who prefer futures.
@@ -39,19 +42,70 @@ import java.util.concurrent.Executors;
 public final class BraneAsyncClient {
 
     /**
-     * Shared default executor for async operations.
+     * Lazily-initialized shared executor for async operations.
      *
-     * <p>This executor is intentionally static and long-lived (JVM lifetime).
-     * Virtual thread executors are extremely lightweight - the overhead is just
-     * a thread factory and naming counter. Sharing this single executor across
-     * all BraneAsyncClient instances avoids unnecessary object creation.
-     *
-     * <p>If you need lifecycle control over the executor (e.g., for testing or
-     * container environments), use {@link #BraneAsyncClient(BraneProvider, Executor)}
-     * with your own executor instance.
+     * <p>Uses lazy initialization to support lifecycle management via
+     * {@link #shutdownDefaultExecutor()} for testing and container environments.
      */
-    private static final Executor DEFAULT_EXECUTOR = Executors.newThreadPerTaskExecutor(
-            Thread.ofVirtual().name("brane-async-", 0).factory());
+    private static final AtomicReference<ExecutorService> DEFAULT_EXECUTOR_REF = new AtomicReference<>();
+
+    private static ExecutorService getOrCreateDefaultExecutor() {
+        ExecutorService executor = DEFAULT_EXECUTOR_REF.get();
+        if (executor == null || executor.isShutdown()) {
+            ExecutorService newExecutor = Executors.newThreadPerTaskExecutor(
+                    Thread.ofVirtual().name("brane-async-", 0).factory());
+            if (DEFAULT_EXECUTOR_REF.compareAndSet(executor, newExecutor)) {
+                return newExecutor;
+            } else {
+                // Another thread won the race, shut down our executor and use theirs
+                newExecutor.shutdown();
+                return DEFAULT_EXECUTOR_REF.get();
+            }
+        }
+        return executor;
+    }
+
+    /**
+     * Shuts down the shared default executor for testing or container lifecycle management.
+     *
+     * <p>This method is primarily intended for:
+     * <ul>
+     *   <li>Test cleanup to prevent thread leaks in test frameworks</li>
+     *   <li>Container environments (e.g., Spring Boot context reloads)</li>
+     *   <li>Applications that require graceful shutdown</li>
+     * </ul>
+     *
+     * <p>After shutdown, new {@link BraneAsyncClient} instances using the default
+     * executor will create a fresh executor automatically.
+     *
+     * @param timeoutMillis maximum time to wait for pending tasks to complete
+     * @return true if the executor terminated within the timeout, false if timed out
+     */
+    public static boolean shutdownDefaultExecutor(long timeoutMillis) {
+        ExecutorService executor = DEFAULT_EXECUTOR_REF.get();
+        if (executor == null || executor.isShutdown()) {
+            return true;
+        }
+        executor.shutdown();
+        try {
+            return executor.awaitTermination(timeoutMillis, TimeUnit.MILLISECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            return false;
+        }
+    }
+
+    /**
+     * Immediately shuts down the default executor without waiting.
+     *
+     * <p>Use this for immediate cleanup when pending tasks can be abandoned.
+     */
+    public static void shutdownDefaultExecutorNow() {
+        ExecutorService executor = DEFAULT_EXECUTOR_REF.get();
+        if (executor != null && !executor.isShutdown()) {
+            executor.shutdownNow();
+        }
+    }
 
     private final BraneProvider provider;
     private final Executor executor;
@@ -62,7 +116,7 @@ public final class BraneAsyncClient {
      * @param provider the underlying RPC provider
      */
     public BraneAsyncClient(BraneProvider provider) {
-        this(provider, DEFAULT_EXECUTOR);
+        this(provider, getOrCreateDefaultExecutor());
     }
 
     /**
