@@ -81,6 +81,15 @@ public record WebSocketConfig(
     private static final int DEFAULT_IO_THREADS = 1;
 
     /**
+     * Returns the next power of 2 greater than or equal to the given value.
+     */
+    private static int nextPowerOf2(int value) {
+        if (value <= 0) return 1;
+        int highestBit = Integer.highestOneBit(value);
+        return (value == highestBit) ? value : highestBit << 1;
+    }
+
+    /**
      * Compact constructor with validation and defaults.
      */
     public WebSocketConfig {
@@ -103,11 +112,13 @@ public record WebSocketConfig(
         // Validate power of 2 constraints
         if ((maxPendingRequests & (maxPendingRequests - 1)) != 0) {
             throw new IllegalArgumentException(
-                    "maxPendingRequests must be a power of 2, got: " + maxPendingRequests);
+                    "maxPendingRequests must be a power of 2, got: " + maxPendingRequests
+                            + ", try: " + nextPowerOf2(maxPendingRequests));
         }
         if ((ringBufferSize & (ringBufferSize - 1)) != 0) {
             throw new IllegalArgumentException(
-                    "ringBufferSize must be a power of 2, got: " + ringBufferSize);
+                    "ringBufferSize must be a power of 2, got: " + ringBufferSize
+                            + ", try: " + nextPowerOf2(ringBufferSize));
         }
     }
 
