@@ -321,7 +321,7 @@ For high-throughput scenarios, this allocation on every integer write could caus
 
 ---
 
-### MED-6: BranePublicClient.close() May Throw If Provider Already Closed
+### MED-6: [DONE] BranePublicClient.close() May Throw If Provider Already Closed
 
 **File:** `BranePublicClient.java:86-88`
 **Severity:** MEDIUM
