@@ -3,6 +3,8 @@ package io.brane.rpc.internal;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListEntry;
+import io.brane.core.model.TransactionRequest;
+import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
@@ -205,5 +207,39 @@ public final class RpcUtils {
                     return map;
                 })
                 .toList();
+    }
+
+    /**
+     * Builds a transaction object map suitable for JSON-RPC calls like
+     * {@code eth_estimateGas} and {@code eth_call}.
+     * <p>
+     * Converts a {@link TransactionRequest} into the map format expected by
+     * Ethereum JSON-RPC methods. Only non-null fields are included in the output.
+     * <p>
+     * Output fields:
+     * <ul>
+     *   <li>{@code from}: Sender address (required)</li>
+     *   <li>{@code to}: Recipient address (optional)</li>
+     *   <li>{@code value}: Wei value as hex quantity (optional)</li>
+     *   <li>{@code data}: Call data as hex string (optional)</li>
+     *   <li>{@code accessList}: EIP-2930 access list (optional)</li>
+     * </ul>
+     *
+     * @param request the transaction request
+     * @param from the sender address to use (overrides request.from() if different)
+     * @return map suitable for JSON-RPC serialization
+     */
+    public static Map<String, Object> buildTxObject(final TransactionRequest request, final Address from) {
+        final Map<String, Object> tx = new LinkedHashMap<>();
+        tx.put("from", from.value());
+        request.toOpt().ifPresent(address -> tx.put("to", address.value()));
+        request.valueOpt().ifPresent(v -> tx.put("value", toQuantityHex(v.value())));
+        if (request.data() != null) {
+            tx.put("data", request.data().value());
+        }
+        if (request.accessList() != null && !request.accessList().isEmpty()) {
+            tx.put("accessList", toJsonAccessList(request.accessList()));
+        }
+        return tx;
     }
 }

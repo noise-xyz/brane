@@ -425,16 +425,7 @@ public final class DefaultWalletClient implements WalletClient {
     }
 
     private BigInteger estimateGas(final TransactionRequest request, final Address from) {
-        final Map<String, Object> tx = new LinkedHashMap<>();
-        tx.put("from", from.value());
-        request.toOpt().ifPresent(address -> tx.put("to", address.value()));
-        request.valueOpt().ifPresent(v -> tx.put("value", RpcUtils.toQuantityHex(v.value())));
-        if (request.data() != null) {
-            tx.put("data", request.data().value());
-        }
-        if (request.accessList() != null && !request.accessList().isEmpty()) {
-            tx.put("accessList", RpcUtils.toJsonAccessList(request.accessList()));
-        }
+        final Map<String, Object> tx = RpcUtils.buildTxObject(request, from);
         DebugLogger.logTx(LogFormatter.formatEstimateGas(
                 String.valueOf(from), String.valueOf(tx.get("to")), String.valueOf(tx.get("data"))));
         final long start = System.nanoTime();

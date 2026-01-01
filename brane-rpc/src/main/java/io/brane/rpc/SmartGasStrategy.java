@@ -280,17 +280,7 @@ final class SmartGasStrategy {
     }
 
     Map<String, Object> toTxObject(final TransactionRequest request) {
-        final Map<String, Object> tx = new LinkedHashMap<>();
-        tx.put("from", request.from().value());
-        request.toOpt().ifPresent(address -> tx.put("to", address.value()));
-        request.valueOpt().ifPresent(v -> tx.put("value", RpcUtils.toQuantityHex(v.value())));
-        if (request.data() != null) {
-            tx.put("data", request.data().value());
-        }
-        if (request.accessList() != null && !request.accessList().isEmpty()) {
-            tx.put("accessList", RpcUtils.toJsonAccessList(request.accessList()));
-        }
-        return tx;
+        return RpcUtils.buildTxObject(request, request.from());
     }
 
     private BigInteger requirePositive(final BigInteger value, final String name) {
