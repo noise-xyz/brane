@@ -95,7 +95,7 @@ This works but is harder to read. More importantly, if `System.nanoTime()` wraps
 
 ---
 
-### HIGH-2: SmartGasStrategy Silently Swallows RpcException in `callEstimateGas`
+### HIGH-2: [DONE] SmartGasStrategy Silently Swallows RpcException in `callEstimateGas`
 
 **File:** `SmartGasStrategy.java:174-188`
 **Severity:** HIGH
