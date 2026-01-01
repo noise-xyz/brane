@@ -157,7 +157,13 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * Callbacks are dispatched to this executor to avoid blocking the Netty I/O
      * thread.
      */
-    private volatile Executor subscriptionExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private volatile Executor subscriptionExecutor;
+
+    /**
+     * Tracks whether we own the subscription executor (created internally) and
+     * are responsible for shutting it down. User-provided executors are NOT owned.
+     */
+    private volatile boolean ownsSubscriptionExecutor = true;
 
     /**
      * Sets a custom executor for subscription callbacks.
@@ -165,8 +171,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * <p>
      * By default, subscription callbacks run on virtual threads to avoid blocking
      * the Netty I/O thread. Use this method to provide a custom executor if you
-     * need
-     * specific threading behavior (e.g., a bounded pool, or the same thread as
+     * need specific threading behavior (e.g., a bounded pool, or the same thread as
      * Netty).
      *
      * <p>
@@ -174,12 +179,18 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * Netty I/O thread (or any single thread), ensure callbacks complete quickly.
      * Blocking operations will stall all WebSocket I/O.
      *
+     * <p>
+     * <strong>Lifecycle:</strong> User-provided executors are NOT closed when
+     * {@link #close()} is called. The caller is responsible for managing the
+     * lifecycle of custom executors.
+     *
      * @param executor the executor to use for subscription callbacks (must not be
      *                 null)
      * @throws NullPointerException if executor is null
      */
     public void setSubscriptionExecutor(Executor executor) {
         this.subscriptionExecutor = Objects.requireNonNull(executor, "executor");
+        this.ownsSubscriptionExecutor = false; // User-provided - caller manages lifecycle
     }
 
     // ==================== Metrics ====================
@@ -226,6 +237,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         this.maxPendingRequests = config.maxPendingRequests();
         this.slotMask = maxPendingRequests - 1;
         this.defaultRequestTimeout = config.defaultRequestTimeout();
+
+        // Initialize default subscription executor (owned by this provider)
+        this.subscriptionExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        this.ownsSubscriptionExecutor = true;
 
         this.handler = new WebSocketClientHandler(
                 WebSocketClientHandshakerFactory.newHandshaker(
@@ -847,16 +862,24 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * This method:
      * </p>
      * <ul>
+     * <li>Fails any pending requests with an exception</li>
      * <li>Shuts down the Disruptor</li>
      * <li>Closes the WebSocket channel</li>
+     * <li>Shuts down the subscription executor (only if created internally)</li>
      * <li>Shuts down the Netty event loop group (only if created internally)</li>
-     * <li>Fails any pending requests with an exception</li>
      * </ul>
      *
      * <p>
-     * <b>EventLoopGroup ownership:</b> If an {@code EventLoopGroup} was provided via
-     * {@link WebSocketConfig#eventLoopGroup()}, it will NOT be shut down by this method.
-     * The caller is responsible for managing the lifecycle of externally-provided groups.
+     * <b>Resource ownership:</b> Externally-provided resources are NOT closed:
+     * </p>
+     * <ul>
+     * <li>If an {@code EventLoopGroup} was provided via {@link WebSocketConfig#eventLoopGroup()},
+     *     it will NOT be shut down.</li>
+     * <li>If a custom executor was set via {@link #setSubscriptionExecutor(Executor)},
+     *     it will NOT be shut down.</li>
+     * </ul>
+     * <p>
+     * The caller is responsible for managing the lifecycle of externally-provided resources.
      * </p>
      *
      * <p>
@@ -890,6 +913,24 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 log.warn("Interrupted while closing channel", e);
             } catch (Exception e) {
                 log.warn("Error closing channel", e);
+            }
+        }
+
+        // Shutdown the subscription executor only if we created it internally.
+        // User-provided executors are NOT closed - the caller manages their lifecycle.
+        if (ownsSubscriptionExecutor && subscriptionExecutor instanceof java.util.concurrent.ExecutorService es) {
+            try {
+                es.shutdown();
+                if (!es.awaitTermination(5, TimeUnit.SECONDS)) {
+                    es.shutdownNow();
+                    log.warn("Subscription executor did not terminate gracefully");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                es.shutdownNow();
+                log.warn("Interrupted while shutting down subscription executor", e);
+            } catch (Exception e) {
+                log.warn("Error shutting down subscription executor", e);
             }
         }
 
