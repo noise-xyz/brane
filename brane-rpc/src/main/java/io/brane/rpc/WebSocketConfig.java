@@ -81,10 +81,21 @@ public record WebSocketConfig(
     private static final int DEFAULT_IO_THREADS = 1;
 
     /**
+     * Maximum power of 2 that fits in a signed 32-bit int: 2^30 = 1,073,741,824.
+     */
+    private static final int MAX_POWER_OF_2 = 1 << 30;
+
+    /**
      * Returns the next power of 2 greater than or equal to the given value.
+     *
+     * @throws IllegalArgumentException if value > 2^30 (would overflow)
      */
     private static int nextPowerOf2(int value) {
         if (value <= 0) return 1;
+        if (value > MAX_POWER_OF_2) {
+            throw new IllegalArgumentException(
+                    "value " + value + " exceeds maximum power of 2 (" + MAX_POWER_OF_2 + ")");
+        }
         int highestBit = Integer.highestOneBit(value);
         return (value == highestBit) ? value : highestBit << 1;
     }
