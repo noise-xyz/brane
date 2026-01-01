@@ -123,7 +123,11 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private final EventLoopGroup group;
     /** True if we created the EventLoopGroup internally and are responsible for shutting it down. */
     private final boolean ownsEventLoopGroup;
-    private Channel channel;
+    /**
+     * The active WebSocket channel. Volatile because it is accessed from multiple threads:
+     * caller threads (sendAsync), Netty I/O thread, and reconnect scheduler.
+     */
+    private volatile Channel channel;
     private final WebSocketClientHandler handler;
     private final AtomicBoolean connected = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
