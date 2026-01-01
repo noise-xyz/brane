@@ -283,7 +283,7 @@ These lists are returned to callers who might accidentally mutate them.
 
 ---
 
-### MED-4: CallRequest.toMap() Creates LinkedHashMap With No Initial Capacity
+### MED-4: [DONE] CallRequest.toMap() Creates LinkedHashMap With No Initial Capacity
 
 **File:** `CallRequest.java:83`
 **Severity:** MEDIUM
