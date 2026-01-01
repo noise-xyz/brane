@@ -399,7 +399,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                         Thread.sleep(delay);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
-                        break;
+                        throw new RuntimeException("Connection attempt interrupted", ie);
                     }
                     delay = Math.min(delay * 2, 5000);
                     attempt++;
