@@ -84,7 +84,7 @@ Now TWO requests share the same slot, and the first response will complete both 
 
 ---
 
-## HIGH Issues (9) - 4 Fixed, 5 Pending
+## HIGH Issues (9) - ✅ ALL FIXED
 
 ### HIGH-1: Missing Null Check in HttpBraneProvider.send() ✅
 
@@ -135,21 +135,23 @@ If user explicitly requested EIP-1559 but node returned null baseFee, silently f
 
 ---
 
-### HIGH-5: DefaultPublicClient.getBlockByTag Missing @Nullable
+### HIGH-5: DefaultPublicClient.getBlockByTag Missing @Nullable ✅
 
 **File:** `DefaultPublicClient.java:284-307`
+**Fixed in:** `588e0ff`
 
 Interface declares `@Nullable BlockHeader`, but implementation lacks annotation.
 
 **Acceptance Criteria:**
-- [ ] Add `@Nullable` annotation to implementation
+- [x] Add `@Nullable` annotation to implementation
 - [ ] Or use `Optional<BlockHeader>` (Java 21 best practice)
 
 ---
 
-### HIGH-6: WebSocketProvider processResponseNode Silently Drops Responses
+### HIGH-6: WebSocketProvider processResponseNode Silently Drops Responses ✅
 
 **File:** `WebSocketProvider.java:511-543`
+**Fixed in:** `54dbb48`
 
 If response ID cannot be parsed, response is silently dropped and caller's future never completes:
 
@@ -165,15 +167,16 @@ if (idNode.isTextual()) {
 ```
 
 **Acceptance Criteria:**
-- [ ] Log at ERROR level when response cannot be matched
-- [ ] Track "orphaned responses" in metrics
+- [x] Log at ERROR level when response cannot be matched
+- [x] Track "orphaned responses" in metrics
 - [ ] Consider timing out futures that never receive responses
 
 ---
 
-### HIGH-7: sendTransactionAndWait Uses Wall Clock (Vulnerable to Clock Skew)
+### HIGH-7: sendTransactionAndWait Uses Wall Clock (Vulnerable to Clock Skew) ✅
 
 **File:** `DefaultWalletClient.java:277-308`
+**Fixed in:** `c173891`
 
 ```java
 final Instant deadline = Instant.now().plus(Duration.ofMillis(timeoutMillis));
@@ -183,26 +186,28 @@ while (Instant.now().isBefore(deadline)) { ... }
 **Impact:** NTP sync or VM pause makes deadline comparison unreliable.
 
 **Acceptance Criteria:**
-- [ ] Use `System.nanoTime()` for elapsed time tracking
-- [ ] `long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)`
+- [x] Use `System.nanoTime()` for elapsed time tracking
+- [x] `long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)`
 
 ---
 
-### HIGH-8: BatchHandle Double-Completion Throws Instead of Idempotent
+### HIGH-8: BatchHandle Double-Completion Throws Instead of Idempotent ✅
 
 **File:** `BatchHandle.java:75-80`
+**Fixed in:** `32493a0`
 
 Throwing on double-completion is problematic if timeout handler and normal completion race.
 
 **Acceptance Criteria:**
-- [ ] Make completion idempotent (return false instead of throwing)
+- [x] Make completion idempotent (return false instead of throwing)
 - [ ] Or document that callers MUST ensure single completion
 
 ---
 
-### HIGH-9: RpcUtils.decodeHexBigInteger Returns ZERO for Empty String
+### HIGH-9: RpcUtils.decodeHexBigInteger Returns ZERO for Empty String ✅
 
 **File:** `RpcUtils.java:139-148`
+**Fixed in:** `c74ae12`
 
 ```java
 public static BigInteger decodeHexBigInteger(final String hex) {
@@ -214,8 +219,8 @@ public static BigInteger decodeHexBigInteger(final String hex) {
 
 **Acceptance Criteria:**
 - [ ] Throw `IllegalArgumentException` for empty string, OR
-- [ ] Document explicitly that empty string = ZERO
-- [ ] Add test cases clarifying expected behavior
+- [x] Document explicitly that empty string = ZERO
+- [x] Add test cases clarifying expected behavior
 
 ---
 
@@ -475,10 +480,10 @@ public void unsubscribe() {
 | Severity | Count | Fixed | Pending | Status |
 |----------|-------|-------|---------|--------|
 | Critical | 5 | 5 | 0 | ✅ 100% |
-| High | 9 | 4 | 5 | 🟡 44% |
+| High | 9 | 9 | 0 | ✅ 100% |
 | Medium | 10 | 0 | 10 | ⬜ 0% |
 | Low | 7 | 0 | 7 | ⬜ 0% |
-| **Total** | **31** | **9** | **22** | **29% Complete** |
+| **Total** | **31** | **14** | **17** | **45% Complete** |
 
 ### Fixed Issues (by commit)
 
@@ -493,6 +498,11 @@ public void unsubscribe() {
 | `27affc4` | HIGH-2 | Preserve InterruptedException context in RpcRetry |
 | `f9f6c49` | HIGH-3 | Log warning when SmartGasStrategy downgrades EIP-1559 to legacy |
 | `833b53b` | HIGH-4 | Clear ThreadLocal before throwing in MulticallBatch.recordCall() |
+| `588e0ff` | HIGH-5 | Add @Nullable annotation to DefaultPublicClient.getBlockByTag() |
+| `54dbb48` | HIGH-6 | Log ERROR when WebSocketProvider cannot match response |
+| `c173891` | HIGH-7 | Use monotonic clock in sendTransactionAndWait() |
+| `32493a0` | HIGH-8 | Make BatchHandle.complete() idempotent |
+| `c74ae12` | HIGH-9 | Document decodeHexBigInteger empty string behavior |
 
 ---
 
