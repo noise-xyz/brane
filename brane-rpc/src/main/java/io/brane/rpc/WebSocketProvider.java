@@ -114,8 +114,9 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
     // Instance configuration (from WebSocketConfig or defaults)
     private final int maxPendingRequests;
-    private final int slotMask;
     private final Duration defaultRequestTimeout;
+    // Note: slotMask was removed - it was a remnant of slot-based indexing that is no longer used
+    // since pending request tracking switched to ConcurrentHashMap.
 
     // ==================== Connection State ====================
     private final String url;
@@ -250,7 +251,6 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         this.url = config.url();
         this.uri = URI.create(config.url());
         this.maxPendingRequests = config.maxPendingRequests();
-        this.slotMask = maxPendingRequests - 1;
         this.defaultRequestTimeout = config.defaultRequestTimeout();
 
         // Initialize default subscription executor (owned by this provider)
@@ -662,7 +662,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private CompletableFuture<JsonRpcResponse> allocateSlot(long id) {
         // Check pending request count for backpressure
         if (pendingRequests.size() >= maxPendingRequests) {
-            metrics.onBackpressure((int) (id & slotMask), maxPendingRequests);
+            metrics.onBackpressure(pendingRequests.size(), maxPendingRequests);
             return CompletableFuture.failedFuture(new io.brane.core.error.RpcException(
                     -32000,
                     "Too many pending requests (" + maxPendingRequests + " limit reached)",
@@ -675,7 +675,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         CompletableFuture<JsonRpcResponse> existing = pendingRequests.putIfAbsent(id, future);
         if (existing != null) {
             // Should never happen with monotonic IDs, but handle defensively
-            metrics.onBackpressure((int) (id & slotMask), maxPendingRequests);
+            metrics.onBackpressure(pendingRequests.size(), maxPendingRequests);
             return CompletableFuture.failedFuture(new io.brane.core.error.RpcException(
                     -32000,
                     "Request ID " + id + " already in use (internal error)",
