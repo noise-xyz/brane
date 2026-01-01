@@ -1,6 +1,7 @@
 package io.brane.rpc;
 
 import io.netty.channel.EventLoopGroup;
+import java.net.URI;
 import java.time.Duration;
 import java.util.Objects;
 
@@ -105,6 +106,24 @@ public record WebSocketConfig(
      */
     public WebSocketConfig {
         Objects.requireNonNull(url, "url");
+
+        // Validate URL format and scheme
+        try {
+            URI uri = URI.create(url);
+            String scheme = uri.getScheme();
+            if (scheme == null || (!scheme.equalsIgnoreCase("ws") && !scheme.equalsIgnoreCase("wss"))) {
+                throw new IllegalArgumentException(
+                        "url must use ws or wss scheme, got: " + (scheme == null ? "null" : scheme));
+            }
+            if (uri.getHost() == null || uri.getHost().isEmpty()) {
+                throw new IllegalArgumentException("url must have a valid host");
+            }
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage().startsWith("url must")) {
+                throw e;
+            }
+            throw new IllegalArgumentException("url is not a valid URI: " + e.getMessage(), e);
+        }
 
         // Apply defaults for zero/null values
         if (maxPendingRequests <= 0)
