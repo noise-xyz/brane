@@ -1,553 +1,190 @@
-# TODO: brane-rpc Principal Engineer Code Review
+# TODO: brane-rpc Principal Engineer Code Review (Round 2)
 
-**Review Date:** 2025-12-31 (Fresh Review)
+**Review Date:** 2025-12-31 (Fresh Review Post-Fix)
 **Reviewer:** Principal Engineer (Opus 4.5)
 **Module:** `brane-rpc/src/main/java/io/brane/rpc/`
+**Previous Round:** 31 issues fixed (100% complete)
+**This Round:** 14 issues fixed (100% complete)
 
 ---
 
-## CRITICAL Issues (5) - ✅ ALL FIXED
+## CRITICAL Issues (1) - COMPLETE
 
-### CRIT-1: Race Condition in WebSocketProvider Slot Allocation (TOCTOU) ✅
+### CRIT-1: WebSocketProvider connect() Retry Loop Loses InterruptedException Context
 
-**File:** `WebSocketProvider.java:590-611, 651-704`
-**Fixed in:** `f26e878`
-
-**Problem:** The slot allocation in `allocateSlot()` has a TOCTOU race condition. Between checking `existing.isDone()` and the CAS operation, another thread could:
-1. Complete the existing future
-2. Allocate and use that slot
-3. Send a request
-
-Now TWO requests share the same slot, and the first response will complete both futures with potentially wrong data.
+**File:** `WebSocketProvider.java:398-405`
+**Status:** Fixed in commit `TBD` - Throw immediately after restoring interrupt flag
 
 **Acceptance Criteria:**
-- [x] Use `ConcurrentHashMap<Long, CompletableFuture>` keyed by request ID instead of slot-based array
-- [x] Or use monotonically increasing slot index with modular wrapping and timeout-based cleanup
-- [x] Add integration tests simulating high-contention slot allocation
+- [x] Throw immediately after restoring interrupt flag: `throw new RuntimeException("Connection attempt interrupted", ie);`
+- [x] Test that interrupted threads receive proper exception type
 
 ---
 
-### CRIT-2: Unbounded Reconnect Loop Can Cause Resource Exhaustion ✅
+## HIGH Issues (4) - COMPLETE
 
-**File:** `WebSocketProvider.java:896-910`
-**Fixed in:** `b03e123`
+### HIGH-1: BranePublicClient Does Not Implement AutoCloseable - Provider Leak
 
-**Problem:** If server is permanently down, creates infinite scheduled reconnect tasks with no backoff.
+**File:** `BranePublicClient.java:55-190`
+**Status:** Fixed - Implemented `AutoCloseable` with proper resource cleanup
 
 **Acceptance Criteria:**
-- [x] Add maximum reconnect attempts (e.g., 10)
-- [x] Implement exponential backoff (1s, 2s, 4s, 8s...)
-- [x] After max attempts, set `closed=true` and fail all pending requests
-- [x] Expose `reconnectAttempts` counter in metrics
+- [x] Implement `AutoCloseable` on `BranePublicClient`
+- [x] Store provider reference for cleanup
+- [x] Add `close()` method that closes the underlying provider
+- [x] Document that `BranePublicClient` must be closed when done
 
 ---
 
-### CRIT-3: Thread Safety Issue in Chain ID Caching (DefaultWalletClient) ✅
+### HIGH-2: MulticallBatch.CallContext.complete() Silently Ignores Null Handle
 
-**File:** `DefaultWalletClient.java:462-485`
-**Fixed in:** `3d8739f`
-
-**Problem:** CAS race condition can return wrong chain ID when two threads call concurrently.
+**File:** `MulticallBatch.java:336-369`
+**Status:** Fixed - Added explicit null check with informative error
 
 **Acceptance Criteria:**
-- [x] Use `compareAndExchange` to detect if another thread won, validate winner's value
-- [x] Or use lock for the slow path
-- [x] Return value from `compareAndExchange` result, not second `get()`
+- [x] Replace silent return with `Objects.requireNonNull(handle(), "handle should never be null in executed context")`
 
 ---
 
-### CRIT-4: Resource Leak - subscriptionExecutor Never Closed ✅
+### HIGH-3: DefaultPublicClient.subscribeToLogs Has Misleading @SuppressWarnings
 
-**File:** `WebSocketProvider.java:147, 854-894`
-**Fixed in:** `7cd31cd`
-
-**Problem:** `close()` method never shuts down `subscriptionExecutor`.
+**File:** `DefaultPublicClient.java:344-347`
+**Status:** Fixed - Removed misleading annotation with explanatory comment
 
 **Acceptance Criteria:**
-- [x] Track if `subscriptionExecutor` is default (owned) or user-provided
-- [x] In `close()`, shut down owned executor
-- [x] Document that user-provided executors are NOT closed
+- [x] Remove the `@SuppressWarnings` since the code IS type-safe
+- [x] Added comment explaining TypeReference provides full type information
 
 ---
 
-### CRIT-5: NPE Risk in handleNotificationNode ✅
+### HIGH-4: WebSocketProvider.handleEvent Does Not Schedule Timeout for Batched Requests
 
-**File:** `WebSocketProvider.java:496-509`
-**Fixed in:** `03994ee`
-
-**Problem:** Malformed notification without `subscription` field throws NPE in Netty event loop.
+**File:** `WebSocketProvider.java:1037-1084`
+**Status:** Fixed - Added timeout scheduling for batched requests
 
 **Acceptance Criteria:**
-- [x] Null-check `params.get("subscription")` before `asText()`
-- [x] Handle malformed notifications gracefully with logging
-- [x] Never let exceptions escape to Netty's exceptionCaught
+- [x] Add timeout scheduling in `handleEvent()` matching `sendAsync()` behavior
 
 ---
 
-## HIGH Issues (9) - ✅ ALL FIXED
+## MEDIUM Issues (5) - COMPLETE
 
-### HIGH-1: Missing Null Check in HttpBraneProvider.send() ✅
+### MED-1: LogFilter.byContract Deprecated but No Non-Deprecated Single-Address Factory
 
-**File:** `HttpBraneProvider.java:53-88`
-**Fixed in:** `6cec2f6`
+**File:** `LogFilter.java:82-86`
+**Status:** Fixed in commit `352c334`
 
 **Acceptance Criteria:**
-- [x] Add `Objects.requireNonNull(method, "method")` at entry
-- [x] Test with null method parameter
+- [x] Un-deprecate `byContract(Address, List<Hash>)` - it's a valid convenience method
 
 ---
 
-### HIGH-2: RpcRetry Swallows InterruptedException Context ✅
+### MED-2: RpcRetry.isRetryableRpcError Missing Common Retryable Errors
 
-**File:** `RpcRetry.java:120-131`
-**Fixed in:** `27affc4`
-
-When `lastException != null`, the InterruptedException cause is lost.
+**File:** `RpcRetry.java:164-182`
+**Status:** Fixed in commit `df93754`
 
 **Acceptance Criteria:**
-- [x] Include InterruptedException as suppressed exception
-- [x] Test interrupt status is preserved
+- [x] Add common transient error patterns (rate limit, internal error, server busy)
 
 ---
 
-### HIGH-3: SmartGasStrategy Silently Downgrades EIP-1559 to Legacy ✅
+### MED-3: DefaultWalletClient.throwRevertException Swallows Non-Revert Exceptions
 
-**File:** `SmartGasStrategy.java:169-206`
-**Fixed in:** `f9f6c49`
-
-If user explicitly requested EIP-1559 but node returned null baseFee, silently falls back to legacy without warning.
+**File:** `DefaultWalletClient.java:346-351`
+**Status:** Fixed in commit `6c9dcf9`
 
 **Acceptance Criteria:**
-- [x] Log WARNING when falling back from EIP-1559 to legacy
-- [ ] Consider throwing if user explicitly set `isEip1559=true`
-- [x] Document behavior in Javadoc
+- [x] Log the original exception with stack trace
+- [x] Include original exception as cause in the thrown `RevertException`
 
 ---
 
-### HIGH-4: MulticallBatch ThreadLocal Not Cleared on Exception ✅
+### MED-4: WebSocketConfig.nextPowerOf2 Can Overflow for Large Inputs
 
-**File:** `MulticallBatch.java:82, 164-174`
-**Fixed in:** `833b53b`
+**File:** `WebSocketConfig.java:86-90`
+**Status:** Fixed in commit `82ac516`
 
 **Acceptance Criteria:**
-- [x] Clear ThreadLocal BEFORE throwing
-- [x] Add `clearPending()` call in `recordCall` when detecting orphaned call
+- [x] Add bounds check: `if (value > (1 << 30)) throw new IllegalArgumentException(...)`
+- [x] Test with boundary values near 2^30
 
 ---
 
-### HIGH-5: DefaultPublicClient.getBlockByTag Missing @Nullable ✅
+### MED-5: BraneAsyncClient Static DEFAULT_EXECUTOR Never Closed
 
-**File:** `DefaultPublicClient.java:284-307`
-**Fixed in:** `588e0ff`
-
-Interface declares `@Nullable BlockHeader`, but implementation lacks annotation.
+**File:** `BraneAsyncClient.java:46-47`
+**Status:** Fixed in commit `946901f`
 
 **Acceptance Criteria:**
-- [x] Add `@Nullable` annotation to implementation
-- [ ] Or use `Optional<BlockHeader>` (Java 21 best practice)
+- [x] Document that `DEFAULT_EXECUTOR` is intentionally static/long-lived
 
 ---
 
-### HIGH-6: WebSocketProvider processResponseNode Silently Drops Responses ✅
+## LOW Issues (4) - COMPLETE
 
-**File:** `WebSocketProvider.java:511-543`
-**Fixed in:** `54dbb48`
+### LOW-1: JsonRpcResponse.resultAsMap() Has Inconsistent Exception Documentation
 
-If response ID cannot be parsed, response is silently dropped and caller's future never completes:
-
-```java
-if (idNode.isTextual()) {
-    try {
-        id = Long.parseLong(idNode.asText());
-    } catch (Exception e) {
-        log.warn(...);  // Falls through with id=-1
-    }
-}
-// id=-1: response silently dropped, caller hangs forever
-```
+**File:** `JsonRpcResponse.java:67-76`
+**Status:** Fixed in commit `ca79c80`
 
 **Acceptance Criteria:**
-- [x] Log at ERROR level when response cannot be matched
-- [x] Track "orphaned responses" in metrics
-- [ ] Consider timing out futures that never receive responses
+- [x] Catch and wrap all exceptions in `IllegalArgumentException`
 
 ---
 
-### HIGH-7: sendTransactionAndWait Uses Wall Clock (Vulnerable to Clock Skew) ✅
+### LOW-2: MulticallInvocationHandler.handleObjectMethod Has Confusing equals() Logic
 
-**File:** `DefaultWalletClient.java:277-308`
-**Fixed in:** `c173891`
-
-```java
-final Instant deadline = Instant.now().plus(Duration.ofMillis(timeoutMillis));
-while (Instant.now().isBefore(deadline)) { ... }
-```
-
-**Impact:** NTP sync or VM pause makes deadline comparison unreliable.
+**File:** `MulticallInvocationHandler.java:78`
+**Status:** Fixed in commit `caa929d`
 
 **Acceptance Criteria:**
-- [x] Use `System.nanoTime()` for elapsed time tracking
-- [x] `long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis)`
+- [x] Rewrite for clarity: `case "equals" -> args != null && args.length > 0 && proxy == args[0];`
 
 ---
 
-### HIGH-8: BatchHandle Double-Completion Throws Instead of Idempotent ✅
+### LOW-3: BraneExecutors.newIoBoundExecutor() Returns Unnamed Threads
 
-**File:** `BatchHandle.java:75-80`
-**Fixed in:** `32493a0`
-
-Throwing on double-completion is problematic if timeout handler and normal completion race.
+**File:** `BraneExecutors.java:72-74`
+**Status:** Fixed in commit `f8eac17`
 
 **Acceptance Criteria:**
-- [x] Make completion idempotent (return false instead of throwing)
-- [ ] Or document that callers MUST ensure single completion
+- [x] Use `Thread.ofVirtual().name("brane-io-", 0).factory()` for consistency
 
 ---
 
-### HIGH-9: RpcUtils.decodeHexBigInteger Returns ZERO for Empty String ✅
+### LOW-4: DefaultPublicClient Uses Deprecated call() Method Internally
 
-**File:** `RpcUtils.java:139-148`
-**Fixed in:** `c74ae12`
-
-```java
-public static BigInteger decodeHexBigInteger(final String hex) {
-    if (hex == null || hex.isEmpty()) {
-        return BigInteger.ZERO;  // "" != "0x0", could mask parsing bugs
-    }
-}
-```
+**File:** `DefaultPublicClient.java:114-117`
+**Status:** Fixed in commit `ef5df86`
 
 **Acceptance Criteria:**
-- [ ] Throw `IllegalArgumentException` for empty string, OR
-- [x] Document explicitly that empty string = ZERO
-- [x] Add test cases clarifying expected behavior
-
----
-
-## MEDIUM Issues (10) - ✅ ALL FIXED
-
-### MED-1: Code Duplication - toTxObject in SmartGasStrategy and DefaultWalletClient ✅
-
-**Files:** `SmartGasStrategy.java:274-286`, `DefaultWalletClient.java:426-436`
-**Fixed in:** `de738e8`
-
-Nearly identical `buildTxObject` / `toTxObject` methods.
-
-**Acceptance Criteria:**
-- [x] Extract to `RpcUtils.buildTxObject(TransactionRequest)`
-- [x] Reuse in both classes
-
----
-
-### MED-2: Magic Number DEFAULT_CHUNK_SIZE = 500 Unexplained ✅
-
-**File:** `MulticallBatch.java:72`
-**Fixed in:** `a281817`
-
-```java
-private static final int DEFAULT_CHUNK_SIZE = 500;  // Why 500?
-```
-
-**Acceptance Criteria:**
-- [x] Add Javadoc explaining derivation (e.g., payload size calculation)
-- [ ] Consider making configurable per-provider (deferred - not necessary)
-
----
-
-### MED-3: HttpBraneProvider.close() May Block Forever ✅
-
-**File:** `HttpBraneProvider.java:42-46`
-**Fixed in:** `3136987`
-
-```java
-public void close() {
-    httpClient.close();
-    executor.close();  // May block waiting for tasks - no timeout
-}
-```
-
-**Acceptance Criteria:**
-- [x] Use `executor.shutdownNow()` or `awaitTermination()` with timeout
-- [x] Document blocking behavior in Javadoc
-
----
-
-### MED-4: Missing Javadoc on Subscription Interface ✅
-
-**File:** `Subscription.java:1-18`
-**Fixed in:** `6847387`
-
-```java
-public interface Subscription {
-    String id();        // No @return
-    void unsubscribe(); // No @throws - idempotent?
-}
-```
-
-**Acceptance Criteria:**
-- [x] Add full Javadoc with `@return`, `@throws`
-- [x] Document idempotency of `unsubscribe()`
-
----
-
-### MED-5: BranePublicClient.Builder Leaks Provider on Build Failure ✅
-
-**File:** `BranePublicClient.java:159-172`
-**Fixed in:** `13a51d5`
-
-```java
-public BranePublicClient build() {
-    final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-    final PublicClient publicClient = PublicClient.from(provider);  // If throws, provider leaks
-    return new BranePublicClient(publicClient, profile);
-}
-```
-
-**Acceptance Criteria:**
-- [x] Wrap in try-catch, close provider on exception
-- [x] Use try-with-resources pattern
-
----
-
-### MED-6: LogParser Uses Raw List Type ✅
-
-**File:** `LogParser.java:50-51`
-**Fixed in:** `c225cc3`
-
-```java
-@SuppressWarnings("unchecked")
-final List<Map<String, Object>> rawLogs = MAPPER.convertValue(value, List.class);
-```
-
-**Acceptance Criteria:**
-- [x] Use `new TypeReference<List<Map<String, Object>>>() {}`
-- [x] Remove @SuppressWarnings
-
----
-
-### MED-7: WebSocketProvider writeEscapedString Corrupts Supplementary Unicode ✅
-
-**File:** `WebSocketProvider.java:982-1020`
-**Fixed in:** `8d81beb`
-
-```java
-for (int i = 0; i < s.length(); i++) {
-    char c = s.charAt(i);  // Only handles BMP characters
-    buf.writeByte(c);      // Corrupts surrogate pairs (emoji)
-}
-```
-
-**Acceptance Criteria:**
-- [x] Use proper UTF-8 encoding for non-ASCII characters
-- [x] Test with emoji in method names
-
----
-
-### MED-8: Inconsistent Factory Method Naming ✅
-
-- `WebSocketProvider.create()`
-- `HttpBraneProvider.builder().build()`
-- `PublicClient.from()`
-- `DefaultWalletClient.from()` / `DefaultWalletClient.create()`
-
-**Fixed:** Pattern documented in AGENT.md Section VIII (lines 130-153).
-
-**Acceptance Criteria:**
-- [x] Standardize: `of()` for simple, `builder()` for complex, `from()` for conversion
-- [x] Document pattern in style guide
-
----
-
-### MED-9: RetryExhaustedException serialVersionUID Policy Unclear ✅
-
-**File:** `RetryExhaustedException.java:38-51`
-
-```java
-private static final long serialVersionUID = 1L;
-```
-
-**Acceptance Criteria:**
-- [x] Add comment explaining serialVersionUID policy
-- [x] Consider generated UID based on class structure (decided to keep fixed 1L with explanation)
-
----
-
-### MED-10: CallRequest Allows Both Legacy and EIP-1559 Gas Fields ✅
-
-**File:** `CallRequest.java:49-58`
-**Fixed in:** `e3aa507`
-
-```java
-public record CallRequest(
-    BigInteger gasPrice,           // Legacy
-    BigInteger maxFeePerGas,       // EIP-1559
-    BigInteger maxPriorityFeePerGas
-) { /* No validation prevents both being set */ }
-```
-
-**Acceptance Criteria:**
-- [x] Add validation in compact constructor
-- [x] Throw if both legacy and EIP-1559 fields are set
-
----
-
-## LOW Issues (7) - ✅ ALL FIXED
-
-### LOW-1: BraneAsyncClient DEFAULT_EXECUTOR Unnamed Threads ✅
-
-**File:** `BraneAsyncClient.java:46`
-**Fixed in:** `b12d5a1`
-
-```java
-private static final Executor DEFAULT_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
-```
-
-**Acceptance Criteria:**
-- [x] Use `Thread.ofVirtual().name("brane-async-", 0).factory()`
-
----
-
-### LOW-2: JsonRpcError.code Should Be long Not int ✅
-
-**File:** `JsonRpcError.java:6`
-**Fixed in:** `fb8b170`
-
-JSON-RPC spec allows large error codes that could overflow `int`.
-
-**Acceptance Criteria:**
-- [x] Change to `long` or document `int` limitation (documented limitation)
-
----
-
-### LOW-3: WebSocketConfig Validation Could Suggest Valid Values ✅
-
-**File:** `WebSocketConfig.java:104-111`
-**Fixed in:** `89821f4`
-
-```java
-throw new IllegalArgumentException(
-    "maxPendingRequests must be a power of 2, got: " + maxPendingRequests);
-// Could suggest: "got: 1000, try: 1024"
-```
-
-**Acceptance Criteria:**
-- [x] Suggest nearest power of 2 in error message
-
----
-
-### LOW-4: RpcConfig Missing Validation ✅
-
-**File:** `RpcConfig.java:17-22`
-**Fixed in:** `502b6ec`
-
-No validation that URL is valid or timeouts are positive.
-
-**Acceptance Criteria:**
-- [x] Validate URL format
-- [x] Validate timeouts > 0
-
----
-
-### LOW-5: Test Coverage - WebSocket Edge Cases ✅
-
-**Fixed in:** Integration tests added to `WebSocketIntegrationTest.java`
-
-No tests for:
-- Reconnect under load
-- Slot collision handling
-- Timeout vs completion races
-
-**Acceptance Criteria:**
-- [x] Add stress tests for concurrent request submission
-- [ ] Test reconnect behavior with mock server (deferred - requires mock WebSocket server)
-
----
-
-### LOW-6: LongAdder Fields Never Exposed via Metrics ✅
-
-**File:** `WebSocketProvider.java:213-226`
-
-`totalRequests`, `totalResponses`, `totalErrors` fields exist but not exposed.
-
-**Acceptance Criteria:**
-- [ ] Expose via BraneMetrics
-- [x] Or remove unused fields (removed unused, kept `orphanedResponses` with documentation)
-
----
-
-### LOW-7: DefaultPublicClient.SubscriptionImpl Ignores Unsubscribe Errors ✅
-
-**File:** `DefaultPublicClient.java:354-397`
-
-```java
-public void unsubscribe() {
-    provider.unsubscribe(id);  // Errors not handled
-}
-```
-
-**Acceptance Criteria:**
-- [x] Catch and log unsubscribe failures
-- [x] Make unsubscribe idempotent
+- [x] Move implementation to the new method
+- [x] Have deprecated method delegate to the new one
 
 ---
 
 ## Summary
 
-| Severity | Count | Fixed | Pending | Status |
-|----------|-------|-------|---------|--------|
-| Critical | 5 | 5 | 0 | ✅ 100% |
-| High | 9 | 9 | 0 | ✅ 100% |
-| Medium | 10 | 10 | 0 | ✅ 100% |
-| Low | 7 | 7 | 0 | ✅ 100% |
-| **Total** | **31** | **31** | **0** | **✅ 100% Complete** |
-
-### Fixed Issues (by commit)
-
-| Commit | Issue | Description |
-|--------|-------|-------------|
-| `f26e878` | CRIT-1 | Eliminate TOCTOU race in WebSocketProvider slot allocation |
-| `b03e123` | CRIT-2 | Add max attempts and exponential backoff to WebSocket reconnect |
-| `3d8739f` | CRIT-3 | Use compareAndExchange for thread-safe chain ID caching |
-| `7cd31cd` | CRIT-4 | Close subscriptionExecutor to prevent resource leak |
-| `03994ee` | CRIT-5 | Prevent NPE in handleNotificationNode for malformed notifications |
-| `6cec2f6` | HIGH-1 | Add null check for method parameter in HttpBraneProvider.send() |
-| `27affc4` | HIGH-2 | Preserve InterruptedException context in RpcRetry |
-| `f9f6c49` | HIGH-3 | Log warning when SmartGasStrategy downgrades EIP-1559 to legacy |
-| `833b53b` | HIGH-4 | Clear ThreadLocal before throwing in MulticallBatch.recordCall() |
-| `588e0ff` | HIGH-5 | Add @Nullable annotation to DefaultPublicClient.getBlockByTag() |
-| `54dbb48` | HIGH-6 | Log ERROR when WebSocketProvider cannot match response |
-| `c173891` | HIGH-7 | Use monotonic clock in sendTransactionAndWait() |
-| `32493a0` | HIGH-8 | Make BatchHandle.complete() idempotent |
-| `c74ae12` | HIGH-9 | Document decodeHexBigInteger empty string behavior |
-| `de738e8` | MED-1 | Extract duplicate toTxObject to RpcUtils.buildTxObject |
-| `a281817` | MED-2 | Document DEFAULT_CHUNK_SIZE derivation in MulticallBatch |
-| `3136987` | MED-3 | Prevent HttpBraneProvider.close() from blocking forever |
-| `6847387` | MED-4 | Add comprehensive Javadoc to Subscription interface |
-| `13a51d5` | MED-5 | Prevent provider leak in BranePublicClient.Builder |
-| `c225cc3` | MED-6 | Use TypeReference for type-safe JSON deserialization in LogParser |
-| `8d81beb` | MED-7 | Fix UTF-8 encoding for supplementary Unicode in WebSocketProvider |
-| `a80585b` | MED-8 | Document factory method naming convention in AGENT.md |
-| `a80585b` | MED-9 | Add comment explaining serialVersionUID policy |
-| `e3aa507` | MED-10 | Add validation for mutually exclusive gas fields in CallRequest |
-| `b12d5a1` | LOW-1 | Use named virtual threads in BraneAsyncClient |
-| `fb8b170` | LOW-2 | Document int limitation in JsonRpcError.code |
-| `89821f4` | LOW-3 | Suggest nearest power of 2 in WebSocketConfig validation |
-| `502b6ec` | LOW-4 | Add URL and timeout validation to RpcConfig |
-| `45705eb` | LOW-5 | Add WebSocket edge case tests |
-| `45705eb` | LOW-6 | Remove unused LongAdder metrics |
-| `45705eb` | LOW-7 | Make SubscriptionImpl.unsubscribe() idempotent with error handling |
+| Severity | Count | Fixed | Pending |
+|----------|-------|-------|---------|
+| Critical | 1 | 1 | 0 |
+| High | 4 | 4 | 0 |
+| Medium | 5 | 5 | 0 |
+| Low | 4 | 4 | 0 |
+| **Total** | **14** | **14** | **0** |
 
 ---
 
 ## What's Done Well
 
-1. **Thread Safety Patterns**: Good use of `AtomicReference`, `ConcurrentHashMap`, `AtomicBoolean`
-2. **Comprehensive Javadoc**: Most public APIs have excellent documentation with examples
-3. **Record Usage**: Proper use of records for DTOs
-4. **Error Hierarchy**: Well-designed `BraneException` sealed hierarchy
-5. **Builder Pattern**: Clean builder APIs for configuration
-6. **Virtual Thread Support**: Appropriate use for I/O-bound work
-7. **Metrics Integration**: Thoughtful `BraneMetrics` interface
-8. **Zero-Allocation Serialization**: ByteBuf-based JSON in WebSocketProvider
-9. **Sealed Interfaces**: Good use of sealed types for `BlockTag`
-10. **Defensive Null Checks**: Consistent `Objects.requireNonNull()` in constructors
+1. **Thread Safety Patterns**: Excellent use of `AtomicReference.compareAndExchange()` for chain ID caching, `ConcurrentHashMap` for pending requests, and `AtomicBoolean` for state flags.
+2. **Resource Management**: The WebSocketProvider correctly tracks ownership of EventLoopGroup and subscriptionExecutor, only closing resources it created.
+3. **Comprehensive Javadoc**: Most public APIs have thorough documentation including usage examples, thread safety notes, and exception documentation.
+4. **Record Usage**: Proper use of Java 21 records for immutable data (CallRequest, LogFilter, BatchResult, etc.) with validation in compact constructors.
+5. **Metrics Hooks**: The `BraneMetrics` interface provides good extensibility for observability without coupling to specific metrics libraries.
+6. **Backpressure Handling**: WebSocketProvider properly handles backpressure with configurable limits and metrics callbacks.
+7. **Error Hierarchy**: Well-designed exception hierarchy with specific exception types for different failure modes.
+8. **Sealed Types**: Good use of sealed interfaces for `BlockTag` providing compile-time exhaustiveness checking.
+9. **Exponential Backoff**: Reconnection logic properly implements exponential backoff with configurable maximum attempts.
+10. **UTF-8 Handling**: The `writeUtf8Char` method correctly handles surrogate pairs for supplementary Unicode characters.
