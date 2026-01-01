@@ -122,7 +122,7 @@ private String callEstimateGas(final Map<String, Object> tx) {
 
 ---
 
-### HIGH-3: BraneAsyncClient Default Executor Race Condition on Recreation
+### HIGH-3: [DONE] BraneAsyncClient Default Executor Race Condition on Recreation
 
 **File:** `BraneAsyncClient.java:52-66`
 **Severity:** HIGH
