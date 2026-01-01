@@ -439,7 +439,9 @@ No validation that URL is valid or timeouts are positive.
 
 ---
 
-### LOW-5: Test Coverage - WebSocket Edge Cases
+### LOW-5: Test Coverage - WebSocket Edge Cases ✅
+
+**Fixed in:** Integration tests added to `WebSocketIntegrationTest.java`
 
 No tests for:
 - Reconnect under load
@@ -447,26 +449,26 @@ No tests for:
 - Timeout vs completion races
 
 **Acceptance Criteria:**
-- [ ] Add stress tests for concurrent request submission
-- [ ] Test reconnect behavior with mock server
+- [x] Add stress tests for concurrent request submission
+- [ ] Test reconnect behavior with mock server (deferred - requires mock WebSocket server)
 
 ---
 
-### LOW-6: LongAdder Fields Never Exposed via Metrics
+### LOW-6: LongAdder Fields Never Exposed via Metrics ✅
 
-**File:** `WebSocketProvider.java:44-45`
+**File:** `WebSocketProvider.java:213-226`
 
 `totalRequests`, `totalResponses`, `totalErrors` fields exist but not exposed.
 
 **Acceptance Criteria:**
 - [ ] Expose via BraneMetrics
-- [ ] Or remove unused fields
+- [x] Or remove unused fields (removed unused, kept `orphanedResponses` with documentation)
 
 ---
 
-### LOW-7: DefaultPublicClient.SubscriptionImpl Ignores Unsubscribe Errors
+### LOW-7: DefaultPublicClient.SubscriptionImpl Ignores Unsubscribe Errors ✅
 
-**File:** `DefaultPublicClient.java:348-353`
+**File:** `DefaultPublicClient.java:354-397`
 
 ```java
 public void unsubscribe() {
@@ -475,8 +477,8 @@ public void unsubscribe() {
 ```
 
 **Acceptance Criteria:**
-- [ ] Catch and log unsubscribe failures
-- [ ] Make unsubscribe idempotent
+- [x] Catch and log unsubscribe failures
+- [x] Make unsubscribe idempotent
 
 ---
 
@@ -487,8 +489,8 @@ public void unsubscribe() {
 | Critical | 5 | 5 | 0 | ✅ 100% |
 | High | 9 | 9 | 0 | ✅ 100% |
 | Medium | 10 | 5 | 5 | 🟨 50% |
-| Low | 7 | 0 | 7 | ⬜ 0% |
-| **Total** | **31** | **19** | **12** | **61% Complete** |
+| Low | 7 | 3 | 4 | 🟨 43% |
+| **Total** | **31** | **22** | **9** | **71% Complete** |
 
 ### Fixed Issues (by commit)
 

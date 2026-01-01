@@ -22,7 +22,10 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of {@link PublicClient} for read-only blockchain operations.
@@ -59,6 +62,8 @@ import org.jspecify.annotations.Nullable;
  * @see RpcRetry
  */
 final class DefaultPublicClient implements PublicClient {
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultPublicClient.class);
 
     private final BraneProvider provider;
 
@@ -346,10 +351,48 @@ final class DefaultPublicClient implements PublicClient {
         return new SubscriptionImpl(id, provider);
     }
 
-    private record SubscriptionImpl(String id, BraneProvider provider) implements Subscription {
+    /**
+     * Subscription implementation that handles unsubscribe errors gracefully.
+     *
+     * <p><strong>Idempotency:</strong> Calling {@link #unsubscribe()} multiple times
+     * is safe and has no additional effect after the first call.
+     *
+     * <p><strong>Error Handling:</strong> Unsubscribe failures are logged at WARN level
+     * and do not throw exceptions. This prevents resource cleanup issues when the
+     * subscription is already terminated (e.g., WebSocket disconnected).
+     */
+    private static final class SubscriptionImpl implements Subscription {
+        private final String id;
+        private final BraneProvider provider;
+        private final AtomicBoolean unsubscribed = new AtomicBoolean(false);
+
+        SubscriptionImpl(String id, BraneProvider provider) {
+            this.id = id;
+            this.provider = provider;
+        }
+
+        @Override
+        public String id() {
+            return id;
+        }
+
         @Override
         public void unsubscribe() {
-            provider.unsubscribe(id);
+            // Idempotent: only unsubscribe once
+            if (!unsubscribed.compareAndSet(false, true)) {
+                log.debug("Subscription {} already unsubscribed, ignoring duplicate call", id);
+                return;
+            }
+
+            try {
+                provider.unsubscribe(id);
+                log.debug("Successfully unsubscribed from {}", id);
+            } catch (Exception e) {
+                // Log and swallow - unsubscribe failures should not propagate
+                // Common causes: connection already closed, subscription already terminated
+                log.warn("Failed to unsubscribe from {}: {} ({})",
+                        id, e.getMessage(), e.getClass().getSimpleName());
+            }
         }
     }
 

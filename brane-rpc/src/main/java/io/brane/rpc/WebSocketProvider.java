@@ -210,9 +210,19 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         this.metrics = Objects.requireNonNull(metrics, "metrics");
     }
 
-    private final LongAdder totalRequests = new LongAdder();
-    private final LongAdder totalResponses = new LongAdder();
-    private final LongAdder totalErrors = new LongAdder();
+    /**
+     * Counter for orphaned responses (responses received with no matching pending request).
+     * Orphaned responses occur when:
+     * <ul>
+     *   <li>Response ID cannot be parsed</li>
+     *   <li>Request timed out before response arrived</li>
+     *   <li>Request was cancelled</li>
+     * </ul>
+     * <p>
+     * Orphaned responses are logged at ERROR level for debugging. This counter provides
+     * visibility into how often this occurs. High counts may indicate network issues,
+     * server-side delays, or timeout values that are too aggressive.
+     */
     private final LongAdder orphanedResponses = new LongAdder();
 
     // Lock-free ID generator

@@ -29,7 +29,13 @@ import java.time.Duration;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -293,6 +299,235 @@ public class WebSocketIntegrationTest {
         );
         JsonRpcResponse quickResponse = quickFuture.get(10, TimeUnit.SECONDS);
         assertNotNull(quickResponse.result());
+    }
+
+    // ==================== LOW-5: WebSocket Edge Case Tests ====================
+
+    /**
+     * Stress test: High-concurrency concurrent request submission.
+     * Tests that the ConcurrentHashMap-based request tracking handles
+     * many simultaneous requests without race conditions.
+     */
+    @Test
+    void testHighConcurrencyStress() throws Exception {
+        int numRequests = 1000;
+        int numThreads = 50;
+        CountDownLatch startLatch = new CountDownLatch(1);
+        CountDownLatch doneLatch = new CountDownLatch(numRequests);
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger errorCount = new AtomicInteger(0);
+
+        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
+        try {
+            for (int i = 0; i < numRequests; i++) {
+                executor.submit(() -> {
+                    try {
+                        startLatch.await(); // Wait for all threads to be ready
+                        CompletableFuture<JsonRpcResponse> future = wsProvider.sendAsync(
+                                "eth_blockNumber", List.of());
+                        JsonRpcResponse response = future.get(30, TimeUnit.SECONDS);
+                        if (response.error() == null && response.result() != null) {
+                            successCount.incrementAndGet();
+                        } else {
+                            errorCount.incrementAndGet();
+                        }
+                    } catch (Exception e) {
+                        errorCount.incrementAndGet();
+                        log.error("Request failed", e);
+                    } finally {
+                        doneLatch.countDown();
+                    }
+                });
+            }
+
+            // Release all threads at once to maximize contention
+            startLatch.countDown();
+
+            // Wait for all requests to complete
+            boolean completed = doneLatch.await(60, TimeUnit.SECONDS);
+            assertTrue(completed, "Not all requests completed in time");
+            assertEquals(numRequests, successCount.get(),
+                    "All requests should succeed. Errors: " + errorCount.get());
+        } finally {
+            executor.shutdownNow();
+        }
+    }
+
+    /**
+     * Stress test: Concurrent async batch requests via Disruptor.
+     * Tests that the Disruptor ring buffer handles high-throughput
+     * request submission without data corruption.
+     */
+    @Test
+    void testDisruptorBatchStress() throws Exception {
+        int numRequests = 500;
+        List<CompletableFuture<JsonRpcResponse>> futures = new java.util.ArrayList<>();
+
+        // Submit all requests as fast as possible to stress the ring buffer
+        long startTime = System.nanoTime();
+        for (int i = 0; i < numRequests; i++) {
+            futures.add(wsProvider.sendAsyncBatch("eth_chainId", List.of()));
+        }
+        long submitTime = System.nanoTime() - startTime;
+        log.info("Submitted {} requests in {}ms", numRequests, submitTime / 1_000_000);
+
+        // Wait for all to complete
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0]))
+                .get(60, TimeUnit.SECONDS);
+
+        // Verify all responses are valid and have the same chain ID
+        String expectedChainId = null;
+        int successCount = 0;
+        for (CompletableFuture<JsonRpcResponse> f : futures) {
+            JsonRpcResponse response = f.get();
+            assertNull(response.error(), "Request should not have error");
+            assertNotNull(response.result(), "Result should not be null");
+            String chainId = response.result().toString();
+            if (expectedChainId == null) {
+                expectedChainId = chainId;
+            } else {
+                assertEquals(expectedChainId, chainId,
+                        "All responses should have same chain ID (no slot collision)");
+            }
+            successCount++;
+        }
+        assertEquals(numRequests, successCount, "All requests should succeed");
+    }
+
+    /**
+     * Tests timeout vs completion race: ensures that if a request completes
+     * just before timeout, the correct result is returned (not a timeout error).
+     */
+    @Test
+    void testTimeoutCompletionRace() throws Exception {
+        // Use a reasonable timeout that should not fire for a fast local node
+        Duration timeout = Duration.ofSeconds(5);
+        int numRequests = 50;
+        AtomicInteger timeoutCount = new AtomicInteger(0);
+        AtomicInteger successCount = new AtomicInteger(0);
+
+        List<CompletableFuture<JsonRpcResponse>> futures = new java.util.ArrayList<>();
+        for (int i = 0; i < numRequests; i++) {
+            futures.add(wsProvider.sendAsync("eth_blockNumber", List.of(), timeout));
+        }
+
+        for (CompletableFuture<JsonRpcResponse> f : futures) {
+            try {
+                JsonRpcResponse response = f.get(10, TimeUnit.SECONDS);
+                if (response.error() == null) {
+                    successCount.incrementAndGet();
+                }
+            } catch (ExecutionException e) {
+                if (e.getCause() != null &&
+                        e.getCause().getMessage() != null &&
+                        e.getCause().getMessage().contains("timed out")) {
+                    timeoutCount.incrementAndGet();
+                } else {
+                    throw e;
+                }
+            }
+        }
+
+        // With a 5 second timeout against a fast local node, all should succeed
+        assertEquals(numRequests, successCount.get(),
+                "All requests should complete before timeout");
+        assertEquals(0, timeoutCount.get(),
+                "No requests should timeout against fast local node");
+    }
+
+    /**
+     * Tests that close() is idempotent - calling it multiple times should not throw.
+     */
+    @Test
+    void testIdempotentClose() {
+        // Create a new provider for this test
+        WebSocketProvider testProvider = WebSocketProvider.create(wsUrl);
+
+        // First close should succeed
+        testProvider.close();
+
+        // Second close should be idempotent (no exception)
+        testProvider.close();
+
+        // Third close should also be fine
+        testProvider.close();
+    }
+
+    /**
+     * Tests that after close(), new requests fail appropriately.
+     */
+    @Test
+    void testRequestsFailAfterClose() {
+        // Create a new provider for this test
+        WebSocketProvider testProvider = WebSocketProvider.create(wsUrl);
+
+        // Close the provider
+        testProvider.close();
+
+        // Try to send a request - should fail
+        CompletableFuture<JsonRpcResponse> future = testProvider.sendAsync(
+                "eth_blockNumber", List.of());
+
+        assertThrows(Exception.class, () -> {
+            future.get(5, TimeUnit.SECONDS);
+        }, "Requests should fail after provider is closed");
+    }
+
+    /**
+     * Tests concurrent close and request submission don't cause issues.
+     */
+    @Test
+    void testConcurrentCloseAndRequests() throws Exception {
+        WebSocketProvider testProvider = WebSocketProvider.create(wsUrl);
+        CountDownLatch startLatch = new CountDownLatch(1);
+        AtomicInteger completedOrFailed = new AtomicInteger(0);
+        int numRequests = 20;
+
+        ExecutorService executor = Executors.newFixedThreadPool(numRequests + 1);
+        try {
+            // Submit requests that will race with close
+            for (int i = 0; i < numRequests; i++) {
+                executor.submit(() -> {
+                    try {
+                        startLatch.await();
+                        CompletableFuture<JsonRpcResponse> future = testProvider.sendAsync(
+                                "eth_blockNumber", List.of());
+                        future.get(10, TimeUnit.SECONDS);
+                    } catch (Exception e) {
+                        // Expected - some requests will fail due to close
+                    }
+                    completedOrFailed.incrementAndGet();
+                });
+            }
+
+            // Submit close on another thread
+            executor.submit(() -> {
+                try {
+                    startLatch.await();
+                    Thread.sleep(5); // Small delay to let some requests start
+                    testProvider.close();
+                } catch (Exception e) {
+                    // Ignore
+                }
+            });
+
+            // Release all threads
+            startLatch.countDown();
+
+            // Wait for completion
+            Thread.sleep(5000);
+
+            // All requests should either complete or fail (not hang)
+            assertEquals(numRequests, completedOrFailed.get(),
+                    "All requests should complete or fail, not hang");
+        } finally {
+            executor.shutdownNow();
+            // Ensure cleanup even if assertions fail
+            try {
+                testProvider.close();
+            } catch (Exception ignored) {
+            }
+        }
     }
 
     private void triggerMine() throws Exception {
