@@ -23,7 +23,7 @@ The brane-rpc module has matured significantly through previous review rounds. T
 
 ## CRITICAL Issues (2)
 
-### CRIT-1: WebSocketProvider `connect()` Method Not Thread-Safe During Reconnection
+### CRIT-1: [DONE] WebSocketProvider `connect()` Method Not Thread-Safe During Reconnection
 
 **File:** `WebSocketProvider.java:349-415`
 **Severity:** CRITICAL
@@ -48,7 +48,7 @@ this.handler = new WebSocketClientHandler(
 
 ---
 
-### CRIT-2: MulticallBatch Not Failing Pending Handles on Chunk Execution Error
+### CRIT-2: [DONE] MulticallBatch Not Failing Pending Handles on Chunk Execution Error
 
 **File:** `MulticallBatch.java:313-348`
 **Severity:** CRITICAL
@@ -374,7 +374,7 @@ final Map<String, Object> map = MAPPER.convertValue(...);
 
 ---
 
-### LOW-2: JsonRpcNotification Missing Javadoc
+### LOW-2: [DONE] JsonRpcNotification Missing Javadoc
 
 **File:** `JsonRpcNotification.java:1-11`
 **Severity:** LOW
