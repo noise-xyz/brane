@@ -434,18 +434,14 @@ public final class DefaultWalletClient implements WalletClient {
 
     private BigInteger estimateGas(final TransactionRequest request, final Address from) {
         final Map<String, Object> tx = RpcUtils.buildTxObject(request, from);
-        DebugLogger.logTx(LogFormatter.formatEstimateGas(
-                String.valueOf(from), String.valueOf(tx.get("to")), String.valueOf(tx.get("data"))));
-        final long start = System.nanoTime();
-        final String estimate;
-        try {
-            estimate = callRpc("eth_estimateGas", List.of(tx), String.class, null);
-        } catch (RpcException e) {
-            handlePotentialRevert(e, null);
-            throw e;
-        }
-        final long durationMicros = (System.nanoTime() - start) / 1_000L;
-        DebugLogger.logTx(LogFormatter.formatEstimateGasResult(durationMicros, estimate));
+        final String estimate = RpcUtils.timedEstimateGas(tx, () -> {
+            try {
+                return callRpc("eth_estimateGas", List.of(tx), String.class, null);
+            } catch (RpcException e) {
+                handlePotentialRevert(e, null);
+                throw e;
+            }
+        });
         return RpcUtils.decodeHexBigInteger(estimate);
     }
 

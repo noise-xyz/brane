@@ -1,6 +1,8 @@
 package io.brane.rpc.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.brane.core.DebugLogger;
+import io.brane.core.LogFormatter;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionRequest;
@@ -11,6 +13,7 @@ import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /**
  * Internal utility methods for RPC data encoding, decoding, and error handling.
@@ -241,5 +244,36 @@ public final class RpcUtils {
             tx.put("accessList", toJsonAccessList(request.accessList()));
         }
         return tx;
+    }
+
+    /**
+     * Executes an {@code eth_estimateGas} call with consistent debug logging and timing.
+     *
+     * <p>This method extracts the common pattern used by both {@code DefaultWalletClient}
+     * and {@code SmartGasStrategy} for gas estimation:
+     * <ol>
+     *   <li>Logs the estimate gas request (from, to, data)</li>
+     *   <li>Times the RPC call execution</li>
+     *   <li>Logs the result with timing information</li>
+     * </ol>
+     *
+     * <p>The actual RPC call is delegated to the provided supplier, allowing callers
+     * to use their own error handling and RPC mechanisms.
+     *
+     * @param tx the transaction object map (must contain "from", optionally "to" and "data")
+     * @param rpcCall supplier that executes the actual {@code eth_estimateGas} RPC call
+     * @return the gas estimate as a hex string (e.g., "0x5208")
+     * @throws RpcException if the RPC call fails (propagated from supplier)
+     */
+    public static String timedEstimateGas(final Map<String, Object> tx, final Supplier<String> rpcCall) {
+        DebugLogger.logTx(LogFormatter.formatEstimateGas(
+                String.valueOf(tx.get("from")),
+                String.valueOf(tx.get("to")),
+                String.valueOf(tx.get("data"))));
+        final long start = System.nanoTime();
+        final String result = rpcCall.get();
+        final long durationMicros = (System.nanoTime() - start) / 1_000L;
+        DebugLogger.logTx(LogFormatter.formatEstimateGasResult(durationMicros, result));
+        return result;
     }
 }

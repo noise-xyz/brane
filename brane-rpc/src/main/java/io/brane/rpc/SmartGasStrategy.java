@@ -1,8 +1,6 @@
 package io.brane.rpc;
 
 import io.brane.core.chain.ChainProfile;
-import io.brane.core.DebugLogger;
-import io.brane.core.LogFormatter;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionRequest;
@@ -174,23 +172,19 @@ final class SmartGasStrategy {
     }
 
     private String callEstimateGas(final Map<String, Object> tx) {
-        DebugLogger.logTx(LogFormatter.formatEstimateGas(
-                String.valueOf(tx.get("from")), String.valueOf(tx.get("to")), String.valueOf(tx.get("data"))));
-        final long start = System.nanoTime();
-        final JsonRpcResponse response = provider.send("eth_estimateGas", List.of(tx));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(
-                    err.code(), err.message(), err.data() != null ? err.data().toString() : null, null, null);
-        }
-        final Object resultObj = response.result();
-        if (resultObj == null) {
-            throw new RpcException(-32000, "eth_estimateGas returned null result", (String) null, (Throwable) null);
-        }
-        final String result = resultObj.toString();
-        final long durationMicros = (System.nanoTime() - start) / 1_000L;
-        DebugLogger.logTx(LogFormatter.formatEstimateGasResult(durationMicros, result));
-        return result;
+        return RpcUtils.timedEstimateGas(tx, () -> {
+            final JsonRpcResponse response = provider.send("eth_estimateGas", List.of(tx));
+            if (response.hasError()) {
+                final JsonRpcError err = response.error();
+                throw new RpcException(
+                        err.code(), err.message(), err.data() != null ? err.data().toString() : null, null, null);
+            }
+            final Object resultObj = response.result();
+            if (resultObj == null) {
+                throw new RpcException(-32000, "eth_estimateGas returned null result", (String) null, (Throwable) null);
+            }
+            return resultObj.toString();
+        });
     }
 
     private TransactionRequest ensureFees(final TransactionRequest request) {
