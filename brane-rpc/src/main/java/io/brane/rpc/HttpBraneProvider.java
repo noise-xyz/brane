@@ -16,6 +16,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 public final class HttpBraneProvider implements BraneProvider {
@@ -35,15 +36,40 @@ public final class HttpBraneProvider implements BraneProvider {
     }
 
     /**
+     * Default timeout in seconds for graceful shutdown of the executor.
+     * After this timeout, any remaining tasks will be forcibly cancelled.
+     */
+    private static final long SHUTDOWN_TIMEOUT_SECONDS = 5;
+
+    /**
      * Closes this provider and releases associated resources.
-     * <p>
-     * This method shuts down the internal HTTP client and its executor service.
-     * After calling this method, the provider should not be used for further requests.
+     *
+     * <p>This method performs a graceful shutdown of the internal HTTP client and
+     * executor service:
+     * <ol>
+     *   <li>Initiates orderly shutdown (no new tasks accepted)</li>
+     *   <li>Waits up to {@value #SHUTDOWN_TIMEOUT_SECONDS} seconds for in-flight requests</li>
+     *   <li>Forces termination if timeout expires</li>
+     * </ol>
+     *
+     * <p><strong>Blocking behavior:</strong> This method may block for up to
+     * {@value #SHUTDOWN_TIMEOUT_SECONDS} seconds while waiting for in-flight
+     * requests to complete. After the timeout, any remaining requests are cancelled.
+     *
+     * <p>After calling this method, the provider should not be used for further requests.
      */
     @Override
     public void close() {
         httpClient.close();
-        executor.close();
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
     }
 
     public static Builder builder(final String url) {
