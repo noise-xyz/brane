@@ -114,19 +114,9 @@ final class DefaultPublicClient implements PublicClient {
     public HexData call(final CallRequest request, final BlockTag blockTag) {
         final Map<String, Object> callObject = request.toMap();
         final String blockTagStr = blockTag.toRpcValue();
-        final String result = call(callObject, blockTagStr);
-        if (result == null || result.isEmpty() || "0x".equals(result)) {
-            return HexData.EMPTY;
-        }
-        return new HexData(result);
-    }
-
-    @SuppressWarnings("deprecation")
-    @Override
-    public String call(final Map<String, Object> callObject, final String blockTag) {
         final long start = System.nanoTime();
-        DebugLogger.log(LogFormatter.formatCall(blockTag, callObject));
-        final JsonRpcResponse response = sendWithRetry("eth_call", List.of(callObject, blockTag));
+        DebugLogger.log(LogFormatter.formatCall(blockTagStr, callObject));
+        final JsonRpcResponse response = sendWithRetry("eth_call", List.of(callObject, blockTagStr));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
             throw new io.brane.core.error.RpcException(
@@ -135,8 +125,36 @@ final class DefaultPublicClient implements PublicClient {
         final Object result = response.result();
         final String output = result != null ? result.toString() : null;
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
-        DebugLogger.log(LogFormatter.formatCallResult(blockTag, durationMicros, output));
-        return output;
+        DebugLogger.log(LogFormatter.formatCallResult(blockTagStr, durationMicros, output));
+        if (output == null || output.isEmpty() || "0x".equals(output)) {
+            return HexData.EMPTY;
+        }
+        return new HexData(output);
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    public String call(final Map<String, Object> callObject, final String blockTag) {
+        // Deprecated: delegate to the typed call() method for consistent behavior
+        final Address to = new Address((String) callObject.get("to"));
+        final HexData data = callObject.containsKey("data")
+                ? new HexData((String) callObject.get("data"))
+                : null;
+        final CallRequest request = CallRequest.of(to, data);
+        final BlockTag parsedBlockTag = parseBlockTag(blockTag);
+        final HexData result = call(request, parsedBlockTag);
+        return result.value();
+    }
+
+    private static BlockTag parseBlockTag(final String blockTag) {
+        return switch (blockTag) {
+            case "latest" -> BlockTag.LATEST;
+            case "pending" -> BlockTag.PENDING;
+            case "earliest" -> BlockTag.EARLIEST;
+            case "safe" -> BlockTag.SAFE;
+            case "finalized" -> BlockTag.FINALIZED;
+            default -> BlockTag.of(RpcUtils.decodeHexLong(blockTag));
+        };
     }
 
     @Override
