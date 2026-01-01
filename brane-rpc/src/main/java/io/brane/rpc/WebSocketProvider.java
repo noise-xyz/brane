@@ -1218,6 +1218,19 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         }
     }
 
+    /**
+     * Write an int value directly to ByteBuf without String allocation.
+     *
+     * <p><b>Allocation note:</b> The 10-byte digitBuf array is allocated on each call for
+     * values >= 10. We deliberately skip ThreadLocal optimization because:
+     * <ul>
+     *   <li>Array is small (10 bytes) and short-lived</li>
+     *   <li>Does not escape this method - eligible for JVM escape analysis</li>
+     *   <li>Modern JVMs (HotSpot C2) can perform scalar replacement, allocating on stack</li>
+     *   <li>ThreadLocal would add complexity and cleanup concerns (see Keccak256.cleanup())</li>
+     * </ul>
+     * If profiling shows GC pressure from this allocation, consider ThreadLocal buffers.
+     */
     private void writeInt(ByteBuf buf, int value) {
         if (value == Integer.MIN_VALUE) {
             buf.writeBytes("-2147483648".getBytes(StandardCharsets.UTF_8));
@@ -1235,7 +1248,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             buf.writeByte('0' + value);
             return;
         }
-        // Max int is 10 digits
+        // Max int is 10 digits - small array eligible for escape analysis
         byte[] digitBuf = new byte[10];
         int pos = 9;
         while (value > 0) {
@@ -1266,6 +1279,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
     /**
      * Write a long value directly to ByteBuf without String allocation.
+     *
+     * <p><b>Allocation note:</b> Same rationale as {@link #writeInt} - the 20-byte digitBuf
+     * array is small, short-lived, and eligible for JVM escape analysis / scalar replacement.
+     * ThreadLocal optimization skipped due to complexity vs. minimal benefit trade-off.
      */
     private void writeLong(ByteBuf buf, long value) {
         if (value == Long.MIN_VALUE) {
@@ -1295,7 +1312,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             temp /= 10;
         }
 
-        // Write digits in reverse order using a small buffer
+        // Write digits in reverse order - small array eligible for escape analysis
         byte[] digitBuf = new byte[20]; // Max long is 19 digits
         int pos = digits - 1;
         while (value > 0) {
