@@ -65,10 +65,10 @@ public record LogFilter(
         Optional<List<Hash>> topics) {
 
     public LogFilter {
-        fromBlock = fromBlock == null ? Optional.empty() : fromBlock;
-        toBlock = toBlock == null ? Optional.empty() : toBlock;
-        addresses = addresses == null ? Optional.empty() : addresses;
-        topics = topics == null ? Optional.empty() : topics;
+        Objects.requireNonNull(fromBlock, "fromBlock must not be null; use Optional.empty()");
+        Objects.requireNonNull(toBlock, "toBlock must not be null; use Optional.empty()");
+        Objects.requireNonNull(addresses, "addresses must not be null; use Optional.empty()");
+        Objects.requireNonNull(topics, "topics must not be null; use Optional.empty()");
     }
 
     /**
