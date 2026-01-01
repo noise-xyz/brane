@@ -156,6 +156,16 @@ public final class BranePublicClient implements PublicClient {
             return this;
         }
 
+        /**
+         * Builds a new {@link BranePublicClient} instance.
+         *
+         * <p>This method creates an HTTP provider and wraps it in a public client.
+         * If client creation fails after the provider is created, the provider is
+         * automatically closed to prevent resource leaks.
+         *
+         * @return a new BranePublicClient instance
+         * @throws IllegalStateException if no RPC URL is configured
+         */
         public BranePublicClient build() {
             final String rpcUrl = rpcUrlOverride != null ? rpcUrlOverride : profile.defaultRpcUrl();
 
@@ -167,8 +177,14 @@ public final class BranePublicClient implements PublicClient {
             }
 
             final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-            final PublicClient publicClient = PublicClient.from(provider);
-            return new BranePublicClient(publicClient, profile);
+            try {
+                final PublicClient publicClient = PublicClient.from(provider);
+                return new BranePublicClient(publicClient, profile);
+            } catch (RuntimeException | Error e) {
+                // Close provider to prevent resource leak if client creation fails
+                provider.close();
+                throw e;
+            }
         }
     }
 }
