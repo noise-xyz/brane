@@ -334,8 +334,7 @@ public final class MulticallBatch {
         }
 
         void complete(MulticallResult result) {
-            if (handle() == null)
-                return;
+            Objects.requireNonNull(handle(), "handle should never be null in executed context");
 
             T data = null;
             String revertReason = null;
