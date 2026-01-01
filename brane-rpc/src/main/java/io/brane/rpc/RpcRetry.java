@@ -28,6 +28,9 @@ import java.util.function.Supplier;
  * <li>✅ "timeout" - Network or node timeout</li>
  * <li>✅ "connection reset" - Network hiccup</li>
  * <li>✅ "underpriced" / "nonce too low" - Mempool issues</li>
+ * <li>✅ "rate limit" / "too many requests" / "429" - Provider rate limiting</li>
+ * <li>✅ "internal error" / "-32603" - Transient server errors</li>
+ * <li>✅ "server busy" / "overloaded" - Server capacity issues</li>
  * <li>❌ Revert data (0x...) - Smart contract reverted</li>
  * <li>❌ "insufficient funds" - User error</li>
  * </ul>
@@ -178,7 +181,16 @@ final class RpcRetry {
                 || message.contains("temporary unavailable")
                 || message.contains("try again")
                 || message.contains("underpriced")
-                || message.contains("nonce too low");
+                || message.contains("nonce too low")
+                // Rate limiting from RPC providers
+                || message.contains("rate limit")
+                || message.contains("too many requests")
+                || message.contains("429")
+                // Transient server errors
+                || message.contains("internal error")
+                || message.contains("-32603")
+                || message.contains("server busy")
+                || message.contains("overloaded");
     }
 
     private static long backoff(final int attempt) {
