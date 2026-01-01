@@ -178,7 +178,7 @@ This information is critical for debugging production issues (timeouts, mismatch
 
 ---
 
-### HIGH-5: DefaultWalletClient.throwRevertException May Throw Wrong Exception Type
+### HIGH-5: [DONE] DefaultWalletClient.throwRevertException May Throw Wrong Exception Type
 
 **File:** `DefaultWalletClient.java:319-367`
 **Severity:** HIGH
