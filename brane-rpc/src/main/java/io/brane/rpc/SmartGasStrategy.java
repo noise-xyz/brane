@@ -177,14 +177,39 @@ final class SmartGasStrategy {
             if (response.hasError()) {
                 final JsonRpcError err = response.error();
                 throw new RpcException(
-                        err.code(), err.message(), err.data() != null ? err.data().toString() : null, null, null);
+                        err.code(),
+                        formatEstimateGasError(tx, err.message()),
+                        err.data() != null ? err.data().toString() : null,
+                        null,
+                        null);
             }
             final Object resultObj = response.result();
             if (resultObj == null) {
-                throw new RpcException(-32000, "eth_estimateGas returned null result", (String) null, (Throwable) null);
+                throw new RpcException(
+                        -32000,
+                        formatEstimateGasError(tx, "returned null result"),
+                        (String) null,
+                        (Throwable) null);
             }
             return resultObj.toString();
         });
+    }
+
+    /**
+     * Formats an error message with transaction context for gas estimation failures.
+     */
+    private static String formatEstimateGasError(final Map<String, Object> tx, final String errorDetail) {
+        final var from = tx.get("from");
+        final var to = tx.get("to");
+        final var sb = new StringBuilder("eth_estimateGas failed");
+        if (from != null) {
+            sb.append(" for tx from ").append(from);
+        }
+        if (to != null) {
+            sb.append(" to ").append(to);
+        }
+        sb.append(": ").append(errorDetail);
+        return sb.toString();
     }
 
     private TransactionRequest ensureFees(final TransactionRequest request) {
