@@ -50,19 +50,27 @@ public final class BraneAsyncClient {
     private static final AtomicReference<ExecutorService> DEFAULT_EXECUTOR_REF = new AtomicReference<>();
 
     private static ExecutorService getOrCreateDefaultExecutor() {
-        ExecutorService executor = DEFAULT_EXECUTOR_REF.get();
-        if (executor == null || executor.isShutdown()) {
+        // Loop handles the case where another thread shuts down the executor between checks
+        while (true) {
+            ExecutorService executor = DEFAULT_EXECUTOR_REF.get();
+            if (executor != null && !executor.isShutdown()) {
+                return executor;
+            }
             ExecutorService newExecutor = Executors.newThreadPerTaskExecutor(
                     Thread.ofVirtual().name("brane-async-", 0).factory());
-            if (DEFAULT_EXECUTOR_REF.compareAndSet(executor, newExecutor)) {
+            ExecutorService witness = DEFAULT_EXECUTOR_REF.compareAndExchange(executor, newExecutor);
+            if (witness == executor) {
+                // CAS succeeded, we installed our executor
                 return newExecutor;
-            } else {
-                // Another thread won the race, shut down our executor and use theirs
-                newExecutor.shutdown();
-                return DEFAULT_EXECUTOR_REF.get();
             }
+            // Another thread won the race, shut down our executor
+            newExecutor.shutdown();
+            // Check if witness is usable, otherwise loop again
+            if (witness != null && !witness.isShutdown()) {
+                return witness;
+            }
+            // witness is null or shutdown, loop and try again
         }
-        return executor;
     }
 
     /**
