@@ -30,35 +30,61 @@ import java.util.Objects;
  * <p>
  * <strong>Thread Safety:</strong> This class is immutable and thread-safe once
  * built.
- * 
+ *
+ * <p>
+ * <strong>Resource Management:</strong> This class implements {@link AutoCloseable}
+ * and must be closed when done to release the underlying provider resources.
+ * Use try-with-resources for automatic cleanup:
+ *
+ * <pre>{@code
+ * try (BranePublicClient client = BranePublicClient.forChain(ChainProfiles.MAINNET).build()) {
+ *     // Use client...
+ * }
+ * }</pre>
+ *
  * <p>
  * <strong>Usage Example:</strong>
- * 
+ *
  * <pre>{@code
  * // Use default RPC URL from chain profile
- * PublicClient client = BranePublicClient.forChain(ChainProfiles.MAINNET)
+ * BranePublicClient client = BranePublicClient.forChain(ChainProfiles.MAINNET)
  *         .build();
- * 
+ *
  * // Override RPC URL (e.g., use Infura or Alchemy)
- * PublicClient client = BranePublicClient.forChain(ChainProfiles.MAINNET)
+ * BranePublicClient client = BranePublicClient.forChain(ChainProfiles.MAINNET)
  *         .withRpcUrl("https://mainnet.infura.io/v3/YOUR_KEY")
  *         .build();
- * 
+ *
  * // Access chain profile
- * BranePublicClient braneClient = (BranePublicClient) client;
- * System.out.println("Chain ID: " + braneClient.profile().chainId());
+ * System.out.println("Chain ID: " + client.profile().chainId());
+ *
+ * // Close when done
+ * client.close();
  * }</pre>
- * 
+ *
  * @see PublicClient
  * @see ChainProfile
  */
-public final class BranePublicClient implements PublicClient {
+public final class BranePublicClient implements PublicClient, AutoCloseable {
     private final PublicClient delegate;
     private final ChainProfile profile;
+    private final BraneProvider provider;
 
-    private BranePublicClient(final PublicClient delegate, final ChainProfile profile) {
+    private BranePublicClient(final PublicClient delegate, final ChainProfile profile, final BraneProvider provider) {
         this.delegate = delegate;
         this.profile = profile;
+        this.provider = provider;
+    }
+
+    /**
+     * Closes the underlying provider and releases resources.
+     *
+     * <p>After calling this method, the client should not be used.
+     * This method is idempotent and can be called multiple times safely.
+     */
+    @Override
+    public void close() {
+        provider.close();
     }
 
     /**
@@ -179,7 +205,7 @@ public final class BranePublicClient implements PublicClient {
             final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
             try {
                 final PublicClient publicClient = PublicClient.from(provider);
-                return new BranePublicClient(publicClient, profile);
+                return new BranePublicClient(publicClient, profile, provider);
             } catch (RuntimeException | Error e) {
                 // Close provider to prevent resource leak if client creation fails
                 provider.close();
