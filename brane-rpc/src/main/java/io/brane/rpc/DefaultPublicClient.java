@@ -22,6 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Default implementation of {@link PublicClient} for read-only blockchain operations.
@@ -281,7 +282,7 @@ final class DefaultPublicClient implements PublicClient {
         return req;
     }
 
-    private BlockHeader getBlockByTag(final String tag) {
+    private @Nullable BlockHeader getBlockByTag(final String tag) {
         final var response = sendWithRetry("eth_getBlockByNumber", List.of(tag, Boolean.FALSE));
         final Object result = response.result();
         if (result == null) {
