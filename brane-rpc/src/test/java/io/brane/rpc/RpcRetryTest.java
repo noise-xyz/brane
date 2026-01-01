@@ -141,4 +141,96 @@ class RpcRetryTest {
                 .anyMatch(s -> s instanceof InterruptedException);
         assertTrue(hasInterruptedSuppressed, "InterruptedException should be suppressed");
     }
+
+    // ==================== runRpc tests ====================
+
+    @Test
+    void runRpcRetriesRetryableErrorResponses() {
+        final AtomicInteger calls = new AtomicInteger();
+        JsonRpcResponse result = RpcRetry.runRpc(
+                () -> {
+                    if (calls.getAndIncrement() == 0) {
+                        // First call returns a retryable error response (rate limit)
+                        return new JsonRpcResponse(
+                                "2.0", null,
+                                new JsonRpcError(-32000, "rate limit exceeded", null),
+                                "1");
+                    }
+                    // Second call succeeds
+                    return new JsonRpcResponse("2.0", "success", null, "2");
+                },
+                3);
+
+        assertEquals("success", result.result());
+        assertEquals(2, calls.get());
+    }
+
+    @Test
+    void runRpcDoesNotRetryNonRetryableErrorResponses() {
+        final AtomicInteger calls = new AtomicInteger();
+        JsonRpcResponse result = RpcRetry.runRpc(
+                () -> {
+                    calls.incrementAndGet();
+                    // Return a non-retryable error (revert with data)
+                    return new JsonRpcResponse(
+                            "2.0", null,
+                            new JsonRpcError(-32000, "execution reverted", "0x08c379a0deadbeef"),
+                            "1");
+                },
+                3);
+
+        // Should return the error response without retrying
+        assertTrue(result.hasError());
+        assertEquals(1, calls.get());
+    }
+
+    @Test
+    void runRpcSuccessOnFirstCall() {
+        final AtomicInteger calls = new AtomicInteger();
+        JsonRpcResponse result = RpcRetry.runRpc(
+                () -> {
+                    calls.incrementAndGet();
+                    return new JsonRpcResponse("2.0", "immediate success", null, "1");
+                },
+                3);
+
+        assertEquals("immediate success", result.result());
+        assertEquals(1, calls.get());
+    }
+
+    @Test
+    void runRpcExhaustsRetriesOnRetryableError() {
+        final AtomicInteger calls = new AtomicInteger();
+        final RetryExhaustedException ex = assertThrows(
+                RetryExhaustedException.class,
+                () -> RpcRetry.runRpc(
+                        () -> {
+                            calls.incrementAndGet();
+                            // Always return a retryable error
+                            return new JsonRpcResponse(
+                                    "2.0", null,
+                                    new JsonRpcError(-32603, "internal error", null),
+                                    "1");
+                        },
+                        3));
+
+        assertEquals(3, calls.get());
+        assertEquals(3, ex.getAttemptCount());
+    }
+
+    @Test
+    void runRpcRetriesExceptionsLikeRun() {
+        final AtomicInteger calls = new AtomicInteger();
+        JsonRpcResponse result = RpcRetry.runRpc(
+                () -> {
+                    if (calls.getAndIncrement() == 0) {
+                        throw new RpcException(-32000, "timeout", null, null, null);
+                    }
+                    return new JsonRpcResponse("2.0", "success", null, "1");
+                },
+                3);
+
+        assertEquals("success", result.result());
+        assertEquals(2, calls.get());
+    }
 }

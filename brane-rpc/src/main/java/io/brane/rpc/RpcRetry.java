@@ -212,4 +212,105 @@ final class RpcRetry {
         }
         return null;
     }
+
+    /**
+     * Executes an RPC call with retry on both exceptions AND retryable RPC error responses.
+     *
+     * <p>
+     * Unlike {@link #run}, this method also retries when the response contains a retryable
+     * error (e.g., rate limiting, transient server errors). Non-retryable errors like
+     * reverts or invalid parameters are not retried.
+     *
+     * @param supplier    the operation returning a JSON-RPC response
+     * @param maxAttempts maximum number of attempts (must be >= 1)
+     * @return the response (may contain non-retryable error)
+     * @throws RpcException             if all retries fail or error is non-retryable
+     * @throws RetryExhaustedException  if all retry attempts were exhausted
+     * @throws IllegalArgumentException if maxAttempts < 1
+     */
+    static JsonRpcResponse runRpc(final Supplier<JsonRpcResponse> supplier, final int maxAttempts) {
+        Objects.requireNonNull(supplier, "supplier");
+        if (maxAttempts < 1) {
+            throw new IllegalArgumentException("maxAttempts must be >= 1");
+        }
+
+        final java.util.List<Throwable> failedAttempts = new java.util.ArrayList<>();
+        final long startTime = System.currentTimeMillis();
+        Throwable lastException = null;
+
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                final JsonRpcResponse response = supplier.get();
+
+                // Check if response contains a retryable error
+                if (response.hasError()) {
+                    final JsonRpcError err = response.error();
+                    final RpcException rpcEx = new RpcException(
+                            err.code(),
+                            err.message(),
+                            err.data() != null ? err.data().toString() : null,
+                            (Long) null,
+                            (Throwable) null);
+
+                    // If not retryable, return the response (let caller handle the error)
+                    if (!isRetryableRpcError(rpcEx)) {
+                        return response;
+                    }
+
+                    // Retryable error - treat like an exception for retry purposes
+                    lastException = rpcEx;
+                    failedAttempts.add(rpcEx);
+                    if (attempt == maxAttempts) {
+                        throw createRetryExhaustedException(failedAttempts, startTime);
+                    }
+                } else {
+                    // Success - return the response
+                    return response;
+                }
+            } catch (RevertException e) {
+                throw e;
+            } catch (RpcException e) {
+                lastException = e;
+                failedAttempts.add(e);
+                if (!isRetryableRpcError(e)) {
+                    throw e;
+                }
+                if (attempt == maxAttempts) {
+                    throw createRetryExhaustedException(failedAttempts, startTime);
+                }
+            } catch (RuntimeException e) {
+                final IOException io = unwrapIo(e);
+                if (io == null) {
+                    throw e;
+                }
+                lastException = e;
+                failedAttempts.add(e);
+                if (attempt == maxAttempts) {
+                    throw createRetryExhaustedException(failedAttempts, startTime);
+                }
+            }
+
+            final long delayMillis = backoff(attempt);
+            try {
+                Thread.sleep(delayMillis);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                if (lastException != null) {
+                    if (lastException instanceof RuntimeException re) {
+                        re.addSuppressed(e);
+                        throw re;
+                    }
+                    final RuntimeException wrapper = new RuntimeException(lastException);
+                    wrapper.addSuppressed(e);
+                    throw wrapper;
+                }
+                throw new RuntimeException("Interrupted while retrying", e);
+            }
+        }
+
+        if (!failedAttempts.isEmpty()) {
+            throw createRetryExhaustedException(failedAttempts, startTime);
+        }
+        throw new IllegalStateException("Retry finished without result or exception");
+    }
 }

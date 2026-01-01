@@ -415,6 +415,6 @@ final class DefaultPublicClient implements PublicClient {
     }
 
     private JsonRpcResponse sendWithRetry(final String method, final List<?> params) {
-        return RpcRetry.run(() -> provider.send(method, params), 3);
+        return RpcRetry.runRpc(() -> provider.send(method, params), 3);
     }
 }
