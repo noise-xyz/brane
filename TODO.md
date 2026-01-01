@@ -224,37 +224,40 @@ public static BigInteger decodeHexBigInteger(final String hex) {
 
 ---
 
-## MEDIUM Issues (10) - Recommend
+## MEDIUM Issues (10) - ✅ ALL FIXED
 
-### MED-1: Code Duplication - toTxObject in SmartGasStrategy and DefaultWalletClient
+### MED-1: Code Duplication - toTxObject in SmartGasStrategy and DefaultWalletClient ✅
 
 **Files:** `SmartGasStrategy.java:274-286`, `DefaultWalletClient.java:426-436`
+**Fixed in:** `de738e8`
 
 Nearly identical `buildTxObject` / `toTxObject` methods.
 
 **Acceptance Criteria:**
-- [ ] Extract to `RpcUtils.buildTxObject(TransactionRequest)`
-- [ ] Reuse in both classes
+- [x] Extract to `RpcUtils.buildTxObject(TransactionRequest)`
+- [x] Reuse in both classes
 
 ---
 
-### MED-2: Magic Number DEFAULT_CHUNK_SIZE = 500 Unexplained
+### MED-2: Magic Number DEFAULT_CHUNK_SIZE = 500 Unexplained ✅
 
 **File:** `MulticallBatch.java:72`
+**Fixed in:** `a281817`
 
 ```java
 private static final int DEFAULT_CHUNK_SIZE = 500;  // Why 500?
 ```
 
 **Acceptance Criteria:**
-- [ ] Add Javadoc explaining derivation (e.g., payload size calculation)
-- [ ] Consider making configurable per-provider
+- [x] Add Javadoc explaining derivation (e.g., payload size calculation)
+- [ ] Consider making configurable per-provider (deferred - not necessary)
 
 ---
 
-### MED-3: HttpBraneProvider.close() May Block Forever
+### MED-3: HttpBraneProvider.close() May Block Forever ✅
 
 **File:** `HttpBraneProvider.java:42-46`
+**Fixed in:** `3136987`
 
 ```java
 public void close() {
@@ -264,14 +267,15 @@ public void close() {
 ```
 
 **Acceptance Criteria:**
-- [ ] Use `executor.shutdownNow()` or `awaitTermination()` with timeout
-- [ ] Document blocking behavior in Javadoc
+- [x] Use `executor.shutdownNow()` or `awaitTermination()` with timeout
+- [x] Document blocking behavior in Javadoc
 
 ---
 
-### MED-4: Missing Javadoc on Subscription Interface
+### MED-4: Missing Javadoc on Subscription Interface ✅
 
 **File:** `Subscription.java:1-18`
+**Fixed in:** `6847387`
 
 ```java
 public interface Subscription {
@@ -281,14 +285,15 @@ public interface Subscription {
 ```
 
 **Acceptance Criteria:**
-- [ ] Add full Javadoc with `@return`, `@throws`
-- [ ] Document idempotency of `unsubscribe()`
+- [x] Add full Javadoc with `@return`, `@throws`
+- [x] Document idempotency of `unsubscribe()`
 
 ---
 
-### MED-5: BranePublicClient.Builder Leaks Provider on Build Failure
+### MED-5: BranePublicClient.Builder Leaks Provider on Build Failure ✅
 
 **File:** `BranePublicClient.java:159-172`
+**Fixed in:** `13a51d5`
 
 ```java
 public BranePublicClient build() {
@@ -299,8 +304,8 @@ public BranePublicClient build() {
 ```
 
 **Acceptance Criteria:**
-- [ ] Wrap in try-catch, close provider on exception
-- [ ] Use try-with-resources pattern
+- [x] Wrap in try-catch, close provider on exception
+- [x] Use try-with-resources pattern
 
 ---
 
@@ -386,35 +391,38 @@ public record CallRequest(
 
 ---
 
-## LOW Issues (7) - Suggestions
+## LOW Issues (7) - ✅ ALL FIXED
 
-### LOW-1: BraneAsyncClient DEFAULT_EXECUTOR Unnamed Threads
+### LOW-1: BraneAsyncClient DEFAULT_EXECUTOR Unnamed Threads ✅
 
 **File:** `BraneAsyncClient.java:46`
+**Fixed in:** `b12d5a1`
 
 ```java
 private static final Executor DEFAULT_EXECUTOR = Executors.newVirtualThreadPerTaskExecutor();
 ```
 
 **Acceptance Criteria:**
-- [ ] Use `Thread.ofVirtual().name("brane-async-", 0).factory()`
+- [x] Use `Thread.ofVirtual().name("brane-async-", 0).factory()`
 
 ---
 
-### LOW-2: JsonRpcError.code Should Be long Not int
+### LOW-2: JsonRpcError.code Should Be long Not int ✅
 
 **File:** `JsonRpcError.java:6`
+**Fixed in:** `fb8b170`
 
 JSON-RPC spec allows large error codes that could overflow `int`.
 
 **Acceptance Criteria:**
-- [ ] Change to `long` or document `int` limitation
+- [x] Change to `long` or document `int` limitation (documented limitation)
 
 ---
 
-### LOW-3: WebSocketConfig Validation Could Suggest Valid Values
+### LOW-3: WebSocketConfig Validation Could Suggest Valid Values ✅
 
 **File:** `WebSocketConfig.java:104-111`
+**Fixed in:** `89821f4`
 
 ```java
 throw new IllegalArgumentException(
@@ -423,19 +431,20 @@ throw new IllegalArgumentException(
 ```
 
 **Acceptance Criteria:**
-- [ ] Suggest nearest power of 2 in error message
+- [x] Suggest nearest power of 2 in error message
 
 ---
 
-### LOW-4: RpcConfig Missing Validation
+### LOW-4: RpcConfig Missing Validation ✅
 
 **File:** `RpcConfig.java:17-22`
+**Fixed in:** `502b6ec`
 
 No validation that URL is valid or timeouts are positive.
 
 **Acceptance Criteria:**
-- [ ] Validate URL format
-- [ ] Validate timeouts > 0
+- [x] Validate URL format
+- [x] Validate timeouts > 0
 
 ---
 
@@ -488,9 +497,9 @@ public void unsubscribe() {
 |----------|-------|-------|---------|--------|
 | Critical | 5 | 5 | 0 | ✅ 100% |
 | High | 9 | 9 | 0 | ✅ 100% |
-| Medium | 10 | 5 | 5 | 🟨 50% |
-| Low | 7 | 3 | 4 | 🟨 43% |
-| **Total** | **31** | **22** | **9** | **71% Complete** |
+| Medium | 10 | 10 | 0 | ✅ 100% |
+| Low | 7 | 7 | 0 | ✅ 100% |
+| **Total** | **31** | **31** | **0** | **✅ 100% Complete** |
 
 ### Fixed Issues (by commit)
 
@@ -510,11 +519,23 @@ public void unsubscribe() {
 | `c173891` | HIGH-7 | Use monotonic clock in sendTransactionAndWait() |
 | `32493a0` | HIGH-8 | Make BatchHandle.complete() idempotent |
 | `c74ae12` | HIGH-9 | Document decodeHexBigInteger empty string behavior |
+| `de738e8` | MED-1 | Extract duplicate toTxObject to RpcUtils.buildTxObject |
+| `a281817` | MED-2 | Document DEFAULT_CHUNK_SIZE derivation in MulticallBatch |
+| `3136987` | MED-3 | Prevent HttpBraneProvider.close() from blocking forever |
+| `6847387` | MED-4 | Add comprehensive Javadoc to Subscription interface |
+| `13a51d5` | MED-5 | Prevent provider leak in BranePublicClient.Builder |
 | `c225cc3` | MED-6 | Use TypeReference for type-safe JSON deserialization in LogParser |
 | `8d81beb` | MED-7 | Fix UTF-8 encoding for supplementary Unicode in WebSocketProvider |
-| n/a | MED-8 | Document factory method naming convention in AGENT.md |
-| n/a | MED-9 | Add comment explaining serialVersionUID policy |
+| `a80585b` | MED-8 | Document factory method naming convention in AGENT.md |
+| `a80585b` | MED-9 | Add comment explaining serialVersionUID policy |
 | `e3aa507` | MED-10 | Add validation for mutually exclusive gas fields in CallRequest |
+| `b12d5a1` | LOW-1 | Use named virtual threads in BraneAsyncClient |
+| `fb8b170` | LOW-2 | Document int limitation in JsonRpcError.code |
+| `89821f4` | LOW-3 | Suggest nearest power of 2 in WebSocketConfig validation |
+| `502b6ec` | LOW-4 | Add URL and timeout validation to RpcConfig |
+| `45705eb` | LOW-5 | Add WebSocket edge case tests |
+| `45705eb` | LOW-6 | Remove unused LongAdder metrics |
+| `45705eb` | LOW-7 | Make SubscriptionImpl.unsubscribe() idempotent with error handling |
 
 ---
 
