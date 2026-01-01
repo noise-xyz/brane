@@ -107,7 +107,7 @@ class DefaultPublicClientTest {
                 JsonRpcResponse response = new JsonRpcResponse("2.0", "0x2a", null, "1");
                 when(provider.send(eq("eth_call"), any())).thenReturn(response);
 
-                String result = client.call(Map.of("to", "0xabc", "data", "0x1234"), "latest");
+                String result = client.call(Map.of("to", "0x" + "a".repeat(40), "data", "0x1234"), "latest");
                 assertEquals("0x2a", result);
         }
 
