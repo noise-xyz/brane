@@ -791,6 +791,12 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * <li>You want automatic batching of network writes</li>
      * </ul>
      *
+     * <p><strong>Important:</strong> Unlike {@link #sendAsync(String, List, Duration)}, this method
+     * does not support individual request timeouts. Requests will complete when a response is
+     * received, or fail if the connection is lost. For timeout-sensitive operations, use
+     * {@link #sendAsync(String, List, Duration)} instead, or wrap the returned future with
+     * {@link CompletableFuture#orTimeout(long, java.util.concurrent.TimeUnit)}.</p>
+     *
      * @param method the JSON-RPC method name
      * @param params the method parameters, or null/empty for no parameters
      * @return a CompletableFuture that completes with the JSON-RPC response
