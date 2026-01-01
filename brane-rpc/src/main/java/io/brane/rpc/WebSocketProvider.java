@@ -213,6 +213,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private final LongAdder totalRequests = new LongAdder();
     private final LongAdder totalResponses = new LongAdder();
     private final LongAdder totalErrors = new LongAdder();
+    private final LongAdder orphanedResponses = new LongAdder();
 
     // Lock-free ID generator
     private final AtomicLong idGenerator = new AtomicLong(1);
@@ -561,26 +562,40 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 try {
                     id = Long.parseLong(idNode.asText());
                 } catch (Exception e) {
-                    log.warn("Could not parse text response ID '{}' as long", idNode.asText(), e);
+                    log.error("Orphaned response: could not parse ID '{}' as long - caller future will never complete",
+                            idNode.asText(), e);
+                    orphanedResponses.increment();
+                    return;
                 }
             }
 
-            if (id != -1) {
-                // Atomically remove the pending request to prevent race conditions
-                CompletableFuture<JsonRpcResponse> future = pendingRequests.remove(id);
-                if (future != null) {
-                    JsonNode errorNode = node.get("error");
-                    JsonRpcError error = null;
-                    if (errorNode != null && !errorNode.isNull()) {
-                        error = MAPPER.treeToValue(errorNode, JsonRpcError.class);
-                    }
-                    Object result = null;
-                    if (node.has("result")) {
-                        result = MAPPER.treeToValue(node.get("result"), Object.class);
-                    }
-                    future.complete(new JsonRpcResponse("2.0", result, error, String.valueOf(id)));
-                }
+            if (id == -1) {
+                // ID node exists but is neither number nor textual (e.g., null, object, array)
+                log.error("Orphaned response: ID node has unexpected type '{}' - caller future will never complete",
+                        idNode.getNodeType());
+                orphanedResponses.increment();
+                return;
             }
+
+            // Atomically remove the pending request to prevent race conditions
+            CompletableFuture<JsonRpcResponse> future = pendingRequests.remove(id);
+            if (future == null) {
+                // Response received but no pending request found - may have timed out or been cancelled
+                log.error("Orphaned response: no pending request found for ID {} - response dropped", id);
+                orphanedResponses.increment();
+                return;
+            }
+
+            JsonNode errorNode = node.get("error");
+            JsonRpcError error = null;
+            if (errorNode != null && !errorNode.isNull()) {
+                error = MAPPER.treeToValue(errorNode, JsonRpcError.class);
+            }
+            Object result = null;
+            if (node.has("result")) {
+                result = MAPPER.treeToValue(node.get("result"), Object.class);
+            }
+            future.complete(new JsonRpcResponse("2.0", result, error, String.valueOf(id)));
         }
 
         @Override
