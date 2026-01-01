@@ -227,7 +227,7 @@ throw new RevertException(
 
 ## MEDIUM Issues (6)
 
-### MED-1: RpcRetry.run() Creates ArrayList Even on Success
+### MED-1: [DONE] RpcRetry.run() Creates ArrayList Even on Success
 
 **File:** `RpcRetry.java:92`
 **Severity:** MEDIUM
