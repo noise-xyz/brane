@@ -354,6 +354,12 @@ public final class DefaultWalletClient implements WalletClient {
                         null,
                         null);
             }
+            // eth_call succeeded but transaction was marked as reverted in receipt - unexpected state
+            throw new RevertException(
+                    RevertDecoder.RevertKind.UNKNOWN,
+                    "Transaction reverted but eth_call replay succeeded (txHash: " + txHash.value() + ")",
+                    null,
+                    null);
         } catch (RevertException e) {
             throw e;
         } catch (Exception e) {
