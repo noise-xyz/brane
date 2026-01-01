@@ -17,11 +17,12 @@ import java.util.List;
  *
  * <h2>Example usage:</h2>
  * <pre>{@code
- * // Using URI directly
- * HttpClient client = new HttpClient(URI.create("http://localhost:8545"));
- * BigInteger blockNumber = client.call("eth_blockNumber", BigInteger.class);
+ * // Using URI directly (provider created internally, closed automatically)
+ * try (HttpClient client = new HttpClient(URI.create("http://localhost:8545"))) {
+ *     BigInteger blockNumber = client.call("eth_blockNumber", BigInteger.class);
+ * }
  *
- * // Using existing provider
+ * // Using existing provider (caller manages provider lifecycle)
  * BraneProvider provider = HttpBraneProvider.create("http://localhost:8545");
  * HttpClient client = new HttpClient(provider);
  * String chainId = client.call("eth_chainId", String.class);
@@ -38,6 +39,11 @@ import java.util.List;
  * is thread-safe. The standard providers ({@link HttpBraneProvider}, {@link WebSocketProvider})
  * are thread-safe.
  *
+ * <p><b>Resource Management:</b> This class implements {@link AutoCloseable}. When created
+ * with a URI (internal provider), calling {@link #close()} will close the provider. When
+ * created with an external provider, the caller is responsible for managing the provider's
+ * lifecycle and {@link #close()} is a no-op.
+ *
  * <p><b>Note:</b> For most Ethereum operations, prefer using {@link PublicClient} or
  * {@link WalletClient} which provide type-safe, documented methods for standard operations.
  * Use this class when you need direct access to custom or non-standard RPC methods.
@@ -46,19 +52,22 @@ import java.util.List;
  * @see BraneProvider
  * @see PublicClient
  */
-public final class HttpClient implements Client {
+public final class HttpClient implements Client, AutoCloseable {
 
     private final BraneProvider provider;
+    private final boolean ownsProvider;
 
     /**
      * Creates a new client connected to the specified endpoint.
      *
      * <p>This constructor creates an internal {@link HttpBraneProvider} for the endpoint.
+     * The provider will be closed when {@link #close()} is called.
      *
      * @param endpoint the JSON-RPC endpoint URI
      */
     public HttpClient(final URI endpoint) {
-        this(BraneProvider.http(endpoint.toString()));
+        this.provider = BraneProvider.http(endpoint.toString());
+        this.ownsProvider = true;
     }
 
     /**
@@ -67,10 +76,14 @@ public final class HttpClient implements Client {
      * <p>The provider is used for all RPC calls. This allows sharing a provider
      * across multiple clients or using custom provider implementations.
      *
+     * <p><b>Resource Management:</b> The caller is responsible for closing the provider.
+     * Calling {@link #close()} on this client will NOT close the external provider.
+     *
      * @param provider the RPC provider to use for calls
      */
     public HttpClient(final BraneProvider provider) {
         this.provider = provider;
+        this.ownsProvider = false;
     }
 
     @Override
@@ -111,5 +124,21 @@ public final class HttpClient implements Client {
             default -> throw new IllegalArgumentException(
                     "Cannot convert value to BigInteger: " + value);
         };
+    }
+
+    /**
+     * Closes the underlying provider if it was created internally.
+     *
+     * <p>If this client was created with a URI (internal provider), this method
+     * closes the provider and releases associated resources. If created with an
+     * external provider, this method is a no-op.
+     *
+     * <p>After calling this method, the client should not be used for further requests.
+     */
+    @Override
+    public void close() {
+        if (ownsProvider) {
+            provider.close();
+        }
     }
 }
