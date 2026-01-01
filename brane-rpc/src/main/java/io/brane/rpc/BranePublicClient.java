@@ -12,6 +12,7 @@ import java.util.List;
 import io.brane.rpc.Subscription;
 import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * High-level {@link PublicClient} implementation with built-in chain
@@ -69,6 +70,7 @@ public final class BranePublicClient implements PublicClient, AutoCloseable {
     private final PublicClient delegate;
     private final ChainProfile profile;
     private final BraneProvider provider;
+    private final AtomicBoolean closed = new AtomicBoolean(false);
 
     private BranePublicClient(final PublicClient delegate, final ChainProfile profile, final BraneProvider provider) {
         this.delegate = delegate;
@@ -84,6 +86,9 @@ public final class BranePublicClient implements PublicClient, AutoCloseable {
      */
     @Override
     public void close() {
+        if (!closed.compareAndSet(false, true)) {
+            return; // Already closed
+        }
         provider.close();
     }
 
