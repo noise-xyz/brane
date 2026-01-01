@@ -163,12 +163,12 @@ public final class MulticallBatch {
      */
     <T> void recordCall(final Address target, final Abi.FunctionCall call, final Class<T> returnType) {
         // Fail fast if user forgot to call add() after a previous proxy call
-        // Throw BEFORE removing state so catch blocks can still see what was recorded
+        // Clear the orphaned call BEFORE throwing to prevent ThreadLocal leaks
         if (pendingCall.get() != null) {
+            pendingCall.remove(); // Clear BEFORE throwing to prevent leak
             throw new IllegalStateException(
                     "A call was already recorded but not added to the batch. " +
-                            "You must call batch.add() after each proxy method call. " +
-                            "Call pendingCall.remove() to clear the orphaned call if continuing.");
+                            "You must call batch.add() after each proxy method call.");
         }
         pendingCall.set(new CallContext<>(target, call, returnType, null));
     }
