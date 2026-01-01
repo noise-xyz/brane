@@ -387,7 +387,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             long delay = 100;
             Exception lastError = null;
 
-            while (attempt < 5 && !closed.get()) {
+            while (attempt < MAX_RECONNECT_ATTEMPTS && !closed.get()) {
                 try {
                     this.channel = b.connect(uri.getHost(), port).sync().channel();
                     handler.handshakeFuture().sync();
