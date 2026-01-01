@@ -395,7 +395,7 @@ public record JsonRpcNotification(String jsonrpc, String method, Object params) 
 
 ---
 
-### LOW-3: BlockTag Constants Could Be Public Static Final
+### LOW-3: [DONE] BlockTag Constants Could Be Public Static Final
 
 **File:** `BlockTag.java:28-40`
 **Severity:** LOW
