@@ -281,7 +281,10 @@ public final class DefaultWalletClient implements WalletClient {
         final Hash txHash = sendTransaction(request);
         DebugLogger.logTx(LogFormatter.formatTxWait(txHash.value(), timeoutMillis));
         // Use monotonic clock (System.nanoTime) instead of wall clock (Instant.now)
-        // to avoid issues with NTP adjustments or VM clock skew
+        // to avoid issues with NTP adjustments or VM clock skew.
+        // The comparison (now - deadline < 0) is wraparound-safe because signed subtraction
+        // correctly handles the rare case where nanoTime() wraps around Long.MAX_VALUE.
+        // See: https://docs.oracle.com/javase/8/docs/api/java/lang/System.html#nanoTime--
         final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
 
         // Exponential backoff: start with user-provided interval, double each time, cap at MAX
