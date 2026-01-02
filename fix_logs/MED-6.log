@@ -1,7 +1,0 @@
-Successfully fixed MED-6. The change adds SLF4J logging (`log.warn`) for HTTP errors in `HttpBraneProvider.java:122-123`, complementing the existing `DebugLogger` output. The warning includes:
-- RPC method name
-- HTTP status code
-- Request ID (for correlation)
-- Latency in microseconds
-
-This follows the same SLF4J logger pattern used elsewhere in the module (e.g., `WebSocketProvider`, `DefaultPublicClient`, `SmartGasStrategy`).

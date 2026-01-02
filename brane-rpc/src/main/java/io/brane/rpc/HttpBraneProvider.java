@@ -29,6 +29,7 @@ public final class HttpBraneProvider implements BraneProvider {
     private final java.net.http.HttpClient httpClient;
     private final java.util.concurrent.ExecutorService executor;
     private final AtomicLong ids = new AtomicLong(1L);
+    private volatile BraneMetrics metrics = BraneMetrics.noop();
 
     private HttpBraneProvider(final RpcConfig config) {
         this.config = config;
@@ -77,6 +78,21 @@ public final class HttpBraneProvider implements BraneProvider {
     }
 
     /**
+     * Sets a custom metrics collector for observability.
+     *
+     * <p>Use this to integrate with monitoring systems like Micrometer, Prometheus,
+     * or custom metrics collectors. When set, the provider will report HTTP errors
+     * via {@link BraneMetrics#onRequestFailed(String, Throwable)}.
+     *
+     * @param metrics the metrics collector (must not be null)
+     * @throws NullPointerException if metrics is null
+     * @since 0.5.0
+     */
+    public void setMetrics(BraneMetrics metrics) {
+        this.metrics = Objects.requireNonNull(metrics, "metrics");
+    }
+
+    /**
      * Creates a new builder for configuring an {@link HttpBraneProvider}.
      *
      * <p>This is the primary entry point for creating HTTP-based RPC providers.
@@ -121,12 +137,14 @@ public final class HttpBraneProvider implements BraneProvider {
                             "HTTP " + response.statusCode(), durationMicros));
             log.warn("HTTP error for RPC method '{}': status={}, requestId={}, latencyMicros={}",
                     method, response.statusCode(), requestId, durationMicros);
-            throw new RpcException(
+            final var ex = new RpcException(
                     -32001,
                     "HTTP error for method " + method + ": " + response.statusCode(),
                     response.body(),
                     requestId,
                     null);
+            metrics.onRequestFailed(method, ex);
+            throw ex;
         }
 
         final String responseBody = response.body();
