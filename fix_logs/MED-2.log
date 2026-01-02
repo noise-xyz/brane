@@ -1,9 +1,30 @@
-Done. I've fixed **MED-2** by adding 10-25% random jitter to the `RpcRetry` backoff calculation.
+I've completed the fix for **MED-2**. Here's a summary of what was done:
+
+## Summary
+
+**Issue:** Make RpcRetry backoff constants configurable. Extract retry constants to RpcRetryConfig record. Allow custom config injection via builder pattern.
 
 **Changes made:**
-1. Added `ThreadLocalRandom` import
-2. Added `JITTER_MIN` (0.10) and `JITTER_MAX` (0.25) constants
-3. Modified `backoff()` method to add random jitter: `cappedDelay + (long) (cappedDelay * jitter)`
-4. Updated class Javadoc to document the new jitter behavior in the backoff strategy
 
-The jitter prevents "thundering herd" - when many clients experience a transient failure simultaneously and all retry at exactly the same backoff intervals, potentially overwhelming the server.
+1. **Created `RpcRetryConfig.java`** - A new record with:
+   - `backoffBaseMs` - base delay in milliseconds (default: 200ms)
+   - `backoffMaxMs` - maximum delay cap (default: 5000ms)
+   - `jitterMin` - minimum jitter percentage (default: 10%)
+   - `jitterMax` - maximum jitter percentage (default: 25%)
+   - Builder pattern for easy customization
+   - Validation in the canonical constructor
+   - `defaults()` factory method
+
+2. **Updated `RpcRetry.java`**:
+   - Replaced hardcoded constants with `RpcRetryConfig`
+   - Added overloaded `run(supplier, maxAttempts, config)` method
+   - Added overloaded `runRpc(supplier, maxAttempts, config)` method
+   - Original methods delegate to new methods with default config
+   - Updated `backoff()` to accept config parameter
+
+3. **Added tests in `RpcRetryTest.java`**:
+   - `runWithCustomConfigUsesConfiguredBackoff` - verifies custom config is applied
+   - `runRpcWithCustomConfigUsesConfiguredBackoff` - verifies for runRpc method
+   - `configDefaultsMatchExpectedValues` - verifies default values
+   - `configBuilderAllowsPartialCustomization` - verifies builder pattern
+   - `configValidatesParameters` - verifies parameter validation

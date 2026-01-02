@@ -1,9 +1,26 @@
-Done. Fixed **MED-3** by:
+# MED-3: Surface WebSocketProvider subscription callback exceptions to metrics
+# Status: ALREADY FIXED
 
-1. **Added `onSubscriptionCallbackError(String subscriptionId, Throwable error)` method** to `BraneMetrics` interface at `BraneMetrics.java:166-185` with Javadoc explaining its purpose
+## Task Description
+Add metrics.onSubscriptionCallbackError(subId, e) method to BraneMetrics.
+File: WebSocketProvider.java:540-546.
 
-2. **Wrapped the subscription callback** in `WebSocketProvider.java:540-547` with try-catch to:
-   - Catch exceptions thrown by user-provided subscription listeners
-   - Log the error with subscription ID for debugging
-   - Report to metrics via `metrics.onSubscriptionCallbackError(subId, callbackEx)`
-   - Prevent callback exceptions from affecting other subscriptions or the WebSocket connection
+## Investigation
+
+Found that the fix is already implemented:
+
+1. **WebSocketProvider.java:542** - Already calls `metrics.onSubscriptionCallbackError(subId, callbackEx)`
+   when a subscription callback throws an exception in the catch block at lines 540-543.
+
+2. **BraneMetrics.java:184-185** - The `onSubscriptionCallbackError(String subscriptionId, Throwable error)`
+   method already exists with comprehensive Javadoc documentation (lines 166-185), including:
+   - `@since 0.5.0` annotation
+   - Documentation explaining when this is triggered
+   - Usage guidance for implementations
+
+## Verification
+- Compilation successful: `./gradlew :brane-rpc:compileJava` passed
+- Integration tests require Anvil (local Ethereum node) which is expected behavior
+
+## Conclusion
+No changes required - the fix was already implemented prior to this review task.
