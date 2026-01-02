@@ -84,6 +84,7 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public Transaction getTransactionByHash(final Hash hash) {
+        java.util.Objects.requireNonNull(hash, "hash");
         final var response = sendWithRetry("eth_getTransactionByHash", List.of(hash.value()));
         final Object result = response.result();
         if (result == null) {

@@ -11,6 +11,10 @@
           {
             "type": "command",
             "command": "file=$(jq -r '.tool_input.file_path'); if echo \"$file\" | grep -q '\\.java$'; then cd \"$CLAUDE_PROJECT_DIR\" && module=$(echo \"$file\" | sed -n 's|.*/\\(brane-[^/]*\\)/.*|:\\1|p'); if [ -n \"$module\" ]; then ./gradlew ${module}:compileJava -q 2>&1; fi; fi; exit 0"
+          },
+          {
+            "type": "command",
+            "command": "file=$(jq -r '.tool_input.file_path'); if echo \"$file\" | grep -q '\\.java$' && echo \"$file\" | grep -q '/src/main/' && ! echo \"$file\" | grep -q 'Test\\.java$'; then cd \"$CLAUDE_PROJECT_DIR\" && ./scripts/suggest_tests.sh \"$file\" 2>/dev/null; fi; exit 0"
           }
         ]
       },
@@ -20,6 +24,15 @@
           {
             "type": "command",
             "command": "file=$(jq -r '.tool_input.file_path'); content=$(jq -r '.tool_input.content'); if echo \"$file\" | grep -q '\\.java$' && ! echo \"$file\" | grep -q 'internal' && echo \"$content\" | grep -q 'public class\\|public interface\\|public record\\|public enum' && ! echo \"$content\" | grep -q '@since'; then echo '{\"systemMessage\": \"Reminder: Public types need @since 0.1.0-alpha tag in Javadoc\"}'; fi; exit 0"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cmd=$(jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE '^git commit'; then echo '{\"systemMessage\": \"Tip: Run ./scripts/pre_commit_check.sh before committing to verify affected tests pass.\"}'; fi; exit 0"
           }
         ]
       }

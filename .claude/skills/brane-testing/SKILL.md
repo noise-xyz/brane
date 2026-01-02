@@ -123,25 +123,62 @@ If the test passes before you write implementation, either:
 
 ## The Verification Ladder
 
-After TDD cycles, follow this strict order:
+After TDD cycles, follow this strict order. **ALL STEPS ARE MANDATORY.**
 
-### Step 1: Targeted Verification
+### Step 1: Targeted Verification (Unit)
 ```bash
 ./gradlew :brane-core:test --tests "io.brane.core.MyClassTest"
 ```
 **Rule**: If this fails, STOP. Fix it. Do not proceed.
 
-### Step 2: Module Verification
+### Step 2: Module Verification (Unit)
 ```bash
 ./gradlew :brane-core:test
 ```
 **Rule**: If this fails, you introduced a regression. Fix it.
 
-### Step 3: Full Verification
+### Step 3: Downstream Module Tests (Unit)
+```bash
+# Run tests for all downstream modules
+./gradlew :brane-rpc:test :brane-contract:test
+```
+**Rule**: Changes must not break downstream consumers.
+
+### Step 4: Integration Tests (Requires Anvil)
+```bash
+# Start Anvil (no permission needed)
+anvil &
+
+# Run integration tests
+./scripts/test_integration.sh
+```
+**Rule**: Real RPC calls must work. Never skip this step.
+
+### Step 5: Smoke Tests (E2E)
+```bash
+./scripts/test_smoke.sh
+```
+**Rule**: Full SDK integration must work. Never skip this step.
+
+### Step 6: Full Verification
 ```bash
 ./gradlew test
 ```
 **Rule**: All tests must pass before considering work complete.
+
+---
+
+## Mandatory Test Layers
+
+**NEVER SKIP ANY TEST LAYER. All three are equally important:**
+
+| Layer | Purpose | Command | Skip? |
+|-------|---------|---------|-------|
+| Unit | Logic correctness, fast feedback | `./gradlew :module:test` | **NO** |
+| Integration | Real RPC, real transactions | `./scripts/test_integration.sh` | **NO** |
+| Smoke | Full E2E, consumer perspective | `./scripts/test_smoke.sh` | **NO** |
+
+Starting Anvil requires no special permission - just run `anvil &` in background.
 
 ---
 

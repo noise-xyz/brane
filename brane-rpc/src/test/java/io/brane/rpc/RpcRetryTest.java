@@ -233,4 +233,54 @@ class RpcRetryTest {
         assertEquals("success", result.result());
         assertEquals(2, calls.get());
     }
+
+    /**
+     * HIGH-6 Verification: Test if isRetryableRpcError handles null data correctly.
+     *
+     * The TODO claims there's a null safety issue with e.data().
+     * Let's verify by testing with null data.
+     */
+    @Test
+    void verifyHigh6_nullDataHandledCorrectly() {
+        // Create an RpcException with null data
+        RpcException exWithNullData = new RpcException(-32000, "header not found", null, null, null);
+
+        // This should NOT throw NPE - the code should handle null data
+        final AtomicInteger calls = new AtomicInteger();
+        String result = RpcRetry.run(
+                () -> {
+                    if (calls.getAndIncrement() == 0) {
+                        throw exWithNullData;
+                    }
+                    return "success";
+                },
+                3);
+
+        assertEquals("success", result);
+        assertEquals(2, calls.get()); // Should have retried once
+
+        System.out.println("HIGH-6 Verification: null data is handled correctly - NOT A BUG");
+        System.out.println("  isLikelyRevert checks 'data != null' first (short-circuit evaluation)");
+    }
+
+    @Test
+    void verifyHigh6_nullMessageHandledCorrectly() {
+        // Create an RpcException with null message - this SHOULD return false (not retryable)
+        // because isRetryableRpcError checks: if (e == null || e.getMessage() == null) return false;
+        RpcException exWithNullMessage = new RpcException(-32000, null, null, null, null);
+
+        final AtomicInteger calls = new AtomicInteger();
+        assertThrows(RpcException.class, () -> {
+            RpcRetry.run(
+                    () -> {
+                        calls.incrementAndGet();
+                        throw exWithNullMessage;
+                    },
+                    3);
+        });
+
+        // Should NOT retry because null message is not retryable
+        assertEquals(1, calls.get());
+        System.out.println("HIGH-6 Verification: null message correctly makes error non-retryable");
+    }
 }

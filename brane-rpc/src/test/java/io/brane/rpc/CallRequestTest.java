@@ -91,4 +91,37 @@ class CallRequestTest {
         assertEquals("0x3b9aca00", map.get("value")); // 1 gwei
         assertEquals("0x5208", map.get("gas")); // 21000
     }
+
+    /**
+     * MED-2 Verification: Test if toMap() returns a mutable map.
+     *
+     * This test verifies that the map returned by toMap() can be modified,
+     * which is a bug because it allows callers to corrupt the request data.
+     */
+    @Test
+    void verifyMed2_toMapReturnsMutableMap() {
+        CallRequest request = CallRequest.builder()
+                .to(TEST_ADDRESS)
+                .build();
+
+        var map = request.toMap();
+        int originalSize = map.size();
+
+        // Try to modify the map - if this succeeds, the bug exists
+        boolean canModify = false;
+        try {
+            map.put("injected", "value");
+            canModify = true;
+            System.out.println("MED-2 Verification:");
+            System.out.println("  Map was modified: " + map);
+            System.out.println("  BUG CONFIRMED: toMap() returns mutable map");
+        } catch (UnsupportedOperationException e) {
+            System.out.println("MED-2 Verification:");
+            System.out.println("  Map is immutable - bug is FIXED");
+        }
+
+        // This assertion proves the bug exists - if it fails, the bug is fixed
+        assertTrue(canModify,
+            "BUG MED-2 CONFIRMED: toMap() returns a mutable map that callers can modify");
+    }
 }

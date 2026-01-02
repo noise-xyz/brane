@@ -147,4 +147,64 @@ class RpcUtilsTest {
         assertNotNull(result);
         assertTrue(result.contains("error occurred"));
     }
+
+    /**
+     * MED-3 Verification: Test if decodeHexLong throws or returns 0 for invalid input.
+     *
+     * The TODO claims invalid input silently becomes block 0.
+     * Let's verify what actually happens.
+     */
+    @Test
+    void verifyMed3_decodeHexLongWithInvalidInput() {
+        // Test various invalid inputs
+        String[] invalidInputs = {
+            "garbage",
+            "not_a_block",
+            "latest_typo",
+            "12345",  // Looks like decimal - no 0x prefix but valid hex chars
+            "abc",    // Valid hex chars but no prefix
+            "xyz",    // Invalid hex chars
+        };
+
+        for (String invalid : invalidInputs) {
+            try {
+                long result = RpcUtils.decodeHexLong(invalid);
+                // If we get here without exception, check what value we got
+                System.out.println("MED-3: Input '" + invalid + "' -> " + result + " (no exception)");
+
+                // For inputs that contain only valid hex chars (even without 0x prefix),
+                // Long.parseLong will succeed. This is expected behavior.
+                if (invalid.matches("[0-9a-fA-F]+")) {
+                    System.out.println("  -> This is valid hex (just missing 0x prefix)");
+                }
+            } catch (NumberFormatException e) {
+                // This is the expected behavior for truly invalid input
+                System.out.println("MED-3: Input '" + invalid + "' -> NumberFormatException: " + e.getMessage());
+            }
+        }
+    }
+
+    @Test
+    void verifyMed3_decodeHexLongHandlesNullAndEmptyAsZero() {
+        // These cases DO return 0 - this is documented behavior
+        assertEquals(0L, RpcUtils.decodeHexLong(null));
+        assertEquals(0L, RpcUtils.decodeHexLong(""));
+        assertEquals(0L, RpcUtils.decodeHexLong("0x"));
+
+        System.out.println("MED-3 Note: null, empty, and '0x' return 0 - this is DOCUMENTED behavior");
+    }
+
+    @Test
+    void verifyMed3_invalidHexThrowsNumberFormatException() {
+        // Truly invalid input SHOULD throw NumberFormatException
+        assertThrows(NumberFormatException.class, () -> {
+            RpcUtils.decodeHexLong("garbage");
+        }, "Invalid hex 'garbage' should throw NumberFormatException");
+
+        assertThrows(NumberFormatException.class, () -> {
+            RpcUtils.decodeHexLong("xyz");
+        }, "Invalid hex 'xyz' should throw NumberFormatException");
+
+        System.out.println("MED-3 Verification: Invalid hex DOES throw NumberFormatException - NOT A BUG");
+    }
 }

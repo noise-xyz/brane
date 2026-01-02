@@ -521,3 +521,287 @@ BigInteger value = new BigInteger(hexValue, 16);
 // BAD - overflow risk with long
 long value = Long.parseLong(hexValue, 16);  // Overflow if > Long.MAX_VALUE
 ```
+
+---
+
+## Verification Protocol (CRITICAL)
+
+**Goal**: Every finding must be grounded in truth. No hallucinations. No vague claims.
+
+### Finding Classification
+
+Classify each finding into one of four tiers, each with different evidence requirements:
+
+| Tier | Type | Evidence Required | Action |
+|------|------|-------------------|--------|
+| **T1** | **Confirmed Bug** | Failing test OR concrete execution trace proving the failure | Must fix before merge |
+| **T2** | **Potential Bug** | Code path trace + specific scenario description | Requires investigation |
+| **T3** | **Design Concern** | Explanation with rationale, reference to standards/patterns | Discuss with author |
+| **T4** | **Suggestion** | Brief explanation of improvement | Optional enhancement |
+
+### T1: Confirmed Bug - Evidence Requirements
+
+For a finding to be classified as **Confirmed Bug**, you MUST provide ONE of:
+
+**Option A: Failing Test**
+```java
+@Test
+void shouldRejectNullAddress() {
+    // This test demonstrates the bug: NPE is thrown instead of IllegalArgumentException
+    var client = new DefaultClient(provider);
+
+    // EXPECTED: IllegalArgumentException with message "address required"
+    // ACTUAL: NullPointerException at line 47
+    assertThrows(IllegalArgumentException.class, () -> client.call(null));
+}
+```
+
+**Option B: Execution Trace**
+```
+EXECUTION TRACE:
+1. User calls: client.call(null)
+2. → DefaultClient.call(Address addr) at line 42
+3. → [NO null check] proceeds to line 47
+4. → addr.value() called at line 47
+5. → NullPointerException thrown (unintended)
+
+EXPECTED: IllegalArgumentException at step 3
+ACTUAL: NPE at step 5
+```
+
+### T2: Potential Bug - Evidence Requirements
+
+For **Potential Bug**, you MUST provide:
+
+1. **Code Path Trace** - Show the exact execution path
+2. **Trigger Scenario** - Specific conditions that trigger the issue
+3. **Why Existing Tests Miss It** - Explain the coverage gap
+
+```
+POTENTIAL BUG: Race condition in cached chain ID
+
+CODE PATH:
+1. Thread A calls getChainId(), sees cachedChainId == null
+2. Thread A enters if-block, starts fetchChainId() (slow RPC call)
+3. Thread B calls getChainId(), sees cachedChainId == null (not set yet)
+4. Thread B also enters if-block, starts fetchChainId()
+5. Both threads make redundant RPC calls
+
+TRIGGER SCENARIO:
+- Multiple virtual threads calling getChainId() on cold start
+- High latency RPC endpoint (>100ms)
+
+WHY TESTS MISS IT:
+- Unit tests are single-threaded
+- Integration tests use fast local Anvil, hiding the race window
+```
+
+### T3: Design Concern - Evidence Requirements
+
+For **Design Concern**, provide:
+
+1. **What**: Clear description of the concern
+2. **Why It Matters**: Impact on maintainability/readability/extensibility
+3. **Reference**: Link to standard, pattern, or existing code that demonstrates preferred approach
+
+```
+DESIGN CONCERN: Method does too many things (violates SRP)
+
+WHAT: sendTransactionAndWait() handles signing, sending, polling, and timeout
+
+WHY IT MATTERS:
+- Hard to test individual behaviors
+- Timeout logic duplicated if user wants different polling strategy
+- 150 lines in single method reduces readability
+
+REFERENCE: See viem's separation: signTransaction() + sendRawTransaction() + waitForTransactionReceipt()
+```
+
+### T4: Suggestion - Evidence Requirements
+
+Brief explanation only:
+
+```
+SUGGESTION: Use switch expression instead of if-else chain at line 87
+Currently 15 lines, could be 8 with switch expression for better readability.
+```
+
+---
+
+## Counter-Argument Requirement
+
+**For every T1 and T2 finding**, you MUST include a counter-argument section that argues why it might NOT be a bug:
+
+```
+FINDING: Null pointer risk in processTransaction(tx)
+
+EVIDENCE: [execution trace as above]
+
+COUNTER-ARGUMENT (Why this might NOT be a bug):
+- The public API `submitTransaction()` validates tx != null before calling processTransaction()
+- processTransaction() is private and only called from submitTransaction()
+- Therefore, null can never reach this code path in practice
+
+VERDICT: After tracing all call sites, confirmed processTransaction() is ONLY called from
+submitTransaction() which has null check. This is NOT a bug - the internal method can
+safely assume non-null. Downgrading to T4 Suggestion: add @Nullable annotation or
+Objects.requireNonNull for defensive coding.
+```
+
+**This forces you to:**
+1. Consider if the issue is actually reachable
+2. Check preconditions enforced elsewhere
+3. Avoid false positives from analyzing code in isolation
+
+---
+
+## Existing Test Verification
+
+**Before claiming any bug (T1 or T2)**, you MUST:
+
+### Step 1: Find Related Tests
+
+```bash
+# Find tests for the class under review
+./gradlew test --tests "*ClassName*" --dry-run
+
+# Search for test methods covering the specific functionality
+grep -r "methodName\|ClassName" */src/test/
+```
+
+### Step 2: Analyze Test Coverage
+
+Ask yourself:
+- Do tests cover this code path?
+- If tests exist and pass, why don't they catch this bug?
+- Is the test incorrect, or is my analysis wrong?
+
+### Step 3: Document in Finding
+
+```
+EXISTING TEST ANALYSIS:
+- Found: DefaultClientTest.java lines 45-67 test call() method
+- Coverage gap: Tests only pass Address objects, never test null input
+- Conclusion: Bug is real, tests have coverage gap
+```
+
+OR
+
+```
+EXISTING TEST ANALYSIS:
+- Found: DefaultClientTest.shouldRejectNullAddress() at line 89
+- Test passes and expects IllegalArgumentException
+- Re-checking my analysis...
+
+CORRECTION: I misread the code. Null check exists at line 41, I was looking at wrong method.
+No bug here.
+```
+
+---
+
+## Finding Report Template
+
+Use this template for each finding:
+
+```markdown
+### [T1/T2/T3/T4] [Short Title]
+
+**Location**: `module/path/to/File.java:LINE`
+
+**Classification**: [Confirmed Bug | Potential Bug | Design Concern | Suggestion]
+
+**Description**:
+[1-2 sentences describing the issue]
+
+**Evidence**:
+[For T1: Failing test or execution trace]
+[For T2: Code path + trigger scenario + test gap analysis]
+[For T3: What + Why + Reference]
+[For T4: Brief explanation]
+
+**Existing Test Analysis**: (Required for T1/T2)
+[What tests exist? Why don't they catch this?]
+
+**Counter-Argument**: (Required for T1/T2)
+[Why might this NOT be a bug? What would make my analysis wrong?]
+
+**Verdict**:
+[Final assessment after considering counter-argument]
+
+**Recommended Fix**: (If applicable)
+[Code snippet or description of fix]
+```
+
+---
+
+## Review Process
+
+### Phase 1: Discovery
+1. Read the code changes carefully
+2. Note potential issues without classifying yet
+3. DO NOT jump to conclusions
+
+### Phase 2: Verification
+For each potential issue:
+1. Trace the code path
+2. Check existing tests
+3. Formulate counter-argument
+4. Classify into T1/T2/T3/T4
+
+### Phase 3: Report
+1. Use the finding template
+2. Order by severity (T1 first, T4 last)
+3. Be specific about locations (file:line)
+
+### Phase 4: Self-Check
+Before submitting review, ask:
+- [ ] Did I actually trace code paths or assume?
+- [ ] Did I check existing tests?
+- [ ] Can I articulate counter-arguments for T1/T2 findings?
+- [ ] Would I bet money on each T1 being a real bug?
+
+---
+
+## Anti-Patterns (What NOT to Do)
+
+### ❌ Vague Claims
+```
+BAD: "This might have null pointer issues"
+GOOD: "Line 47 dereferences `addr.value()` without null check. Trace shows
+       null can reach here via path X→Y→Z"
+```
+
+### ❌ Assumed Bugs Without Tracing
+```
+BAD: "The cache isn't thread-safe"
+GOOD: "The cache uses plain field without synchronization. Trace shows Thread A
+       can see partial write from Thread B when [specific scenario]"
+```
+
+### ❌ Ignoring Test Evidence
+```
+BAD: Claim bug exists without checking if tests cover it
+GOOD: "Tests exist but don't cover this case because [reason]"
+```
+
+### ❌ Single-Path Thinking
+```
+BAD: "This input validation is missing" (without checking all entry points)
+GOOD: "Checked all 3 call sites: submitTx(), batchSubmit(), internal retry().
+       Only retry() lacks validation, but it's only called after validation
+       in submitTx(). Not a bug."
+```
+
+---
+
+## Confidence Calibration
+
+After completing a review, rate your confidence:
+
+| Confidence | Meaning | When to Use |
+|------------|---------|-------------|
+| **High** | Would bet money on it | Failing test exists, or exhaustive trace completed |
+| **Medium** | Likely correct but edge cases unclear | Traced main path, some branches unchecked |
+| **Low** | Uncertain, needs more investigation | Pattern-matched without deep trace |
+
+**Rule**: Only report T1 (Confirmed Bug) with HIGH confidence. If confidence is Medium/Low, downgrade to T2 or investigate further.
