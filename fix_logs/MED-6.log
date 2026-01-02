@@ -1,0 +1,12 @@
+The fix for MED-6 is complete. Here's a summary of the changes:
+
+**Summary:**
+- Added `BraneMetrics` support to `HttpBraneProvider` to match the `WebSocketProvider` pattern
+- Added `setMetrics(BraneMetrics metrics)` method with Javadoc
+- Added `metrics.onRequestFailed(method, ex)` call when HTTP errors occur (status codes outside 200-299)
+- The existing `log.warn` logging was already present and has been preserved
+
+The HTTP error logging now has three layers of observability:
+1. `DebugLogger.logRpc()` - Internal debug logging
+2. `log.warn()` - SLF4J warning level logging
+3. `metrics.onRequestFailed()` - Metrics hook for monitoring systems (Micrometer, Prometheus, etc.)

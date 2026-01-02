@@ -21,26 +21,47 @@ import java.util.Objects;
  * This class captures multiple contract calls and bundles them into a single
  * {@code eth_call} using the Multicall3 contract.
  *
- * <p><b>Exception Safety:</b> If an exception occurs between a proxy method call
- * and the subsequent {@code add()} call, you MUST call {@link #clearPending()} in a
- * finally block to prevent ThreadLocal leaks. Example:
+ * <h2>IMPORTANT: ThreadLocal Cleanup Requirement</h2>
+ *
+ * <p>This class uses a {@link ThreadLocal} to temporarily store call metadata between
+ * a proxy method call and the subsequent {@link #add(Object)} call. <b>You MUST ensure
+ * that every proxy method call is followed by an {@code add()} call</b>, or explicitly
+ * call {@link #clearPending()} to prevent ThreadLocal leaks.
+ *
+ * <p><b>Leak Detection:</b> If you call a proxy method twice without calling {@code add()}
+ * in between, an {@link IllegalStateException} is thrown and the stale pending call is
+ * automatically cleared. However, this is a fail-safe—you should not rely on it.
+ *
+ * <p><b>Safe Patterns:</b>
  * <pre>{@code
+ * // Pattern 1: Direct chaining (recommended)
  * var handle = batch.add(myContract.myMethod(arg));  // Safe - add() clears pending
  *
- * // If you catch exceptions, always clear pending:
+ * // Pattern 2: Try-finally for complex logic
  * try {
  *     var result = myContract.myMethod(arg);
+ *     // ... validation or other logic that might throw ...
  *     handle = batch.add(result);
  * } catch (Exception e) {
  *     batch.clearPending();  // Prevent ThreadLocal leak
  *     throw e;
  * }
+ *
+ * // Pattern 3: Using hasPending() for debugging
+ * assert !batch.hasPending() : "Unexpected pending call";
  * }</pre>
+ *
+ * <p><b>Warning:</b> If you use this class in a thread pool or virtual thread context,
+ * be especially careful to clear pending calls. ThreadLocals in pooled threads can
+ * persist across task boundaries, causing memory leaks or incorrect behavior.
  *
  * @implNote This class is <strong>not thread-safe</strong>. A batch instance
  *           must be used from a single thread only. The recording pattern uses
  *           ThreadLocal to temporarily store call metadata between the proxy
  *           call and the subsequent {@code add()} call.
+ *
+ * @see #clearPending()
+ * @see #hasPending()
  */
 public final class MulticallBatch {
 
@@ -199,11 +220,22 @@ public final class MulticallBatch {
 
     /**
      * Internal method used by recording proxies to record a call.
-     * 
-     * <p>
-     * <strong>Important:</strong> Every call to this method must be followed by
+     *
+     * <p><b>ThreadLocal Safety:</b> Every call to this method must be followed by
      * a call to {@link #add(Object)} to consume the pending call and prevent
      * ThreadLocal leaks. The recording proxy pattern ensures this by design.
+     *
+     * <p><b>Stale Call Detection:</b> If this method detects a stale pending call
+     * (i.e., a previous proxy call that was never consumed by {@code add()}), it will:
+     * <ol>
+     *   <li>Clear the stale pending call to prevent ThreadLocal leaks</li>
+     *   <li>Throw an {@link IllegalStateException} to alert the caller</li>
+     * </ol>
+     * This is a fail-safe mechanism—callers should use {@link #clearPending()} in
+     * exception handlers rather than relying on this detection.
+     *
+     * @throws IllegalStateException if a stale pending call is detected (indicating
+     *         the caller forgot to call {@code add()} after a previous proxy call)
      */
     <T> void recordCall(final Address target, final Abi.FunctionCall call, final Class<T> returnType) {
         // Fail fast if user forgot to call add() after a previous proxy call
@@ -248,14 +280,26 @@ public final class MulticallBatch {
     /**
      * Clears any pending call that was recorded but not added to the batch.
      *
-     * <p>
-     * Call this method in a finally block if you catch exceptions between
-     * a proxy method call and {@link #add(Object)} to prevent ThreadLocal leaks.
+     * <p><b>IMPORTANT:</b> Call this method in a finally block or catch handler if
+     * an exception might occur between a proxy method call and {@link #add(Object)}.
+     * This prevents ThreadLocal leaks that can cause memory issues in thread pools
+     * and virtual thread contexts.
      *
-     * <p>
-     * This method is safe to call even if there is no pending call.
+     * <p><b>Example:</b>
+     * <pre>{@code
+     * try {
+     *     var result = myContract.myMethod(arg);
+     *     // ... code that might throw ...
+     *     handle = batch.add(result);
+     * } catch (Exception e) {
+     *     batch.clearPending();  // Prevent ThreadLocal leak
+     *     throw e;
+     * }
+     * }</pre>
      *
-     * @return true if a pending call was cleared, false if there was nothing to clear
+     * <p>This method is safe to call even if there is no pending call (returns {@code false}).
+     *
+     * @return {@code true} if a pending call was cleared, {@code false} if there was nothing to clear
      */
     public boolean clearPending() {
         final CallContext<?> pending = pendingCall.get();
