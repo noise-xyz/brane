@@ -40,6 +40,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.function.Consumer;
 import java.util.concurrent.TimeUnit;
@@ -70,6 +71,48 @@ import org.slf4j.LoggerFactory;
 public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(WebSocketProvider.class);
+
+    // ==================== Connection State Machine ====================
+    /**
+     * Connection state for explicit state machine management.
+     *
+     * <p>State transitions:
+     * <pre>
+     * CONNECTING ---(success)---> CONNECTED
+     *     |                           |
+     *     | (failure)                 | (disconnect)
+     *     v                           v
+     *   CLOSED <---------------  RECONNECTING
+     *     ^                           |
+     *     |                           | (max retries or close())
+     *     +---------------------------+
+     * </pre>
+     *
+     * <p><b>Request handling by state:</b>
+     * <ul>
+     *   <li>CONNECTING: Requests queued until connection established</li>
+     *   <li>CONNECTED: Normal operation - requests sent immediately</li>
+     *   <li>RECONNECTING: Requests rejected with RpcException (connection unavailable)</li>
+     *   <li>CLOSED: Requests rejected with RpcException (provider closed)</li>
+     * </ul>
+     */
+    public enum ConnectionState {
+        /** Initial connection in progress. */
+        CONNECTING,
+        /** WebSocket is connected and ready for requests. */
+        CONNECTED,
+        /** Connection lost, reconnect in progress. Requests are rejected. */
+        RECONNECTING,
+        /** Provider is permanently closed. No more requests accepted. */
+        CLOSED
+    }
+
+    /**
+     * Current connection state. All state transitions must use atomic compareAndSet
+     * to ensure thread-safe state machine transitions.
+     */
+    private final AtomicReference<ConnectionState> connectionState =
+            new AtomicReference<>(ConnectionState.CONNECTING);
 
     // ==================== Configuration ====================
     /**
@@ -252,6 +295,23 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         return orphanedResponses.sum();
     }
 
+    /**
+     * Returns the current connection state.
+     *
+     * <p>This method is useful for monitoring and diagnostics. Clients can use
+     * this to check whether the provider is connected, reconnecting, or closed
+     * before attempting operations.
+     *
+     * <p><b>Thread safety:</b> This method returns a snapshot of the current state.
+     * The state may change immediately after this method returns.
+     *
+     * @return the current {@link ConnectionState}
+     * @since 0.5.0
+     */
+    public ConnectionState getConnectionState() {
+        return connectionState.get();
+    }
+
     // Lock-free ID generator
     private final AtomicLong idGenerator = new AtomicLong(1);
 
@@ -419,6 +479,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                     this.channel = b.connect(uri.getHost(), port).sync().channel();
                     connectionHandler.handshakeFuture().sync();
                     connected.set(true);
+                    connectionState.set(ConnectionState.CONNECTED);
                     return;
                 } catch (Exception e) {
                     lastError = e;
@@ -467,6 +528,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
             if (!closed.get()) {
+                // Transition to RECONNECTING state - requests will be rejected until reconnected
+                connectionState.set(ConnectionState.RECONNECTING);
                 log.warn("Connection lost, triggering reconnect");
                 reconnect();
             }
@@ -711,6 +774,17 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      *         exceptionally on timeout
      */
     public CompletableFuture<JsonRpcResponse> sendAsync(String method, List<?> params, Duration timeout) {
+        // Check connection state - reject requests during RECONNECTING or CLOSED
+        ConnectionState state = connectionState.get();
+        if (state == ConnectionState.CLOSED) {
+            return CompletableFuture.failedFuture(new RpcException(
+                    -32000, "WebSocketProvider is closed", null));
+        }
+        if (state == ConnectionState.RECONNECTING) {
+            return CompletableFuture.failedFuture(new RpcException(
+                    -32000, "WebSocket is reconnecting - request rejected to prevent loss", null));
+        }
+
         long id = idGenerator.getAndIncrement();
 
         CompletableFuture<JsonRpcResponse> future = allocateSlot(id);
@@ -808,6 +882,17 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      *         exceptionally on timeout
      */
     public CompletableFuture<JsonRpcResponse> sendAsyncBatch(String method, List<?> params, Duration timeout) {
+        // Check connection state - reject requests during RECONNECTING or CLOSED
+        ConnectionState state = connectionState.get();
+        if (state == ConnectionState.CLOSED) {
+            return CompletableFuture.failedFuture(new RpcException(
+                    -32000, "WebSocketProvider is closed", null));
+        }
+        if (state == ConnectionState.RECONNECTING) {
+            return CompletableFuture.failedFuture(new RpcException(
+                    -32000, "WebSocket is reconnecting - request rejected to prevent loss", null));
+        }
+
         long id = idGenerator.getAndIncrement();
 
         CompletableFuture<JsonRpcResponse> future = allocateSlot(id);
@@ -960,6 +1045,9 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             return; // Already closed
         }
 
+        // Transition to CLOSED state - all new requests will be rejected
+        connectionState.set(ConnectionState.CLOSED);
+
         // Fail all pending requests before shutting down
         RpcException shutdownException = new RpcException(-32000, "WebSocketProvider is shutting down", null);
         failAllPending(shutdownException);
@@ -1016,7 +1104,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     }
 
     private void reconnect() {
-        if (closed.get()) {
+        if (closed.get() || connectionState.get() == ConnectionState.CLOSED) {
             return;
         }
 
@@ -1024,6 +1112,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         if (attempt > MAX_RECONNECT_ATTEMPTS) {
             log.error("Max reconnect attempts ({}) exceeded, giving up on {}", MAX_RECONNECT_ATTEMPTS, uri);
             closed.set(true);
+            connectionState.set(ConnectionState.CLOSED);
             failAllPending(new RpcException(-32000,
                 "WebSocket connection permanently failed after " + MAX_RECONNECT_ATTEMPTS + " reconnect attempts", null));
             return;
@@ -1034,7 +1123,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         log.info("Scheduling reconnect attempt {}/{} to {} in {}ms", attempt, MAX_RECONNECT_ATTEMPTS, uri, delayMs);
 
         group.schedule(() -> {
-            if (!connected.get() && !closed.get()) {
+            if (!connected.get() && connectionState.get() == ConnectionState.RECONNECTING) {
                 try {
                     connect();
                     // Reset counter on successful connection
