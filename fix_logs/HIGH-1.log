@@ -1,0 +1,6 @@
+Done. Fixed **HIGH-1** by adding `Objects.requireNonNull(hash, "hash")` at line 87 of `DefaultPublicClient.java`. The null validation now throws a clear `NullPointerException` with message "hash" if a null value is passed to `getTransactionByHash()`.
+
+**Summary:**
+- Added null validation at `DefaultPublicClient.java:87`
+- Tests pass (`DefaultPublicClientTest`, `DefaultPublicClientErrorTest`)
+- Committed: `fix(rpc): add null validation for hash in getTransactionByHash [HIGH-1]`

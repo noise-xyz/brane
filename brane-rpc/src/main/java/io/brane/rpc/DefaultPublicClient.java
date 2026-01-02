@@ -184,6 +184,7 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public java.math.BigInteger getBalance(final Address address) {
+        java.util.Objects.requireNonNull(address, "address");
         final var response = sendWithRetry("eth_getBalance", List.of(address.value(), "latest"));
         final Object result = response.result();
         if (result == null) {
