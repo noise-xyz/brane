@@ -3,6 +3,7 @@ package io.brane.rpc;
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListEntry;
+import io.brane.core.model.BlockHeader;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
@@ -199,8 +200,8 @@ final class SmartGasStrategy {
      * Formats an error message with transaction context for gas estimation failures.
      */
     private static String formatEstimateGasError(final Map<String, Object> tx, final String errorDetail) {
-        final var from = tx.get("from");
-        final var to = tx.get("to");
+        final Object from = tx.get("from");
+        final Object to = tx.get("to");
         final var sb = new StringBuilder("eth_estimateGas failed");
         if (from != null) {
             sb.append(" for tx from ").append(from);
@@ -231,7 +232,7 @@ final class SmartGasStrategy {
             return request; // User provided both fees - don't override
         }
 
-        final var latest = publicClient.getLatestBlock();
+        final BlockHeader latest = publicClient.getLatestBlock();
         if (latest != null && latest.baseFeePerGas() != null) {
             final Wei baseFee = latest.baseFeePerGas();
 

@@ -343,7 +343,7 @@ public final class DefaultWalletClient implements WalletClient {
                 final JsonRpcError err = response.error();
                 final String data = RpcUtils.extractErrorData(err.data());
                 if (data != null && data.startsWith("0x") && data.length() > 10) {
-                    final var decoded = RevertDecoder.decode(data);
+                    final RevertDecoder.Decoded decoded = RevertDecoder.decode(data);
                     DebugLogger.logTx(
                             LogFormatter.formatTxRevert(txHash.value(), decoded.kind().toString(), decoded.reason()));
                     throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), null);
@@ -548,7 +548,7 @@ public final class DefaultWalletClient implements WalletClient {
             throws RevertException {
         final String raw = e.data();
         if (raw != null && raw.startsWith("0x") && raw.length() > 10) {
-            final var decoded = RevertDecoder.decode(raw);
+            final RevertDecoder.Decoded decoded = RevertDecoder.decode(raw);
             // Always throw RevertException for revert data, even if kind is UNKNOWN
             // (UNKNOWN just means we couldn't decode it, but it's still a revert)
             DebugLogger.logTx(

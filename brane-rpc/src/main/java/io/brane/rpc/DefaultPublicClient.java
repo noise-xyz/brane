@@ -85,7 +85,7 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public Transaction getTransactionByHash(final Hash hash) {
         java.util.Objects.requireNonNull(hash, "hash");
-        final var response = sendWithRetry("eth_getTransactionByHash", List.of(hash.value()));
+        final JsonRpcResponse response = sendWithRetry("eth_getTransactionByHash", List.of(hash.value()));
         final Object result = response.result();
         if (result == null) {
             return null;
@@ -162,9 +162,9 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public List<LogEntry> getLogs(final LogFilter filter) {
-        final var req = buildLogParams(filter);
+        final Map<String, Object> req = buildLogParams(filter);
 
-        final var response = sendWithRetry("eth_getLogs", List.of(req));
+        final JsonRpcResponse response = sendWithRetry("eth_getLogs", List.of(req));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
             throw new io.brane.core.error.RpcException(
@@ -176,7 +176,7 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public java.math.BigInteger getChainId() {
-        final var response = sendWithRetry("eth_chainId", List.of());
+        final JsonRpcResponse response = sendWithRetry("eth_chainId", List.of());
         final Object result = response.result();
         if (result == null) {
             throw new io.brane.core.error.RpcException(0, "eth_chainId returned null", (String) null, (Throwable) null);
@@ -187,7 +187,7 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public java.math.BigInteger getBalance(final Address address) {
         java.util.Objects.requireNonNull(address, "address");
-        final var response = sendWithRetry("eth_getBalance", List.of(address.value(), BlockTag.LATEST.toRpcValue()));
+        final JsonRpcResponse response = sendWithRetry("eth_getBalance", List.of(address.value(), BlockTag.LATEST.toRpcValue()));
         final Object result = response.result();
         if (result == null) {
             throw new io.brane.core.error.RpcException(0, "eth_getBalance returned null", (String) null,
@@ -199,7 +199,7 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public AccessListWithGas createAccessList(final TransactionRequest request) {
         final Map<String, Object> txObject = buildTxObject(request);
-        final var response = sendWithRetry("eth_createAccessList", List.of(txObject, BlockTag.LATEST.toRpcValue()));
+        final JsonRpcResponse response = sendWithRetry("eth_createAccessList", List.of(txObject, BlockTag.LATEST.toRpcValue()));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
             throw new io.brane.core.error.RpcException(
@@ -310,7 +310,7 @@ final class DefaultPublicClient implements PublicClient {
     }
 
     private @Nullable BlockHeader getBlockByTag(final String tag) {
-        final var response = sendWithRetry("eth_getBlockByNumber", List.of(tag, Boolean.FALSE));
+        final JsonRpcResponse response = sendWithRetry("eth_getBlockByNumber", List.of(tag, Boolean.FALSE));
         final Object result = response.result();
         if (result == null) {
             return null;
