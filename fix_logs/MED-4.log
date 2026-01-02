@@ -1,0 +1,14 @@
+The fix is complete. Here's a summary of what was done:
+
+## Summary - MED-4 Fix
+
+**Issue:** Race condition in `BraneAsyncClient` default executor shutdown where `get()` followed by `shutdown()` could fail if another thread created a new executor between those operations.
+
+**Fix:** Changed both `shutdownDefaultExecutor(long)` and `shutdownDefaultExecutorNow()` to use `getAndSet(null)` instead of `get()`, atomically retrieving and nullifying the executor reference before initiating shutdown.
+
+**Changes:**
+1. `shutdownDefaultExecutor(long timeoutMillis)`: Now uses `DEFAULT_EXECUTOR_REF.getAndSet(null)` to atomically get-and-nullify
+2. `shutdownDefaultExecutorNow()`: Same atomic pattern, and now returns `List<Runnable>` of pending tasks
+3. Added comprehensive thread safety documentation in class Javadoc and both method Javadocs
+
+**Commit:** `f41e730 fix(rpc): fix BraneAsyncClient default executor shutdown race condition [MED-4]`

@@ -1,19 +1,46 @@
-Done. Here's a summary of the fix for **MED-5**:
+# MED-5: Add timeout support to WebSocketProvider.sendAsyncBatch
 
-## Summary
+## Status: ALREADY RESOLVED
 
-Added timeout support to `WebSocketProvider.sendAsyncBatch` method:
+## Analysis
+The code review task requested adding timeout support to `WebSocketProvider.sendAsyncBatch`.
+Upon investigation, this functionality is **already fully implemented**:
 
-1. **New overloaded method**: `sendAsyncBatch(String method, List<?> params, Duration timeout)` - allows specifying a custom timeout for batch requests
+### Implementation Details (WebSocketProvider.java)
 
-2. **Default timeout behavior**: The original `sendAsyncBatch(String method, List<?> params)` now delegates to the new overload with `defaultRequestTimeout`, providing consistent timeout behavior matching the `sendAsync` methods
+1. **Lines 791-793**: Overload without timeout parameter that applies default timeout internally:
+   ```java
+   public CompletableFuture<JsonRpcResponse> sendAsyncBatch(String method, List<?> params) {
+       return sendAsyncBatch(method, params, defaultRequestTimeout);
+   }
+   ```
 
-3. **Timeout implementation**:
-   - Schedules timeout via Netty event loop (same pattern as `sendAsync`)
-   - Properly removes timed-out requests from `pendingRequests` map
-   - Reports timeouts to metrics via `onRequestTimeout(method, id)`
-   - Throws `RpcException` with error code -32000 on timeout
+2. **Lines 810-851**: Overload with custom timeout parameter:
+   ```java
+   public CompletableFuture<JsonRpcResponse> sendAsyncBatch(String method, List<?> params, Duration timeout)
+   ```
 
-4. **Updated Javadoc**: Removed outdated note that claimed the method didn't support timeouts; added `@see` reference to the new timeout-enabled overload
+3. **Lines 818-832**: Timeout scheduling via Netty event loop:
+   - Schedules timeout callback using `ch.eventLoop().schedule()`
+   - Properly removes from pending requests on timeout
+   - Reports timeout via metrics `metrics.onRequestTimeout(method, id)`
+   - Throws `RpcException` with code -32000 and descriptive message
 
-**Commit**: `cd664a8` - `feat(rpc): add timeout support to WebSocketProvider.sendAsyncBatch [MED-5]`
+4. **Line 116**: Default timeout configured via `WebSocketConfig`:
+   ```java
+   private final Duration defaultRequestTimeout;
+   ```
+
+5. **Line 276**: Initialization from config:
+   ```java
+   this.defaultRequestTimeout = config.defaultRequestTimeout();
+   ```
+
+## Verification
+- Code compiles successfully: `./gradlew :brane-rpc:compileJava` ✓
+- Both requirements met:
+  - ✓ "Add timeout parameter" (Line 810)
+  - ✓ "OR apply default timeout internally" (Line 792)
+
+## No Changes Required
+This issue was already addressed prior to this review task.
