@@ -1,0 +1,11 @@
+**Issue LOW-11 completed.** 
+
+Summary of changes:
+- Added `@Nullable` annotation to `JsonRpcError.data`
+- Added `@Nullable` annotations to `BatchResult.data` and `revertReason`
+- Added `@Nullable` annotations to `CallRequest`: `from`, `data`, `value`, `gas`, `gasPrice`, `maxFeePerGas`, `maxPriorityFeePerGas`
+- Added `@Nullable` annotation to `WebSocketConfig.eventLoopGroup`
+- Added `@Nullable` annotation to `RpcConfig.chainId`
+- Added `@Nullable` annotations to `DefaultWalletClient.ValueParts`: `to`, `gasPrice`, `maxPriorityFeePerGas`, `maxFeePerGas`
+
+All changes compile successfully and tests pass. The annotations use `org.jspecify.annotations.Nullable` which is already a dependency in the project for null analysis.

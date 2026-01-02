@@ -44,10 +44,40 @@ public final class RpcUtils {
 
     /**
      * Shared, thread-safe ObjectMapper instance for JSON serialization/deserialization.
-     * <p>
-     * ObjectMapper is expensive to create and thread-safe after configuration,
-     * so a single shared instance is used across all RPC classes. The default
-     * configuration is suitable for JSON-RPC operations.
+     *
+     * <p>ObjectMapper is expensive to create and thread-safe after configuration,
+     * so a single shared instance is used across all RPC classes.
+     *
+     * <h3>Jackson Configuration</h3>
+     * <p>This mapper uses Jackson's default configuration with no additional modules registered:
+     * <ul>
+     *   <li>No custom modules registered (e.g., no JavaTimeModule, Jdk8Module)</li>
+     *   <li>Default serialization/deserialization settings</li>
+     *   <li>Unknown properties are NOT ignored by default (can fail on unknown fields)</li>
+     *   <li>Standard JSON parsing (no comments, trailing commas, etc.)</li>
+     * </ul>
+     *
+     * <h3>Brane Type Handling</h3>
+     * <p>Brane domain types ({@code Address}, {@code Wei}, {@code Hash}, etc.) are NOT
+     * automatically serializable as they lack Jackson annotations. The RPC layer handles
+     * these types by:
+     * <ul>
+     *   <li>Manually extracting primitive values (e.g., {@code address.value()}) before serialization</li>
+     *   <li>Constructing domain objects from parsed JSON primitives</li>
+     * </ul>
+     *
+     * <h3>Customization</h3>
+     * <p>This mapper is intentionally not configurable to maintain simplicity and consistency
+     * across the SDK. If you need custom serialization behavior:
+     * <ul>
+     *   <li>Use your own ObjectMapper for application-level JSON processing</li>
+     *   <li>The Brane RPC layer will continue using this internal mapper for JSON-RPC</li>
+     * </ul>
+     *
+     * <p><strong>Thread Safety:</strong> This instance is safe for concurrent use across threads.
+     * Do not modify its configuration after initialization.
+     *
+     * @see com.fasterxml.jackson.databind.ObjectMapper
      */
     public static final ObjectMapper MAPPER = new ObjectMapper();
 
