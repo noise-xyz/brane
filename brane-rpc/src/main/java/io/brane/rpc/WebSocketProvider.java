@@ -485,16 +485,13 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 return;
             }
 
-            if (msg instanceof FullHttpResponse) {
-                FullHttpResponse response = (FullHttpResponse) msg;
+            if (msg instanceof FullHttpResponse response) {
                 throw new IllegalStateException(
                         "Unexpected FullHttpResponse (status=" + response.status() + ")");
             }
 
-            if (msg instanceof WebSocketFrame) {
-                WebSocketFrame frame = (WebSocketFrame) msg;
-                if (frame instanceof TextWebSocketFrame) {
-                    TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
+            if (msg instanceof WebSocketFrame frame) {
+                if (frame instanceof TextWebSocketFrame textFrame) {
                     ByteBuf content = textFrame.content();
                     try {
                         try (JsonParser parser = MAPPER.getFactory()
