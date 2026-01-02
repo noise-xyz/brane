@@ -328,7 +328,7 @@ public final class DefaultWalletClient implements WalletClient {
     private void throwRevertException(
             final TransactionRequest request, final Hash txHash, final TransactionReceipt receipt) {
         // Try to replay the transaction via eth_call to get the revert reason
-        final var tx = new LinkedHashMap<String, Object>();
+        final Map<String, Object> tx = new LinkedHashMap<>();
         tx.put("from", receipt.from() != null ? receipt.from().value() : senderAddress.value());
         if (request.to() != null) {
             tx.put("to", request.to().value());

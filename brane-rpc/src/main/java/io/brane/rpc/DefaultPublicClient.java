@@ -92,7 +92,7 @@ final class DefaultPublicClient implements PublicClient {
             return null;
         }
 
-        final var map = MAPPER.convertValue(result, new TypeReference<Map<String, Object>>() {});
+        final Map<String, Object> map = MAPPER.convertValue(result, new TypeReference<Map<String, Object>>() {});
 
         final String hashHex = RpcUtils.stringValue(map.get("hash"));
         final String fromHex = RpcUtils.stringValue(map.get("from"));
@@ -239,7 +239,7 @@ final class DefaultPublicClient implements PublicClient {
                 map.get("accessList"),
                 new TypeReference<List<Map<String, Object>>>() {
                 });
-        final var accessList = new ArrayList<AccessListEntry>();
+        final List<AccessListEntry> accessList = new ArrayList<>();
         if (accessListRaw != null) {
             for (Map<String, Object> entryMap : accessListRaw) {
                 final String addressHex = RpcUtils.stringValue(entryMap.get("address"));
@@ -268,7 +268,7 @@ final class DefaultPublicClient implements PublicClient {
     }
 
     private Map<String, Object> buildTxObject(final TransactionRequest request) {
-        final var tx = new LinkedHashMap<String, Object>();
+        final Map<String, Object> tx = new LinkedHashMap<>();
         if (request.from() != null) {
             tx.put("from", request.from().value());
         }
@@ -284,7 +284,7 @@ final class DefaultPublicClient implements PublicClient {
     }
 
     private Map<String, Object> buildLogParams(final LogFilter filter) {
-        final var req = new LinkedHashMap<String, Object>();
+        final Map<String, Object> req = new LinkedHashMap<>();
         filter.fromBlock()
                 .ifPresent(
                         v -> {
@@ -312,7 +312,7 @@ final class DefaultPublicClient implements PublicClient {
         filter.topics()
                 .ifPresent(
                         topics -> {
-                            final var topicHex = new ArrayList<String>();
+                            final List<String> topicHex = new ArrayList<>();
                             for (Hash h : topics) {
                                 if (h != null) {
                                     topicHex.add(h.value());

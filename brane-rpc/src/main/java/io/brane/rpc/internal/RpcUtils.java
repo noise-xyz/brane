@@ -256,7 +256,7 @@ public final class RpcUtils {
      * @return map suitable for JSON-RPC serialization
      */
     public static Map<String, Object> buildTxObject(final TransactionRequest request, final Address from) {
-        final var tx = new LinkedHashMap<String, Object>();
+        final Map<String, Object> tx = new LinkedHashMap<>();
         tx.put("from", from.value());
         request.toOpt().ifPresent(address -> tx.put("to", address.value()));
         request.valueOpt().ifPresent(v -> tx.put("value", toQuantityHex(v.value())));
