@@ -187,7 +187,7 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public java.math.BigInteger getBalance(final Address address) {
         java.util.Objects.requireNonNull(address, "address");
-        final var response = sendWithRetry("eth_getBalance", List.of(address.value(), "latest"));
+        final var response = sendWithRetry("eth_getBalance", List.of(address.value(), BlockTag.LATEST.toRpcValue()));
         final Object result = response.result();
         if (result == null) {
             throw new io.brane.core.error.RpcException(0, "eth_getBalance returned null", (String) null,
@@ -199,7 +199,7 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public AccessListWithGas createAccessList(final TransactionRequest request) {
         final Map<String, Object> txObject = buildTxObject(request);
-        final var response = sendWithRetry("eth_createAccessList", List.of(txObject, "latest"));
+        final var response = sendWithRetry("eth_createAccessList", List.of(txObject, BlockTag.LATEST.toRpcValue()));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
             throw new io.brane.core.error.RpcException(
