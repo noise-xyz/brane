@@ -774,7 +774,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * <p>
      * This method is optimized for high-throughput scenarios where many requests
      * are sent in rapid succession. Requests are batched and flushed together,
-     * reducing syscall overhead.
+     * reducing syscall overhead. Uses the configured default request timeout.
      * </p>
      *
      * <p>
@@ -786,22 +786,52 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * <li>You want automatic batching of network writes</li>
      * </ul>
      *
-     * <p><strong>Important:</strong> Unlike {@link #sendAsync(String, List, Duration)}, this method
-     * does not support individual request timeouts. Requests will complete when a response is
-     * received, or fail if the connection is lost. For timeout-sensitive operations, use
-     * {@link #sendAsync(String, List, Duration)} instead, or wrap the returned future with
-     * {@link CompletableFuture#orTimeout(long, java.util.concurrent.TimeUnit)}.</p>
-     *
      * @param method the JSON-RPC method name
      * @param params the method parameters, or null/empty for no parameters
      * @return a CompletableFuture that completes with the JSON-RPC response
+     * @see #sendAsyncBatch(String, List, Duration) for custom timeout support
      */
     public CompletableFuture<JsonRpcResponse> sendAsyncBatch(String method, List<?> params) {
+        return sendAsyncBatch(method, params, defaultRequestTimeout);
+    }
+
+    /**
+     * Sends an asynchronous JSON-RPC request optimized for high-throughput batching,
+     * with a custom timeout.
+     *
+     * <p>
+     * Same as {@link #sendAsyncBatch(String, List)} but allows specifying a custom timeout
+     * for this request. The timeout applies to the individual request, not the batch write.
+     * </p>
+     *
+     * @param method  the JSON-RPC method name
+     * @param params  the method parameters, or null/empty for no parameters
+     * @param timeout the timeout duration for this request; if null, no timeout is applied
+     * @return a CompletableFuture that completes with the JSON-RPC response or
+     *         exceptionally on timeout
+     */
+    public CompletableFuture<JsonRpcResponse> sendAsyncBatch(String method, List<?> params, Duration timeout) {
         long id = idGenerator.getAndIncrement();
 
         CompletableFuture<JsonRpcResponse> future = allocateSlot(id);
         if (future.isCompletedExceptionally()) {
             return future; // Backpressure triggered
+        }
+
+        // Schedule timeout if specified
+        Channel ch = this.channel;
+        if (timeout != null && timeout.toMillis() > 0 && ch != null && ch.isActive()) {
+            ch.eventLoop().schedule(() -> {
+                if (!future.isDone()) {
+                    // Remove from pending requests on timeout
+                    pendingRequests.remove(id, future);
+                    metrics.onRequestTimeout(method, id);
+                    future.completeExceptionally(new RpcException(
+                            -32000,
+                            "Request timed out after " + timeout.toMillis() + "ms (method: " + method + ")",
+                            null));
+                }
+            }, timeout.toMillis(), TimeUnit.MILLISECONDS);
         }
 
         // Check ring buffer saturation before publishing (metrics hook for early warning)

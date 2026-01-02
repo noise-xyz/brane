@@ -1,0 +1,21 @@
+Successfully fixed **MED-4**. Here's a summary of the changes:
+
+## Summary
+
+**Issue:** `BraneAsyncClient` default executor lifecycle leak - the default executor wasn't being cleaned up on JVM exit.
+
+**Fix applied to** `brane-rpc/src/main/java/io/brane/rpc/BraneAsyncClient.java`:
+
+1. **Added shutdown hook** (lines 60-69): Registered a JVM shutdown hook in a static initializer block that calls `shutdownNow()` on the default executor when the JVM exits.
+
+2. **Enhanced class Javadoc** (lines 40-45): Added an "Executor Lifecycle" section documenting:
+   - The default executor is automatically cleaned up via shutdown hook
+   - Explicit shutdown is still needed for container reloads (Spring Boot) and test frameworks
+   - The executor will be lazily recreated if needed after manual shutdown
+
+3. **Updated field Javadoc** (lines 54-56): Referenced the shutdown hook in the `DEFAULT_EXECUTOR_REF` field documentation.
+
+The fix ensures that:
+- Normal usage doesn't require explicit cleanup (shutdown hook handles it)
+- Container environments and test frameworks can still call `shutdownDefaultExecutor()` for explicit cleanup between reloads
+- The lazy recreation behavior is preserved for flexibility
