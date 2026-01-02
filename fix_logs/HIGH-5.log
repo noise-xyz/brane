@@ -1,15 +1,25 @@
-The fix is complete. Here's a summary of the changes:
+Issue: HIGH-5 - Refactor MulticallBatch to use type-safe call API
+File: MulticallBatch.java:336
 
-**Issue HIGH-5: Refactor MulticallBatch to use type-safe call API**
+Status: ALREADY FIXED
 
-**Changes made to `MulticallBatch.java`:**
-1. Replaced the deprecated `call(Map<String, Object>, String)` with the type-safe `call(CallRequest, BlockTag)` API
-2. Changed from `Map.of("to", ..., "data", ...)` to `CallRequest.of(MULTICALL_ADDRESS, new HexData(...))`
-3. Used `BlockTag.LATEST` instead of the string `"latest"`
-4. Called `.value()` on the returned `HexData` to get the string for decoding
-5. Removed unused `java.util.Map` import
+Analysis:
+The code at line 335 (line number may have shifted since the review) already uses
+the type-safe call API:
 
-The refactoring improves type safety by:
-- Using `Address` instead of raw string for the target address
-- Using `HexData` instead of raw string for the call data
-- Using `BlockTag.LATEST` enum constant instead of magic string `"latest"`
+    final String resultHex = publicClient.call(callRequest, BlockTag.LATEST).value();
+
+This uses:
+- CallRequest (type-safe request object) instead of Map<String, Object>
+- BlockTag.LATEST (enum) instead of String "latest"
+- Returns HexData via .value() instead of nullable String
+
+The deprecated API signature is:
+    @Deprecated String call(Map<String, Object> callObject, String blockTag);
+
+The current code correctly uses:
+    HexData call(CallRequest request, BlockTag blockTag);
+
+No changes required - the code was already refactored to use the type-safe API.
+
+Verified: Unit tests pass.

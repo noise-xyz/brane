@@ -1,0 +1,8 @@
+Done. The HIGH-4 fix has been completed:
+
+**Summary:**
+- Added `import java.util.Objects;` to `DefaultPublicClient.java`
+- Replaced all fully-qualified `java.util.Objects.requireNonNull` calls with `Objects.requireNonNull`
+- Replaced `java.util.Objects::nonNull` with `Objects::nonNull`
+- The null validation for the provider parameter was already present at line 72, but now follows the same pattern as `DefaultWalletClient`
+- All tests pass
