@@ -1,0 +1,28 @@
+Done! Here's a summary of the changes made for **LOW-9**:
+
+## Summary
+
+Extracted duplicate URL validation logic to a shared utility method in `RpcUtils`:
+
+### Changes Made:
+
+1. **`brane-rpc/src/main/java/io/brane/rpc/internal/RpcUtils.java`**:
+   - Added `validateUrl(String url, Set<String> allowedSchemes)` utility method
+   - Added `HTTP_SCHEMES` constant (`Set<String>` containing "http", "https")
+   - Added `WS_SCHEMES` constant (`Set<String>` containing "ws", "wss")
+   - Used `LinkedHashSet` to preserve insertion order for consistent error messages
+
+2. **`brane-rpc/src/main/java/io/brane/rpc/RpcConfig.java`**:
+   - Replaced 20-line inline URL validation with single call to `validateUrl(url, HTTP_SCHEMES)`
+
+3. **`brane-rpc/src/main/java/io/brane/rpc/WebSocketConfig.java`**:
+   - Replaced 20-line inline URL validation with single call to `validateUrl(url, WS_SCHEMES)`
+
+4. **`brane-rpc/src/main/java/io/brane/rpc/HttpBraneProvider.java`** (Builder class):
+   - Replaced 18-line inline URL validation with single call to `validateUrl(url, HTTP_SCHEMES)`
+
+### Benefits:
+- **DRY principle**: Eliminated ~58 lines of duplicate code
+- **Standardized error messages**: Consistent "url must use X or Y scheme" format across all validation points
+- **Single point of maintenance**: Future URL validation changes only need to be made in one place
+- **Full test coverage**: All existing tests pass with the refactored code

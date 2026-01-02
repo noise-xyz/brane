@@ -94,11 +94,22 @@ public final class BranePublicClient implements PublicClient, AutoCloseable {
 
     /**
      * Returns the chain profile for this client.
-     * 
+     *
      * @return the chain configuration
      */
     public ChainProfile profile() {
         return profile;
+    }
+
+    /**
+     * Checks if the client is closed and throws if so.
+     *
+     * @throws IllegalStateException if the client has been closed
+     */
+    private void ensureOpen() {
+        if (closed.get()) {
+            throw new IllegalStateException("Client is closed");
+        }
     }
 
     /**
@@ -113,21 +124,25 @@ public final class BranePublicClient implements PublicClient, AutoCloseable {
 
     @Override
     public BlockHeader getLatestBlock() {
+        ensureOpen();
         return delegate.getLatestBlock();
     }
 
     @Override
     public BlockHeader getBlockByNumber(final long blockNumber) {
+        ensureOpen();
         return delegate.getBlockByNumber(blockNumber);
     }
 
     @Override
     public Transaction getTransactionByHash(final Hash hash) {
+        ensureOpen();
         return delegate.getTransactionByHash(hash);
     }
 
     @Override
     public HexData call(final CallRequest request, final BlockTag blockTag) {
+        ensureOpen();
         return delegate.call(request, blockTag);
     }
 
@@ -135,42 +150,50 @@ public final class BranePublicClient implements PublicClient, AutoCloseable {
     @Override
     @Deprecated(since = "0.1.0-alpha", forRemoval = true)
     public String call(final Map<String, Object> callObject, final String blockTag) {
+        ensureOpen();
         return delegate.call(callObject, blockTag);
     }
 
     @Override
     public List<LogEntry> getLogs(final LogFilter filter) {
+        ensureOpen();
         return delegate.getLogs(filter);
     }
 
     @Override
     public java.math.BigInteger getChainId() {
+        ensureOpen();
         return delegate.getChainId();
     }
 
     @Override
     public java.math.BigInteger getBalance(final io.brane.core.types.Address address) {
+        ensureOpen();
         return delegate.getBalance(address);
     }
 
     @Override
     public Subscription subscribeToNewHeads(java.util.function.Consumer<io.brane.core.model.BlockHeader> callback) {
+        ensureOpen();
         return delegate.subscribeToNewHeads(callback);
     }
 
     @Override
     public Subscription subscribeToLogs(LogFilter filter,
             java.util.function.Consumer<io.brane.core.model.LogEntry> callback) {
+        ensureOpen();
         return delegate.subscribeToLogs(filter, callback);
     }
 
     @Override
     public AccessListWithGas createAccessList(final TransactionRequest request) {
+        ensureOpen();
         return delegate.createAccessList(request);
     }
 
     @Override
     public MulticallBatch createBatch() {
+        ensureOpen();
         return delegate.createBatch();
     }
 
