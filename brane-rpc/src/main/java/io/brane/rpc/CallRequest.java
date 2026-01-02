@@ -8,6 +8,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Type-safe representation of an eth_call request.
@@ -47,14 +48,14 @@ import java.util.Optional;
  * @since 0.1.0-alpha
  */
 public record CallRequest(
-        Address from,
+        @Nullable Address from,
         Address to,
-        HexData data,
-        Wei value,
-        BigInteger gas,
-        BigInteger gasPrice,
-        BigInteger maxFeePerGas,
-        BigInteger maxPriorityFeePerGas
+        @Nullable HexData data,
+        @Nullable Wei value,
+        @Nullable BigInteger gas,
+        @Nullable BigInteger gasPrice,
+        @Nullable BigInteger maxFeePerGas,
+        @Nullable BigInteger maxPriorityFeePerGas
 ) {
     /**
      * Creates a new CallRequest with validation.

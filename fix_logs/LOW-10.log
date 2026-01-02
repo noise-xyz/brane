@@ -1,0 +1,16 @@
+The fix is complete. Here's a summary of what was done:
+
+## Summary
+
+**Issue LOW-10**: Add closed state check to BranePublicClient
+
+**Changes made:**
+1. Added `ensureOpen()` helper method in `BranePublicClient.java:109-113` that throws `IllegalStateException("Client is closed")` if the client has been closed
+2. Added `ensureOpen()` call at the start of all 12 public delegate methods (lines 125-198)
+3. Created new test file `BranePublicClientClosedStateTest.java` with two tests:
+   - `throwsIllegalStateExceptionAfterClose()` - verifies the exception is thrown with correct message
+   - `closeIsIdempotent()` - verifies multiple close() calls are safe
+
+**Files modified:**
+- `brane-rpc/src/main/java/io/brane/rpc/BranePublicClient.java`
+- `brane-rpc/src/test/java/io/brane/rpc/BranePublicClientClosedStateTest.java` (new)

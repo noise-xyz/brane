@@ -1,6 +1,7 @@
 package io.brane.rpc;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import org.jspecify.annotations.Nullable;
 
 /**
  * JSON-RPC error object as defined in the JSON-RPC 2.0 specification.
@@ -19,4 +20,4 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  * @since 0.2.0
  */
 @JsonIgnoreProperties(ignoreUnknown = true)
-public record JsonRpcError(int code, String message, Object data) {}
+public record JsonRpcError(int code, String message, @Nullable Object data) {}

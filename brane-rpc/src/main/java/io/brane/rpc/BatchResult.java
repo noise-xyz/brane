@@ -1,8 +1,10 @@
 package io.brane.rpc;
 
+import org.jspecify.annotations.Nullable;
+
 /**
  * The result of an individual call within a Multicall3 batch.
- * 
+ *
  * <p>
  * Each result contains three pieces of information:
  * <ul>
@@ -11,10 +13,10 @@ package io.brane.rpc;
  * <li>{@link #revertReason()} - Human-readable error message (null if
  * succeeded)</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Example:</strong>
- * 
+ *
  * <pre>{@code
  * BatchResult<BigInteger> result = handle.result();
  * if (result.success()) {
@@ -23,7 +25,7 @@ package io.brane.rpc;
  *         System.out.println("Failed: " + result.revertReason());
  * }
  * }</pre>
- * 
+ *
  * @param <T>          the type of the result data
  * @param data         the decoded result data (null if call failed or returns
  *                     void)
@@ -33,7 +35,7 @@ package io.brane.rpc;
  * @since 0.1.0
  */
 public record BatchResult<T>(
-                T data,
+                @Nullable T data,
                 boolean success,
-                String revertReason) {
+                @Nullable String revertReason) {
 }

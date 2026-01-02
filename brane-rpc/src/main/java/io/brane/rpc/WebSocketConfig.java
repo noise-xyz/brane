@@ -6,6 +6,7 @@ import static io.brane.rpc.internal.RpcUtils.validateUrl;
 import io.netty.channel.EventLoopGroup;
 import java.time.Duration;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Configuration for {@link WebSocketProvider}.
@@ -57,7 +58,7 @@ public record WebSocketConfig(
         Duration defaultRequestTimeout,
         Duration connectTimeout,
         int ioThreads,
-        EventLoopGroup eventLoopGroup) {
+        @Nullable EventLoopGroup eventLoopGroup) {
 
     /**
      * Disruptor wait strategy types.

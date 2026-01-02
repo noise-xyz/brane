@@ -6,12 +6,13 @@ import static io.brane.rpc.internal.RpcUtils.validateUrl;
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Configuration for HTTP-based RPC providers.
  *
  * @param url            the RPC endpoint URL (must be a valid HTTP/HTTPS URL)
- * @param chainId        optional expected chain ID for validation
+ * @param chainId        optional expected chain ID for validation (may be {@code null})
  * @param connectTimeout connection timeout (must be positive, default: 10s)
  * @param readTimeout    read timeout (must be positive, default: 30s)
  * @param headers        additional HTTP headers
@@ -19,7 +20,7 @@ import java.util.Objects;
  */
 public record RpcConfig(
         String url,
-        Long chainId,
+        @Nullable Long chainId,
         Duration connectTimeout,
         Duration readTimeout,
         Map<String, String> headers) {

@@ -26,6 +26,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import io.brane.core.crypto.Signer;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Default implementation of {@link WalletClient} with automatic transaction
@@ -541,13 +542,13 @@ public final class DefaultWalletClient implements WalletClient {
      * @param maxFeePerGas max fee for EIP-1559 transactions (null if legacy)
      */
     private record ValueParts(
-            String to,
+            @Nullable String to,
             BigInteger value,
             String data,
             boolean isEip1559,
-            BigInteger gasPrice,
-            BigInteger maxPriorityFeePerGas,
-            BigInteger maxFeePerGas) {
+            @Nullable BigInteger gasPrice,
+            @Nullable BigInteger maxPriorityFeePerGas,
+            @Nullable BigInteger maxFeePerGas) {
     }
 
     private static void handlePotentialRevert(final RpcException e, final Hash hash)
