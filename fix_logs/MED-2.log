@@ -1,0 +1,9 @@
+Done. I've fixed **MED-2** by adding 10-25% random jitter to the `RpcRetry` backoff calculation.
+
+**Changes made:**
+1. Added `ThreadLocalRandom` import
+2. Added `JITTER_MIN` (0.10) and `JITTER_MAX` (0.25) constants
+3. Modified `backoff()` method to add random jitter: `cappedDelay + (long) (cappedDelay * jitter)`
+4. Updated class Javadoc to document the new jitter behavior in the backoff strategy
+
+The jitter prevents "thundering herd" - when many clients experience a transient failure simultaneously and all retry at exactly the same backoff intervals, potentially overwhelming the server.

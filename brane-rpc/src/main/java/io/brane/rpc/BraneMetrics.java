@@ -164,6 +164,27 @@ public interface BraneMetrics {
     }
 
     /**
+     * Called when a subscription callback throws an exception.
+     *
+     * <p>This is triggered when user-provided subscription listeners throw an exception
+     * during notification processing. The exception is caught to prevent it from affecting
+     * other subscriptions or the WebSocket connection.
+     *
+     * <p>Implementations should use this to:
+     * <ul>
+     *   <li>Track error rates per subscription</li>
+     *   <li>Alert on misbehaving callbacks</li>
+     *   <li>Debug callback issues in production</li>
+     * </ul>
+     *
+     * @param subscriptionId the subscription ID that encountered the error
+     * @param error          the exception thrown by the callback
+     * @since 0.5.0
+     */
+    default void onSubscriptionCallbackError(String subscriptionId, Throwable error) {
+    }
+
+    /**
      * Returns a no-op metrics implementation that does nothing.
      *
      * @return a no-op BraneMetrics instance

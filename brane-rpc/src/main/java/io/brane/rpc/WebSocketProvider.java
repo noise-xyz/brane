@@ -537,7 +537,14 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                     Object result = MAPPER.convertValue(resultNode, Object.class);
                     JsonRpcResponse response = new JsonRpcResponse("2.0", result, null, null);
                     // Dispatch to subscription executor to avoid blocking Netty I/O thread
-                    subscriptionExecutor.execute(() -> listener.accept(response));
+                    subscriptionExecutor.execute(() -> {
+                        try {
+                            listener.accept(response);
+                        } catch (Exception callbackEx) {
+                            log.error("Subscription callback error for subscription {}", subId, callbackEx);
+                            metrics.onSubscriptionCallbackError(subId, callbackEx);
+                        }
+                    });
                 }
             } catch (Exception e) {
                 // Never let exceptions escape to Netty's exceptionCaught handler,
