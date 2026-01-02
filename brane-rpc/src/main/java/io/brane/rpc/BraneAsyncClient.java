@@ -35,7 +35,13 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <p>
  * <strong>Thread Safety:</strong> This class is thread-safe and can be shared
- * across multiple threads.
+ * across multiple threads. The default executor is managed using atomic operations:
+ * <ul>
+ *   <li>{@link #getOrCreateDefaultExecutor()} uses compare-and-exchange for lazy initialization</li>
+ *   <li>{@link #shutdownDefaultExecutor(long)} atomically nullifies before shutdown to prevent races</li>
+ *   <li>Concurrent shutdown and creation calls are safe - shutdown only affects the executor
+ *       that was current at call time, and new executors are created as needed</li>
+ * </ul>
  *
  * <p>
  * <strong>Executor Lifecycle:</strong> The default executor is automatically cleaned
@@ -105,11 +111,25 @@ public final class BraneAsyncClient {
      * <p>After shutdown, new {@link BraneAsyncClient} instances using the default
      * executor will create a fresh executor automatically.
      *
+     * <p><strong>Thread Safety:</strong> This method uses atomic compare-and-set to
+     * nullify the executor reference before initiating shutdown. This prevents race
+     * conditions where concurrent calls to {@link #getOrCreateDefaultExecutor()} could
+     * see a shutdown-in-progress executor. The nullification ensures that:
+     * <ul>
+     *   <li>Concurrent creators will create a new executor instead of using the shutting-down one</li>
+     *   <li>Only one thread will perform the actual shutdown</li>
+     *   <li>The executor being shut down is exactly the one that was atomically retrieved</li>
+     * </ul>
+     *
      * @param timeoutMillis maximum time to wait for pending tasks to complete
-     * @return true if the executor terminated within the timeout, false if timed out
+     * @return true if the executor terminated within the timeout (or was already null/shutdown),
+     *         false if timed out or interrupted
      */
     public static boolean shutdownDefaultExecutor(long timeoutMillis) {
-        ExecutorService executor = DEFAULT_EXECUTOR_REF.get();
+        // Atomically get-and-nullify to prevent race with getOrCreateDefaultExecutor().
+        // This ensures we shut down exactly the executor we retrieved and that concurrent
+        // callers will create a new executor instead of using this shutting-down one.
+        ExecutorService executor = DEFAULT_EXECUTOR_REF.getAndSet(null);
         if (executor == null || executor.isShutdown()) {
             return true;
         }
@@ -126,12 +146,20 @@ public final class BraneAsyncClient {
      * Immediately shuts down the default executor without waiting.
      *
      * <p>Use this for immediate cleanup when pending tasks can be abandoned.
+     *
+     * <p><strong>Thread Safety:</strong> This method atomically nullifies the executor
+     * reference before calling {@code shutdownNow()}, preventing race conditions with
+     * concurrent {@link #getOrCreateDefaultExecutor()} calls.
+     *
+     * @return list of tasks that were awaiting execution, or empty list if executor was null/shutdown
      */
-    public static void shutdownDefaultExecutorNow() {
-        ExecutorService executor = DEFAULT_EXECUTOR_REF.get();
+    public static List<Runnable> shutdownDefaultExecutorNow() {
+        // Atomically get-and-nullify to prevent race with getOrCreateDefaultExecutor()
+        ExecutorService executor = DEFAULT_EXECUTOR_REF.getAndSet(null);
         if (executor != null && !executor.isShutdown()) {
-            executor.shutdownNow();
+            return executor.shutdownNow();
         }
+        return List.of();
     }
 
     private final BraneProvider provider;
