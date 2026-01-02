@@ -1,5 +1,21 @@
-Done. I've added class-level Javadoc to `JsonRpcRequest.java` matching the style of `JsonRpcResponse.java`, including:
-- A description of what the record represents
-- A code example showing usage
-- `@param` tags for all four record components (`jsonrpc`, `method`, `params`, `id`)
-- A `@since` tag matching the response record
+================================================================================
+LOW-4: Add Javadoc to JsonRpcRequest record
+================================================================================
+
+STATUS: COMPLETED
+
+COMMIT: d31d0a3 - docs(rpc): add Javadoc to JsonRpcRequest record [LOW-4]
+
+CHANGES MADE:
+- Added class-level Javadoc to JsonRpcRequest record
+- Included @param tags for all record components (jsonrpc, method, params, id)
+- Added example code block showing usage
+- Added @since 0.1.0-alpha tag
+- Style matches JsonRpcResponse Javadoc format
+
+FILE MODIFIED:
+- brane-rpc/src/main/java/io/brane/rpc/JsonRpcRequest.java
+
+VERIFICATION:
+- Code compiles successfully
+- Javadoc matches JsonRpcResponse style

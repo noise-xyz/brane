@@ -1,7 +1,6 @@
-Issue **LOW-3** is fixed. Summary:
+Issue **LOW-3** is already fixed (commit 48549ca). Summary:
 
-1. Created a new `@InternalApi` annotation in `brane-core/src/main/java/io/brane/core/InternalApi.java` to mark internal APIs
-2. Applied `@InternalApi` to `RpcUtils` class
-3. Updated the Javadoc to clarify that methods are public only due to cross-package access requirements
+1. Applied `@InternalApi` annotation to `RpcUtils` class
+2. Updated the Javadoc to clarify that methods are public only due to cross-package access requirements
 
 The fix follows the task's second option ("add @InternalApi annotation") because making methods package-private would break the build - `RpcUtils` is in `io.brane.rpc.internal` but is used by classes in `io.brane.rpc`, and Java's package-private access doesn't extend to parent packages.

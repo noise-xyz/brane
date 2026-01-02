@@ -10,6 +10,7 @@ import io.brane.core.types.HexData;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Utility class for parsing Ethereum log entries from JSON-RPC responses.
@@ -61,18 +62,34 @@ public final class LogParser {
     /**
      * Parses a single log entry map into a LogEntry object.
      *
+     * <p><strong>Null Handling:</strong>
+     * <ul>
+     *   <li>{@code address} - Required; throws if missing or null</li>
+     *   <li>{@code data} - Optional; null maps to {@link HexData#EMPTY}.
+     *       Note: {@code HexData.EMPTY} ("0x") represents explicitly empty data,
+     *       while null in the RPC response means the field was omitted entirely.
+     *       Both cases result in {@code HexData.EMPTY} in the parsed entry.</li>
+     *   <li>{@code blockHash} - Nullable; null for pending (unconfirmed) logs</li>
+     *   <li>{@code transactionHash} - Required; throws if missing or null</li>
+     *   <li>{@code topics} - Optional; null maps to empty list</li>
+     *   <li>{@code logIndex} - Defaults to 0 if missing (use {@link #parseLogStrict}
+     *       for strict validation)</li>
+     *   <li>{@code removed} - Defaults to false if missing</li>
+     * </ul>
+     *
      * @param map the raw map from JSON-RPC response
      * @return parsed LogEntry
+     * @throws NullPointerException if address or transactionHash is null
      */
     public static LogEntry parseLog(final Map<String, Object> map) {
-        final String address = RpcUtils.stringValue(map.get("address"));
-        final String data = RpcUtils.stringValue(map.get("data"));
-        final String blockHash = RpcUtils.stringValue(map.get("blockHash"));
-        final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
+        final @Nullable String address = RpcUtils.stringValue(map.get("address"));
+        final @Nullable String data = RpcUtils.stringValue(map.get("data"));
+        final @Nullable String blockHash = RpcUtils.stringValue(map.get("blockHash"));
+        final @Nullable String txHash = RpcUtils.stringValue(map.get("transactionHash"));
         final long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
 
         @SuppressWarnings("unchecked")
-        final List<String> topicsHex = MAPPER.convertValue(
+        final @Nullable List<String> topicsHex = MAPPER.convertValue(
                 map.get("topics"),
                 new TypeReference<List<String>>() {}
         );
@@ -80,12 +97,14 @@ public final class LogParser {
                 ? topicsHex.stream().map(Hash::new).toList()
                 : List.of();
 
+        // address and transactionHash are required by LogEntry
+        // LogEntry's compact constructor will throw NullPointerException if null
         return new LogEntry(
-                address != null ? new Address(address) : null,
+                new Address(address),
                 data != null ? new HexData(data) : HexData.EMPTY,
                 topics,
                 blockHash != null ? new Hash(blockHash) : null,
-                txHash != null ? new Hash(txHash) : null,
+                new Hash(txHash),
                 logIndex,
                 Boolean.TRUE.equals(map.get("removed")));
     }
@@ -128,18 +147,22 @@ public final class LogParser {
      * indicates a malformed response from the RPC node, not an RPC protocol error, hence
      * {@link io.brane.core.error.AbiDecodingException} is thrown rather than RpcException.
      *
+     * <p><strong>Null Handling:</strong> Same as {@link #parseLog(Map)}, with the addition
+     * that logIndex must be present (non-null).
+     *
      * @param map the raw map from JSON-RPC response
      * @return parsed LogEntry
+     * @throws NullPointerException if address or transactionHash is null
      * @throws io.brane.core.error.AbiDecodingException if logIndex is missing (malformed response)
      */
     public static LogEntry parseLogStrict(final Map<String, Object> map) {
-        final String address = RpcUtils.stringValue(map.get("address"));
-        final String data = RpcUtils.stringValue(map.get("data"));
-        final String blockHash = RpcUtils.stringValue(map.get("blockHash"));
-        final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
+        final @Nullable String address = RpcUtils.stringValue(map.get("address"));
+        final @Nullable String data = RpcUtils.stringValue(map.get("data"));
+        final @Nullable String blockHash = RpcUtils.stringValue(map.get("blockHash"));
+        final @Nullable String txHash = RpcUtils.stringValue(map.get("transactionHash"));
 
         // Check for missing logIndex before decoding (decodeHexLong returns 0 for null)
-        final Object rawLogIndex = map.get("logIndex");
+        final @Nullable Object rawLogIndex = map.get("logIndex");
         if (rawLogIndex == null) {
             throw new io.brane.core.error.AbiDecodingException(
                     "Missing logIndex in log entry: " + map);
@@ -147,7 +170,7 @@ public final class LogParser {
         final long logIndex = RpcUtils.decodeHexLong(rawLogIndex);
 
         @SuppressWarnings("unchecked")
-        final List<String> topicsHex = MAPPER.convertValue(
+        final @Nullable List<String> topicsHex = MAPPER.convertValue(
                 map.get("topics"),
                 new TypeReference<List<String>>() {}
         );
@@ -155,12 +178,14 @@ public final class LogParser {
                 ? topicsHex.stream().map(Hash::new).toList()
                 : List.of();
 
+        // address and transactionHash are required by LogEntry
+        // LogEntry's compact constructor will throw NullPointerException if null
         return new LogEntry(
-                address != null ? new Address(address) : null,
+                new Address(address),
                 data != null ? new HexData(data) : HexData.EMPTY,
                 topics,
                 blockHash != null ? new Hash(blockHash) : null,
-                txHash != null ? new Hash(txHash) : null,
+                new Hash(txHash),
                 logIndex,
                 Boolean.TRUE.equals(map.get("removed")));
     }

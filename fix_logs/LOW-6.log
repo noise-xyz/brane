@@ -1,10 +1,12 @@
-Done. I've completed the fix for LOW-6:
+LOW-6: Document DefaultWalletClient.ValueParts record
 
-**Summary:**
-- Added comprehensive Javadoc to the `ValueParts` record in `DefaultWalletClient.java:522-545`
-- The documentation explains:
-  - The record's purpose: extracting and normalizing transaction values for building and logging
-  - Each parameter's meaning with `@param` tags
-  - How the record handles both legacy and EIP-1559 transaction types (some fields are null depending on type)
-- Tests pass and code compiles cleanly
-- Committed with message: `docs(rpc): add Javadoc to DefaultWalletClient.ValueParts record [LOW-6]`
+Status: ALREADY COMPLETED
+
+This issue was already fixed in commit 52396f8 ("docs(rpc): add Javadoc to DefaultWalletClient.ValueParts record [LOW-6]").
+
+The ValueParts record at DefaultWalletClient.java:543-551 now has comprehensive Javadoc documentation at lines 528-542, including:
+- Class-level description explaining the record's purpose
+- Detailed paragraph explaining internal usage
+- Individual @param tags for all 7 fields (to, value, data, isEip1559, gasPrice, maxPriorityFeePerGas, maxFeePerGas)
+
+No further action required.
