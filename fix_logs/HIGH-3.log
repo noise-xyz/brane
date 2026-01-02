@@ -1,0 +1,13 @@
+Done. I've fixed issue **HIGH-3** by adding null validation for both `request` and `blockTag` parameters in the `call(CallRequest, BlockTag)` method at `DefaultPublicClient.java:115-117`:
+
+```java
+java.util.Objects.requireNonNull(request, "request");
+java.util.Objects.requireNonNull(blockTag, "blockTag");
+```
+
+The fix:
+- Validates both parameters at the start of the method
+- Matches the pattern used in other methods like `getTransactionByHash` and `getBalance`
+- Tests pass
+
+Commit: `fix(rpc): add null validation for request and blockTag in call method [HIGH-3]`

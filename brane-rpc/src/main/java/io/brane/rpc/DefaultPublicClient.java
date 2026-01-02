@@ -68,7 +68,7 @@ final class DefaultPublicClient implements PublicClient {
     private final BraneProvider provider;
 
     DefaultPublicClient(final BraneProvider provider) {
-        this.provider = provider;
+        this.provider = java.util.Objects.requireNonNull(provider, "provider");
     }
 
     @Override
