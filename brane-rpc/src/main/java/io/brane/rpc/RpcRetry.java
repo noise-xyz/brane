@@ -5,6 +5,7 @@ import io.brane.core.error.RpcException;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 
 /**
@@ -17,7 +18,7 @@ import java.util.function.Supplier;
  * temporary node unavailability</li>
  * <li><strong>Non-retryable errors:</strong> Reverts, insufficient funds,
  * invalid parameters</li>
- * <li><strong>Backoff:</strong> Exponential backoff (200ms × 2^(attempt-1), max 5s)</li>
+ * <li><strong>Backoff:</strong> Exponential backoff (200ms × 2^(attempt-1), max 5s) with 10-25% random jitter</li>
  * </ul>
  * 
  * <p>
@@ -38,10 +39,10 @@ import java.util.function.Supplier;
  * <strong>Backoff Strategy:</strong>
  * <ul>
  * <li>Attempt 1: No delay</li>
- * <li>Attempt 2: 200ms delay</li>
- * <li>Attempt 3: 400ms delay</li>
- * <li>Attempt 4: 800ms delay</li>
- * <li>Attempt 5+: Capped at 5000ms</li>
+ * <li>Attempt 2: 200ms + 10-25% jitter (220-250ms)</li>
+ * <li>Attempt 3: 400ms + 10-25% jitter (440-500ms)</li>
+ * <li>Attempt 4: 800ms + 10-25% jitter (880-1000ms)</li>
+ * <li>Attempt 5+: Capped at 5000ms + 10-25% jitter (5500-6250ms)</li>
  * </ul>
  * 
  * <p>
@@ -202,11 +203,16 @@ final class RpcRetry {
 
     private static final long BACKOFF_BASE_MS = 200;
     private static final long BACKOFF_MAX_MS = 5000;
+    private static final double JITTER_MIN = 0.10;
+    private static final double JITTER_MAX = 0.25;
 
     private static long backoff(final int attempt) {
         // Exponential backoff: base * 2^(attempt-1), capped at max
         final long delay = BACKOFF_BASE_MS * (1L << (attempt - 1));
-        return Math.min(delay, BACKOFF_MAX_MS);
+        final long cappedDelay = Math.min(delay, BACKOFF_MAX_MS);
+        // Add 10-25% random jitter to prevent thundering herd
+        final double jitter = ThreadLocalRandom.current().nextDouble(JITTER_MIN, JITTER_MAX);
+        return cappedDelay + (long) (cappedDelay * jitter);
     }
 
     private static boolean isLikelyRevert(final String data) {

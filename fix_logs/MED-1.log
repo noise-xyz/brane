@@ -1,0 +1,13 @@
+Fixed **MED-1**. The changes:
+
+1. **Enhanced Javadoc in `Client.java`** (lines 48-56): Added a "Null result handling" section explaining:
+   - When null is returned (when JSON-RPC response contains a null result)
+   - Why null is valid (absence of data for certain RPC methods)
+   - Examples of methods that can return null (`eth_getTransactionByHash`, `eth_getBlockByNumber/Hash`, `eth_call`)
+   - Guidance that callers should handle null based on method semantics
+
+2. **Added `@Nullable` annotation**: Added `org.jspecify.annotations.Nullable` to both:
+   - `Client.call()` interface method
+   - `RpcClient.call()` implementation
+
+This makes the null-return behavior explicit in both documentation and the type system, allowing static analysis tools to help catch potential NPEs.
