@@ -1,8 +1,0 @@
-Done. I've successfully fixed **LOW-2** by replacing the magic string `"latest"` with `BlockTag.LATEST.toRpcValue()` in two locations in `DefaultPublicClient.java`:
-
-1. **Line 190**: `getBalance()` method
-2. **Line 202**: `createAccessList()` method
-
-Note: The task description mentioned `SmartGasStrategy.java:198`, but that file doesn't use a hardcoded `"latest"` string - it correctly uses `publicClient.getLatestBlock()` API. This was likely a typo in the task description.
-
-All unit tests pass and the change has been committed.

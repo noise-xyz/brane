@@ -74,7 +74,7 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public BlockHeader getLatestBlock() {
-        return getBlockByTag("latest");
+        return getBlockByTag(BlockTag.LATEST.toRpcValue());
     }
 
     @Override
