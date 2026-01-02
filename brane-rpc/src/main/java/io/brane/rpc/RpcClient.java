@@ -87,6 +87,15 @@ public final class RpcClient implements Client, AutoCloseable {
         this.ownsProvider = false;
     }
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>This implementation returns {@code null} when the JSON-RPC response contains a null
+     * result field. This is intentional and follows the Ethereum JSON-RPC specification where
+     * null indicates absence of data (e.g., non-existent transaction or block).
+     *
+     * @see Client#call(String, Class, Object...) for full null-handling documentation
+     */
     @Override
     public <T> @Nullable T call(final String method, final Class<T> responseType, final Object... params)
             throws RpcException {

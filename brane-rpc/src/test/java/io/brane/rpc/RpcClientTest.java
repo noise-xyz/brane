@@ -29,6 +29,24 @@ class RpcClientTest {
         assertEquals(BigInteger.valueOf(42), result);
     }
 
+    /**
+     * MED-1 Verification: Null result handling.
+     * <p>
+     * Verifies that when the JSON-RPC response contains a null result,
+     * the call method returns null (rather than throwing an exception).
+     * This is valid for methods like eth_getTransactionByHash when the
+     * transaction doesn't exist.
+     */
+    @Test
+    void returnsNullWhenResultIsNull() throws RpcException {
+        BraneProvider provider =
+                (method, params) -> new JsonRpcResponse("2.0", null, null, "1");
+        RpcClient client = new RpcClient(provider);
+
+        String result = client.call("eth_getTransactionByHash", String.class, "0x1234");
+        assertNull(result, "Should return null when RPC result is null");
+    }
+
     @Test
     void propagatesRpcException() {
         RpcException failure = new RpcException(-32000, "boom", null, null, null);
