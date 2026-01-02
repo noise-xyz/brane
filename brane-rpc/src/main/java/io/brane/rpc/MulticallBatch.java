@@ -12,7 +12,6 @@ import io.brane.core.types.HexData;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -329,11 +328,11 @@ public final class MulticallBatch {
             final Abi.FunctionCall aggregate3Call = MULTICALL_ABI.encodeFunction("aggregate3", call3List);
 
             // 3. Send eth_call
-            final Map<String, Object> callObject = Map.of(
-                    "to", MULTICALL_ADDRESS.value(),
-                    "data", aggregate3Call.data());
+            final CallRequest callRequest = CallRequest.of(
+                    MULTICALL_ADDRESS,
+                    new HexData(aggregate3Call.data()));
 
-            final String resultHex = publicClient.call(callObject, "latest");
+            final String resultHex = publicClient.call(callRequest, BlockTag.LATEST).value();
 
             // 4. Decode results and update handles
             final List<MulticallResult> results = Abi.decodeMulticallResults(resultHex);
