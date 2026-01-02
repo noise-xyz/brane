@@ -18,8 +18,12 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public final class HttpBraneProvider implements BraneProvider {
+
+    private static final Logger log = LoggerFactory.getLogger(HttpBraneProvider.class);
 
     private final RpcConfig config;
     private final java.net.http.HttpClient httpClient;
@@ -115,6 +119,8 @@ public final class HttpBraneProvider implements BraneProvider {
             DebugLogger.logRpc(
                     LogFormatter.formatRpcError(method, response.statusCode(),
                             "HTTP " + response.statusCode(), durationMicros));
+            log.warn("HTTP error for RPC method '{}': status={}, requestId={}, latencyMicros={}",
+                    method, response.statusCode(), requestId, durationMicros);
             throw new RpcException(
                     -32001,
                     "HTTP error for method " + method + ": " + response.statusCode(),
