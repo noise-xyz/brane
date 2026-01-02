@@ -1,1 +1,0 @@
-Done. I've fixed issue HIGH-4 by adding `Objects.requireNonNull(provider, "provider")` to the `DefaultPublicClient` constructor at line 71, matching the pattern used in `DefaultWalletClient`, `SmartGasStrategy`, and `BraneAsyncClient`. The relevant tests pass and the change has been committed.

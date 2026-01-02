@@ -1,13 +1,18 @@
-Done. I've fixed issue **HIGH-3** by adding null validation for both `request` and `blockTag` parameters in the `call(CallRequest, BlockTag)` method at `DefaultPublicClient.java:115-117`:
+The tests pass. The fix for **HIGH-3** has already been implemented and committed:
+
+**Status: Already Complete**
+
+The null validation for `CallRequest` and `BlockTag` in the `call` method is already present in `DefaultPublicClient.java` at lines 116-117:
 
 ```java
-java.util.Objects.requireNonNull(request, "request");
-java.util.Objects.requireNonNull(blockTag, "blockTag");
+@Override
+public HexData call(final CallRequest request, final BlockTag blockTag) {
+    java.util.Objects.requireNonNull(request, "request");
+    java.util.Objects.requireNonNull(blockTag, "blockTag");
+    // ...
+}
 ```
 
-The fix:
-- Validates both parameters at the start of the method
-- Matches the pattern used in other methods like `getTransactionByHash` and `getBalance`
-- Tests pass
+This was committed in `8a44444 fix(rpc): add null validation for request and blockTag in call method [HIGH-3]`.
 
-Commit: `fix(rpc): add null validation for request and blockTag in call method [HIGH-3]`
+The tests pass successfully. No further action needed.

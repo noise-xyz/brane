@@ -21,6 +21,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.jspecify.annotations.Nullable;
@@ -68,7 +69,7 @@ final class DefaultPublicClient implements PublicClient {
     private final BraneProvider provider;
 
     DefaultPublicClient(final BraneProvider provider) {
-        this.provider = java.util.Objects.requireNonNull(provider, "provider");
+        this.provider = Objects.requireNonNull(provider, "provider");
     }
 
     @Override
@@ -84,7 +85,7 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public Transaction getTransactionByHash(final Hash hash) {
-        java.util.Objects.requireNonNull(hash, "hash");
+        Objects.requireNonNull(hash, "hash");
         final JsonRpcResponse response = sendWithRetry("eth_getTransactionByHash", List.of(hash.value()));
         final Object result = response.result();
         if (result == null) {
@@ -113,8 +114,8 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public HexData call(final CallRequest request, final BlockTag blockTag) {
-        java.util.Objects.requireNonNull(request, "request");
-        java.util.Objects.requireNonNull(blockTag, "blockTag");
+        Objects.requireNonNull(request, "request");
+        Objects.requireNonNull(blockTag, "blockTag");
         final Map<String, Object> callObject = request.toMap();
         final String blockTagStr = blockTag.toRpcValue();
         final long start = System.nanoTime();
@@ -186,7 +187,7 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public java.math.BigInteger getBalance(final Address address) {
-        java.util.Objects.requireNonNull(address, "address");
+        Objects.requireNonNull(address, "address");
         final JsonRpcResponse response = sendWithRetry("eth_getBalance", List.of(address.value(), BlockTag.LATEST.toRpcValue()));
         final Object result = response.result();
         if (result == null) {
@@ -234,7 +235,7 @@ final class DefaultPublicClient implements PublicClient {
                 final List<Hash> storageKeys = (storageKeysHex == null)
                         ? List.of()
                         : storageKeysHex.stream()
-                                .filter(java.util.Objects::nonNull)
+                                .filter(Objects::nonNull)
                                 .map(Hash::new)
                                 .toList();
                 if (addressHex != null) {

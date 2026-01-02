@@ -112,24 +112,18 @@ CODE PATH:
 
 ---
 
-### MED-2: `RpcRetry` backoff missing jitter
-**Location:** `RpcRetry.java:206-209`
+### MED-2: `RpcRetry` backoff constants not configurable
+**Location:** `RpcRetry.java:204-216`
 
-**Problem:** Exponential backoff uses fixed delays without jitter, causing thundering herd problems when multiple clients retry simultaneously.
+**Problem:** Backoff constants (200ms base, 5000ms max, 10-25% jitter) are hardcoded. Some users may need different retry characteristics for their use cases.
 
-**Why It Matters:**
-- Multiple clients hitting rate limits retry at exactly the same times
-- Can overwhelm RPC providers during recovery
+**Note:** Jitter IS present (10-25%), but the configuration is not exposed.
 
 **Acceptance Criteria:**
-- [ ] Add 10-25% random jitter to backoff delays:
-  ```java
-  private static long backoff(final int attempt) {
-      final long delay = BACKOFF_BASE_MS * (1L << (attempt - 1));
-      final long capped = Math.min(delay, BACKOFF_MAX_MS);
-      return capped + ThreadLocalRandom.current().nextLong(capped / 4);
-  }
-  ```
+- [ ] Extract retry constants to `RpcRetryConfig` record
+- [ ] Allow custom config injection via builder pattern
+- [ ] Provide sensible defaults matching current behavior
+- [ ] Document retry behavior in class Javadoc
 
 ---
 
@@ -144,18 +138,23 @@ CODE PATH:
 
 ---
 
-### MED-4: Potential resource leak in `BraneAsyncClient` default executor lifecycle
-**Location:** `BraneAsyncClient.java:50-74`
+### MED-4: BraneAsyncClient Default Executor Shutdown Race Condition
+**Location:** `BraneAsyncClient.java:50-74, 111-123`
 
-**Problem:** Static `DEFAULT_EXECUTOR_REF` is lazily initialized but may never be shut down. `shutdownDefaultExecutor()` exists but users must remember to call it.
+**Problem:** The `shutdownDefaultExecutor` method does not atomically replace the executor reference when shutting down. If called while another thread is in `getOrCreateDefaultExecutor`, there could be a race where:
+1. Thread A calls `shutdownDefaultExecutor`, gets executor reference
+2. Thread A calls `executor.shutdown()`
+3. Thread B in `getOrCreateDefaultExecutor` sees the shutdown executor, creates new one
+4. Thread A's `awaitTermination` could return while Thread B's new executor starts
 
-**Why It Matters:**
-- In web containers or apps with class reloading, can leak threads
-- No automatic cleanup
+**Why It Matters:** Confusing behavior for test cleanup; caller thinks executor is shut down but new one exists.
 
 **Acceptance Criteria:**
+- [ ] Add test demonstrating the race condition
+- [ ] Implement atomic shutdown-and-nullify using `compareAndSet(executor, null)` pattern
+- [ ] Ensure `shutdownDefaultExecutor` returns accurate state
+- [ ] Document thread safety guarantees in Javadoc
 - [ ] Consider daemon executor OR shutdown hook for default executor
-- [ ] Document cleanup requirements prominently
 
 ---
 
@@ -178,6 +177,98 @@ CODE PATH:
 **Acceptance Criteria:**
 - [ ] Use `log.warn()` or `log.error()` for HTTP errors in addition to DebugLogger
 - [ ] Consider metrics hook for HTTP errors
+
+---
+
+### MED-7: MulticallBatch ThreadLocal Leak Risk
+**Location:** `MulticallBatch.java:99, 208-217`
+
+**Problem:** The `pendingCall` ThreadLocal stores call context between proxy invocation and `add()` call. If user code throws an exception between the proxy call and `add()`, the ThreadLocal is leaked until the thread is reused or destroyed.
+
+```java
+// User code pattern that leaks:
+var batch = client.createBatch();
+var proxy = batch.bind(MyContract.class, addr, abi);
+try {
+    var unused = proxy.myMethod(arg); // Records to ThreadLocal
+    throw new RuntimeException("oops"); // Exception before add()
+} catch (Exception e) {
+    // pendingCall ThreadLocal still holds reference
+}
+// If thread is pooled (e.g., virtual thread), leak persists
+```
+
+**Why It Matters:** Virtual threads are pooled; leaked ThreadLocals accumulate. Memory leak can grow over time in long-running applications.
+
+**Acceptance Criteria:**
+- [ ] Document the cleanup requirement prominently in class Javadoc
+- [ ] Add `IllegalStateException` detection when `recordCall` finds stale pending call
+- [ ] Consider alternative API that doesn't require ThreadLocal (e.g., return builder from `bind()`)
+- [ ] Add unit test verifying leak detection/cleanup behavior
+- [ ] Update examples to show proper try-finally cleanup pattern
+
+---
+
+### MED-8: WebSocketProvider Reconnect Could Lose Pending Requests
+**Location:** `WebSocketProvider.java:1018-1049`
+
+**Problem:** When reconnecting, `failAllPending` is called from `channelInactive`. However:
+1. Requests submitted during `failAllPending` iteration may be missed
+2. If reconnect fails after such requests are submitted, their futures may never complete
+
+**Why It Matters:** Request futures could hang in edge cases during network instability.
+
+**Acceptance Criteria:**
+- [ ] Add explicit state machine for connection state (CONNECTED, RECONNECTING, CLOSED)
+- [ ] Reject new requests submitted during RECONNECTING state OR queue them for retry
+- [ ] Add integration test simulating network instability during request submission
+- [ ] Ensure all pending futures complete (success or failure) within timeout
+- [ ] Document connection state behavior in Javadoc
+
+---
+
+### MED-9: SmartGasStrategy Silent Fallback to Legacy
+**Location:** `SmartGasStrategy.java:269-284`
+
+**Problem:** When EIP-1559 is requested but `baseFeePerGas` is unavailable, the default behavior is `FALLBACK_WARN` which logs a warning and silently switches to legacy transaction. This could surprise users who explicitly requested EIP-1559.
+
+```java
+case FALLBACK_WARN -> log.warn(
+    "EIP-1559 transaction requested but baseFeePerGas unavailable from node; " +
+    "falling back to legacy gas pricing...");
+// Then proceeds to build LEGACY transaction
+```
+
+**Why It Matters:** User requests `TxBuilder.eip1559()` but silently receives legacy transaction with potentially worse gas pricing.
+
+**Acceptance Criteria:**
+- [ ] Consider changing default behavior to `THROW` (breaking change, needs migration guide)
+- [ ] OR add prominent warning in builder Javadoc about fallback behavior
+- [ ] Add unit test verifying fallback behavior is explicit
+- [ ] Return metadata indicating actual transaction type used vs requested
+- [ ] Document behavior differences from viem (which throws by default)
+
+---
+
+### MED-10: Deprecated API Unsafe Cast in DefaultPublicClient
+**Location:** `DefaultPublicClient.java:138-150`
+
+**Problem:** The deprecated `call(Map<String, Object>, String)` method unsafely casts map values to String without validation.
+
+```java
+final Address to = new Address((String) callObject.get("to"));  // ClassCastException if not String
+final HexData data = callObject.containsKey("data")
+        ? new HexData((String) callObject.get("data"))  // ClassCastException if not String
+        : null;
+```
+
+**Why It Matters:** `ClassCastException` if caller passes non-String values, NPE if "to" key missing.
+
+**Acceptance Criteria:**
+- [ ] Add null check for "to" key with descriptive error message
+- [ ] Add type validation before casting with descriptive error message
+- [ ] Add unit test for invalid input handling
+- [ ] Set removal version in `@Deprecated` annotation
 
 ---
 
@@ -279,6 +370,89 @@ if (topicsHex != null) {
 
 ---
 
+### LOW-8: Inconsistent Null Handling in LogParser
+**Location:** `LogParser.java:67-90`
+
+**Problem:** Different null handling patterns for nullable fields:
+```java
+address != null ? new Address(address) : null,  // Can be null
+data != null ? new HexData(data) : HexData.EMPTY,  // Defaults to EMPTY
+txHash != null ? new Hash(txHash) : null,  // Can be null
+```
+
+**Why It Matters:** Callers must null-check selectively based on undocumented behavior.
+
+**Acceptance Criteria:**
+- [ ] Add `@Nullable` annotations to `LogEntry` record fields
+- [ ] Document which fields can be null and under what circumstances in Javadoc
+- [ ] Document the semantic difference between `HexData.EMPTY` and `null`
+
+---
+
+### LOW-9: RpcConfig/WebSocketConfig Duplicate URL Validation
+**Location:**
+- `RpcConfig.java:28-47`
+- `WebSocketConfig.java:107-126`
+- `HttpBraneProvider.java:205-224`
+
+**Problem:** URL validation logic is duplicated across three classes with slight variations.
+
+**Acceptance Criteria:**
+- [ ] Extract URL validation to shared utility method in `internal` package
+- [ ] Standardize error messages across HTTP and WebSocket validation
+- [ ] Add unit test for URL validation utility
+
+---
+
+### LOW-10: BranePublicClient No Closed State Check
+**Location:** `BranePublicClient.java:114-175`
+
+**Problem:** After `close()` is called, methods still forward to the closed provider, causing implementation-specific errors.
+
+**Acceptance Criteria:**
+- [ ] Add closed state check in delegating methods OR document expected behavior
+- [ ] Throw `IllegalStateException("Client is closed")` for clear error message
+- [ ] Add unit test verifying behavior after close
+
+---
+
+### LOW-11: Missing @Nullable Annotations
+**Location:** `JsonRpcError.java` and others
+
+**Problem:** Some record components like `JsonRpcError.data` can be null but lack `@Nullable` annotation.
+
+**Acceptance Criteria:**
+- [ ] Audit all record components for nullable fields
+- [ ] Add `@Nullable` annotations where appropriate
+- [ ] Ensure IDE null analysis provides accurate warnings
+
+---
+
+### LOW-12: ObjectMapper Not Configurable
+**Location:** `RpcUtils.java:49`
+
+**Problem:** The shared `ObjectMapper` uses default configuration. Users may need custom serialization settings.
+
+**Acceptance Criteria:**
+- [ ] Consider allowing ObjectMapper injection
+- [ ] OR document which Jackson modules/settings are used
+- [ ] Ensure type serializers for Brane types are registered
+
+---
+
+### LOW-13: WebSocketProvider Test Coverage Gap
+**Location:** `src/test/java/io/brane/rpc/`
+
+**Problem:** WebSocketProvider's complex reconnection, batching, and timeout logic would benefit from more unit tests with mocked Netty components.
+
+**Acceptance Criteria:**
+- [ ] Add unit tests for `failAllPending` method
+- [ ] Add unit tests for reconnect scheduling logic
+- [ ] Add unit tests for timeout cancellation
+- [ ] Add integration test for subscription recovery after reconnect
+
+---
+
 ## What's Good
 
 1. **Java 21 patterns**: Records, sealed interfaces, switch expressions used effectively
@@ -290,6 +464,8 @@ if (topicsHex != null) {
 7. **Resource management**: `AutoCloseable` implemented appropriately
 8. **Defensive coding**: Input validation in constructors and builders
 9. **Immutability**: Records and `List.copyOf()` prevent mutation
+10. **WebSocket Performance**: Zero-allocation serialization, Disruptor batching
+11. **Metrics Integration**: `BraneMetrics` interface allows custom monitoring
 
 ---
 
@@ -299,6 +475,6 @@ if (topicsHex != null) {
 |----------|-------|
 | CRITICAL | 0 |
 | HIGH | 5 |
-| MEDIUM | 6 |
-| LOW | 7 |
-| **Total** | **18** |
+| MEDIUM | 10 |
+| LOW | 13 |
+| **Total** | **28** |

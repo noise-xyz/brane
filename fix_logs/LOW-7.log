@@ -1,0 +1,22 @@
+Successfully completed **LOW-7**. Here's a summary of the changes made:
+
+## Summary
+
+Standardized `var` usage across the brane-rpc module following the project convention: **use `var` only when RHS makes type obvious** (e.g., constructor calls), but keep explicit types for method return values and domain types.
+
+### Files Modified
+
+1. **DefaultPublicClient.java** - 7 changes
+   - Changed `var response` to `JsonRpcResponse response` for `sendWithRetry()` calls (6 occurrences)
+   - Changed `var req` to `Map<String, Object> req` for `buildLogParams()` result
+
+2. **SmartGasStrategy.java** - 3 changes
+   - Changed `var from` and `var to` to `Object from` and `Object to` for `Map.get()` calls
+   - Changed `var latest` to `BlockHeader latest` for `getLatestBlock()` result
+   - Added missing `BlockHeader` import
+
+3. **DefaultWalletClient.java** - 2 changes
+   - Changed `var decoded` to `RevertDecoder.Decoded decoded` for `RevertDecoder.decode()` calls (2 occurrences)
+
+### Kept as `var` (correctly)
+- Constructor calls where type is obvious: `new ArrayList<>()`, `new LinkedHashMap<>()`, `new StringBuilder()`
