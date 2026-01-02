@@ -1,0 +1,8 @@
+Done. I've completed the LOW-12 fix by documenting the ObjectMapper configuration in `RpcUtils.java`. The documentation now clearly explains:
+
+1. **Jackson Configuration**: Default config with no custom modules, unknown properties not ignored, standard JSON parsing
+2. **Brane Type Handling**: Manual value extraction/construction (no Jackson annotations on domain types)
+3. **Customization**: Intentionally not configurable for simplicity; users should use their own ObjectMapper for app-level JSON
+4. **Thread Safety**: Safe for concurrent use, don't modify after init
+
+The fix follows the acceptance criteria of documenting which Jackson modules/settings are used rather than adding injection complexity.
