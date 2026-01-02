@@ -140,10 +140,25 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public String call(final Map<String, Object> callObject, final String blockTag) {
         // Deprecated: delegate to the typed call() method for consistent behavior
-        final Address to = new Address((String) callObject.get("to"));
-        final HexData data = callObject.containsKey("data")
-                ? new HexData((String) callObject.get("data"))
-                : null;
+        Objects.requireNonNull(callObject, "callObject");
+        Objects.requireNonNull(blockTag, "blockTag");
+        final Object toValue = callObject.get("to");
+        if (toValue == null) {
+            throw new IllegalArgumentException("callObject must contain 'to' key");
+        }
+        if (!(toValue instanceof String)) {
+            throw new IllegalArgumentException("callObject 'to' must be a String, got: " + toValue.getClass().getName());
+        }
+        final Address to = new Address((String) toValue);
+        final Object dataValue = callObject.get("data");
+        final HexData data;
+        if (dataValue == null) {
+            data = null;
+        } else if (dataValue instanceof String dataStr) {
+            data = new HexData(dataStr);
+        } else {
+            throw new IllegalArgumentException("callObject 'data' must be a String, got: " + dataValue.getClass().getName());
+        }
         final CallRequest request = CallRequest.of(to, data);
         final BlockTag parsedBlockTag = parseBlockTag(blockTag);
         final HexData result = call(request, parsedBlockTag);

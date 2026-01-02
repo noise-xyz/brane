@@ -1,0 +1,22 @@
+I've completed the fix for **MED-9**. Here's a summary of the changes:
+
+## Summary
+
+Fixed the silent fallback from EIP-1559 to legacy gas pricing in `SmartGasStrategy` by:
+
+1. **Added `GasFilledRequest` record** (`SmartGasStrategy.java:118-139`) - A new wrapper type that contains:
+   - `request`: The filled `TransactionRequest`
+   - `requestedEip1559`: Whether EIP-1559 was originally requested
+   - `actualEip1559`: Whether the final transaction uses EIP-1559
+   - `fellBackToLegacy()`: Convenience method to detect fallback
+
+2. **Added prominent Javadoc warning** (`SmartGasStrategy.java:32-51`) - Added clear documentation at the class level warning users about the fallback behavior and how to detect it.
+
+3. **Updated `applyDefaults()` method** (`SmartGasStrategy.java:219-226`) - Now returns `GasFilledRequest` instead of `TransactionRequest`, allowing callers to detect when fallback occurred.
+
+4. **Updated `DefaultWalletClient`** (`DefaultWalletClient.java:202-208`) - Extracts the request from the result and logs when fallback occurs via `DebugLogger.log()`.
+
+5. **Added comprehensive tests** (`SmartGasStrategyTest.java`) - Updated existing tests and added new test `legacyRequestDoesNotReportFallback()` to verify that:
+   - EIP-1559 requests that succeed don't report fallback
+   - EIP-1559 requests that fall back to legacy are properly detected
+   - Legacy requests fulfilled as legacy don't report fallback (since no change in type occurred)
