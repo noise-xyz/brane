@@ -1,0 +1,5 @@
+Done. I've added class-level Javadoc to `JsonRpcRequest.java` matching the style of `JsonRpcResponse.java`, including:
+- A description of what the record represents
+- A code example showing usage
+- `@param` tags for all four record components (`jsonrpc`, `method`, `params`, `id`)
+- A `@since` tag matching the response record

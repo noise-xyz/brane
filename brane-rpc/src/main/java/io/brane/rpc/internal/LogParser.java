@@ -76,17 +76,14 @@ public final class LogParser {
                 map.get("topics"),
                 new TypeReference<List<String>>() {}
         );
-        final var topics = new ArrayList<Hash>();
-        if (topicsHex != null) {
-            for (String t : topicsHex) {
-                topics.add(new Hash(t));
-            }
-        }
+        final List<Hash> topics = topicsHex != null
+                ? topicsHex.stream().map(Hash::new).toList()
+                : List.of();
 
         return new LogEntry(
                 address != null ? new Address(address) : null,
                 data != null ? new HexData(data) : HexData.EMPTY,
-                List.copyOf(topics),
+                topics,
                 blockHash != null ? new Hash(blockHash) : null,
                 txHash != null ? new Hash(txHash) : null,
                 logIndex,
@@ -154,17 +151,14 @@ public final class LogParser {
                 map.get("topics"),
                 new TypeReference<List<String>>() {}
         );
-        final var topics = new ArrayList<Hash>();
-        if (topicsHex != null) {
-            for (String t : topicsHex) {
-                topics.add(new Hash(t));
-            }
-        }
+        final List<Hash> topics = topicsHex != null
+                ? topicsHex.stream().map(Hash::new).toList()
+                : List.of();
 
         return new LogEntry(
                 address != null ? new Address(address) : null,
                 data != null ? new HexData(data) : HexData.EMPTY,
-                List.copyOf(topics),
+                topics,
                 blockHash != null ? new Hash(blockHash) : null,
                 txHash != null ? new Hash(txHash) : null,
                 logIndex,
