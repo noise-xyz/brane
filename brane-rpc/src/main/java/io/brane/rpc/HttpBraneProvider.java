@@ -1,6 +1,8 @@
 package io.brane.rpc;
 
+import static io.brane.rpc.internal.RpcUtils.HTTP_SCHEMES;
 import static io.brane.rpc.internal.RpcUtils.MAPPER;
+import static io.brane.rpc.internal.RpcUtils.validateUrl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import io.brane.core.DebugLogger;
@@ -221,24 +223,8 @@ public final class HttpBraneProvider implements BraneProvider {
         private final Map<String, String> headers = new LinkedHashMap<>();
 
         private Builder(final String url) {
-            Objects.requireNonNull(url, "url");
             // Validate URL format immediately for better error locality
-            try {
-                URI uri = URI.create(url);
-                String scheme = uri.getScheme();
-                if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
-                    throw new IllegalArgumentException(
-                            "url must use http or https scheme, got: " + (scheme == null ? "null" : scheme));
-                }
-                if (uri.getHost() == null || uri.getHost().isEmpty()) {
-                    throw new IllegalArgumentException("url must have a valid host");
-                }
-            } catch (IllegalArgumentException e) {
-                if (e.getMessage().startsWith("url must")) {
-                    throw e;
-                }
-                throw new IllegalArgumentException("url is not a valid URI: " + e.getMessage(), e);
-            }
+            validateUrl(url, HTTP_SCHEMES);
             this.url = url;
         }
 

@@ -1,6 +1,8 @@
 package io.brane.rpc;
 
-import java.net.URI;
+import static io.brane.rpc.internal.RpcUtils.HTTP_SCHEMES;
+import static io.brane.rpc.internal.RpcUtils.validateUrl;
+
 import java.time.Duration;
 import java.util.Map;
 import java.util.Objects;
@@ -26,25 +28,7 @@ public record RpcConfig(
     private static final Duration DEFAULT_READ = Duration.ofSeconds(30);
 
     public RpcConfig {
-        Objects.requireNonNull(url, "url");
-
-        // Validate URL format
-        try {
-            URI uri = URI.create(url);
-            String scheme = uri.getScheme();
-            if (scheme == null || (!scheme.equalsIgnoreCase("http") && !scheme.equalsIgnoreCase("https"))) {
-                throw new IllegalArgumentException(
-                        "url must use http or https scheme, got: " + (scheme == null ? "null" : scheme));
-            }
-            if (uri.getHost() == null || uri.getHost().isEmpty()) {
-                throw new IllegalArgumentException("url must have a valid host");
-            }
-        } catch (IllegalArgumentException e) {
-            if (e.getMessage().startsWith("url must")) {
-                throw e;
-            }
-            throw new IllegalArgumentException("url is not a valid URI: " + e.getMessage(), e);
-        }
+        validateUrl(url, HTTP_SCHEMES);
 
         // Apply defaults
         connectTimeout = connectTimeout == null ? DEFAULT_CONNECT : connectTimeout;

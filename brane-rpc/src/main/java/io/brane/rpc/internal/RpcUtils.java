@@ -11,9 +11,12 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
+import java.net.URI;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.function.Supplier;
 
 /**
@@ -299,4 +302,56 @@ public final class RpcUtils {
         DebugLogger.logTx(LogFormatter.formatEstimateGasResult(durationMicros, result));
         return result;
     }
+
+    /**
+     * Validates a URL string for RPC endpoint configuration.
+     *
+     * <p>This method performs common URL validation used by RPC configuration classes:
+     * <ul>
+     *   <li>Checks for null (throws NullPointerException)</li>
+     *   <li>Validates the URL is a valid URI</li>
+     *   <li>Validates the scheme is one of the allowed schemes</li>
+     *   <li>Validates the host is present and non-empty</li>
+     * </ul>
+     *
+     * @param url the URL string to validate
+     * @param allowedSchemes the set of allowed URL schemes (e.g., "http", "https", "ws", "wss")
+     * @throws NullPointerException if url is null
+     * @throws IllegalArgumentException if the URL is invalid or uses an unsupported scheme
+     */
+    public static void validateUrl(final String url, final Set<String> allowedSchemes) {
+        Objects.requireNonNull(url, "url");
+        Objects.requireNonNull(allowedSchemes, "allowedSchemes");
+
+        final String schemeList = String.join(" or ", allowedSchemes);
+
+        try {
+            URI uri = URI.create(url);
+            String scheme = uri.getScheme();
+            if (scheme == null || !allowedSchemes.contains(scheme.toLowerCase())) {
+                throw new IllegalArgumentException(
+                        "url must use " + schemeList + " scheme, got: " + (scheme == null ? "null" : scheme));
+            }
+            if (uri.getHost() == null || uri.getHost().isEmpty()) {
+                throw new IllegalArgumentException("url must have a valid host");
+            }
+        } catch (IllegalArgumentException e) {
+            if (e.getMessage().startsWith("url must")) {
+                throw e;
+            }
+            throw new IllegalArgumentException("url is not a valid URI: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * HTTP/HTTPS schemes for RPC endpoint URLs.
+     * Insertion order preserved for consistent error messages.
+     */
+    public static final Set<String> HTTP_SCHEMES = new java.util.LinkedHashSet<>(List.of("http", "https"));
+
+    /**
+     * WebSocket schemes for RPC endpoint URLs.
+     * Insertion order preserved for consistent error messages.
+     */
+    public static final Set<String> WS_SCHEMES = new java.util.LinkedHashSet<>(List.of("ws", "wss"));
 }
