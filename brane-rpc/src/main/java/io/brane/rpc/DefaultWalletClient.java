@@ -519,6 +519,21 @@ public final class DefaultWalletClient implements WalletClient {
         }
     }
 
+    /**
+     * Extracted transaction values for building and logging.
+     *
+     * <p>This record normalizes transaction fields from {@link TransactionRequest},
+     * converting domain types to raw values and applying defaults where needed.
+     * Used internally to avoid repeated null-checks and type conversions.
+     *
+     * @param to recipient address as hex string, or null for contract creation
+     * @param value transfer amount in wei
+     * @param data call data as hex string (defaults to "0x" if empty)
+     * @param isEip1559 true for EIP-1559 transactions, false for legacy
+     * @param gasPrice gas price for legacy transactions (null if EIP-1559)
+     * @param maxPriorityFeePerGas priority fee for EIP-1559 transactions (null if legacy)
+     * @param maxFeePerGas max fee for EIP-1559 transactions (null if legacy)
+     */
     private record ValueParts(
             String to,
             BigInteger value,

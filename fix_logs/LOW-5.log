@@ -1,0 +1,25 @@
+Done. Issue **LOW-5** has been fixed:
+
+**Changes made:**
+- Refactored `LogParser.java` lines 79-84 and the duplicate at lines 157-162
+- Replaced manual topic iteration loop with `topicsHex.stream().map(Hash::new).toList()`
+- Both `parseLog()` and `parseLogStrict()` methods now use streams
+
+**Before:**
+```java
+final var topics = new ArrayList<Hash>();
+if (topicsHex != null) {
+    for (String t : topicsHex) {
+        topics.add(new Hash(t));
+    }
+}
+```
+
+**After:**
+```java
+final List<Hash> topics = topicsHex != null
+        ? topicsHex.stream().map(Hash::new).toList()
+        : List.of();
+```
+
+Tests pass and commit created: `ea05598 refactor(rpc): use streams for topic parsing in LogParser [LOW-5]`
