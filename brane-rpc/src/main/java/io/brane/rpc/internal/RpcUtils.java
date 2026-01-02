@@ -2,6 +2,7 @@ package io.brane.rpc.internal;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.brane.core.DebugLogger;
+import io.brane.core.InternalApi;
 import io.brane.core.LogFormatter;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListEntry;
@@ -29,13 +30,13 @@ import java.util.function.Supplier;
  * </ul>
  *
  * <p>
- * <strong>Internal Use Only:</strong> This class is package-private and not
- * part
- * of the public API. It exists to eliminate code duplication between RPC
- * implementations.
+ * <strong>Internal Use Only:</strong> This class is not part of the public API.
+ * It exists to eliminate code duplication between RPC implementations. Methods
+ * are public only due to cross-package access requirements within the SDK.
  *
  * @see RpcException
  */
+@InternalApi
 public final class RpcUtils {
 
     /**
