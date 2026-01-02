@@ -199,7 +199,13 @@ public final class DefaultWalletClient implements WalletClient {
         final long chainId = enforceChainId();
 
         final Address from = request.from() != null ? request.from() : senderAddress;
-        final TransactionRequest withDefaults = gasStrategy.applyDefaults(request, from);
+        final SmartGasStrategy.GasFilledRequest gasResult = gasStrategy.applyDefaults(request, from);
+        final TransactionRequest withDefaults = gasResult.request();
+
+        // Log if EIP-1559 fell back to legacy (useful for debugging multi-chain apps)
+        if (gasResult.fellBackToLegacy()) {
+            DebugLogger.log("EIP-1559 requested but fell back to legacy gas pricing");
+        }
 
         final BigInteger nonce = withDefaults.nonceOpt().map(BigInteger::valueOf).orElseGet(() -> fetchNonce(from));
 

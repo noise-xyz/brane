@@ -22,13 +22,34 @@ import org.slf4j.LoggerFactory;
 /**
  * Automatically fills missing gas parameters (limit, price, fees) for
  * transactions.
- * 
+ *
  * <p>
  * This strategy implements intelligent defaults for gas-related transaction
  * fields
  * while preserving any user-specified values. It handles both legacy and
  * EIP-1559 transactions.
- * 
+ *
+ * <p>
+ * <strong>⚠️ WARNING: EIP-1559 FALLBACK BEHAVIOR ⚠️</strong>
+ * <p>
+ * When an EIP-1559 transaction is requested ({@code isEip1559 = true}) but
+ * the chain does not provide {@code baseFeePerGas} (pre-London fork chains,
+ * or nodes that don't return base fee), this strategy may <strong>silently
+ * fall back to legacy gas pricing</strong>. This means:
+ * <ul>
+ * <li>The returned transaction will have {@code isEip1559 = false}</li>
+ * <li>Legacy {@code gasPrice} will be used instead of EIP-1559 fees</li>
+ * <li>Check {@link GasFilledRequest#fellBackToLegacy()} to detect this</li>
+ * </ul>
+ *
+ * <p>
+ * Configure fallback behavior via {@link Eip1559FallbackBehavior}:
+ * <ul>
+ * <li>{@code THROW}: Fail fast when EIP-1559 unavailable</li>
+ * <li>{@code FALLBACK_WARN}: Log warning and use legacy (default)</li>
+ * <li>{@code FALLBACK_SILENT}: Use legacy without logging</li>
+ * </ul>
+ *
  * <p>
  * <strong>Gas Limit Estimation:</strong>
  * <ul>
@@ -39,7 +60,7 @@ import org.slf4j.LoggerFactory;
  * <li>Rationale: Node estimates can be slightly low; buffer provides safety
  * margin</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>EIP-1559 Fee Calculation:</strong>
  * <ul>
@@ -50,21 +71,22 @@ import org.slf4j.LoggerFactory;
  * blocks</li>
  * <li>If baseFee doubles in next block, transaction still has headroom</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Legacy Transaction Gas Price:</strong>
  * <ul>
  * <li>Fetches current {@code eth_gasPrice} from node</li>
  * <li>Returns node's suggested gas price (usually network median)</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>User Overrides:</strong> If user provides any gas field in the
  * request,
  * this strategy will NOT override it. Only fills {@code null} fields.
- * 
+ *
  * @see TransactionRequest
  * @see WalletClient
+ * @see GasFilledRequest
  */
 final class SmartGasStrategy {
 
@@ -73,6 +95,48 @@ final class SmartGasStrategy {
     static final BigInteger DEFAULT_GAS_LIMIT_BUFFER_NUMERATOR = BigInteger.valueOf(120);
     static final BigInteger DEFAULT_GAS_LIMIT_BUFFER_DENOMINATOR = BigInteger.valueOf(100);
     static final BigInteger BASE_FEE_MULTIPLIER = BigInteger.valueOf(2);
+
+    /**
+     * Result of gas estimation containing the filled request and metadata about
+     * any transaction type changes.
+     *
+     * <p>
+     * <strong>Checking for EIP-1559 fallback:</strong>
+     * <pre>{@code
+     * GasFilledRequest result = gasStrategy.applyDefaults(request, from);
+     * if (result.fellBackToLegacy()) {
+     *     log.warn("EIP-1559 requested but fell back to legacy gas pricing");
+     * }
+     * TransactionRequest filled = result.request();
+     * }</pre>
+     *
+     * @param request the transaction request with gas fields populated
+     * @param requestedEip1559 true if the original request specified EIP-1559
+     * @param actualEip1559 true if the returned request uses EIP-1559 (may differ from requested)
+     * @since 0.1.0-alpha
+     */
+    record GasFilledRequest(
+            TransactionRequest request,
+            boolean requestedEip1559,
+            boolean actualEip1559) {
+
+        /**
+         * Returns true if EIP-1559 was requested but the transaction fell back to legacy
+         * gas pricing because baseFeePerGas was unavailable from the node.
+         *
+         * <p>
+         * This can happen when:
+         * <ul>
+         * <li>The chain doesn't support EIP-1559 (pre-London fork)</li>
+         * <li>The node returns null baseFeePerGas for the latest block</li>
+         * </ul>
+         *
+         * @return true if fallback occurred, false otherwise
+         */
+        public boolean fellBackToLegacy() {
+            return requestedEip1559 && !actualEip1559;
+        }
+    }
 
     /**
      * Configures behavior when EIP-1559 is requested but baseFeePerGas is unavailable.
@@ -142,15 +206,24 @@ final class SmartGasStrategy {
 
     /**
      * Fills in missing transaction fields (from, gas limit, and fees) while keeping
-     * any user-supplied
-     * values intact.
+     * any user-supplied values intact.
+     *
+     * <p>
+     * <strong>⚠️ WARNING:</strong> Check {@link GasFilledRequest#fellBackToLegacy()} to detect
+     * if an EIP-1559 request silently fell back to legacy gas pricing.
+     *
+     * @param request the transaction request with potentially missing gas fields
+     * @param defaultFrom the address to use if request.from() is null
+     * @return filled request with metadata indicating actual transaction type used
      */
-    TransactionRequest applyDefaults(final TransactionRequest request, final Address defaultFrom) {
+    GasFilledRequest applyDefaults(final TransactionRequest request, final Address defaultFrom) {
         Objects.requireNonNull(defaultFrom, "defaultFrom");
 
+        final boolean requestedEip1559 = request.isEip1559();
         TransactionRequest withFrom = request.from() != null ? request : copyWithFrom(request, defaultFrom);
         TransactionRequest withLimit = ensureGasLimit(withFrom);
-        return ensureFees(withLimit);
+        TransactionRequest withFees = ensureFees(withLimit);
+        return new GasFilledRequest(withFees, requestedEip1559, withFees.isEip1559());
     }
 
     /**

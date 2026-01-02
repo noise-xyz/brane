@@ -50,12 +50,14 @@ class SmartGasStrategyTest {
                 new Address("0x" + "e".repeat(40)),
                 null, null, null, null, null, 1L, null, true, null);
 
-        final TransactionRequest filled = testStrategy.applyDefaults(request, request.from());
+        final SmartGasStrategy.GasFilledRequest result = testStrategy.applyDefaults(request, request.from());
+        final TransactionRequest filled = result.request();
 
         // Verify EIP-1559 fees were calculated
         assertTrue(filled.isEip1559());
         assertNotNull(filled.maxPriorityFeePerGas());
         assertNotNull(filled.maxFeePerGas());
+        assertFalse(result.fellBackToLegacy()); // No fallback expected
 
         // maxPriorityFee should be chain default (1 Gwei)
         assertEquals(defaultPriority.value(), filled.maxPriorityFeePerGas().value());
@@ -94,7 +96,8 @@ class SmartGasStrategyTest {
                 new Address("0x" + "e".repeat(40)),
                 null, null, null, null, null, 1L, null, true, null);
 
-        final TransactionRequest filled = testStrategy.applyDefaults(request, request.from());
+        final SmartGasStrategy.GasFilledRequest result = testStrategy.applyDefaults(request, request.from());
+        final TransactionRequest filled = result.request();
 
         // Should have fallen back to legacy
         assertFalse(filled.isEip1559());
@@ -102,6 +105,11 @@ class SmartGasStrategyTest {
         assertNull(filled.maxFeePerGas());
         assertNull(filled.maxPriorityFeePerGas());
         assertEquals(mockGasPrice.value(), filled.gasPrice().value());
+
+        // Verify fallback metadata is correct
+        assertTrue(result.fellBackToLegacy(), "Should report fallback to legacy");
+        assertTrue(result.requestedEip1559(), "Should record that EIP-1559 was requested");
+        assertFalse(result.actualEip1559(), "Should record that actual tx is legacy");
     }
 
     @Test
@@ -125,11 +133,15 @@ class SmartGasStrategyTest {
                 new Address("0x" + "e".repeat(40)),
                 null, null, null, null, null, 1L, null, true, null);
 
-        final TransactionRequest filled = testStrategy.applyDefaults(request, request.from());
+        final SmartGasStrategy.GasFilledRequest result = testStrategy.applyDefaults(request, request.from());
+        final TransactionRequest filled = result.request();
 
         // Should have fallen back to legacy
         assertFalse(filled.isEip1559());
         assertNotNull(filled.gasPrice());
+
+        // Verify fallback metadata is correct
+        assertTrue(result.fellBackToLegacy(), "Should report fallback to legacy");
     }
 
     @Test
@@ -157,11 +169,13 @@ class SmartGasStrategyTest {
                 new Address("0x" + "e".repeat(40)),
                 null, null, null, userPriorityFee, userMaxFee, 1L, null, true, null);
 
-        final TransactionRequest filled = testStrategy.applyDefaults(request, request.from());
+        final SmartGasStrategy.GasFilledRequest result = testStrategy.applyDefaults(request, request.from());
+        final TransactionRequest filled = result.request();
 
         // User fees should NOT be overridden
         assertEquals(userMaxFee.value(), filled.maxFeePerGas().value());
         assertEquals(userPriorityFee.value(), filled.maxPriorityFeePerGas().value());
+        assertFalse(result.fellBackToLegacy()); // No fallback when user provides fees
     }
 
     @Test
@@ -190,10 +204,46 @@ class SmartGasStrategyTest {
                 new Address("0x" + "e".repeat(40)),
                 null, userGasLimit, Wei.of(20_000_000_000L), null, null, 1L, null, false, null);
 
-        final TransactionRequest filled = testStrategy.applyDefaults(request, request.from());
+        final SmartGasStrategy.GasFilledRequest result = testStrategy.applyDefaults(request, request.from());
+        final TransactionRequest filled = result.request();
 
         // Gas limit should NOT be overridden
         assertEquals(userGasLimit, filled.gasLimit().longValue());
+    }
+
+    @Test
+    void legacyRequestDoesNotReportFallback() {
+        final BraneProvider mockProvider = (method, params) -> {
+            if ("eth_estimateGas".equals(method)) {
+                return new JsonRpcResponse("2.0", "0x5208", null, "1");
+            } else if ("eth_gasPrice".equals(method)) {
+                return new JsonRpcResponse("2.0", "0x4a817c800", null, "1"); // 20 Gwei
+            }
+            return null;
+        };
+
+        // Create a profile that supports EIP-1559 but we'll request legacy
+        final PublicClient mockClient = createMockPublicClient(
+                new io.brane.core.model.BlockHeader(
+                        new Hash("0x" + "0".repeat(64)), 1L, new Hash("0x" + "1".repeat(64)),
+                        System.currentTimeMillis() / 1000, Wei.of(30_000_000_000L)));
+
+        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockClient, mockProvider, profile);
+
+        // Request LEGACY transaction (isEip1559 = false)
+        final TransactionRequest request = new TransactionRequest(
+                new Address("0x" + "f".repeat(40)),
+                new Address("0x" + "e".repeat(40)),
+                null, null, null, null, null, 1L, null, false, null);
+
+        final SmartGasStrategy.GasFilledRequest result = testStrategy.applyDefaults(request, request.from());
+        final TransactionRequest filled = result.request();
+
+        // Legacy request fulfilled as legacy = no fallback
+        assertFalse(filled.isEip1559());
+        assertFalse(result.fellBackToLegacy(), "Legacy request fulfilled as legacy is NOT a fallback");
+        assertFalse(result.requestedEip1559(), "Should record that legacy was requested");
+        assertFalse(result.actualEip1559(), "Should record that actual tx is legacy");
     }
 
     /** Creates a mock PublicClient that returns the given block for getLatestBlock() */
