@@ -19,7 +19,7 @@ import java.util.concurrent.atomic.AtomicReference;
  *
  * <p>
  * <strong>Usage:</strong>
- * 
+ *
  * <pre>{@code
  * BraneProvider provider = HttpBraneProvider.create(config);
  * BraneAsyncClient client = new BraneAsyncClient(provider);
@@ -37,6 +37,13 @@ import java.util.concurrent.atomic.AtomicReference;
  * <strong>Thread Safety:</strong> This class is thread-safe and can be shared
  * across multiple threads.
  *
+ * <p>
+ * <strong>Executor Lifecycle:</strong> The default executor is automatically cleaned
+ * up via a JVM shutdown hook, so explicit shutdown is not required for normal usage.
+ * However, in container environments (e.g., Spring Boot with context reloads) or test
+ * frameworks, call {@link #shutdownDefaultExecutor(long)} explicitly to prevent thread
+ * leaks between reloads. The executor will be lazily recreated if needed after shutdown.
+ *
  * @since 0.2.0
  */
 public final class BraneAsyncClient {
@@ -45,9 +52,21 @@ public final class BraneAsyncClient {
      * Lazily-initialized shared executor for async operations.
      *
      * <p>Uses lazy initialization to support lifecycle management via
-     * {@link #shutdownDefaultExecutor()} for testing and container environments.
+     * {@link #shutdownDefaultExecutor(long)} for testing and container environments.
+     * A shutdown hook is registered to clean up the executor on JVM exit.
      */
     private static final AtomicReference<ExecutorService> DEFAULT_EXECUTOR_REF = new AtomicReference<>();
+
+    static {
+        // Register shutdown hook to clean up the default executor on JVM exit.
+        // Uses shutdownNow() for fast cleanup during shutdown.
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            ExecutorService executor = DEFAULT_EXECUTOR_REF.get();
+            if (executor != null && !executor.isShutdown()) {
+                executor.shutdownNow();
+            }
+        }, "brane-async-shutdown"));
+    }
 
     private static ExecutorService getOrCreateDefaultExecutor() {
         // Loop handles the case where another thread shuts down the executor between checks

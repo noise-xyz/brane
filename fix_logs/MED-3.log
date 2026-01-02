@@ -1,0 +1,9 @@
+Done. Fixed **MED-3** by:
+
+1. **Added `onSubscriptionCallbackError(String subscriptionId, Throwable error)` method** to `BraneMetrics` interface at `BraneMetrics.java:166-185` with Javadoc explaining its purpose
+
+2. **Wrapped the subscription callback** in `WebSocketProvider.java:540-547` with try-catch to:
+   - Catch exceptions thrown by user-provided subscription listeners
+   - Log the error with subscription ID for debugging
+   - Report to metrics via `metrics.onSubscriptionCallbackError(subId, callbackEx)`
+   - Prevent callback exceptions from affecting other subscriptions or the WebSocket connection
