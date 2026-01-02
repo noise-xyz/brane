@@ -113,6 +113,8 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public HexData call(final CallRequest request, final BlockTag blockTag) {
+        java.util.Objects.requireNonNull(request, "request");
+        java.util.Objects.requireNonNull(blockTag, "blockTag");
         final Map<String, Object> callObject = request.toMap();
         final String blockTagStr = blockTag.toRpcValue();
         final long start = System.nanoTime();

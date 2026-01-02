@@ -1,0 +1,1 @@
+Done. Fixed **HIGH-2**: Added `Objects.requireNonNull(address, "address")` validation at the start of `getBalance()` in `DefaultPublicClient.java:187`. Tests pass.
