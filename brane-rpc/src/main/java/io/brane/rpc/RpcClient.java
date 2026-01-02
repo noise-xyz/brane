@@ -7,6 +7,7 @@ import java.math.BigInteger;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A typed JSON-RPC client that wraps a {@link BraneProvider} for convenient RPC calls.
@@ -87,7 +88,7 @@ public final class RpcClient implements Client, AutoCloseable {
     }
 
     @Override
-    public <T> T call(final String method, final Class<T> responseType, final Object... params)
+    public <T> @Nullable T call(final String method, final Class<T> responseType, final Object... params)
             throws RpcException {
         final List<?> safeParams =
                 (params == null || params.length == 0) ? List.of() : Arrays.asList(params);

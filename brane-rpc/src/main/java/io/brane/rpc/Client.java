@@ -1,6 +1,7 @@
 package io.brane.rpc;
 
 import io.brane.core.error.RpcException;
+import org.jspecify.annotations.Nullable;
 
 /**
  * A simplified RPC client interface for making typed JSON-RPC calls.
@@ -45,6 +46,16 @@ public interface Client {
      *   <li>Any Jackson-deserializable type - Uses ObjectMapper conversion</li>
      * </ul>
      *
+     * <h3>Null result handling:</h3>
+     * <p>This method returns {@code null} when the JSON-RPC response contains a null result.
+     * This is valid for certain RPC methods where null indicates absence of data, such as:
+     * <ul>
+     *   <li>{@code eth_getTransactionByHash} - returns null if the transaction doesn't exist</li>
+     *   <li>{@code eth_getBlockByNumber/Hash} - returns null if the block doesn't exist</li>
+     *   <li>{@code eth_call} - may return null for certain contract calls</li>
+     * </ul>
+     * <p>Callers should handle null returns appropriately based on the RPC method semantics.
+     *
      * @param method       the JSON-RPC method name (e.g., "eth_blockNumber")
      * @param responseType the class to deserialize the result to
      * @param params       the method parameters (may be empty)
@@ -52,5 +63,5 @@ public interface Client {
      * @return the deserialized result, or {@code null} if the RPC result is null
      * @throws RpcException if the RPC call fails or the result cannot be deserialized
      */
-    <T> T call(String method, Class<T> responseType, Object... params) throws RpcException;
+    <T> @Nullable T call(String method, Class<T> responseType, Object... params) throws RpcException;
 }

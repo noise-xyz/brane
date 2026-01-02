@@ -1,0 +1,15 @@
+The fix is complete. Here's a summary of the changes:
+
+**Issue HIGH-5: Refactor MulticallBatch to use type-safe call API**
+
+**Changes made to `MulticallBatch.java`:**
+1. Replaced the deprecated `call(Map<String, Object>, String)` with the type-safe `call(CallRequest, BlockTag)` API
+2. Changed from `Map.of("to", ..., "data", ...)` to `CallRequest.of(MULTICALL_ADDRESS, new HexData(...))`
+3. Used `BlockTag.LATEST` instead of the string `"latest"`
+4. Called `.value()` on the returned `HexData` to get the string for decoding
+5. Removed unused `java.util.Map` import
+
+The refactoring improves type safety by:
+- Using `Address` instead of raw string for the target address
+- Using `HexData` instead of raw string for the call data
+- Using `BlockTag.LATEST` enum constant instead of magic string `"latest"`
