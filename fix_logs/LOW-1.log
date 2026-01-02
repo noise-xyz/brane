@@ -1,9 +1,0 @@
-Done. The fix for **LOW-1** is complete:
-
-**Summary:**
-- Replaced old-style `instanceof` checks with Java 21 pattern matching in `WebSocketClientHandler.channelRead0` method
-- Changed `if (msg instanceof FullHttpResponse) { FullHttpResponse response = (FullHttpResponse) msg; ...` to `if (msg instanceof FullHttpResponse response) { ...`
-- Changed `if (msg instanceof WebSocketFrame) { WebSocketFrame frame = (WebSocketFrame) msg; ...` to `if (msg instanceof WebSocketFrame frame) { ...`
-- Changed `if (frame instanceof TextWebSocketFrame) { TextWebSocketFrame textFrame = (TextWebSocketFrame) frame; ...` to `if (frame instanceof TextWebSocketFrame textFrame) { ...`
-- Unit tests pass
-- Committed as `a4ad04e`

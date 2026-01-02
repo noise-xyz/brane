@@ -539,11 +539,13 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         public void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
             Channel ch = ctx.channel();
             if (!handshaker.isHandshakeComplete()) {
-                try {
-                    handshaker.finishHandshake(ch, (FullHttpResponse) msg);
-                    handshakeFuture.setSuccess();
-                } catch (WebSocketHandshakeException e) {
-                    handshakeFuture.setFailure(e);
+                if (msg instanceof FullHttpResponse response) {
+                    try {
+                        handshaker.finishHandshake(ch, response);
+                        handshakeFuture.setSuccess();
+                    } catch (WebSocketHandshakeException e) {
+                        handshakeFuture.setFailure(e);
+                    }
                 }
                 return;
             }
