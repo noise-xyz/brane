@@ -59,7 +59,7 @@ final class RpcRetry {
     }
 
     /**
-     * Executes the supplier with retry on transient failures.
+     * Executes the supplier with retry on transient failures using default configuration.
      *
      * <p>
      * Only retries on network errors and specific RPC errors.
@@ -85,7 +85,39 @@ final class RpcRetry {
      * @throws IllegalArgumentException if maxAttempts < 1
      */
     static <T> T run(final Supplier<T> supplier, final int maxAttempts) {
+        return run(supplier, maxAttempts, DEFAULT_CONFIG);
+    }
+
+    /**
+     * Executes the supplier with retry on transient failures using custom configuration.
+     *
+     * <p>
+     * Only retries on network errors and specific RPC errors.
+     * Reverts and user errors are thrown immediately without retry.
+     *
+     * <p>
+     * <strong>Exception Context:</strong> When all retries are exhausted, this method
+     * throws a {@link RetryExhaustedException} that includes:
+     * <ul>
+     * <li>The total number of attempts made</li>
+     * <li>The total time spent retrying (including backoff delays)</li>
+     * <li>All failed attempts as suppressed exceptions (in order)</li>
+     * </ul>
+     *
+     * @param <T>         the return type
+     * @param supplier    the operation to retry
+     * @param maxAttempts maximum number of attempts (must be >= 1)
+     * @param config      retry configuration for backoff timing
+     * @return the result from the supplier
+     * @throws RpcException             if all retries fail or error is
+     *                                  non-retryable
+     * @throws RetryExhaustedException  if all retry attempts were exhausted
+     * @throws RevertException          if the operation reverts (never retried)
+     * @throws IllegalArgumentException if maxAttempts < 1
+     */
+    static <T> T run(final Supplier<T> supplier, final int maxAttempts, final RpcRetryConfig config) {
         Objects.requireNonNull(supplier, "supplier");
+        Objects.requireNonNull(config, "config");
         if (maxAttempts < 1) {
             throw new IllegalArgumentException("maxAttempts must be >= 1");
         }
@@ -127,7 +159,7 @@ final class RpcRetry {
                 }
             }
 
-            final long delayMillis = backoff(attempt);
+            final long delayMillis = backoff(attempt, config);
             try {
                 Thread.sleep(delayMillis);
             } catch (InterruptedException e) {
@@ -201,17 +233,15 @@ final class RpcRetry {
                 || message.contains("overloaded");
     }
 
-    private static final long BACKOFF_BASE_MS = 200;
-    private static final long BACKOFF_MAX_MS = 5000;
-    private static final double JITTER_MIN = 0.10;
-    private static final double JITTER_MAX = 0.25;
+    /** Default retry configuration. */
+    private static final RpcRetryConfig DEFAULT_CONFIG = RpcRetryConfig.defaults();
 
-    private static long backoff(final int attempt) {
+    private static long backoff(final int attempt, final RpcRetryConfig config) {
         // Exponential backoff: base * 2^(attempt-1), capped at max
-        final long delay = BACKOFF_BASE_MS * (1L << (attempt - 1));
-        final long cappedDelay = Math.min(delay, BACKOFF_MAX_MS);
-        // Add 10-25% random jitter to prevent thundering herd
-        final double jitter = ThreadLocalRandom.current().nextDouble(JITTER_MIN, JITTER_MAX);
+        final long delay = config.backoffBaseMs() * (1L << (attempt - 1));
+        final long cappedDelay = Math.min(delay, config.backoffMaxMs());
+        // Add random jitter to prevent thundering herd
+        final double jitter = ThreadLocalRandom.current().nextDouble(config.jitterMin(), config.jitterMax());
         return cappedDelay + (long) (cappedDelay * jitter);
     }
 
@@ -231,7 +261,8 @@ final class RpcRetry {
     }
 
     /**
-     * Executes an RPC call with retry on both exceptions AND retryable RPC error responses.
+     * Executes an RPC call with retry on both exceptions AND retryable RPC error responses
+     * using default configuration.
      *
      * <p>
      * Unlike {@link #run}, this method also retries when the response contains a retryable
@@ -246,7 +277,32 @@ final class RpcRetry {
      * @throws IllegalArgumentException if maxAttempts < 1
      */
     static JsonRpcResponse runRpc(final Supplier<JsonRpcResponse> supplier, final int maxAttempts) {
+        return runRpc(supplier, maxAttempts, DEFAULT_CONFIG);
+    }
+
+    /**
+     * Executes an RPC call with retry on both exceptions AND retryable RPC error responses
+     * using custom configuration.
+     *
+     * <p>
+     * Unlike {@link #run}, this method also retries when the response contains a retryable
+     * error (e.g., rate limiting, transient server errors). Non-retryable errors like
+     * reverts or invalid parameters are not retried.
+     *
+     * @param supplier    the operation returning a JSON-RPC response
+     * @param maxAttempts maximum number of attempts (must be >= 1)
+     * @param config      retry configuration for backoff timing
+     * @return the response (may contain non-retryable error)
+     * @throws RpcException             if all retries fail or error is non-retryable
+     * @throws RetryExhaustedException  if all retry attempts were exhausted
+     * @throws IllegalArgumentException if maxAttempts < 1
+     */
+    static JsonRpcResponse runRpc(
+            final Supplier<JsonRpcResponse> supplier,
+            final int maxAttempts,
+            final RpcRetryConfig config) {
         Objects.requireNonNull(supplier, "supplier");
+        Objects.requireNonNull(config, "config");
         if (maxAttempts < 1) {
             throw new IllegalArgumentException("maxAttempts must be >= 1");
         }
@@ -317,7 +373,7 @@ final class RpcRetry {
                 }
             }
 
-            final long delayMillis = backoff(attempt);
+            final long delayMillis = backoff(attempt, config);
             try {
                 Thread.sleep(delayMillis);
             } catch (InterruptedException e) {
