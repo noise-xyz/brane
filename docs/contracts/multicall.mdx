@@ -280,6 +280,28 @@ MulticallBatch batch2 = publicClient.createBatch();
 // ... add new calls ...
 ```
 
+### 4. Clear Pending Calls on Exceptions
+
+`MulticallBatch` uses a `ThreadLocal` to capture call metadata between the proxy method call and `add()`. If an exception occurs between these two calls, you **must** call `clearPending()` to prevent ThreadLocal leaks.
+
+```java
+MulticallBatch batch = publicClient.createBatch();
+Erc20 token = batch.bind(Erc20.class, tokenAddress, abiJson);
+
+try {
+    BigInteger balance = token.balanceOf(user);  // Call captured in ThreadLocal
+    // ... validation that might throw ...
+    BatchHandle<BigInteger> handle = batch.add(balance);  // Clears ThreadLocal
+} catch (Exception e) {
+    batch.clearPending();  // Prevent ThreadLocal leak!
+    throw e;
+}
+```
+
+<Warning>
+In thread pools and virtual thread contexts, ThreadLocal leaks can persist across task boundaries, causing memory issues or incorrect behavior. Always use `clearPending()` in catch blocks.
+</Warning>
+
 ## Performance Benefits
 
 Multicall3 batching provides significant performance improvements:
