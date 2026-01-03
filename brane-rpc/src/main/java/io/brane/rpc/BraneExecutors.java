@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>
  * <strong>Usage:</strong>
- * 
+ *
  * <pre>{@code
  * // For I/O-bound tasks (e.g., parallel RPC calls)
  * try (var exec = BraneExecutors.newIoBoundExecutor()) {

@@ -11,7 +11,7 @@ class LogSanitizerTest {
     void sanitizesPrivateKey() {
         String input = "{\"privateKey\":\"0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef\"}";
         String sanitized = LogSanitizer.sanitize(input);
-        
+
         assertEquals("{\"privateKey\":\"0x***[REDACTED]***\"}", sanitized);
     }
 
@@ -19,7 +19,7 @@ class LogSanitizerTest {
     void sanitizesRawTransaction() {
         String input = "{\"raw\":\"0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef\"}";
         String sanitized = LogSanitizer.sanitize(input);
-        
+
         assertEquals("{\"raw\":\"0x***[REDACTED]***\"}", sanitized);
     }
 

@@ -1,28 +1,29 @@
 package io.brane.examples;
 
-import io.brane.core.BraneDebug;
-import io.brane.core.chain.ChainProfiles;
-import io.brane.core.types.Address;
-import io.brane.core.types.Wei;
-import io.brane.core.model.TransactionRequest;
-import io.brane.core.builder.TxBuilder;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.DefaultWalletClient;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.core.crypto.PrivateKeySigner;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
 import java.io.ByteArrayOutputStream;
 import java.io.PrintStream;
 
+import io.brane.core.BraneDebug;
+import io.brane.core.builder.TxBuilder;
+import io.brane.core.chain.ChainProfiles;
+import io.brane.core.crypto.PrivateKeySigner;
+import io.brane.core.model.TransactionRequest;
+import io.brane.core.types.Address;
+import io.brane.core.types.Wei;
+import io.brane.rpc.BraneProvider;
+import io.brane.rpc.DefaultWalletClient;
+import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.PublicClient;
+import io.brane.rpc.WalletClient;
+
 /**
  * Integration test for Debug Mode logging.
- * 
+ *
  * Captures System.err (where SLF4J SimpleLogger writes by default) to verify:
  * 1. RPC logs are emitted ([RPC])
  * 2. Tx lifecycle logs are emitted ([TX-SEND])
  * 3. Sensitive data is redacted (private keys)
- * 
+ *
  * Usage:
  * ./gradlew :brane-examples:run
  * -PmainClass=io.brane.examples.DebugIntegrationTest \

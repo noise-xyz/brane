@@ -1,9 +1,11 @@
 package io.brane.examples;
 
+import io.brane.core.builder.TxBuilder;
 import io.brane.core.crypto.Keccak256;
 import io.brane.core.crypto.PrivateKey;
 import io.brane.core.crypto.Signature;
 import io.brane.core.crypto.Signer;
+import io.brane.core.model.TransactionReceipt;
 import io.brane.core.tx.UnsignedTransaction;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;
@@ -12,8 +14,6 @@ import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
-import io.brane.core.builder.TxBuilder;
-import io.brane.core.model.TransactionReceipt;
 
 /**
  * Demonstrates how to implement a custom Signer that could delegate to a remote

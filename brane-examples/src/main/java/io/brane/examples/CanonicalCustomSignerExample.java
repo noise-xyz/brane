@@ -1,5 +1,13 @@
 package io.brane.examples;
 
+import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
 import io.brane.core.AnsiColors;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.crypto.Keccak256;
@@ -15,14 +23,6 @@ import io.brane.rpc.BraneProvider;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
-
-import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Canonical Custom Signer Example.

@@ -1,8 +1,9 @@
 package io.brane.benchmark;
 
-import io.brane.rpc.*;
 import java.util.*;
 import java.util.concurrent.*;
+
+import io.brane.rpc.*;
 
 /**
  * Quick benchmark to measure all provider types against local Anvil.
@@ -21,7 +22,7 @@ import java.util.concurrent.*;
  *
  * <p>
  * <strong>Usage:</strong>
- * 
+ *
  * <pre>{@code
  * ./gradlew :brane-benchmark:runQuickBenchmark
  * }</pre>

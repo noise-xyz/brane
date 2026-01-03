@@ -1,14 +1,5 @@
 package io.brane.rpc.internal;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.brane.core.DebugLogger;
-import io.brane.core.InternalApi;
-import io.brane.core.LogFormatter;
-import io.brane.core.error.RpcException;
-import io.brane.core.model.AccessListEntry;
-import io.brane.core.model.TransactionRequest;
-import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.net.URI;
@@ -18,6 +9,17 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 import java.util.function.Supplier;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import io.brane.core.DebugLogger;
+import io.brane.core.InternalApi;
+import io.brane.core.LogFormatter;
+import io.brane.core.error.RpcException;
+import io.brane.core.model.AccessListEntry;
+import io.brane.core.model.TransactionRequest;
+import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
 
 /**
  * Internal utility methods for RPC data encoding, decoding, and error handling.

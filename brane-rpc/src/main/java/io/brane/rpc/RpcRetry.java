@@ -1,16 +1,17 @@
 package io.brane.rpc;
 
-import io.brane.core.error.RevertException;
-import io.brane.core.error.RpcException;
 import java.io.IOException;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.function.Supplier;
 
+import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
+
 /**
  * Internal utility for retrying RPC calls with exponential backoff.
- * 
+ *
  * <p>
  * This class implements a retry strategy for transient RPC failures:
  * <ul>
@@ -20,7 +21,7 @@ import java.util.function.Supplier;
  * invalid parameters</li>
  * <li><strong>Backoff:</strong> Exponential backoff (200ms × 2^(attempt-1), max 5s) with 10-25% random jitter</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Retry Conditions:</strong>
  * <ul>
@@ -34,7 +35,7 @@ import java.util.function.Supplier;
  * <li>❌ Revert data (0x...) - Smart contract reverted</li>
  * <li>❌ "insufficient funds" - User error</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Backoff Strategy:</strong>
  * <ul>
@@ -44,12 +45,12 @@ import java.util.function.Supplier;
  * <li>Attempt 4: 800ms + 10-25% jitter (880-1000ms)</li>
  * <li>Attempt 5+: Capped at 5000ms + 10-25% jitter (5500-6250ms)</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Thread Interruption:</strong> If the calling thread is interrupted
  * during backoff, the retry loop terminates and throws the last encountered
  * exception.
- * 
+ *
  * @see RpcException
  * @see RevertException
  */

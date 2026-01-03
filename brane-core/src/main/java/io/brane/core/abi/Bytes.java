@@ -1,11 +1,12 @@
 package io.brane.core.abi;
 
-import io.brane.core.types.HexData;
 import java.util.Objects;
+
+import io.brane.core.types.HexData;
 
 /**
  * Represents a Solidity bytes type (bytes or bytesN).
- * 
+ *
  * @param value     the HexData wrapper containing the byte array
  * @param isDynamic true for 'bytes', false for 'bytesN'
  */

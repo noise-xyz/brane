@@ -1,7 +1,8 @@
 package io.brane.core.abi;
 
-import io.brane.core.types.Address;
 import java.util.Objects;
+
+import io.brane.core.types.Address;
 
 /**
  * Represents a Solidity {@code address} type for ABI encoding/decoding.

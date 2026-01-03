@@ -1,13 +1,14 @@
 package io.brane.rpc;
 
-import io.brane.core.types.Address;
-import io.brane.core.types.HexData;
-import io.brane.core.types.Wei;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigInteger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
+import io.brane.core.types.Wei;
 
 class CallRequestTest {
 

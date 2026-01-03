@@ -1,7 +1,8 @@
 package io.brane.rpc;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
  * Represents a JSON-RPC 2.0 request to an Ethereum node.

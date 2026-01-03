@@ -1,11 +1,12 @@
 package io.brane.rpc;
 
-import io.brane.core.error.RpcException;
 import java.util.List;
+
+import io.brane.core.error.RpcException;
 
 /**
  * Low-level abstraction for sending JSON-RPC requests to an Ethereum node.
- * 
+ *
  * <p>
  * This interface abstracts the transport layer (HTTP, WebSocket, IPC, etc.)
  * from the RPC business logic. Implementations handle:
@@ -15,21 +16,21 @@ import java.util.List;
  * <li>Deserializing responses from JSON</li>
  * <li>Error handling and retries (implementation-specific)</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Thread Safety:</strong> Implementations must be thread-safe.
- * 
+ *
  * <p>
  * <strong>Usage:</strong> Most users should use {@link PublicClient} or
  * {@link WalletClient} instead of calling this directly. This interface is
  * primarily for internal use and custom provider implementations.
- * 
+ *
  * <p>
  * <strong>Built-in Implementations:</strong>
  * <ul>
  * <li>{@link HttpBraneProvider} - HTTP/HTTPS transport (default)</li>
  * </ul>
- * 
+ *
  * @see HttpBraneProvider
  * @see PublicClient#from(BraneProvider)
  */

@@ -13,7 +13,7 @@ import java.time.Duration;
  *
  * <p>
  * <strong>Usage:</strong>
- * 
+ *
  * <pre>{@code
  * BraneMetrics metrics = new MyMicrometerMetrics(meterRegistry);
  * WebSocketProvider provider = WebSocketProvider.create(config);

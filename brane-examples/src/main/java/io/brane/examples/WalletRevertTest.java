@@ -1,26 +1,25 @@
 package io.brane.examples;
 
-import io.brane.core.abi.Abi;
 import io.brane.core.RevertDecoder;
+import io.brane.core.abi.Abi;
 import io.brane.core.builder.TxBuilder;
+import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.error.RevertException;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
-
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
-import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 
 /**
  * Integration test for WalletClient revert handling.
- * 
+ *
  * Verifies that WalletClient.sendTransaction() throws RevertException
  * when the node rejects a transaction with revert data.
- * 
+ *
  * Usage:
  * ./gradlew :brane-examples:run -PmainClass=io.brane.examples.WalletRevertTest
  * \

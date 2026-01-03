@@ -1,10 +1,11 @@
 package io.brane.rpc;
 
-import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+
+import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
 
 /**
  * Filter criteria for querying event logs via {@code eth_getLogs}.

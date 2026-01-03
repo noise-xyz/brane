@@ -1,23 +1,20 @@
 package io.brane.rpc;
 
-import io.brane.core.chain.ChainProfile;
-import io.brane.core.error.RpcException;
-import io.brane.core.model.AccessListEntry;
-import io.brane.core.model.BlockHeader;
-import io.brane.core.model.TransactionRequest;
-import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
-import io.brane.core.types.Wei;
-
 import java.math.BigInteger;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
-import io.brane.rpc.internal.RpcUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.brane.core.chain.ChainProfile;
+import io.brane.core.error.RpcException;
+import io.brane.core.model.BlockHeader;
+import io.brane.core.model.TransactionRequest;
+import io.brane.core.types.Address;
+import io.brane.core.types.Wei;
+import io.brane.rpc.internal.RpcUtils;
 
 /**
  * Automatically fills missing gas parameters (limit, price, fees) for

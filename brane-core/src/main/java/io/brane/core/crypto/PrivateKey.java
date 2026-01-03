@@ -1,21 +1,23 @@
 package io.brane.core.crypto;
 
-import io.brane.core.types.Address;
-import io.brane.primitives.Hex;
+import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.Objects;
+
+import javax.security.auth.Destroyable;
+
 import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.crypto.ec.CustomNamedCurves;
 import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.bouncycastle.math.ec.ECPoint;
 import org.bouncycastle.math.ec.FixedPointCombMultiplier;
 
-import javax.security.auth.Destroyable;
-import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.Objects;
+import io.brane.core.types.Address;
+import io.brane.primitives.Hex;
 
 /**
  * Ethereum private key with secp256k1 signing capabilities.
- * 
+ *
  * <p>
  * This class provides:
  * <ul>
@@ -25,20 +27,20 @@ import java.util.Objects;
  * <li>Public key recovery from signatures</li>
  * <li>Low-s normalization for malleability protection</li>
  * </ul>
- * 
+ *
  * <h2>Usage Example</h2>
- * 
+ *
  * <pre>{@code
  * PrivateKey key = PrivateKey.fromHex("0x1234...");
  * Address address = key.toAddress();
- * 
+ *
  * byte[] messageHash = Keccak256.hash(message);
  * Signature signature = key.sign(messageHash);
- * 
+ *
  * Address recovered = PrivateKey.recoverAddress(messageHash, signature);
  * assert recovered.equals(address);
  * }</pre>
- * 
+ *
  * <h2>Security Considerations</h2>
  *
  * <p>
@@ -94,7 +96,7 @@ public final class PrivateKey implements Destroyable {
 
     /**
      * Creates a private key from a hex string.
-     * 
+     *
      * @param hexString hex-encoded private key (with or without 0x prefix)
      * @return private key instance
      * @throws IllegalArgumentException if hex string is invalid or key is out of
@@ -195,7 +197,7 @@ public final class PrivateKey implements Destroyable {
 
     /**
      * Recovers the Ethereum address from a signature and message hash.
-     * 
+     *
      * @param messageHash 32-byte hash that was signed
      * @param signature   the signature
      * @return recovered Ethereum address

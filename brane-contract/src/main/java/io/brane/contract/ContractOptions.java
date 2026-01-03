@@ -1,8 +1,9 @@
 package io.brane.contract;
 
-import io.brane.core.types.Wei;
 import java.time.Duration;
 import java.util.Objects;
+
+import io.brane.core.types.Wei;
 
 /**
  * Configuration options for contract interactions.

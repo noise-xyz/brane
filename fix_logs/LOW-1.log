@@ -1,7 +1,0 @@
-Done. I've completed the LOW-1 fix:
-
-**Summary:**
-- Replaced old-style cast `(FullHttpResponse) msg` at line 543 with Java 21 pattern matching `if (msg instanceof FullHttpResponse response)`
-- The pattern matching approach is safer as it includes the type check before using the variable
-- Unit tests pass
-- Committed with: `refactor(rpc): use Java 21 pattern matching in WebSocketClientHandler.channelRead0 [LOW-1]`

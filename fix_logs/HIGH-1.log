@@ -1,6 +1,0 @@
-The commit `b77b23c` with the fix for HIGH-1 is already in the current branch (`fix/brane-rpc`). The issue has been resolved - the null validation `java.util.Objects.requireNonNull(hash, "hash")` was added at line 87 in `DefaultPublicClient.java`.
-
-**Summary:**
-- **Issue HIGH-1** has already been fixed in commit `b77b23c`
-- The fix adds `java.util.Objects.requireNonNull(hash, "hash")` at the start of `getTransactionByHash` method (line 87)
-- All tests pass

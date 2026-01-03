@@ -2,12 +2,14 @@ package io.brane.rpc;
 
 import static io.brane.rpc.internal.RpcUtils.MAPPER;
 
-import io.brane.core.error.RpcException;
 import java.math.BigInteger;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.List;
+
 import org.jspecify.annotations.Nullable;
+
+import io.brane.core.error.RpcException;
 
 /**
  * A typed JSON-RPC client that wraps a {@link BraneProvider} for convenient RPC calls.

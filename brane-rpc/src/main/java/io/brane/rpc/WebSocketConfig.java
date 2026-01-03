@@ -3,9 +3,10 @@ package io.brane.rpc;
 import static io.brane.rpc.internal.RpcUtils.WS_SCHEMES;
 import static io.brane.rpc.internal.RpcUtils.validateUrl;
 
-import io.netty.channel.EventLoopGroup;
 import java.time.Duration;
 import java.util.Objects;
+
+import io.netty.channel.EventLoopGroup;
 import org.jspecify.annotations.Nullable;
 
 /**
@@ -18,7 +19,7 @@ import org.jspecify.annotations.Nullable;
  *
  * <p>
  * <strong>Usage:</strong>
- * 
+ *
  * <pre>{@code
  * WebSocketConfig config = WebSocketConfig.builder("wss://eth.example.com")
  *         .maxPendingRequests(32768)

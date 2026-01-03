@@ -1,17 +1,18 @@
 package io.brane.core.abi;
 
-import io.brane.core.types.Hash;
-import io.brane.core.types.HexData;
-import io.brane.core.crypto.Keccak256;
-import io.brane.primitives.Hex;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
 
+import io.brane.core.crypto.Keccak256;
+import io.brane.core.types.Hash;
+import io.brane.core.types.HexData;
+import io.brane.primitives.Hex;
+
 /**
  * Application Binary Interface (ABI) for encoding/decoding smart contract
  * function calls and events.
- * 
+ *
  * <p>
  * This interface provides methods to:
  * <ul>
@@ -20,56 +21,56 @@ import java.util.Optional;
  * <li>Decode event logs to Java objects</li>
  * <li>Compute function selectors and event topics</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>ABI Encoding:</strong> Converts Java method calls to hex-encoded EVM
  * calldata.
  * The calldata consists of a 4-byte function selector (first 4 bytes of
  * keccak256 hash
  * of function signature) followed by ABI-encoded arguments.
- * 
+ *
  * <p>
  * <strong>Function Selectors:</strong>
- * 
+ *
  * <pre>{@code
  * // transfer(address,uint256) -> 0xa9059cbb
  * HexData selector = Abi.functionSelector("transfer(address,uint256)");
  * }</pre>
- * 
+ *
  * <p>
  * <strong>Event Topics:</strong>
- * 
+ *
  * <pre>{@code
  * // Transfer(address,address,uint256) -> topic0
  * Hash topic = Abi.eventTopic("Transfer(address,address,uint256)");
  * }</pre>
- * 
+ *
  * <p>
  * <strong>Usage Example:</strong>
- * 
+ *
  * <pre>{@code
  * // Load ABI from JSON
  * Abi abi = Abi.fromJson(abiJsonString);
- * 
+ *
  * // Encode function call
  * FunctionCall call = abi.encodeFunction(
  *         "transfer",
  *         new Address("0x..."),
  *         BigInteger.valueOf(1000000));
  * String calldata = call.data(); // "0xa9059cbb000000..."
- * 
+ *
  * // Decode return value
  * String returnHex = "0x0000000000000000000000000000000000000000000000000000000000000001";
  * Boolean success = call.decode(returnHex, Boolean.class);
  * }</pre>
- * 
+ *
  * @see InternalAbi
  */
 public interface Abi {
 
     /**
      * Creates an ABI instance from JSON contract metadata.
-     * 
+     *
      * @param json the ABI JSON string (array of function/event definitions)
      * @return an ABI instance
      * @throws IllegalArgumentException if JSON is invalid
@@ -80,11 +81,11 @@ public interface Abi {
 
     /**
      * Computes the event topic (topic0) from an event signature.
-     * 
+     *
      * <p>
      * The topic is the keccak256 hash of the event signature string.
      * Event signature format: {@code EventName(type1,type2,...)}
-     * 
+     *
      * @param eventSignature the event signature (e.g.,
      *                       "Transfer(address,address,uint256)")
      * @return the event topic hash
@@ -98,12 +99,12 @@ public interface Abi {
 
     /**
      * Computes the 4-byte function selector from a function signature.
-     * 
+     *
      * <p>
      * The selector is the first 4 bytes of the keccak256 hash of the function
      * signature.
      * Function signature format: {@code functionName(type1,type2,...)}
-     * 
+     *
      * @param functionSignature the function signature (e.g.,
      *                          "transfer(address,uint256)")
      * @return the 4-byte function selector
@@ -125,7 +126,7 @@ public interface Abi {
 
     /**
      * Computes the 4-byte function selector as a raw hex string (no 0x prefix).
-     * 
+     *
      * @param functionSignature the function signature
      * @return 8-character hex string
      */
@@ -136,7 +137,7 @@ public interface Abi {
     /**
      * Decodes the return value of a Multicall3 aggregate3 call.
      * The expected format is (bool success, bytes returnData)[]
-     * 
+     *
      * @param hex the raw hex data from the RPC response (with or without 0x prefix)
      * @return a list of MulticallResult records
      */
@@ -241,4 +242,3 @@ public interface Abi {
         <T> T decode(String output, Class<T> returnType);
     }
 }
-

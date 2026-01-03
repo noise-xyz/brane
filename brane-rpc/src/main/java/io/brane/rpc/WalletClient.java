@@ -1,10 +1,10 @@
 package io.brane.rpc;
 
-import io.brane.core.model.TransactionRequest;
-import io.brane.core.error.RpcException;
-import io.brane.core.error.RevertException;
 import io.brane.core.error.ChainMismatchException;
+import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
+import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Hash;
 
 /**
@@ -31,7 +31,7 @@ import io.brane.core.types.Hash;
  * </ol>
  * <p>
  * <strong>Usage Example:</strong>
- * 
+ *
  * <pre>{@code
  * WalletClient client = BraneWalletClient.forChain(ChainProfiles.MAINNET)
  *         .withPrivateKey("0x...")
@@ -67,7 +67,7 @@ public interface WalletClient {
 
     /**
      * Submits a transaction to the blockchain and returns immediately.
-     * 
+     *
      * <p>
      * This method:
      * <ol>
@@ -76,11 +76,11 @@ public interface WalletClient {
      * <li>Broadcasts via {@code eth_sendRawTransaction}</li>
      * <li>Returns the transaction hash without waiting for confirmation</li>
      * </ol>
-     * 
+     *
      * <p>
      * <strong>Note:</strong> The transaction is submitted but NOT confirmed.
      * Use {@link #sendTransactionAndWait} if you need to wait for confirmation.
-     * 
+     *
      * @param request the transaction request with at minimum a {@code from}
      *                address;
      *                all other fields are optional and will be auto-filled
@@ -94,7 +94,7 @@ public interface WalletClient {
 
     /**
      * Submits a transaction and waits for it to be confirmed in a block.
-     * 
+     *
      * <p>
      * This method combines {@link #sendTransaction} with polling for the receipt.
      * It will:
@@ -104,12 +104,12 @@ public interface WalletClient {
      * <li>Return the receipt once the transaction is included in a block</li>
      * <li>Throw an exception if timeout is reached or transaction reverts</li>
      * </ol>
-     * 
+     *
      * <p>
      * <strong>Revert Detection:</strong> If the transaction is included but reverts
      * ({@code status = false}), this method will decode the revert reason and throw
      * a {@link RevertException} with details.
-     * 
+     *
      * @param request            the transaction request
      * @param timeoutMillis      maximum time to wait for confirmation, in
      *                           milliseconds

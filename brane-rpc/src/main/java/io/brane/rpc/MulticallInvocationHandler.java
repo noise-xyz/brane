@@ -1,12 +1,13 @@
 package io.brane.rpc;
 
-import io.brane.core.abi.Abi;
-import io.brane.core.abi.AbiBinding;
-import io.brane.core.types.Address;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Objects;
+
+import io.brane.core.abi.Abi;
+import io.brane.core.abi.AbiBinding;
+import io.brane.core.types.Address;
 
 /**
  * Invocation handler for Multicall3 recording proxies.
@@ -94,4 +95,3 @@ final class MulticallInvocationHandler implements InvocationHandler {
         return PRIMITIVE_DEFAULTS.get(type);
     }
 }
-

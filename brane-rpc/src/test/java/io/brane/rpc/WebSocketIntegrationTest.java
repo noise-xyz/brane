@@ -1,32 +1,12 @@
 package io.brane.rpc;
 
-import io.brane.core.model.BlockHeader;
-import io.brane.core.model.LogEntry;
-
-import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
-import io.brane.core.types.HexData;
-import io.brane.core.types.Wei;
-import io.brane.rpc.WebSocketProvider;
-import io.brane.rpc.JsonRpcResponse;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.testcontainers.containers.GenericContainer;
-import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
-import org.testcontainers.utility.DockerImageName;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
@@ -34,11 +14,24 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assumptions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.utility.DockerImageName;
+
+import io.brane.core.model.BlockHeader;
+import io.brane.core.model.LogEntry;
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
 
 @org.junit.jupiter.api.Tag("integration")
 public class WebSocketIntegrationTest {
@@ -55,6 +48,7 @@ public class WebSocketIntegrationTest {
     private static String wsUrl;
     private static String ANVIL_HTTP_URL;
     private static boolean useLocalNode;
+    private static boolean infrastructureAvailable;
 
     private WebSocketProvider wsProvider;
     private PublicClient client;
@@ -84,6 +78,29 @@ public class WebSocketIntegrationTest {
                 ANVIL_HTTP_URL = "http://127.0.0.1:8545";
             }
         }
+
+        // Check if infrastructure is actually available by attempting a test connection
+        infrastructureAvailable = checkInfrastructureAvailable();
+        if (!infrastructureAvailable) {
+            log.warn("WebSocket integration tests will be skipped: No Anvil node available at {}", wsUrl);
+        }
+    }
+
+    private static boolean checkInfrastructureAvailable() {
+        try (var testClient = java.net.http.HttpClient.newHttpClient()) {
+            var request = java.net.http.HttpRequest.newBuilder()
+                    .uri(URI.create(ANVIL_HTTP_URL))
+                    .POST(java.net.http.HttpRequest.BodyPublishers.ofString(
+                            "{\"jsonrpc\":\"2.0\",\"method\":\"eth_chainId\",\"params\":[],\"id\":1}"))
+                    .header("Content-Type", "application/json")
+                    .timeout(Duration.ofSeconds(5))
+                    .build();
+            var response = testClient.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            return response.statusCode() == 200;
+        } catch (Exception e) {
+            log.debug("Infrastructure check failed: {}", e.getMessage());
+            return false;
+        }
     }
 
     @AfterAll
@@ -102,6 +119,8 @@ public class WebSocketIntegrationTest {
 
     @org.junit.jupiter.api.BeforeEach
     void init() {
+        Assumptions.assumeTrue(infrastructureAvailable,
+                "Skipping test: No Anvil node available (neither Docker nor local)");
         wsProvider = WebSocketProvider.create(wsUrl);
         client = PublicClient.from(wsProvider);
         httpClient = HttpClient.newHttpClient();

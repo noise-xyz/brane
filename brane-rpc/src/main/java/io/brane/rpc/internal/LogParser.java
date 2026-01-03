@@ -2,15 +2,17 @@ package io.brane.rpc.internal;
 
 import static io.brane.rpc.internal.RpcUtils.MAPPER;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+
 import com.fasterxml.jackson.core.type.TypeReference;
+import org.jspecify.annotations.Nullable;
+
 import io.brane.core.model.LogEntry;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Utility class for parsing Ethereum log entries from JSON-RPC responses.

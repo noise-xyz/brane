@@ -3,7 +3,7 @@ package io.brane.core;
 /**
  * Modern, curated ANSI color palette for terminal output with automatic TTY
  * detection.
- * 
+ *
  * <p>
  * This class provides a sophisticated color scheme designed for modern terminal
  * logging,
@@ -11,7 +11,7 @@ package io.brane.core;
  * are automatically
  * disabled when not running in a TTY environment unless
  * {@code FORCE_COLOR=true} is set.
- * 
+ *
  * <h2>Color Philosophy</h2>
  * <ul>
  * <li><b>TEAL</b> - Success indicators (instead of traditional green)
@@ -21,22 +21,22 @@ package io.brane.core;
  * <li><b>LAVENDER</b> - Transaction operations
  * <li><b>SLATE</b> - Metadata and secondary information
  * </ul>
- * 
+ *
  * <h2>Usage Example</h2>
- * 
+ *
  * <pre>{@code
  * // Manual coloring
  * System.out.println(AnsiColors.TEAL + "Success!" + AnsiColors.RESET);
- * 
+ *
  * // Using helper methods
  * System.out.println(AnsiColors.success("Operation completed"));
  * System.out.println(AnsiColors.error("Operation failed"));
  * }</pre>
- * 
+ *
  * <p>
  * All public constants in this class are safe to concatenate with strings for
  * terminal output. Colors automatically no-op when not in a TTY environment.
- * 
+ *
  * @since 0.1.0-alpha
  * @see LogFormatter
  */
@@ -135,7 +135,7 @@ public final class AnsiColors {
 
     /**
      * Formats a duration in microseconds as a human-readable string.
-     * 
+     *
      * @param micros duration in microseconds
      * @return formatted duration (e.g., "1.5ms" or "2.3s")
      */
@@ -149,7 +149,7 @@ public final class AnsiColors {
 
     /**
      * Converts a numeric value to string.
-     * 
+     *
      * @param value the value to convert
      * @return string representation of the value
      */
@@ -159,7 +159,7 @@ public final class AnsiColors {
 
     /**
      * Formats a key-value pair with colored key.
-     * 
+     *
      * @param key   the key name
      * @param value the value
      * @return formatted "{@code key value}" with colored key
@@ -170,7 +170,7 @@ public final class AnsiColors {
 
     /**
      * Formats a success message with a teal checkmark prefix.
-     * 
+     *
      * @param message the success message
      * @return formatted message with "✓ {message}" in teal
      */
@@ -180,7 +180,7 @@ public final class AnsiColors {
 
     /**
      * Formats an error message with a coral cross prefix.
-     * 
+     *
      * @param message the error message
      * @return formatted message with "✗ {message}" in coral
      */

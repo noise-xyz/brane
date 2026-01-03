@@ -1,5 +1,10 @@
 package io.brane.rpc;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
@@ -8,16 +13,11 @@ import io.brane.core.model.Transaction;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
-import java.util.List;
-import io.brane.rpc.Subscription;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * High-level {@link PublicClient} implementation with built-in chain
  * configuration.
- * 
+ *
  * <p>
  * This is the recommended way to create a {@link PublicClient} for well-known
  * chains.
@@ -27,7 +27,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * <li>Automatic RPC URL configuration (with override support)</li>
  * <li>Fluent builder API for easy setup</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Thread Safety:</strong> This class is immutable and thread-safe once
  * built.
@@ -114,7 +114,7 @@ public final class BranePublicClient implements PublicClient, AutoCloseable {
 
     /**
      * Creates a new builder for the specified chain.
-     * 
+     *
      * @param profile the chain profile (e.g., {@code ChainProfiles.MAINNET})
      * @return a new builder instance
      */

@@ -5,7 +5,7 @@ import static io.brane.rpc.internal.RpcUtils.validateUrl;
 
 import java.time.Duration;
 import java.util.Map;
-import java.util.Objects;
+
 import org.jspecify.annotations.Nullable;
 
 /**

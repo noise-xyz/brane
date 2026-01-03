@@ -3,6 +3,7 @@ package io.brane.core.abi;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigInteger;
+
 import org.junit.jupiter.api.Test;
 
 class FastAbiEncoderTest {

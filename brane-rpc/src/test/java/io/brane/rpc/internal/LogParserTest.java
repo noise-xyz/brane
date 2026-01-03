@@ -2,12 +2,14 @@ package io.brane.rpc.internal;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.brane.core.error.AbiDecodingException;
-import io.brane.core.model.LogEntry;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+
 import org.junit.jupiter.api.Test;
+
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.model.LogEntry;
 
 class LogParserTest {
 

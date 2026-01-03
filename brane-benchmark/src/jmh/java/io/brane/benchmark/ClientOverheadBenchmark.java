@@ -1,9 +1,5 @@
 package io.brane.benchmark;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.openjdk.jmh.annotations.*;
-import org.openjdk.jmh.infra.Blackhole;
-
 import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashMap;
@@ -12,13 +8,17 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.infra.Blackhole;
+
 /**
  * Micro-benchmark measuring client-side overhead ONLY (no network).
- * 
+ *
  * This directly compares JSON serialization/parsing efficiency between:
  * - Brane's low-allocation custom parser
  * - web3j's Jackson-based approach
- * 
+ *
  * This is where we can demonstrate 2x+ performance difference.
  */
 @State(Scope.Benchmark)

@@ -1,6 +1,9 @@
 package io.brane.examples;
 
+import java.util.List;
+
 import io.brane.core.builder.TxBuilder;
+import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
@@ -10,10 +13,8 @@ import io.brane.core.types.Wei;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
-import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
-import java.util.List;
 
 /**
  * Sends an EIP-1559 transaction with a small access list and prints the result.

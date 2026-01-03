@@ -1,13 +1,13 @@
 package io.brane.core.crypto;
 
-import io.brane.primitives.Hex;
-
 import java.util.Arrays;
 import java.util.Objects;
 
+import io.brane.primitives.Hex;
+
 /**
  * ECDSA signature for Ethereum transactions.
- * 
+ *
  * <p>
  * A signature consists of three components:
  * <ul>
@@ -15,26 +15,26 @@ import java.util.Objects;
  * <li><b>s</b>: Second 32 bytes of the signature</li>
  * <li><b>v</b>: Recovery ID and chain ID encoded together</li>
  * </ul>
- * 
+ *
  * <h2>V Encoding</h2>
  * <p>
  * For EIP-155 (legacy transactions):
- * 
+ *
  * <pre>
  * v = chainId * 2 + 35 + yParity
  * </pre>
- * 
+ *
  * where yParity is 0 or 1.
- * 
+ *
  * <p>
  * For EIP-1559 (typed transactions):
- * 
+ *
  * <pre>
  * v = yParity
  * </pre>
- * 
+ *
  * (just 0 or 1, no chain ID encoding)
- * 
+ *
  * @param r first 32 bytes of signature
  * @param s second 32 bytes of signature (must be low-s normalized)
  * @param v recovery ID, possibly with EIP-155 chain ID encoding
@@ -116,7 +116,7 @@ public record Signature(byte[] r, byte[] s, int v) {
 
     /**
      * Returns true if this is an EIP-155 signature (v encodes chain ID).
-     * 
+     *
      * @return true if v &gt; 35
      */
     public boolean isEip155() {

@@ -1,8 +1,12 @@
 package io.brane.examples;
 
+import java.math.BigInteger;
+
 import io.brane.core.BraneDebug;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.chain.ChainProfile;
+import io.brane.core.crypto.PrivateKeySigner;
+import io.brane.core.crypto.Signer;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
@@ -10,22 +14,19 @@ import io.brane.core.types.Wei;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
-import io.brane.core.crypto.PrivateKeySigner;
-import io.brane.core.crypto.Signer;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
-import java.math.BigInteger;
 
 /**
  * Demonstrates Brane's configurable gas estimation.
  * Shows default 20% buffer vs custom 50% buffer.
- * 
+ *
  * <p>
  * Requires a local Anvil node running at http://127.0.0.1:8545
- * 
+ *
  * <p>
  * Run with:
- * 
+ *
  * <pre>
  * anvil --accounts 1 --balance 10000
  * ./gradlew :brane-examples:run -PmainClass=io.brane.examples.GasEstimationDemo

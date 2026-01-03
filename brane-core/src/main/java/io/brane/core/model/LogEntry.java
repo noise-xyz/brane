@@ -1,10 +1,11 @@
 package io.brane.core.model;
 
+import java.util.List;
+import java.util.Objects;
+
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
-import java.util.List;
-import java.util.Objects;
 
 /**
  * Represents an event log entry emitted by a smart contract.

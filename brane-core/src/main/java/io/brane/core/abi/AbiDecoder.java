@@ -1,24 +1,24 @@
 package io.brane.core.abi;
 
-import io.brane.core.error.AbiDecodingException;
-import io.brane.core.types.Address;
-
-import io.brane.primitives.Hex;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.types.Address;
+import io.brane.primitives.Hex;
+
 /**
  * Decodes byte arrays into ABI types according to the Ethereum Contract ABI
  * specification.
- * 
+ *
  * <p>
  * This class provides static methods for decoding byte arrays into lists of
  * {@link AbiType} based on a provided {@link TypeSchema}. It handles both static
  * and dynamic types, resolving offsets and decoding primitive values.
- * 
+ *
  * <h2>Usage Example</h2>
  * <pre>{@code
  * // Schema: (uint256, string)
@@ -26,13 +26,13 @@ import java.util.List;
  *     new TypeSchema.UIntSchema(256),
  *     new TypeSchema.StringSchema()
  * );
- * 
+ *
  * // Decode
  * List<AbiType> decoded = AbiDecoder.decode(data, schemas);
  * UInt u = (UInt) decoded.get(0);
  * Utf8String s = (Utf8String) decoded.get(1);
  * }</pre>
- * 
+ *
  * @see AbiType
  * @see TypeSchema
  * @see AbiEncoder
@@ -50,7 +50,7 @@ public final class AbiDecoder {
 
     /**
      * Decodes a byte array into a list of ABI types based on the provided schemas.
-     * 
+     *
      * <p>
      * This method expects the data to be encoded as a tuple, which is the standard
      * format for function arguments and return values.

@@ -6,16 +6,16 @@ import java.util.stream.Collectors;
 
 /**
  * Defines the schema (expected type structure) for ABI decoding.
- * 
+ *
  * <p>
  * Unlike {@link AbiType}, which represents a concrete value, {@code TypeSchema}
  * represents the <em>type</em> of a value. This is necessary for decoding because
  * the ABI encoding format is ambiguous without a schema (e.g., dynamic arrays
  * look like tuples, and static types are just 32 bytes).
- * 
+ *
  * <p>
  * Schemas are used by {@link AbiDecoder} to interpret byte arrays.
- * 
+ *
  * <h2>Example</h2>
  * <pre>{@code
  * // Schema for: (uint256, string[])

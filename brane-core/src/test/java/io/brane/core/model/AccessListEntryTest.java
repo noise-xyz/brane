@@ -4,11 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.junit.jupiter.api.Test;
+
+import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
 
 class AccessListEntryTest {
 

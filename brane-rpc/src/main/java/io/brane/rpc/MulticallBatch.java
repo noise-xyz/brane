@@ -1,18 +1,19 @@
 package io.brane.rpc;
 
-import io.brane.core.DebugLogger;
-import io.brane.core.abi.Abi;
-import io.brane.core.abi.AbiBinding;
-import io.brane.core.model.Call3;
-import io.brane.core.model.MulticallResult;
-import io.brane.core.RevertDecoder;
-import io.brane.core.error.AbiDecodingException;
-import io.brane.core.types.Address;
-import io.brane.core.types.HexData;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+
+import io.brane.core.DebugLogger;
+import io.brane.core.RevertDecoder;
+import io.brane.core.abi.Abi;
+import io.brane.core.abi.AbiBinding;
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.model.Call3;
+import io.brane.core.model.MulticallResult;
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
 
 /**
  * Orchestrates a batch of Multicall3 requests.
@@ -128,7 +129,7 @@ public final class MulticallBatch {
 
     /**
      * Creates a new multicall batch.
-     * 
+     *
      * @param publicClient the public client to use for execution
      * @return a new batch instance
      */
@@ -139,7 +140,7 @@ public final class MulticallBatch {
     /**
      * Sets whether individual calls are allowed to fail without reverting the
      * entire batch.
-     * 
+     *
      * @param allowFailure true to allow failure, false to revert batch on any
      *                     failure
      * @return this batch instance
@@ -151,7 +152,7 @@ public final class MulticallBatch {
 
     /**
      * Sets the maximum number of calls per RPC request.
-     * 
+     *
      * @param chunkSize the maximum number of calls per chunk
      * @return this batch instance
      */
@@ -251,7 +252,7 @@ public final class MulticallBatch {
 
     /**
      * Adds a recorded call to the batch and returns a handle for the result.
-     * 
+     *
      * @param <T>    the return type of the call
      * @param ignore the result of the proxy call (ignored)
      * @return a handle to the eventual result

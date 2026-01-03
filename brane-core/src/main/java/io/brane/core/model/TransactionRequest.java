@@ -1,14 +1,15 @@
 package io.brane.core.model;
 
-import io.brane.core.types.Address;
-import io.brane.core.types.HexData;
-import io.brane.core.types.Wei;
 import java.util.List;
 import java.util.Optional;
 
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
+import io.brane.core.types.Wei;
+
 /**
  * Request to submit a transaction to the blockchain.
- * 
+ *
  * <p>
  * This type supports both legacy and EIP-1559 transaction types:
  * <ul>
@@ -17,7 +18,7 @@ import java.util.Optional;
  * <li><strong>EIP-1559 transactions</strong> ({@code isEip1559 = true}): Use
  * {@code maxFeePerGas} and {@code maxPriorityFeePerGas}</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Optional vs Required Fields:</strong>
  * <ul>
@@ -32,7 +33,7 @@ import java.util.Optional;
  * </ul>
  * </li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Contract Interaction:</strong>
  * <ul>
@@ -43,7 +44,7 @@ import java.util.Optional;
  * <li><strong>Simple transfer:</strong> Set {@code to} to recipient,
  * {@code value} to amount, {@code data} can be null/empty</li>
  * </ul>
- * 
+ *
  * @param from                 the address sending the transaction (may be null during
  *                             construction, but required for signing)
  * @param to                   the recipient address, or null for contract
@@ -132,13 +133,13 @@ public record TransactionRequest(
 
     /**
      * Converts this request into an unsigned transaction ready for signing.
-     * 
+     *
      * <p>
      * All fields must be populated (no nulls except {@code to} for contract
      * creation).
      * Use {@code WalletClient} to auto-fill missing fields before calling this
      * method.
-     * 
+     *
      * @param chainId the chain ID for the transaction
      * @return unsigned transaction (Legacy or EIP-1559 depending on
      *         {@code isEip1559})

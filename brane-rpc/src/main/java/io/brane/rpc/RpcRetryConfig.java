@@ -1,6 +1,5 @@
 package io.brane.rpc;
 
-import java.util.Objects;
 
 /**
  * Configuration for RPC retry behavior with exponential backoff.

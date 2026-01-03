@@ -1,8 +1,9 @@
 package io.brane.primitives.rlp;
-import io.brane.primitives.Hex;
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Objects;
+
+import io.brane.primitives.Hex;
 
 /**
  * RLP representation of a byte string.

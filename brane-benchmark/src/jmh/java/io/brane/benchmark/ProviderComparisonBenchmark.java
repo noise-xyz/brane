@@ -1,8 +1,5 @@
 package io.brane.benchmark;
 
-import io.brane.rpc.*;
-import org.openjdk.jmh.annotations.*;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
@@ -10,17 +7,21 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
+import org.openjdk.jmh.annotations.*;
+
+import io.brane.rpc.*;
+
 /**
  * Comprehensive provider comparison benchmark for Section 9.1 of
  * Implementation.md.
- * 
+ *
  * Compares:
  * - HttpBraneProvider (Loom)
  * - WebSocketProvider with sendAsync
  * - WebSocketProvider with sendAsyncBatch
- * 
+ *
  * Run against local Anvil: anvil --host 0.0.0.0 --port 8545
- * 
+ *
  * Execute: ./gradlew :brane-benchmark:jmh
  * -Pjmh.includes="ProviderComparisonBenchmark"
  */

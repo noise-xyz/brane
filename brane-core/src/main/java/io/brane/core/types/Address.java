@@ -1,9 +1,10 @@
 package io.brane.core.types;
 
-import io.brane.primitives.Hex;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
+
+import io.brane.primitives.Hex;
 
 /**
  * Hex-encoded 20-byte Ethereum address.

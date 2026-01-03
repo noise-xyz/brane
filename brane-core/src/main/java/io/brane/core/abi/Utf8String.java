@@ -4,7 +4,7 @@ import java.util.Objects;
 
 /**
  * Represents a Solidity string (UTF-8 encoded).
- * 
+ *
  * @param value the string value
  */
 public record Utf8String(String value) implements AbiType {

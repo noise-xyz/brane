@@ -6,15 +6,17 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigInteger;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
 import io.brane.core.error.AbiDecodingException;
 import io.brane.core.error.AbiEncodingException;
 import io.brane.core.model.LogEntry;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
-import java.math.BigInteger;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 class AbiTest {
 
@@ -221,4 +223,3 @@ class AbiTest {
     public record TransferEvent(Address from, Address to, BigInteger value) {
     }
 }
-

@@ -1,15 +1,16 @@
 package io.brane.rpc;
 
+import java.util.List;
+import java.util.Map;
+
+import org.jspecify.annotations.Nullable;
+
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.Transaction;
 import io.brane.core.model.TransactionRequest;
-import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
-import java.util.Map;
-import java.util.List;
-import org.jspecify.annotations.Nullable;
 
 /**
  * A client for interacting with an Ethereum node via JSON-RPC.
@@ -26,7 +27,7 @@ import org.jspecify.annotations.Nullable;
  * thread-safe and can be shared across multiple threads.
  * <p>
  * <strong>Usage Example:</strong>
- * 
+ *
  * <pre>{@code
  * PublicClient client = BranePublicClient.forChain(ChainProfiles.MAINNET)
  *         .build();
@@ -156,15 +157,15 @@ public interface PublicClient {
 
     /**
      * Creates an access list for the given transaction request.
-     * 
+     *
      * <p>
      * This method simulates the transaction and returns the storage slots it
      * would access along with the gas that would be consumed. The access list can
      * be used to optimize gas costs by pre-declaring storage access (EIP-2930).
-     * 
+     *
      * <p>
      * <strong>Example:</strong>
-     * 
+     *
      * <pre>{@code
      * TransactionRequest request = new TransactionRequest(
      *         fromAddress,
@@ -179,11 +180,11 @@ public interface PublicClient {
      *         true, // isEip1559
      *         null  // accessList
      * );
-     * 
+     *
      * AccessListWithGas result = client.createAccessList(request);
      * // Use result.accessList() in your transaction
      * }</pre>
-     * 
+     *
      * @param request the transaction request to analyze
      * @return the access list and gas used
      */
@@ -191,7 +192,7 @@ public interface PublicClient {
 
     /**
      * Creates a new multicall batch for bundling multiple read operations.
-     * 
+     *
      * @return a new MulticallBatch instance
      */
     MulticallBatch createBatch();

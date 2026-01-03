@@ -1,8 +1,8 @@
 package io.brane.core.crypto;
 
-import org.bouncycastle.jcajce.provider.digest.Keccak;
-
 import java.util.Objects;
+
+import org.bouncycastle.jcajce.provider.digest.Keccak;
 
 /**
  * Keccak-256 hashing utility for Ethereum.
@@ -76,7 +76,7 @@ public final class Keccak256 {
 
     /**
      * Computes the Keccak-256 hash of the input bytes.
-     * 
+     *
      * @param input the data to hash
      * @return 32-byte hash
      * @throws NullPointerException if input is null

@@ -4,16 +4,18 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
 import io.brane.core.abi.AbiEncoder;
 import io.brane.core.abi.TypeSchema;
 import io.brane.core.abi.UInt;
 import io.brane.core.abi.Utf8String;
 import io.brane.primitives.Hex;
-import java.math.BigInteger;
-import java.util.List;
-import java.util.Map;
-import java.util.Locale;
-import org.junit.jupiter.api.Test;
 
 class RevertDecoderTest {
 

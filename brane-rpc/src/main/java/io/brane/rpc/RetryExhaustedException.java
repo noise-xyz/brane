@@ -1,7 +1,8 @@
 package io.brane.rpc;
 
-import io.brane.core.error.RpcException;
 import org.jspecify.annotations.Nullable;
+
+import io.brane.core.error.RpcException;
 
 /**
  * Thrown when all retry attempts have been exhausted.

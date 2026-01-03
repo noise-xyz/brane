@@ -2,13 +2,15 @@ package io.brane.rpc.internal;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.brane.core.model.AccessListEntry;
-import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
+
 import org.junit.jupiter.api.Test;
+
+import io.brane.core.model.AccessListEntry;
+import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
 
 class RpcUtilsTest {
 

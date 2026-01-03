@@ -6,16 +6,17 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
-import io.brane.rpc.Subscription;
 import io.brane.core.types.Hash;
 import io.brane.core.types.Wei;
-import java.util.List;
-import java.util.Map;
-import org.junit.jupiter.api.Test;
 
 class SmartGasStrategyTest {
 

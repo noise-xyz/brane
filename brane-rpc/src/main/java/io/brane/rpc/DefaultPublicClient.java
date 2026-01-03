@@ -1,7 +1,20 @@
 package io.brane.rpc;
 
 import static io.brane.rpc.internal.RpcUtils.MAPPER;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import com.fasterxml.jackson.core.type.TypeReference;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.brane.core.DebugLogger;
 import io.brane.core.LogFormatter;
 import io.brane.core.model.AccessListEntry;
@@ -16,17 +29,6 @@ import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.rpc.internal.LogParser;
 import io.brane.rpc.internal.RpcUtils;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
-import org.jspecify.annotations.Nullable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Default implementation of {@link PublicClient} for read-only blockchain operations.

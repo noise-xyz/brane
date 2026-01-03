@@ -1,10 +1,22 @@
 package io.brane.rpc;
 
 import static io.brane.rpc.internal.RpcUtils.MAPPER;
+
+import java.math.BigInteger;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.jspecify.annotations.Nullable;
+
 import io.brane.core.DebugLogger;
 import io.brane.core.LogFormatter;
 import io.brane.core.RevertDecoder;
 import io.brane.core.chain.ChainProfile;
+import io.brane.core.crypto.Signer;
 import io.brane.core.error.ChainMismatchException;
 import io.brane.core.error.InvalidSenderException;
 import io.brane.core.error.RevertException;
@@ -18,20 +30,11 @@ import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.rpc.internal.LogParser;
 import io.brane.rpc.internal.RpcUtils;
-import java.math.BigInteger;
-import java.util.List;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
-import io.brane.core.crypto.Signer;
-import org.jspecify.annotations.Nullable;
 
 /**
  * Default implementation of {@link WalletClient} with automatic transaction
  * preparation.
- * 
+ *
  * <p>
  * This class implements the complete transaction lifecycle:
  * <ol>
@@ -41,20 +44,20 @@ import org.jspecify.annotations.Nullable;
  * <li>Broadcasts via {@code eth_sendRawTransaction}</li>
  * <li>Optionally polls for receipt via {@code eth_getTransactionReceipt}</li>
  * </ol>
- * 
+ *
  * <p>
  * <strong>Chain ID Enforcement:</strong> Validates that the configured chain ID
  * matches the connected node's chain ID on first transaction. Caches the result
  * using {@link AtomicReference} for thread-safe lazy initialization.
- * 
+ *
  * <p>
  * <strong>Thread Safety:</strong> This class is thread-safe. Multiple threads
  * can submit transactions concurrently.
- * 
+ *
  * <p>
  * <strong>Usage:</strong> Typically created via a builder pattern, not
  * instantiated directly.
- * 
+ *
  * @see WalletClient
  * @see SmartGasStrategy
  * @see io.brane.core.crypto.Signer

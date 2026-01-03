@@ -1,7 +1,6 @@
 package io.brane.core.crypto;
 
-import io.brane.core.types.Address;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.CountDownLatch;
@@ -10,7 +9,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import io.brane.core.types.Address;
 
 /**
  * Tests for PrivateKey with known Ethereum test vectors.

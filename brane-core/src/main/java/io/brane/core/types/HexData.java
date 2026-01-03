@@ -1,10 +1,11 @@
 package io.brane.core.types;
 
-import io.brane.primitives.Hex;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Objects;
 import java.util.regex.Pattern;
+
+import io.brane.primitives.Hex;
 
 /**
  * Represents arbitrary-length hexadecimal-encoded byte data with "0x" prefix.
@@ -25,7 +26,7 @@ import java.util.regex.Pattern;
  * </ul>
  * <p>
  * <strong>Example usage:</strong>
- * 
+ *
  * <pre>{@code
  * // Empty data
  * HexData empty = HexData.EMPTY;
@@ -100,7 +101,7 @@ public final class HexData {
      * and deferring the expensive hex string generation until {@link #value()} is
      * called.
      * </p>
-     * 
+     *
      * @param raw the raw byte array
      */
     private HexData(byte[] raw) {
@@ -115,7 +116,7 @@ public final class HexData {
      * bytes,
      * the hex string is generated on the first call to this method.
      * </p>
-     * 
+     *
      * @return the hex string
      */
     @com.fasterxml.jackson.annotation.JsonValue
@@ -134,7 +135,7 @@ public final class HexData {
 
     /**
      * Returns the length of the raw bytes.
-     * 
+     *
      * @return the byte length
      */
     public int byteLength() {
@@ -147,7 +148,7 @@ public final class HexData {
 
     /**
      * Writes the raw bytes directly to the provided ByteBuffer.
-     * 
+     *
      * @param buffer the destination buffer
      */
     public void putTo(ByteBuffer buffer) {
@@ -160,7 +161,7 @@ public final class HexData {
 
     /**
      * Decodes this hex data into raw bytes.
-     * 
+     *
      * @return the decoded byte array
      */
     public byte[] toBytes() {
@@ -177,7 +178,7 @@ public final class HexData {
      * avoids immediate string conversion, significantly improving performance in
      * encoding hot paths.
      * </p>
-     * 
+     *
      * @param bytes the byte array to encode, or null/empty for {@link #EMPTY}
      * @return HexData with "0x" prefix, or {@link #EMPTY} if bytes is null or empty
      */

@@ -3,11 +3,13 @@ package io.brane.rpc;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.brane.core.error.RpcException;
-import io.brane.core.types.Address;
 import java.util.List;
 import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
+
+import io.brane.core.error.RpcException;
+import io.brane.core.types.Address;
 
 class DefaultPublicClientErrorTest {
 

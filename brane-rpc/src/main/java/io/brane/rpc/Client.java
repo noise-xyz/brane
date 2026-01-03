@@ -1,7 +1,8 @@
 package io.brane.rpc;
 
-import io.brane.core.error.RpcException;
 import org.jspecify.annotations.Nullable;
+
+import io.brane.core.error.RpcException;
 
 /**
  * A simplified RPC client interface for making typed JSON-RPC calls.

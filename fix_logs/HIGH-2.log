@@ -1,5 +1,0 @@
-FIXED: HIGH-2
-Commit: 0b9740a fix(rpc): add null validation for address in getBalance [HIGH-2]
-File: brane-rpc/src/main/java/io/brane/rpc/DefaultPublicClient.java:189
-Change: Added Objects.requireNonNull(address, "address") at start of getBalance method
-Tests: ./gradlew :brane-rpc:test --tests "*DefaultPublicClientTest*" - PASSED

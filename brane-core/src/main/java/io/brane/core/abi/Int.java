@@ -5,7 +5,7 @@ import java.util.Objects;
 
 /**
  * Represents a Solidity signed integer (int8 to int256).
- * 
+ *
  * @param width the bit width (must be a multiple of 8, between 8 and 256)
  * @param value the BigInteger value (must fit in width)
  */

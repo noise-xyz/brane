@@ -1,5 +1,7 @@
 package io.brane.examples;
 
+import java.util.List;
+
 import io.brane.core.crypto.Keccak256;
 import io.brane.core.crypto.PrivateKey;
 import io.brane.core.crypto.Signature;
@@ -12,11 +14,9 @@ import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.primitives.Hex;
 
-import java.util.List;
-
 /**
  * Sanity check for Milestone 2 transaction models.
- * 
+ *
  * <p>
  * Demonstrates:
  * <ul>

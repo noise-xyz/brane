@@ -1,14 +1,16 @@
 package io.brane.rpc;
 
-import io.brane.core.types.Address;
-import io.brane.core.types.HexData;
-import io.brane.core.types.Wei;
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+
 import org.jspecify.annotations.Nullable;
+
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
+import io.brane.core.types.Wei;
 
 /**
  * Type-safe representation of an eth_call request.

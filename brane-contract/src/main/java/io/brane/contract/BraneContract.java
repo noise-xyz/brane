@@ -1,12 +1,5 @@
 package io.brane.contract;
 
-import io.brane.core.model.TransactionReceipt;
-import io.brane.core.abi.Abi;
-import io.brane.core.abi.AbiBinding;
-import io.brane.core.types.Address;
-import io.brane.core.types.HexData;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.math.BigInteger;
@@ -15,10 +8,18 @@ import java.util.Locale;
 import java.util.Objects;
 import java.util.regex.Pattern;
 
+import io.brane.core.abi.Abi;
+import io.brane.core.abi.AbiBinding;
+import io.brane.core.model.TransactionReceipt;
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
+import io.brane.rpc.PublicClient;
+import io.brane.rpc.WalletClient;
+
 /**
  * Dynamic proxy-based contract binding system that maps Java interfaces to
  * smart contracts.
- * 
+ *
  * <p>
  * This class enables type-safe smart contract interaction by binding a Java
  * interface
@@ -30,7 +31,7 @@ import java.util.regex.Pattern;
  * (write)</li>
  * <li>Decodes return values from hex to Java types (ABI decoding)</li>
  * </ul>
- * 
+ *
  * <p>
  * <p>
  * <strong>Supported Type Mappings:</strong>
@@ -52,7 +53,7 @@ import java.util.regex.Pattern;
  * classes. Use {@link ReadOnlyContract} or {@link ReadWriteContract} for contracts
  * with tuple returns, and manually decode the results.</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Method Return Types:</strong>
  * <ul>
@@ -61,26 +62,26 @@ import java.util.regex.Pattern;
  * <li><strong>State-changing functions:</strong> {@link TransactionReceipt},
  * {@code void}, or {@code Void}</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Complete Usage Example:</strong>
- * 
+ *
  * <pre>{@code
  * // 1. Define Java interface matching contract ABI
  * public interface Erc20Contract {
  *     // View function: balanceOf(address) returns (uint256)
  *     BigInteger balanceOf(Address owner);
- * 
+ *
  *     // State-changing: transfer(address,uint256) returns (bool)
  *     TransactionReceipt transfer(Address to, BigInteger amount);
- * 
+ *
  *     // Can also return void for state-changing functions
  *     void approve(Address spender, BigInteger amount);
  * }
- * 
+ *
  * // 2. Load contract ABI JSON
  * String abiJson = Files.readString(Path.of("erc20-abi.json"));
- * 
+ *
  * // 3. Bind interface to deployed contract
  * Erc20Contract usdc = BraneContract.bind(
  *         new Address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"), // USDC address
@@ -88,22 +89,22 @@ import java.util.regex.Pattern;
  *         publicClient,
  *         walletClient,
  *         Erc20Contract.class);
- * 
+ *
  * // 4. Call view functions (no gas, instant)
  * BigInteger balance = usdc.balanceOf(myAddress);
  * System.out.println("Balance: " + balance);
- * 
+ *
  * // 5. Call state-changing functions (costs gas, returns receipt)
  * TransactionReceipt receipt = usdc.transfer(
  *         recipientAddress,
  *         new BigInteger("1000000") // 1 USDC (6 decimals)
  * );
- * 
+ *
  * if (receipt.status()) {
  *     System.out.println("✓ Transfer confirmed in block " + receipt.blockNumber());
  * }
  * }</pre>
- * 
+ *
  * <p>
  * <strong>Validation:</strong> The {@link #bind} method validates that:
  * <ul>
@@ -112,7 +113,7 @@ import java.util.regex.Pattern;
  * <li>Return types are compatible with function mutability (view vs
  * non-view)</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Implementation:</strong> Uses Java's {@link Proxy} API with
  * {@link ContractInvocationHandler}

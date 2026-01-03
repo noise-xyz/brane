@@ -1,7 +1,10 @@
 package io.brane.examples;
 
-import io.brane.core.abi.Abi;
+import java.util.ArrayList;
+import java.util.List;
+
 import io.brane.contract.ReadOnlyContract;
+import io.brane.core.abi.Abi;
 import io.brane.core.model.LogEntry;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
@@ -9,8 +12,6 @@ import io.brane.rpc.BraneProvider;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.LogFilter;
 import io.brane.rpc.PublicClient;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Fetches ERC-20 Transfer logs and decodes them.

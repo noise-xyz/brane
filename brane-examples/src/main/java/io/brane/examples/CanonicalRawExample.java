@@ -1,5 +1,8 @@
 package io.brane.examples;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+
 import io.brane.core.AnsiColors;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.model.TransactionReceipt;
@@ -10,8 +13,6 @@ import io.brane.rpc.BraneProvider;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
-import java.math.BigDecimal;
-import java.math.BigInteger;
 
 /**
  * Canonical "Low-Level" Example for Brane 0.1.0-alpha.

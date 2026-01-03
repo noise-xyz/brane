@@ -4,11 +4,6 @@ import static io.brane.rpc.internal.RpcUtils.HTTP_SCHEMES;
 import static io.brane.rpc.internal.RpcUtils.MAPPER;
 import static io.brane.rpc.internal.RpcUtils.validateUrl;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import io.brane.core.DebugLogger;
-import io.brane.core.LogFormatter;
-import io.brane.core.error.RpcException;
-import io.brane.rpc.internal.RpcUtils;
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -20,8 +15,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.brane.core.DebugLogger;
+import io.brane.core.LogFormatter;
+import io.brane.core.error.RpcException;
+import io.brane.rpc.internal.RpcUtils;
 
 public final class HttpBraneProvider implements BraneProvider {
 

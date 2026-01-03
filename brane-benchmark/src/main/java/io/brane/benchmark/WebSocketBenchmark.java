@@ -1,10 +1,9 @@
 package io.brane.benchmark;
 
-import io.brane.rpc.WebSocketProvider;
-import io.brane.rpc.JsonRpcResponse;
-
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
+
+import io.brane.rpc.WebSocketProvider;
 
 public class WebSocketBenchmark {
 

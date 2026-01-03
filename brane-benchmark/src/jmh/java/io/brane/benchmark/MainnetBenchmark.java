@@ -1,16 +1,16 @@
 package io.brane.benchmark;
 
-import io.brane.rpc.WebSocketProvider;
-import org.openjdk.jmh.annotations.*;
-
-import org.openjdk.jmh.infra.Blackhole;
-import org.web3j.protocol.Web3j;
-import org.web3j.protocol.websocket.WebSocketService;
-
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+
+import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.infra.Blackhole;
+import org.web3j.protocol.Web3j;
+import org.web3j.protocol.websocket.WebSocketService;
+
+import io.brane.rpc.WebSocketProvider;
 
 /**
  * Mainnet benchmark comparing all Brane providers vs Web3j on real

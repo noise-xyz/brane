@@ -2,19 +2,20 @@ package io.brane.contract;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.brane.core.abi.Abi;
-import io.brane.core.abi.AbiBinding;
-import io.brane.core.model.TransactionReceipt;
-import io.brane.core.types.Address;
-import io.brane.rpc.Subscription;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
 import java.math.BigInteger;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
+
 import org.junit.jupiter.api.Test;
+
+import io.brane.core.abi.Abi;
+import io.brane.core.abi.AbiBinding;
+import io.brane.core.model.TransactionReceipt;
+import io.brane.core.types.Address;
+import io.brane.rpc.PublicClient;
+import io.brane.rpc.WalletClient;
 
 class AbiBindingTest {
 

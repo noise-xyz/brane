@@ -8,11 +8,13 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.brane.core.types.Address;
 import java.math.BigInteger;
 import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import io.brane.core.types.Address;
 
 class MulticallBatchTest {
 
@@ -561,4 +563,3 @@ class MulticallBatchTest {
                 "Should throw when ABI has no matching functions for interface");
     }
 }
-

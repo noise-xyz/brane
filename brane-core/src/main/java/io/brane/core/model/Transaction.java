@@ -1,12 +1,12 @@
 package io.brane.core.model;
 
+import java.util.Objects;
+import java.util.Optional;
+
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
-
-import java.util.Objects;
-import java.util.Optional;
 
 /**
  * Represents a blockchain transaction.
