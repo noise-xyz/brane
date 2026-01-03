@@ -1,11 +1,9 @@
 package io.brane.rpc;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import io.brane.core.DebugLogger;
-import io.brane.core.LogFormatter;
-import io.brane.core.error.RpcException;
-import java.lang.reflect.Array;
+import static io.brane.rpc.internal.RpcUtils.HTTP_SCHEMES;
+import static io.brane.rpc.internal.RpcUtils.MAPPER;
+import static io.brane.rpc.internal.RpcUtils.validateUrl;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.http.HttpRequest;
@@ -14,29 +12,118 @@ import java.time.Duration;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import io.brane.core.DebugLogger;
+import io.brane.core.LogFormatter;
+import io.brane.core.error.RpcException;
+import io.brane.rpc.internal.RpcUtils;
 
 public final class HttpBraneProvider implements BraneProvider {
 
+    private static final Logger log = LoggerFactory.getLogger(HttpBraneProvider.class);
+
     private final RpcConfig config;
     private final java.net.http.HttpClient httpClient;
-    private final ObjectMapper mapper = new ObjectMapper();
+    private final java.util.concurrent.ExecutorService executor;
     private final AtomicLong ids = new AtomicLong(1L);
+    private volatile BraneMetrics metrics = BraneMetrics.noop();
 
     private HttpBraneProvider(final RpcConfig config) {
         this.config = config;
+        this.executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
         this.httpClient = java.net.http.HttpClient.newBuilder()
-                .executor(java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor())
+                .executor(executor)
                 .connectTimeout(config.connectTimeout())
                 .build();
     }
 
+    /**
+     * Default timeout in seconds for graceful shutdown of the executor.
+     * After this timeout, any remaining tasks will be forcibly cancelled.
+     */
+    private static final long SHUTDOWN_TIMEOUT_SECONDS = 5;
+
+    /**
+     * Closes this provider and releases associated resources.
+     *
+     * <p>This method performs a graceful shutdown of the internal HTTP client and
+     * executor service:
+     * <ol>
+     *   <li>Initiates orderly shutdown (no new tasks accepted)</li>
+     *   <li>Waits up to {@value #SHUTDOWN_TIMEOUT_SECONDS} seconds for in-flight requests</li>
+     *   <li>Forces termination if timeout expires</li>
+     * </ol>
+     *
+     * <p><strong>Blocking behavior:</strong> This method may block for up to
+     * {@value #SHUTDOWN_TIMEOUT_SECONDS} seconds while waiting for in-flight
+     * requests to complete. After the timeout, any remaining requests are cancelled.
+     *
+     * <p>After calling this method, the provider should not be used for further requests.
+     */
+    @Override
+    public void close() {
+        httpClient.close();
+        executor.shutdown();
+        try {
+            if (!executor.awaitTermination(SHUTDOWN_TIMEOUT_SECONDS, TimeUnit.SECONDS)) {
+                executor.shutdownNow();
+            }
+        } catch (InterruptedException e) {
+            executor.shutdownNow();
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /**
+     * Sets a custom metrics collector for observability.
+     *
+     * <p>Use this to integrate with monitoring systems like Micrometer, Prometheus,
+     * or custom metrics collectors. When set, the provider will report HTTP errors
+     * via {@link BraneMetrics#onRequestFailed(String, Throwable)}.
+     *
+     * @param metrics the metrics collector (must not be null)
+     * @throws NullPointerException if metrics is null
+     * @since 0.5.0
+     */
+    public void setMetrics(BraneMetrics metrics) {
+        this.metrics = Objects.requireNonNull(metrics, "metrics");
+    }
+
+    /**
+     * Creates a new builder for configuring an {@link HttpBraneProvider}.
+     *
+     * <p>This is the primary entry point for creating HTTP-based RPC providers.
+     * The builder allows configuration of timeouts, custom headers, and chain ID.
+     *
+     * <p><strong>Example usage:</strong>
+     * <pre>{@code
+     * HttpBraneProvider provider = HttpBraneProvider.builder("https://eth-mainnet.g.alchemy.com/v2/key")
+     *     .connectTimeout(Duration.ofSeconds(5))
+     *     .readTimeout(Duration.ofSeconds(30))
+     *     .header("Authorization", "Bearer token")
+     *     .build();
+     * }</pre>
+     *
+     * @param url the HTTP or HTTPS URL of the Ethereum JSON-RPC endpoint
+     * @return a new builder instance
+     * @throws NullPointerException if url is null
+     * @throws IllegalArgumentException if url is not a valid HTTP/HTTPS URL
+     * @see Builder#build()
+     */
     public static Builder builder(final String url) {
         return new Builder(url);
     }
 
     @Override
     public JsonRpcResponse send(final String method, final List<?> params) throws RpcException {
+        Objects.requireNonNull(method, "method");
         final List<?> safeParams = params == null ? List.of() : params;
         final long requestId = ids.getAndIncrement();
         final JsonRpcRequest request = new JsonRpcRequest("2.0", method, safeParams, String.valueOf(requestId));
@@ -52,12 +139,16 @@ public final class HttpBraneProvider implements BraneProvider {
             DebugLogger.logRpc(
                     LogFormatter.formatRpcError(method, response.statusCode(),
                             "HTTP " + response.statusCode(), durationMicros));
-            throw new RpcException(
+            log.warn("HTTP error for RPC method '{}': status={}, requestId={}, latencyMicros={}",
+                    method, response.statusCode(), requestId, durationMicros);
+            final var ex = new RpcException(
                     -32001,
                     "HTTP error for method " + method + ": " + response.statusCode(),
                     response.body(),
                     requestId,
                     null);
+            metrics.onRequestFailed(method, ex);
+            throw ex;
         }
 
         final String responseBody = response.body();
@@ -66,7 +157,7 @@ public final class HttpBraneProvider implements BraneProvider {
             final JsonRpcError err = rpcResponse.error();
             DebugLogger.logRpc(
                     LogFormatter.formatRpcError(method, err.code(), err.message(), durationMicros));
-            throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), requestId);
+            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), requestId);
         }
 
         DebugLogger.logRpc(LogFormatter.formatRpc(method, durationMicros));
@@ -75,7 +166,7 @@ public final class HttpBraneProvider implements BraneProvider {
 
     private String serialize(final JsonRpcRequest request, final long requestId) throws RpcException {
         try {
-            return mapper.writeValueAsString(request);
+            return MAPPER.writeValueAsString(request);
         } catch (JsonProcessingException e) {
             throw new RpcException(
                     -32700,
@@ -115,7 +206,7 @@ public final class HttpBraneProvider implements BraneProvider {
     private JsonRpcResponse parseResponse(final String method, final String body, final long requestId)
             throws RpcException {
         try {
-            return mapper.readValue(body, JsonRpcResponse.class);
+            return MAPPER.readValue(body, JsonRpcResponse.class);
         } catch (JsonProcessingException e) {
             throw new RpcException(
                     -32700,
@@ -126,38 +217,6 @@ public final class HttpBraneProvider implements BraneProvider {
         }
     }
 
-    private String extractErrorData(final Object dataValue) {
-        return switch (dataValue) {
-            case null -> null;
-            case String s when s.trim().startsWith("0x") -> s;
-            case Map<?, ?> map -> extractFromIterable(map.values(), dataValue);
-            case Iterable<?> iterable -> extractFromIterable(iterable, dataValue);
-            case Object array when dataValue.getClass().isArray() -> extractFromArray(array, dataValue);
-            default -> dataValue.toString();
-        };
-    }
-
-    private String extractFromIterable(final Iterable<?> iterable, final Object fallback) {
-        for (Object value : iterable) {
-            final String nested = extractErrorData(value);
-            if (nested != null) {
-                return nested;
-            }
-        }
-        return fallback.toString();
-    }
-
-    private String extractFromArray(final Object array, final Object fallback) {
-        final int length = Array.getLength(array);
-        for (int i = 0; i < length; i++) {
-            final String nested = extractErrorData(Array.get(array, i));
-            if (nested != null) {
-                return nested;
-            }
-        }
-        return fallback.toString();
-    }
-
     public static final class Builder {
         private final String url;
         private Long chainId;
@@ -166,6 +225,8 @@ public final class HttpBraneProvider implements BraneProvider {
         private final Map<String, String> headers = new LinkedHashMap<>();
 
         private Builder(final String url) {
+            // Validate URL format immediately for better error locality
+            validateUrl(url, HTTP_SCHEMES);
             this.url = url;
         }
 

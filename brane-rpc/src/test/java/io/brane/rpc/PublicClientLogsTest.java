@@ -1,14 +1,19 @@
 package io.brane.rpc;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+import org.junit.jupiter.api.Test;
 
 import io.brane.core.model.LogEntry;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
-import java.util.List;
-import java.util.Map;
-import org.junit.jupiter.api.Test;
 
 class PublicClientLogsTest {
 
@@ -37,7 +42,7 @@ class PublicClientLogsTest {
                 new LogFilter(
                         java.util.Optional.of(1L),
                         java.util.Optional.of(2L),
-                        java.util.Optional.of(new Address("0x" + "a".repeat(40))),
+                        java.util.Optional.of(List.of(new Address("0x" + "a".repeat(40)))),
                         java.util.Optional.of(List.of(new Hash("0x" + "b".repeat(64)))));
 
         List<LogEntry> logs = client.getLogs(filter);
@@ -56,6 +61,75 @@ class PublicClientLogsTest {
         @SuppressWarnings("unchecked")
         List<String> topics = (List<String>) req.get("topics");
         assertEquals(List.of("0x" + "b".repeat(64)), topics);
+    }
+
+    @Test
+    void serializesMultipleAddressesAsArray() {
+        FakeProvider provider =
+                new FakeProvider(new JsonRpcResponse("2.0", List.of(), null, "1"));
+
+        PublicClient client = PublicClient.from(provider);
+        Address addr1 = new Address("0x" + "a".repeat(40));
+        Address addr2 = new Address("0x" + "b".repeat(40));
+        Address addr3 = new Address("0x" + "c".repeat(40));
+
+        LogFilter filter = LogFilter.byContracts(List.of(addr1, addr2, addr3), List.of());
+
+        client.getLogs(filter);
+
+        @SuppressWarnings("unchecked")
+        Map<String, Object> req = (Map<String, Object>) provider.lastParams.get(0);
+
+        // Multiple addresses should be serialized as an array
+        @SuppressWarnings("unchecked")
+        List<String> addresses = (List<String>) req.get("address");
+        assertEquals(3, addresses.size());
+        assertEquals("0x" + "a".repeat(40), addresses.get(0));
+        assertEquals("0x" + "b".repeat(40), addresses.get(1));
+        assertEquals("0x" + "c".repeat(40), addresses.get(2));
+    }
+
+    @Test
+    void byContractFactoryMethodCreatesSingleAddress() {
+        Address addr = new Address("0x" + "d".repeat(40));
+        LogFilter filter = LogFilter.byContract(addr, List.of());
+
+        assertEquals(1, filter.addresses().get().size());
+        assertEquals(addr, filter.addresses().get().get(0));
+    }
+
+    @Test
+    void byContractsFactoryMethodCreatesMultipleAddresses() {
+        Address addr1 = new Address("0x" + "e".repeat(40));
+        Address addr2 = new Address("0x" + "f".repeat(40));
+        LogFilter filter = LogFilter.byContracts(List.of(addr1, addr2), List.of());
+
+        assertEquals(2, filter.addresses().get().size());
+        assertEquals(addr1, filter.addresses().get().get(0));
+        assertEquals(addr2, filter.addresses().get().get(1));
+    }
+
+    @Test
+    void logFilterRejectsNullParameters() {
+        // fromBlock null
+        NullPointerException ex1 = assertThrows(NullPointerException.class, () ->
+            new LogFilter(null, Optional.empty(), Optional.empty(), Optional.empty()));
+        assertTrue(ex1.getMessage().contains("fromBlock"));
+
+        // toBlock null
+        NullPointerException ex2 = assertThrows(NullPointerException.class, () ->
+            new LogFilter(Optional.empty(), null, Optional.empty(), Optional.empty()));
+        assertTrue(ex2.getMessage().contains("toBlock"));
+
+        // addresses null
+        NullPointerException ex3 = assertThrows(NullPointerException.class, () ->
+            new LogFilter(Optional.empty(), Optional.empty(), null, Optional.empty()));
+        assertTrue(ex3.getMessage().contains("addresses"));
+
+        // topics null
+        NullPointerException ex4 = assertThrows(NullPointerException.class, () ->
+            new LogFilter(Optional.empty(), Optional.empty(), Optional.empty(), null));
+        assertTrue(ex4.getMessage().contains("topics"));
     }
 
     private static final class FakeProvider implements BraneProvider {

@@ -2,11 +2,11 @@ package io.brane.core.abi;
 
 /**
  * Represents a Solidity type that can be encoded/decoded.
- * 
+ *
  * <p>
  * This sealed interface is the root of the ABI type hierarchy. Implementations
  * represent concrete values like {@link UInt}, {@link AddressType}, etc.
- * 
+ *
  * @see AbiEncoder
  * @see AbiDecoder
  */
@@ -18,7 +18,7 @@ public sealed interface AbiType permits
      * <p>
      * For dynamic types, this is the size of the head (offset), which is also 32.
      * The actual data size is separate.
-     * 
+     *
      * @return the static size in bytes
      */
     int byteSize();
@@ -28,7 +28,7 @@ public sealed interface AbiType permits
      * <p>
      * Dynamic types include bytes, string, T[] (dynamic array), and tuples
      * containing dynamic types.
-     * 
+     *
      * @return true if dynamic, false otherwise
      */
     boolean isDynamic();
@@ -37,7 +37,7 @@ public sealed interface AbiType permits
      * Returns the canonical Solidity type name.
      * <p>
      * Examples: "uint256", "address[]", "(bool,uint256)".
-     * 
+     *
      * @return the type name string
      */
     String typeName();
@@ -45,7 +45,7 @@ public sealed interface AbiType permits
     /**
      * Returns the size in bytes of the dynamic content (tail).
      * Returns 0 for static types.
-     * 
+     *
      * @return the content size in bytes
      */
     default int contentByteSize() {

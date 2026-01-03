@@ -1,21 +1,12 @@
 package io.brane.core.abi;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.ArrayNode;
-
-import io.brane.core.model.MulticallResult;
-import io.brane.core.error.AbiDecodingException;
-import io.brane.core.error.AbiEncodingException;
-import io.brane.core.types.Address;
-import io.brane.core.types.HexData;
-import io.brane.primitives.Hex;
 import java.io.IOException;
 import java.lang.reflect.InaccessibleObjectException;
 import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -23,10 +14,20 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.error.AbiEncodingException;
+import io.brane.core.model.MulticallResult;
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
+import io.brane.primitives.Hex;
 
 final class InternalAbi implements Abi {
 
@@ -1379,4 +1380,3 @@ final class InternalAbi implements Abi {
         }
     }
 }
-

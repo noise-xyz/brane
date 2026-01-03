@@ -1,9 +1,10 @@
 package io.brane.core.model;
 
-import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
 import java.util.List;
 import java.util.Objects;
+
+import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
 
 /**
  * Entry in a transaction's access list, as defined by EIP-2930.

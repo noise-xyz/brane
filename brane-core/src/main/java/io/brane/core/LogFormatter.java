@@ -4,7 +4,7 @@ import static io.brane.core.AnsiColors.*;
 
 /**
  * Modern log formatter for Brane SDK with colored, structured output.
- * 
+ *
  * <p>
  * This class provides formatted logging methods that produce consistent,
  * visually
@@ -13,7 +13,7 @@ import static io.brane.core.AnsiColors.*;
  * use the modern color palette from {@link AnsiColors} and status symbols (✓ ✗
  * ○)
  * to indicate success, failure, and pending states.
- * 
+ *
  * <h2>Design Philosophy</h2>
  * <ul>
  * <li><b>Status symbols only</b> - Symbols (✓ ✗ ○) indicate status, not
@@ -27,7 +27,7 @@ import static io.brane.core.AnsiColors.*;
  * <li><b>Multi-line for complexity</b> - Complex data (like CALL requests)
  * formatted across lines
  * </ul>
- * 
+ *
  * <h2>Log Types</h2>
  * <table border="1">
  * <tr>
@@ -79,32 +79,32 @@ import static io.brane.core.AnsiColors.*;
  * <td>Transaction reverts</td>
  * </tr>
  * </table>
- * 
+ *
  * <h2>Usage Example</h2>
- * 
+ *
  * <pre>{@code
  * // RPC call logging
  * DebugLogger.log(LogFormatter.formatCall("latest", callObject));
  * // Output: [CALL] tag=latest
  * // to=0x1234...5678
  * // data=0xabcd...ef01
- * 
+ *
  * // Transaction logging
  * DebugLogger.logTx(LogFormatter.formatTxSend(from, to, nonce, gasLimit, value));
  * // Output: [TX-SEND] from=0x1234...5678 to=0xabcd...ef01 nonce=0
  * // gasLimit=25200 value=100
- * 
+ *
  * // Error logging
  * DebugLogger.logRpc(LogFormatter.formatRpcError(method, code, message, duration));
  * // Output: ✗ [RPC-ERROR] method=eth_call code=-32000 message=execution
  * // reverted duration=1.5ms
  * }</pre>
- * 
+ *
  * <p>
  * All methods in this class are thread-safe and purely functional (no side
  * effects).
  * The formatted strings are ready to be passed to any logging system.
- * 
+ *
  * @since 0.1.0-alpha
  * @see AnsiColors
  * @see DebugLogger

@@ -1,11 +1,12 @@
 package io.brane.benchmark;
 
-import io.brane.core.abi.Abi;
-import io.brane.core.types.HexData;
-import org.openjdk.jmh.annotations.*;
-
 import java.math.BigInteger;
 import java.util.concurrent.TimeUnit;
+
+import org.openjdk.jmh.annotations.*;
+
+import io.brane.core.abi.Abi;
+import io.brane.core.types.HexData;
 
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)
@@ -76,14 +77,14 @@ public class AbiBenchmark {
         java.util.List<Object> inner1 = java.util.List.of(BigInteger.ONE, "inner1");
         java.util.List<Object> inner2 = java.util.List.of(BigInteger.TWO, "inner2");
         java.util.List<java.util.List<Object>> inners = java.util.List.of(inner1, inner2);
-        
+
         byte[] idBytes = new byte[32];
         idBytes[0] = (byte) 0xAB;
         HexData id = HexData.fromBytes(idBytes);
-        
+
         complexData = java.util.List.of(java.util.List.of(inners, id));
         complexArgs = complexData.toArray();
-        
+
         // Pre-encode for decoding benchmark
         // Strip selector to get raw argument data
         String hex = complexAbi.encodeFunction("processNested", complexArgs).data();

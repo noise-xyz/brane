@@ -3,14 +3,16 @@ package io.brane.contract;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
-import io.brane.core.model.LogEntry;
+import java.math.BigInteger;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
 import io.brane.core.abi.Abi;
+import io.brane.core.model.LogEntry;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
-import java.math.BigInteger;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 class AbiEventDecodingTest {
 

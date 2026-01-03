@@ -18,7 +18,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  *
  * <p>
  * <strong>Usage:</strong>
- * 
+ *
  * <pre>{@code
  * // For I/O-bound tasks (e.g., parallel RPC calls)
  * try (var exec = BraneExecutors.newIoBoundExecutor()) {
@@ -66,11 +66,15 @@ public final class BraneExecutors {
      *
      * <p>
      * The returned executor creates a new virtual thread for each task.
+     * Threads are named {@code brane-io-N} for easier debugging.
      *
      * @return a virtual-thread-per-task executor
      */
     public static ExecutorService newIoBoundExecutor() {
-        return Executors.newVirtualThreadPerTaskExecutor();
+        return Executors.newThreadPerTaskExecutor(
+                Thread.ofVirtual()
+                        .name("brane-io-", 0)
+                        .factory());
     }
 
     /**
@@ -112,7 +116,9 @@ public final class BraneExecutors {
             throw new IllegalArgumentException("threads must be at least 1, got: " + threads);
         }
         return Executors.newFixedThreadPool(threads, r -> {
-            Thread t = new Thread(r, "brane-cpu-worker-" + CPU_THREAD_ID.getAndIncrement());
+            // Mask off sign bit to ensure non-negative thread IDs even after integer overflow
+            int id = CPU_THREAD_ID.getAndIncrement() & 0x7FFFFFFF;
+            Thread t = new Thread(r, "brane-cpu-worker-" + id);
             t.setDaemon(true);
             return t;
         });

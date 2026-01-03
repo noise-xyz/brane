@@ -1,20 +1,30 @@
 package io.brane.rpc;
 
-import io.brane.core.abi.Abi;
-import io.brane.core.abi.AbiBinding;
-import io.brane.core.types.Address;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Map;
 import java.util.Objects;
 
+import io.brane.core.abi.Abi;
+import io.brane.core.abi.AbiBinding;
+import io.brane.core.types.Address;
+
 /**
  * Invocation handler for Multicall3 recording proxies.
- * 
- * <p>
- * This handler intercepts method calls on a contract proxy and records the
+ *
+ * <p>This handler intercepts method calls on a contract proxy and records the
  * function call metadata instead of executing it. The recorded call is then
  * pushed to the associated {@link MulticallBatch}.
+ *
+ * <p><b>Object method behavior:</b>
+ * <ul>
+ *   <li>{@code toString()} - Returns "MulticallRecordingProxy{address=0x...}"</li>
+ *   <li>{@code hashCode()} - Returns {@link System#identityHashCode(Object)}</li>
+ *   <li>{@code equals(Object)} - Uses <em>identity comparison</em> ({@code ==}), not structural
+ *       equality. Two proxies are equal only if they are the exact same instance. This is
+ *       intentional because recording proxies are unique execution contexts, and two proxies
+ *       bound to the same contract address may record to different batches.</li>
+ * </ul>
  */
 final class MulticallInvocationHandler implements InvocationHandler {
 
@@ -75,7 +85,8 @@ final class MulticallInvocationHandler implements InvocationHandler {
         return switch (method.getName()) {
             case "toString" -> "MulticallRecordingProxy{" + "address=" + address.value() + "}";
             case "hashCode" -> System.identityHashCode(proxy);
-            case "equals" -> proxy == (args == null || args.length == 0 ? null : args[0]);
+            // Identity comparison intentional - see class javadoc
+            case "equals" -> args != null && args.length > 0 && proxy == args[0];
             default -> method.invoke(proxy, args);
         };
     }
@@ -84,4 +95,3 @@ final class MulticallInvocationHandler implements InvocationHandler {
         return PRIMITIVE_DEFAULTS.get(type);
     }
 }
-

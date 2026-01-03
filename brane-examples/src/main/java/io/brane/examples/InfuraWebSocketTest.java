@@ -1,12 +1,12 @@
 package io.brane.examples;
 
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.Subscription;
-import io.brane.rpc.WebSocketProvider;
-
 import java.math.BigInteger;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
+
+import io.brane.rpc.PublicClient;
+import io.brane.rpc.Subscription;
+import io.brane.rpc.WebSocketProvider;
 
 public class InfuraWebSocketTest {
 

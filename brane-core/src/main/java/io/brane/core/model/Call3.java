@@ -1,9 +1,9 @@
 package io.brane.core.model;
 
+import java.util.Objects;
+
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
-
-import java.util.Objects;
 
 /**
  * Represents a single call in a Multicall3 aggregate3 request.
@@ -28,4 +28,3 @@ public record Call3(
         Objects.requireNonNull(callData, "callData cannot be null");
     }
 }
-

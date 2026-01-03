@@ -1,14 +1,14 @@
 package io.brane.examples;
 
-import io.brane.rpc.JsonRpcResponse;
-
-import io.brane.rpc.WebSocketProvider;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import io.brane.rpc.JsonRpcResponse;
+import io.brane.rpc.WebSocketProvider;
 
 /**
  * Demonstrates the high-performance capabilities of the WebSocketProvider.

@@ -1,10 +1,10 @@
 package io.brane.core.abi;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.charset.StandardCharsets;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests for {@link Utf8String}, focusing on UTF-8 byte length calculation.

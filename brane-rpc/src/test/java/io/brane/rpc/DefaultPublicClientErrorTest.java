@@ -3,11 +3,13 @@ package io.brane.rpc;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import io.brane.core.error.RpcException;
-import io.brane.core.types.Address;
 import java.util.List;
 import java.util.Optional;
+
 import org.junit.jupiter.api.Test;
+
+import io.brane.core.error.RpcException;
+import io.brane.core.types.Address;
 
 class DefaultPublicClientErrorTest {
 
@@ -22,7 +24,7 @@ class DefaultPublicClientErrorTest {
                                 "1"));
 
         PublicClient client = PublicClient.from(provider);
-        LogFilter filter = new LogFilter(Optional.empty(), Optional.empty(), Optional.of(new Address("0x" + "1".repeat(40))), Optional.empty());
+        LogFilter filter = new LogFilter(Optional.empty(), Optional.empty(), Optional.of(List.of(new Address("0x" + "1".repeat(40)))), Optional.empty());
 
         RpcException ex = assertThrows(RpcException.class, () -> client.getLogs(filter));
         assertTrue(ex.isBlockRangeTooLarge());
@@ -39,7 +41,7 @@ class DefaultPublicClientErrorTest {
                                 "1"));
 
         PublicClient client = PublicClient.from(provider);
-        LogFilter filter = new LogFilter(Optional.empty(), Optional.empty(), Optional.of(new Address("0x" + "1".repeat(40))), Optional.empty());
+        LogFilter filter = new LogFilter(Optional.empty(), Optional.empty(), Optional.of(List.of(new Address("0x" + "1".repeat(40)))), Optional.empty());
 
         RpcException ex = assertThrows(RpcException.class, () -> client.getLogs(filter));
         assertTrue(ex.isFilterNotFound());

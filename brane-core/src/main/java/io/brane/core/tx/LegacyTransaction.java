@@ -1,5 +1,9 @@
 package io.brane.core.tx;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
 import io.brane.core.crypto.Signature;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
@@ -9,18 +13,14 @@ import io.brane.primitives.rlp.RlpItem;
 import io.brane.primitives.rlp.RlpNumeric;
 import io.brane.primitives.rlp.RlpString;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 /**
  * EIP-155 legacy transaction with gasPrice.
- * 
+ *
  * <p>
  * This transaction type uses the traditional gas pricing model with a single
  * {@code gasPrice} field. The signature includes chain ID protection per
  * EIP-155.
- * 
+ *
  * <h2>EIP-155 Encoding</h2>
  * <p>
  * Signing preimage:
@@ -30,9 +30,9 @@ import java.util.Objects;
  * {@code RLP([nonce, gasPrice, gasLimit, to, value, data, v, r, s])}
  * <br>
  * where {@code v = chainId * 2 + 35 + yParity}
- * 
+ *
  * <h2>Usage Example</h2>
- * 
+ *
  * <pre>{@code
  * LegacyTransaction tx = new LegacyTransaction(
  *         0L, // nonce
@@ -42,12 +42,12 @@ import java.util.Objects;
  *         Wei.ether("0.1"), // value
  *         HexData.EMPTY // data
  * );
- * 
+ *
  * byte[] preimage = tx.encodeForSigning(1); // chainId = 1 (mainnet)
  * Signature sig = privateKey.sign(Keccak256.hash(preimage));
  * byte[] envelope = tx.encodeAsEnvelope(sig);
  * }</pre>
- * 
+ *
  * @param nonce    the transaction nonce
  * @param gasPrice the gas price in wei
  * @param gasLimit the maximum gas to use

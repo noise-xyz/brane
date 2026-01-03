@@ -5,11 +5,12 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.junit.jupiter.api.Test;
+
 import io.brane.core.tx.LegacyTransaction;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
-import org.junit.jupiter.api.Test;
 
 class PrivateKeySignerTest {
 

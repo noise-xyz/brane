@@ -1,5 +1,11 @@
 package io.brane.core.tx;
 
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
 import io.brane.core.crypto.Keccak256;
 import io.brane.core.crypto.PrivateKey;
 import io.brane.core.crypto.Signature;
@@ -9,11 +15,6 @@ import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.primitives.Hex;
-import org.junit.jupiter.api.Test;
-
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 /**
  * Tests for Eip1559Transaction with EIP-2718 typed envelope.

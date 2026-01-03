@@ -1,33 +1,32 @@
 package io.brane.smoke;
 
-import io.brane.core.abi.Abi;
+import java.math.BigInteger;
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
 import io.brane.contract.BraneContract;
 import io.brane.contract.ReadOnlyContract;
 import io.brane.contract.ReadWriteContract;
+import io.brane.core.abi.Abi;
 import io.brane.core.builder.TxBuilder;
+import io.brane.core.crypto.PrivateKeySigner;
+import io.brane.core.crypto.Signer;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.LogEntry;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.LogFilter;
-import io.brane.core.crypto.PrivateKeySigner;
-import io.brane.core.crypto.Signer;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
-
-import java.math.BigInteger;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 
 public class SmokeApp {
 
@@ -254,7 +253,7 @@ public class SmokeApp {
                 new LogFilter(
                         Optional.of(0L),
                         Optional.empty(),
-                        Optional.of(tokenAddress),
+                        Optional.of(List.of(tokenAddress)),
                         Optional.empty()));
 
         System.out.println("  Found " + logs.size() + " logs.");
@@ -661,7 +660,7 @@ public class SmokeApp {
             // 2. Subscribe to Logs (Transfer event)
             java.util.concurrent.CompletableFuture<LogEntry> logFuture = new java.util.concurrent.CompletableFuture<>();
             io.brane.rpc.Subscription logSub = wsClient.subscribeToLogs(
-                    new LogFilter(Optional.empty(), Optional.empty(), Optional.of(tokenAddress), Optional.empty()),
+                    new LogFilter(Optional.empty(), Optional.empty(), Optional.of(List.of(tokenAddress)), Optional.empty()),
                     log -> {
                         System.out.println("  ✓ [WS] Log Received: " + log.transactionHash());
                         logFuture.complete(log);

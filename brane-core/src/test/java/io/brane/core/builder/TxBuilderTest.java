@@ -3,12 +3,14 @@ package io.brane.core.builder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
-import java.util.List;
-import org.junit.jupiter.api.Test;
 
 class TxBuilderTest {
 

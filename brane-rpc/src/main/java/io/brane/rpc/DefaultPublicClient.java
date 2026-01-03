@@ -1,7 +1,20 @@
 package io.brane.rpc;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static io.brane.rpc.internal.RpcUtils.MAPPER;
+
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.atomic.AtomicBoolean;
+
 import com.fasterxml.jackson.core.type.TypeReference;
+import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import io.brane.core.DebugLogger;
 import io.brane.core.LogFormatter;
 import io.brane.core.model.AccessListEntry;
@@ -14,26 +27,56 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import io.brane.rpc.internal.LogParser;
 import io.brane.rpc.internal.RpcUtils;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
 
+/**
+ * Default implementation of {@link PublicClient} for read-only blockchain operations.
+ *
+ * <p>This class provides implementations of all read operations defined in
+ * {@link PublicClient}, translating method calls to JSON-RPC requests via
+ * the underlying {@link BraneProvider}.
+ *
+ * <p><strong>Supported Operations:</strong>
+ * <ul>
+ *   <li>Block queries ({@code eth_getBlockByNumber})</li>
+ *   <li>Transaction queries ({@code eth_getTransactionByHash})</li>
+ *   <li>Balance queries ({@code eth_getBalance})</li>
+ *   <li>Contract calls ({@code eth_call})</li>
+ *   <li>Event log queries ({@code eth_getLogs})</li>
+ *   <li>Access list creation ({@code eth_createAccessList})</li>
+ *   <li>Chain ID queries ({@code eth_chainId})</li>
+ *   <li>Subscription management (newHeads, logs)</li>
+ * </ul>
+ *
+ * <p><strong>Retry Behavior:</strong> All RPC calls are automatically retried
+ * on transient failures using {@link RpcRetry} with 3 attempts and exponential
+ * backoff. Non-retryable errors (reverts, insufficient funds) fail immediately.
+ *
+ * <p><strong>Thread Safety:</strong> This class is thread-safe. All methods
+ * can be called concurrently from multiple threads. Thread safety is provided
+ * by the underlying {@link BraneProvider} implementation.
+ *
+ * <p><strong>JSON Deserialization:</strong> Response parsing uses Jackson's
+ * ObjectMapper for type-safe conversion of RPC results to domain objects.
+ *
+ * @see PublicClient
+ * @see BraneProvider
+ * @see RpcRetry
+ */
 final class DefaultPublicClient implements PublicClient {
 
+    private static final Logger log = LoggerFactory.getLogger(DefaultPublicClient.class);
+
     private final BraneProvider provider;
-    private final ObjectMapper mapper = new ObjectMapper();
 
     DefaultPublicClient(final BraneProvider provider) {
-        this.provider = provider;
+        this.provider = Objects.requireNonNull(provider, "provider");
     }
 
     @Override
     public BlockHeader getLatestBlock() {
-        return getBlockByTag("latest");
+        return getBlockByTag(BlockTag.LATEST.toRpcValue());
     }
 
     @Override
@@ -44,13 +87,14 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public Transaction getTransactionByHash(final Hash hash) {
-        final var response = sendWithRetry("eth_getTransactionByHash", List.of(hash.value()));
+        Objects.requireNonNull(hash, "hash");
+        final JsonRpcResponse response = sendWithRetry("eth_getTransactionByHash", List.of(hash.value()));
         final Object result = response.result();
         if (result == null) {
             return null;
         }
 
-        final var map = mapper.convertValue(result, new TypeReference<Map<String, Object>>() {});
+        final Map<String, Object> map = MAPPER.convertValue(result, new TypeReference<Map<String, Object>>() {});
 
         final String hashHex = RpcUtils.stringValue(map.get("hash"));
         final String fromHex = RpcUtils.stringValue(map.get("from"));
@@ -71,10 +115,14 @@ final class DefaultPublicClient implements PublicClient {
     }
 
     @Override
-    public String call(final Map<String, Object> callObject, final String blockTag) {
+    public HexData call(final CallRequest request, final BlockTag blockTag) {
+        Objects.requireNonNull(request, "request");
+        Objects.requireNonNull(blockTag, "blockTag");
+        final Map<String, Object> callObject = request.toMap();
+        final String blockTagStr = blockTag.toRpcValue();
         final long start = System.nanoTime();
-        DebugLogger.log(LogFormatter.formatCall(blockTag, callObject));
-        final JsonRpcResponse response = sendWithRetry("eth_call", List.of(callObject, blockTag));
+        DebugLogger.log(LogFormatter.formatCall(blockTagStr, callObject));
+        final JsonRpcResponse response = sendWithRetry("eth_call", List.of(callObject, blockTagStr));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
             throw new io.brane.core.error.RpcException(
@@ -83,63 +131,70 @@ final class DefaultPublicClient implements PublicClient {
         final Object result = response.result();
         final String output = result != null ? result.toString() : null;
         final long durationMicros = (System.nanoTime() - start) / 1_000L;
-        DebugLogger.log(LogFormatter.formatCallResult(blockTag, durationMicros, output));
-        return output;
+        DebugLogger.log(LogFormatter.formatCallResult(blockTagStr, durationMicros, output));
+        if (output == null || output.isEmpty() || "0x".equals(output)) {
+            return HexData.EMPTY;
+        }
+        return new HexData(output);
+    }
+
+    @SuppressWarnings("deprecation")
+    @Override
+    public String call(final Map<String, Object> callObject, final String blockTag) {
+        // Deprecated: delegate to the typed call() method for consistent behavior
+        Objects.requireNonNull(callObject, "callObject");
+        Objects.requireNonNull(blockTag, "blockTag");
+        final Object toValue = callObject.get("to");
+        if (toValue == null) {
+            throw new IllegalArgumentException("callObject must contain 'to' key");
+        }
+        if (!(toValue instanceof String)) {
+            throw new IllegalArgumentException("callObject 'to' must be a String, got: " + toValue.getClass().getName());
+        }
+        final Address to = new Address((String) toValue);
+        final Object dataValue = callObject.get("data");
+        final HexData data;
+        if (dataValue == null) {
+            data = null;
+        } else if (dataValue instanceof String dataStr) {
+            data = new HexData(dataStr);
+        } else {
+            throw new IllegalArgumentException("callObject 'data' must be a String, got: " + dataValue.getClass().getName());
+        }
+        final CallRequest request = CallRequest.of(to, data);
+        final BlockTag parsedBlockTag = parseBlockTag(blockTag);
+        final HexData result = call(request, parsedBlockTag);
+        return result.value();
+    }
+
+    private static BlockTag parseBlockTag(final String blockTag) {
+        return switch (blockTag) {
+            case "latest" -> BlockTag.LATEST;
+            case "pending" -> BlockTag.PENDING;
+            case "earliest" -> BlockTag.EARLIEST;
+            case "safe" -> BlockTag.SAFE;
+            case "finalized" -> BlockTag.FINALIZED;
+            default -> BlockTag.of(RpcUtils.decodeHexLong(blockTag));
+        };
     }
 
     @Override
     public List<LogEntry> getLogs(final LogFilter filter) {
-        final var req = buildLogParams(filter);
+        final Map<String, Object> req = buildLogParams(filter);
 
-        final var response = sendWithRetry("eth_getLogs", List.of(req));
+        final JsonRpcResponse response = sendWithRetry("eth_getLogs", List.of(req));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
             throw new io.brane.core.error.RpcException(
                     err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
         }
         final Object result = response.result();
-        if (result == null) {
-            return List.of();
-        }
-
-        final List<Map<String, Object>> raw = mapper.convertValue(
-            result,
-            new TypeReference<List<Map<String, Object>>>() {}
-        );        
-        final List<LogEntry> logs = new ArrayList<>(raw.size());
-        for (Map<String, Object> map : raw) {
-            final String address = RpcUtils.stringValue(map.get("address"));
-            final String data = RpcUtils.stringValue(map.get("data"));
-            final String blockHash = RpcUtils.stringValue(map.get("blockHash"));
-            final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
-            final Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
-            final List<String> topicsHex = mapper.convertValue(
-                map.get("topics"),
-                new TypeReference<List<String>>() {}
-            );
-            final List<Hash> topics = new ArrayList<>();
-            if (topicsHex != null) {
-                for (String t : topicsHex) {
-                    topics.add(new Hash(t));
-                }
-            }
-
-            logs.add(
-                    new LogEntry(
-                            address != null ? new Address(address) : null,
-                            data != null ? new HexData(data) : HexData.EMPTY,
-                            topics,
-                            blockHash != null ? new Hash(blockHash) : null,
-                            txHash != null ? new Hash(txHash) : null,
-                            requireLogIndex(logIndex, map),
-                            Boolean.TRUE.equals(map.get("removed"))));
-        }
-        return logs;
+        return LogParser.parseLogs(result, true);
     }
 
     @Override
     public java.math.BigInteger getChainId() {
-        final var response = sendWithRetry("eth_chainId", List.of());
+        final JsonRpcResponse response = sendWithRetry("eth_chainId", List.of());
         final Object result = response.result();
         if (result == null) {
             throw new io.brane.core.error.RpcException(0, "eth_chainId returned null", (String) null, (Throwable) null);
@@ -149,7 +204,8 @@ final class DefaultPublicClient implements PublicClient {
 
     @Override
     public java.math.BigInteger getBalance(final Address address) {
-        final var response = sendWithRetry("eth_getBalance", List.of(address.value(), "latest"));
+        Objects.requireNonNull(address, "address");
+        final JsonRpcResponse response = sendWithRetry("eth_getBalance", List.of(address.value(), BlockTag.LATEST.toRpcValue()));
         final Object result = response.result();
         if (result == null) {
             throw new io.brane.core.error.RpcException(0, "eth_getBalance returned null", (String) null,
@@ -161,7 +217,7 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public AccessListWithGas createAccessList(final TransactionRequest request) {
         final Map<String, Object> txObject = buildTxObject(request);
-        final var response = sendWithRetry("eth_createAccessList", List.of(txObject, "latest"));
+        final JsonRpcResponse response = sendWithRetry("eth_createAccessList", List.of(txObject, BlockTag.LATEST.toRpcValue()));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
             throw new io.brane.core.error.RpcException(
@@ -173,7 +229,7 @@ final class DefaultPublicClient implements PublicClient {
                     (Throwable) null);
         }
 
-        final Map<String, Object> map = mapper.convertValue(result, new TypeReference<Map<String, Object>>() {
+        final Map<String, Object> map = MAPPER.convertValue(result, new TypeReference<Map<String, Object>>() {
         });
 
         final String gasUsedHex = RpcUtils.stringValue(map.get("gasUsed"));
@@ -181,7 +237,7 @@ final class DefaultPublicClient implements PublicClient {
                 ? RpcUtils.decodeHexBigInteger(gasUsedHex)
                 : BigInteger.ZERO;
 
-        final List<Map<String, Object>> accessListRaw = mapper.convertValue(
+        final List<Map<String, Object>> accessListRaw = MAPPER.convertValue(
                 map.get("accessList"),
                 new TypeReference<List<Map<String, Object>>>() {
                 });
@@ -189,14 +245,14 @@ final class DefaultPublicClient implements PublicClient {
         if (accessListRaw != null) {
             for (Map<String, Object> entryMap : accessListRaw) {
                 final String addressHex = RpcUtils.stringValue(entryMap.get("address"));
-                final List<String> storageKeysHex = mapper.convertValue(
+                final List<String> storageKeysHex = MAPPER.convertValue(
                         entryMap.get("storageKeys"),
                         new TypeReference<List<String>>() {
                         });
                 final List<Hash> storageKeys = (storageKeysHex == null)
                         ? List.of()
                         : storageKeysHex.stream()
-                                .filter(java.util.Objects::nonNull)
+                                .filter(Objects::nonNull)
                                 .map(Hash::new)
                                 .toList();
                 if (addressHex != null) {
@@ -224,27 +280,13 @@ final class DefaultPublicClient implements PublicClient {
             tx.put("data", request.data().value());
         }
         if (request.accessList() != null && !request.accessList().isEmpty()) {
-            tx.put("accessList", toJsonAccessList(request.accessList()));
+            tx.put("accessList", RpcUtils.toJsonAccessList(request.accessList()));
         }
         return tx;
     }
 
-    private List<Map<String, Object>> toJsonAccessList(final List<AccessListEntry> entries) {
-        return entries.stream()
-                .map(
-                        entry -> {
-                            final Map<String, Object> map = new LinkedHashMap<>();
-                            map.put("address", entry.address().value());
-                            map.put(
-                                    "storageKeys",
-                                    entry.storageKeys().stream().map(Hash::value).toList());
-                            return map;
-                        })
-                .toList();
-    }
-
     private Map<String, Object> buildLogParams(final LogFilter filter) {
-        final Map<String, Object> req = new java.util.LinkedHashMap<>();
+        final Map<String, Object> req = new LinkedHashMap<>();
         filter.fromBlock()
                 .ifPresent(
                         v -> {
@@ -261,7 +303,14 @@ final class DefaultPublicClient implements PublicClient {
                                 req.put("toBlock", hex);
                             }
                         });
-        filter.address().ifPresent(a -> req.put("address", a.value()));
+        // Serialize addresses: single address as string, multiple as array (per eth_getLogs spec)
+        filter.addresses().ifPresent(addrs -> {
+            if (addrs.size() == 1) {
+                req.put("address", addrs.get(0).value());
+            } else {
+                req.put("address", addrs.stream().map(Address::value).toList());
+            }
+        });
         filter.topics()
                 .ifPresent(
                         topics -> {
@@ -278,14 +327,14 @@ final class DefaultPublicClient implements PublicClient {
         return req;
     }
 
-    private BlockHeader getBlockByTag(final String tag) {
-        final var response = sendWithRetry("eth_getBlockByNumber", List.of(tag, Boolean.FALSE));
+    private @Nullable BlockHeader getBlockByTag(final String tag) {
+        final JsonRpcResponse response = sendWithRetry("eth_getBlockByNumber", List.of(tag, Boolean.FALSE));
         final Object result = response.result();
         if (result == null) {
             return null;
         }
 
-        final Map<String, Object> map = mapper.convertValue(
+        final Map<String, Object> map = MAPPER.convertValue(
             result, new TypeReference<Map<String, Object>>() {}
         );
 
@@ -306,7 +355,7 @@ final class DefaultPublicClient implements PublicClient {
     @Override
     public Subscription subscribeToNewHeads(java.util.function.Consumer<BlockHeader> callback) {
         String id = provider.subscribe("newHeads", List.of(), result -> {
-            Map<String, Object> map = mapper.convertValue(
+            Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
             );
 
@@ -323,7 +372,11 @@ final class DefaultPublicClient implements PublicClient {
                     timestamp,
                     baseFeeHex != null ? new Wei(RpcUtils.decodeHexBigInteger(baseFeeHex)) : null);
 
-            callback.accept(header);
+            try {
+                callback.accept(header);
+            } catch (Exception e) {
+                log.error("Exception in newHeads subscription callback (block {})", number, e);
+            }
         });
         return new SubscriptionImpl(id, provider);
     }
@@ -332,56 +385,66 @@ final class DefaultPublicClient implements PublicClient {
     public Subscription subscribeToLogs(LogFilter filter, java.util.function.Consumer<LogEntry> callback) {
         Map<String, Object> params = buildLogParams(filter);
         String id = provider.subscribe("logs", List.of(params), result -> {
-            Map<String, Object> map = mapper.convertValue(
+            // TypeReference provides full type information, so convertValue is type-safe here
+            Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
             );
-
-            String address = RpcUtils.stringValue(map.get("address"));
-            String data = RpcUtils.stringValue(map.get("data"));
-            String blockHash = RpcUtils.stringValue(map.get("blockHash"));
-            String txHash = RpcUtils.stringValue(map.get("transactionHash"));
-            Long logIndex = RpcUtils.decodeHexLong(map.get("logIndex"));
-            List<String> topicsHex = mapper.convertValue(
-                map.get("topics"),
-                new TypeReference<List<String>>() {}
-            );
-            List<Hash> topics = new ArrayList<>();
-            if (topicsHex != null) {
-                for (String t : topicsHex) {
-                    topics.add(new Hash(t));
-                }
+            LogEntry logEntry = LogParser.parseLogStrict(map);
+            try {
+                callback.accept(logEntry);
+            } catch (Exception e) {
+                log.error("Exception in logs subscription callback (tx {})", logEntry.transactionHash(), e);
             }
-
-            LogEntry log = new LogEntry(
-                    address != null ? new Address(address) : null,
-                    data != null ? new HexData(data) : HexData.EMPTY,
-                    topics,
-                    blockHash != null ? new Hash(blockHash) : null,
-                    txHash != null ? new Hash(txHash) : null,
-                    requireLogIndex(logIndex, map),
-                    Boolean.TRUE.equals(map.get("removed")));
-
-            callback.accept(log);
         });
         return new SubscriptionImpl(id, provider);
     }
 
-    private record SubscriptionImpl(String id, BraneProvider provider) implements Subscription {
+    /**
+     * Subscription implementation that handles unsubscribe errors gracefully.
+     *
+     * <p><strong>Idempotency:</strong> Calling {@link #unsubscribe()} multiple times
+     * is safe and has no additional effect after the first call.
+     *
+     * <p><strong>Error Handling:</strong> Unsubscribe failures are logged at WARN level
+     * and do not throw exceptions. This prevents resource cleanup issues when the
+     * subscription is already terminated (e.g., WebSocket disconnected).
+     */
+    private static final class SubscriptionImpl implements Subscription {
+        private final String id;
+        private final BraneProvider provider;
+        private final AtomicBoolean unsubscribed = new AtomicBoolean(false);
+
+        SubscriptionImpl(String id, BraneProvider provider) {
+            this.id = id;
+            this.provider = provider;
+        }
+
+        @Override
+        public String id() {
+            return id;
+        }
+
         @Override
         public void unsubscribe() {
-            provider.unsubscribe(id);
+            // Idempotent: only unsubscribe once
+            if (!unsubscribed.compareAndSet(false, true)) {
+                log.debug("Subscription {} already unsubscribed, ignoring duplicate call", id);
+                return;
+            }
+
+            try {
+                provider.unsubscribe(id);
+                log.debug("Successfully unsubscribed from {}", id);
+            } catch (Exception e) {
+                // Log and swallow - unsubscribe failures should not propagate
+                // Common causes: connection already closed, subscription already terminated
+                log.warn("Failed to unsubscribe from {}: {} ({})",
+                        id, e.getMessage(), e.getClass().getSimpleName());
+            }
         }
     }
 
     private JsonRpcResponse sendWithRetry(final String method, final List<?> params) {
-        return RpcRetry.run(() -> provider.send(method, params), 3);
-    }
-
-    private Long requireLogIndex(Long logIndex, Map<String, Object> map) {
-        if (logIndex == null) {
-            throw new io.brane.core.error.RpcException(-32000, "Missing logIndex in log entry", map.toString(),
-                    (Throwable) null);
-        }
-        return logIndex;
+        return RpcRetry.runRpc(() -> provider.send(method, params), 3);
     }
 }

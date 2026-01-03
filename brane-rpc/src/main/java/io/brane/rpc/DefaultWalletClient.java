@@ -1,10 +1,22 @@
 package io.brane.rpc;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import static io.brane.rpc.internal.RpcUtils.MAPPER;
+
+import java.math.BigInteger;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.jspecify.annotations.Nullable;
+
 import io.brane.core.DebugLogger;
 import io.brane.core.LogFormatter;
 import io.brane.core.RevertDecoder;
 import io.brane.core.chain.ChainProfile;
+import io.brane.core.crypto.Signer;
 import io.brane.core.error.ChainMismatchException;
 import io.brane.core.error.InvalidSenderException;
 import io.brane.core.error.RevertException;
@@ -16,22 +28,13 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import io.brane.rpc.internal.LogParser;
 import io.brane.rpc.internal.RpcUtils;
-import java.math.BigInteger;
-import java.time.Duration;
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Objects;
-import io.brane.core.crypto.Signer;
-import java.util.concurrent.atomic.AtomicReference;
 
 /**
  * Default implementation of {@link WalletClient} with automatic transaction
  * preparation.
- * 
+ *
  * <p>
  * This class implements the complete transaction lifecycle:
  * <ol>
@@ -41,20 +44,20 @@ import java.util.concurrent.atomic.AtomicReference;
  * <li>Broadcasts via {@code eth_sendRawTransaction}</li>
  * <li>Optionally polls for receipt via {@code eth_getTransactionReceipt}</li>
  * </ol>
- * 
+ *
  * <p>
  * <strong>Chain ID Enforcement:</strong> Validates that the configured chain ID
  * matches the connected node's chain ID on first transaction. Caches the result
  * using {@link AtomicReference} for thread-safe lazy initialization.
- * 
+ *
  * <p>
  * <strong>Thread Safety:</strong> This class is thread-safe. Multiple threads
  * can submit transactions concurrently.
- * 
+ *
  * <p>
  * <strong>Usage:</strong> Typically created via a builder pattern, not
  * instantiated directly.
- * 
+ *
  * @see WalletClient
  * @see SmartGasStrategy
  * @see io.brane.core.crypto.Signer
@@ -68,7 +71,6 @@ public final class DefaultWalletClient implements WalletClient {
     private final long expectedChainId;
 
     private final SmartGasStrategy gasStrategy;
-    private final ObjectMapper mapper = new ObjectMapper();
     private final AtomicReference<Long> cachedChainId = new AtomicReference<>();
 
     private DefaultWalletClient(
@@ -201,7 +203,13 @@ public final class DefaultWalletClient implements WalletClient {
         final long chainId = enforceChainId();
 
         final Address from = request.from() != null ? request.from() : senderAddress;
-        final TransactionRequest withDefaults = gasStrategy.applyDefaults(request, from);
+        final SmartGasStrategy.GasFilledRequest gasResult = gasStrategy.applyDefaults(request, from);
+        final TransactionRequest withDefaults = gasResult.request();
+
+        // Log if EIP-1559 fell back to legacy (useful for debugging multi-chain apps)
+        if (gasResult.fellBackToLegacy()) {
+            DebugLogger.log("EIP-1559 requested but fell back to legacy gas pricing");
+        }
 
         final BigInteger nonce = withDefaults.nonceOpt().map(BigInteger::valueOf).orElseGet(() -> fetchNonce(from));
 
@@ -274,14 +282,25 @@ public final class DefaultWalletClient implements WalletClient {
         return new Hash(txHash);
     }
 
+    /** Maximum poll interval for exponential backoff (10 seconds). */
+    private static final long MAX_POLL_INTERVAL_MILLIS = 10_000L;
+
     @Override
     public TransactionReceipt sendTransactionAndWait(
             final TransactionRequest request, final long timeoutMillis, final long pollIntervalMillis) {
         final Hash txHash = sendTransaction(request);
         DebugLogger.logTx(LogFormatter.formatTxWait(txHash.value(), timeoutMillis));
-        final Instant deadline = Instant.now().plus(Duration.ofMillis(timeoutMillis));
+        // Use monotonic clock (System.nanoTime) instead of wall clock (Instant.now)
+        // to avoid issues with NTP adjustments or VM clock skew.
+        // The comparison (now - deadline < 0) is wraparound-safe because signed subtraction
+        // correctly handles the rare case where nanoTime() wraps around Long.MAX_VALUE.
+        // See: https://docs.oracle.com/javase/8/docs/api/java/lang/System.html#nanoTime--
+        final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
 
-        while (Instant.now().isBefore(deadline)) {
+        // Exponential backoff: start with user-provided interval, double each time, cap at MAX
+        long currentInterval = pollIntervalMillis;
+
+        while (System.nanoTime() - deadlineNanos < 0) {
             final TransactionReceipt receipt = fetchReceipt(txHash);
             if (receipt != null) {
                 DebugLogger.logTx(
@@ -293,7 +312,9 @@ public final class DefaultWalletClient implements WalletClient {
                 return receipt;
             }
             try {
-                Thread.sleep(pollIntervalMillis);
+                Thread.sleep(currentInterval);
+                // Double the interval for next iteration, capped at MAX_POLL_INTERVAL_MILLIS
+                currentInterval = Math.min(currentInterval * 2, MAX_POLL_INTERVAL_MILLIS);
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
                 throw new RpcException(-32000, "Interrupted while waiting for receipt", null, e);
@@ -332,7 +353,7 @@ public final class DefaultWalletClient implements WalletClient {
                 final JsonRpcError err = response.error();
                 final String data = RpcUtils.extractErrorData(err.data());
                 if (data != null && data.startsWith("0x") && data.length() > 10) {
-                    final var decoded = RevertDecoder.decode(data);
+                    final RevertDecoder.Decoded decoded = RevertDecoder.decode(data);
                     DebugLogger.logTx(
                             LogFormatter.formatTxRevert(txHash.value(), decoded.kind().toString(), decoded.reason()));
                     throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), null);
@@ -343,19 +364,25 @@ public final class DefaultWalletClient implements WalletClient {
                         null,
                         null);
             }
+            // eth_call succeeded but transaction was marked as reverted in receipt - unexpected state
+            throw new RevertException(
+                    RevertDecoder.RevertKind.UNKNOWN,
+                    "Transaction reverted but eth_call replay succeeded (txHash: " + txHash.value() + ")",
+                    null,
+                    null);
         } catch (RevertException e) {
             throw e;
         } catch (Exception e) {
             // If eth_call fails for any other reason, throw a generic revert exception
-            DebugLogger.logTx(LogFormatter.formatTxRevert(txHash.value(), "UNKNOWN", "Transaction reverted"));
+            // but preserve the original exception as the cause for debugging
+            DebugLogger.logTx(LogFormatter.formatTxRevert(txHash.value(), "UNKNOWN",
+                    "Transaction reverted (eth_call replay failed: " + e.getMessage() + ")"));
+            throw new RevertException(
+                    RevertDecoder.RevertKind.UNKNOWN,
+                    "Transaction reverted (txHash: " + txHash.value() + ")",
+                    null,
+                    e);
         }
-
-        // Fallback: throw generic revert exception if we couldn't get the reason
-        throw new RevertException(
-                RevertDecoder.RevertKind.UNKNOWN,
-                "Transaction reverted (txHash: " + txHash.value() + ")",
-                null,
-                null);
     }
 
     private TransactionReceipt fetchReceipt(final Hash hash) {
@@ -370,7 +397,7 @@ public final class DefaultWalletClient implements WalletClient {
         }
 
         @SuppressWarnings("unchecked")
-        final Map<String, Object> map = mapper.convertValue(result, Map.class);
+        final Map<String, Object> map = MAPPER.convertValue(result, Map.class);
         final String statusHex = RpcUtils.stringValue(map.get("status"));
         final boolean status = statusHex != null && !statusHex.isBlank() && !statusHex.equalsIgnoreCase("0x0");
         final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
@@ -379,7 +406,7 @@ public final class DefaultWalletClient implements WalletClient {
         final String fromHex = RpcUtils.stringValue(map.get("from"));
         final String toHex = RpcUtils.stringValue(map.get("to"));
         final String contractAddress = RpcUtils.stringValue(map.get("contractAddress"));
-        final List<LogEntry> logs = parseLogs(map.get("logs"));
+        final List<LogEntry> logs = LogParser.parseLogs(map.get("logs"));
         final String cumulativeGasUsed = RpcUtils.stringValue(map.get("cumulativeGasUsed"));
 
         return new TransactionReceipt(
@@ -392,40 +419,6 @@ public final class DefaultWalletClient implements WalletClient {
                 logs,
                 status,
                 cumulativeGasUsed != null ? new Wei(RpcUtils.decodeHexBigInteger(cumulativeGasUsed)) : null);
-    }
-
-    private List<LogEntry> parseLogs(final Object value) {
-        if (value == null) {
-            return List.of();
-        }
-        @SuppressWarnings("unchecked")
-        final List<Map<String, Object>> rawLogs = mapper.convertValue(value, List.class);
-        final List<LogEntry> logs = new ArrayList<>(rawLogs.size());
-        for (Map<String, Object> log : rawLogs) {
-            final String address = RpcUtils.stringValue(log.get("address"));
-            final String data = RpcUtils.stringValue(log.get("data"));
-            final String blockHash = RpcUtils.stringValue(log.get("blockHash"));
-            final String txHash = RpcUtils.stringValue(log.get("transactionHash"));
-            final Long logIndex = RpcUtils.decodeHexLong(log.get("logIndex"));
-            @SuppressWarnings("unchecked")
-            final List<String> topicsHex = mapper.convertValue(log.get("topics"), List.class);
-            final List<Hash> topics = new ArrayList<>();
-            if (topicsHex != null) {
-                for (String t : topicsHex) {
-                    topics.add(new Hash(t));
-                }
-            }
-            logs.add(
-                    new LogEntry(
-                            address != null ? new Address(address) : null,
-                            data != null ? new HexData(data) : HexData.EMPTY,
-                            topics,
-                            blockHash != null ? new Hash(blockHash) : null,
-                            txHash != null ? new Hash(txHash) : null,
-                            logIndex != null ? logIndex : 0L,
-                            Boolean.TRUE.equals(log.get("removed"))));
-        }
-        return logs;
     }
 
     private ValueParts buildValueParts(final TransactionRequest request, final Address from) {
@@ -459,43 +452,51 @@ public final class DefaultWalletClient implements WalletClient {
     }
 
     private BigInteger estimateGas(final TransactionRequest request, final Address from) {
-        final Map<String, Object> tx = new LinkedHashMap<>();
-        tx.put("from", from.value());
-        request.toOpt().ifPresent(address -> tx.put("to", address.value()));
-        request.valueOpt().ifPresent(v -> tx.put("value", RpcUtils.toQuantityHex(v.value())));
-        if (request.data() != null) {
-            tx.put("data", request.data().value());
-        }
-        if (request.accessList() != null && !request.accessList().isEmpty()) {
-            tx.put("accessList", toJsonAccessList(request.accessList()));
-        }
-        DebugLogger.logTx(LogFormatter.formatEstimateGas(
-                String.valueOf(from), String.valueOf(tx.get("to")), String.valueOf(tx.get("data"))));
-        final long start = System.nanoTime();
-        final String estimate;
-        try {
-            estimate = callRpc("eth_estimateGas", List.of(tx), String.class, null);
-        } catch (RpcException e) {
-            handlePotentialRevert(e, null);
-            throw e;
-        }
-        final long durationMicros = (System.nanoTime() - start) / 1_000L;
-        DebugLogger.logTx(LogFormatter.formatEstimateGasResult(durationMicros, estimate));
+        final Map<String, Object> tx = RpcUtils.buildTxObject(request, from);
+        final String estimate = RpcUtils.timedEstimateGas(tx, () -> {
+            try {
+                return callRpc("eth_estimateGas", List.of(tx), String.class, null);
+            } catch (RpcException e) {
+                handlePotentialRevert(e, null);
+                throw e;
+            }
+        });
         return RpcUtils.decodeHexBigInteger(estimate);
     }
 
+    /**
+     * Fetches and caches the chain ID with thread-safe atomic caching.
+     *
+     * <p>
+     * Uses {@link AtomicReference#compareAndExchange} to ensure exactly one
+     * thread's value is cached, and all threads return the same cached value.
+     * This eliminates the TOCTOU race condition that could occur with separate
+     * compareAndSet + get operations.
+     *
+     * @return the chain ID (guaranteed consistent across all concurrent callers)
+     * @throws ChainMismatchException if expectedChainId is set and doesn't match
+     */
     private long enforceChainId() {
+        // Fast path - already cached
         final Long cached = cachedChainId.get();
         if (cached != null) {
             return cached;
         }
+
+        // Slow path - fetch from network
         final String chainIdHex = callRpc("eth_chainId", List.of(), String.class, null);
         final long actual = RpcUtils.decodeHexBigInteger(chainIdHex).longValue();
-        cachedChainId.set(actual);
+
+        // Validate BEFORE caching to prevent caching an invalid chain ID
         if (expectedChainId > 0 && expectedChainId != actual) {
             throw new ChainMismatchException(expectedChainId, actual);
         }
-        return actual;
+
+        // Atomically set if still null, using compareAndExchange to get the witness value.
+        // If another thread already cached a value, witness will be non-null and we use it.
+        // If we win the race, witness will be null and we return our fetched value.
+        final Long witness = cachedChainId.compareAndExchange(null, actual);
+        return witness != null ? witness : actual;
     }
 
     private <T> T callRpc(
@@ -521,39 +522,43 @@ public final class DefaultWalletClient implements WalletClient {
             if (result == null) {
                 return defaultValue;
             }
-            return mapper.convertValue(result, responseType);
+            return MAPPER.convertValue(result, responseType);
         } catch (RpcException e) {
             handlePotentialRevert(e, null);
             throw e;
         }
     }
 
-    private List<Map<String, Object>> toJsonAccessList(final List<io.brane.core.model.AccessListEntry> entries) {
-        final List<Map<String, Object>> list = new ArrayList<>(entries.size());
-        for (var entry : entries) {
-            final Map<String, Object> map = new LinkedHashMap<>();
-            map.put("address", entry.address().value());
-            map.put("storageKeys", entry.storageKeys().stream().map(Hash::value).toList());
-            list.add(map);
-        }
-        return list;
-    }
-
+    /**
+     * Extracted transaction values for building and logging.
+     *
+     * <p>This record normalizes transaction fields from {@link TransactionRequest},
+     * converting domain types to raw values and applying defaults where needed.
+     * Used internally to avoid repeated null-checks and type conversions.
+     *
+     * @param to recipient address as hex string, or null for contract creation
+     * @param value transfer amount in wei
+     * @param data call data as hex string (defaults to "0x" if empty)
+     * @param isEip1559 true for EIP-1559 transactions, false for legacy
+     * @param gasPrice gas price for legacy transactions (null if EIP-1559)
+     * @param maxPriorityFeePerGas priority fee for EIP-1559 transactions (null if legacy)
+     * @param maxFeePerGas max fee for EIP-1559 transactions (null if legacy)
+     */
     private record ValueParts(
-            String to,
+            @Nullable String to,
             BigInteger value,
             String data,
             boolean isEip1559,
-            BigInteger gasPrice,
-            BigInteger maxPriorityFeePerGas,
-            BigInteger maxFeePerGas) {
+            @Nullable BigInteger gasPrice,
+            @Nullable BigInteger maxPriorityFeePerGas,
+            @Nullable BigInteger maxFeePerGas) {
     }
 
     private static void handlePotentialRevert(final RpcException e, final Hash hash)
             throws RevertException {
         final String raw = e.data();
         if (raw != null && raw.startsWith("0x") && raw.length() > 10) {
-            final var decoded = RevertDecoder.decode(raw);
+            final RevertDecoder.Decoded decoded = RevertDecoder.decode(raw);
             // Always throw RevertException for revert data, even if kind is UNKNOWN
             // (UNKNOWN just means we couldn't decode it, but it's still a revert)
             DebugLogger.logTx(

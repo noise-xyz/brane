@@ -1,14 +1,14 @@
 package io.brane.core.crypto;
 
+import java.math.BigInteger;
+
+import org.bouncycastle.asn1.x9.X9ECParameters;
 import org.bouncycastle.crypto.digests.SHA256Digest;
+import org.bouncycastle.crypto.ec.CustomNamedCurves;
 import org.bouncycastle.crypto.params.ECDomainParameters;
 import org.bouncycastle.crypto.signers.HMacDSAKCalculator;
 import org.bouncycastle.math.ec.ECPoint;
 import org.bouncycastle.math.ec.FixedPointCombMultiplier;
-import org.bouncycastle.asn1.x9.X9ECParameters;
-import org.bouncycastle.crypto.ec.CustomNamedCurves;
-
-import java.math.BigInteger;
 
 /**
  * High-performance deterministic ECDSA signer.
@@ -66,7 +66,7 @@ public final class FastSigner {
 
     /**
      * Signs a message hash and returns the signature with recovery ID.
-     * 
+     *
      * @param messageHash 32-byte hash
      * @param privateKey  private key
      * @return Signature with v (0 or 1)

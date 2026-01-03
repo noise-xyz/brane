@@ -4,6 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+
+import org.junit.jupiter.api.Test;
+
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.chain.ChainProfiles;
@@ -14,16 +20,9 @@ import io.brane.core.model.BlockHeader;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
-import io.brane.rpc.Subscription;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
-
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
-
-import org.junit.jupiter.api.Test;
 
 class DefaultWalletClientTest {
 
@@ -586,6 +585,12 @@ class DefaultWalletClientTest {
                         throw new UnsupportedOperationException();
                 }
 
+                @Override
+                public io.brane.core.types.HexData call(CallRequest request, BlockTag blockTag) {
+                        throw new UnsupportedOperationException();
+                }
+
+                @SuppressWarnings("deprecation")
                 @Override
                 public String call(java.util.Map<String, Object> callObject, String blockTag) {
                         throw new UnsupportedOperationException();

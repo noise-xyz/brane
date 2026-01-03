@@ -1,9 +1,10 @@
 package io.brane.core.model;
 
-import io.brane.core.types.HexData;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import io.brane.core.types.HexData;
 
 /**
  * Tests for MulticallResult validation.

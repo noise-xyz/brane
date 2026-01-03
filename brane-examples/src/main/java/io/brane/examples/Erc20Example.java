@@ -1,5 +1,10 @@
 package io.brane.examples;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.util.LinkedHashMap;
+import java.util.Map;
+
 import io.brane.contract.ReadOnlyContract;
 import io.brane.core.abi.Abi;
 import io.brane.core.error.AbiDecodingException;
@@ -10,10 +15,6 @@ import io.brane.core.types.Address;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
-import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.util.LinkedHashMap;
-import java.util.Map;
 
 /**
  * ERC-20 read-only demo using two paths:

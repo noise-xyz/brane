@@ -1,3 +1,7 @@
+plugins {
+    id 'com.diffplug.spotless' version '6.25.0' apply false
+}
+
 ext {
     jacksonVersion = '2.17.1'
     bouncyCastleVersion = '1.70'
@@ -18,6 +22,17 @@ allprojects {
 subprojects {
     apply plugin: 'java-library'
     apply plugin: 'maven-publish'
+    apply plugin: 'com.diffplug.spotless'
+
+    spotless {
+        java {
+            target 'src/**/*.java'
+            removeUnusedImports()
+            importOrder('java', 'javax', '', 'io.brane')
+            trimTrailingWhitespace()
+            endWithNewline()
+        }
+    }
 
     publishing {
         publications {
@@ -81,13 +96,172 @@ task allJavadoc(type: Javadoc) {
 
     // Exclude examples from API docs
     def docProjects = subprojects.findAll { it.name != 'brane-examples' }
-    
+
     source docProjects.collect { it.sourceSets.main.allJava }
     classpath = files(docProjects.collect { it.sourceSets.main.compileClasspath })
-    
+
     exclude 'io/brane/internal/**'
     options.addStringOption('Xdoclint:none', '-quiet')
     options.overview = file('overview.html')
     options.memberLevel = JavadocMemberLevel.PROTECTED
     options.links 'https://docs.oracle.com/en/java/javase/21/docs/api/'
+}
+
+// Module dependency graph visualization
+task dependencyReport {
+    description = 'Displays the module dependency graph for impact analysis'
+    group = 'help'
+
+    doLast {
+        println ""
+        println "═══════════════════════════════════════════════════════════════"
+        println "                  Brane SDK Module Dependencies                 "
+        println "═══════════════════════════════════════════════════════════════"
+        println ""
+        println "Module Dependency Graph:"
+        println ""
+        println "  brane-primitives (0 deps - foundation)"
+        println "         │"
+        println "         ▼"
+        println "     brane-core (primitives + BouncyCastle, Jackson)"
+        println "         │"
+        println "         ▼"
+        println "      brane-rpc (core + Netty, Disruptor)"
+        println "         │"
+        println "         ▼"
+        println "    brane-contract (rpc, core)"
+        println "         │"
+        println "         ▼"
+        println "  ┌──────┴──────┬───────────────┐"
+        println "  │             │               │"
+        println "examples    benchmark      smoke-test"
+        println ""
+        println "═══════════════════════════════════════════════════════════════"
+        println ""
+        println "Detailed Inter-Module Dependencies:"
+        println ""
+
+        // SDK modules in dependency order
+        def sdkModules = ['brane-primitives', 'brane-core', 'brane-rpc', 'brane-contract']
+
+        subprojects { p ->
+            def apiDeps = []
+            def implDeps = []
+
+            // Collect API dependencies
+            def apiConfig = p.configurations.findByName('api')
+            if (apiConfig) {
+                apiConfig.dependencies.each { dep ->
+                    if (dep instanceof org.gradle.api.artifacts.ProjectDependency) {
+                        apiDeps.add(dep.name)
+                    }
+                }
+            }
+
+            // Collect implementation dependencies (project only)
+            def implConfig = p.configurations.findByName('implementation')
+            if (implConfig) {
+                implConfig.dependencies.each { dep ->
+                    if (dep instanceof org.gradle.api.artifacts.ProjectDependency) {
+                        implDeps.add(dep.name)
+                    }
+                }
+            }
+
+            if (!apiDeps.isEmpty() || !implDeps.isEmpty()) {
+                println "  ${p.name}:"
+                if (!apiDeps.isEmpty()) {
+                    println "    api: ${apiDeps.join(', ')}"
+                }
+                if (!implDeps.isEmpty()) {
+                    println "    impl: ${implDeps.join(', ')}"
+                }
+                println ""
+            }
+        }
+
+        println "═══════════════════════════════════════════════════════════════"
+        println ""
+        println "Impact Analysis Rules:"
+        println ""
+        println "  Change in...          │ Affects..."
+        println "  ──────────────────────┼────────────────────────────────────"
+        println "  brane-primitives      │ ALL modules (foundation)"
+        println "  brane-core            │ rpc, contract, examples, benchmark, smoke"
+        println "  brane-rpc             │ contract, examples, benchmark, smoke"
+        println "  brane-contract        │ examples, benchmark, smoke"
+        println "  examples/benchmark    │ None (consumer modules)"
+        println ""
+        println "═══════════════════════════════════════════════════════════════"
+        println ""
+        println "Test Commands:"
+        println ""
+        println "  Quick (single module):  ./gradlew :MODULE:test"
+        println "  All SDK tests:          ./gradlew test"
+        println "  Impact analysis:        ./scripts/verify_change.sh [class]"
+        println "  Full verification:      ./verify_all.sh"
+        println ""
+    }
+}
+
+// List all tests in the project
+task listTests {
+    description = 'Lists all test files across modules'
+    group = 'help'
+
+    doLast {
+        println ""
+        println "═══════════════════════════════════════════════════════════════"
+        println "                    Brane SDK Test Inventory                    "
+        println "═══════════════════════════════════════════════════════════════"
+        println ""
+
+        def sdkModules = ['brane-primitives', 'brane-core', 'brane-rpc', 'brane-contract']
+
+        sdkModules.each { moduleName ->
+            def module = project(":${moduleName}")
+            def testDir = module.file("src/test/java")
+
+            if (testDir.exists()) {
+                def unitTests = []
+                def integrationTests = []
+
+                testDir.eachFileRecurse { file ->
+                    if (file.name.endsWith('Test.java')) {
+                        if (file.name.contains('Integration') || file.name.contains('Anvil')) {
+                            integrationTests.add(file.name)
+                        } else {
+                            unitTests.add(file.name)
+                        }
+                    }
+                }
+
+                println "  ${moduleName}:"
+                println "    Unit tests: ${unitTests.size()}"
+                unitTests.each { println "      - ${it}" }
+                if (!integrationTests.isEmpty()) {
+                    println "    Integration tests: ${integrationTests.size()}"
+                    integrationTests.each { println "      - ${it}" }
+                }
+                println ""
+            }
+        }
+
+        // Examples
+        def examplesDir = project(':brane-examples').file("src/main/java")
+        if (examplesDir.exists()) {
+            def examples = []
+            examplesDir.eachFileRecurse { file ->
+                if (file.name.endsWith('Example.java') || file.name.endsWith('IntegrationTest.java')) {
+                    examples.add(file.name)
+                }
+            }
+            println "  brane-examples:"
+            println "    Examples/Integration: ${examples.size()}"
+            examples.each { println "      - ${it}" }
+            println ""
+        }
+
+        println "═══════════════════════════════════════════════════════════════"
+    }
 }

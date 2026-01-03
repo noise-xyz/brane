@@ -24,10 +24,15 @@ JSON-RPC client layer with HTTP and WebSocket transports.
 - **`BraneAsyncClient`** - Async/futures-based API
 
 ### Utilities
-- **`SmartGasStrategy`** - Intelligent gas estimation
+- **`SmartGasStrategy`** - Intelligent gas estimation with fallback metadata
 - **`RpcRetry`** - Retry logic for transient failures
 - **`LogFilter`** - Event log query builder
 - **`Subscription`** - WebSocket subscription handle
+- **`BraneMetrics`** - Observability interface for request/connection metrics
+- **`MulticallBatch`** - Batches multiple calls into single `eth_call` via Multicall3
+
+### Internal
+- **`RpcUtils`** - Shared hex encoding, URL validation, ObjectMapper
 
 ## Client Hierarchy
 
@@ -77,6 +82,19 @@ Subscription sub = wsProvider.subscribe("newHeads", params, notification -> {
 sub.unsubscribe();
 ```
 
+### WebSocket Connection State
+```java
+WebSocketProvider.ConnectionState state = wsProvider.getConnectionState();
+// States: CONNECTING, CONNECTED, RECONNECTING, CLOSED
+```
+
+### Metrics Integration
+```java
+BraneMetrics metrics = new MyMetrics(); // Implement for Micrometer/Prometheus
+provider.setMetrics(metrics);
+// Hooks: onRequestStarted, onRequestCompleted, onRequestFailed, onConnectionLost, etc.
+```
+
 ### Batching (Multicall)
 ```java
 var batch = publicClient.createBatch();
@@ -92,6 +110,9 @@ BigInteger balance = balanceCall.get();
 - **WebSocket callbacks**: Run on virtual threads, not Netty I/O thread
 - **Retry logic**: `RpcRetry` handles transient failures; configure for your use case
 - **Connection pooling**: HTTP provider manages connection pooling internally
+- **MulticallBatch ThreadLocal**: Call `batch.clearPending()` in catch blocks between proxy call and `add()` to prevent leaks in thread pools
+- **Closed client state**: Calling methods on a closed `BranePublicClient` throws `IllegalStateException`
+- **WebSocket state machine**: Check `getConnectionState()` before operations - `RECONNECTING` state may cause temporary failures
 
 ## Dependencies
 

@@ -1,9 +1,11 @@
 package io.brane.examples;
 
-import io.brane.core.abi.Abi;
+import java.math.BigInteger;
+
 import io.brane.contract.BraneContract;
 import io.brane.core.AnsiColors;
 import io.brane.core.BraneDebug;
+import io.brane.core.abi.Abi;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
@@ -14,7 +16,6 @@ import io.brane.rpc.BraneProvider;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
-import java.math.BigInteger;
 
 /**
  * Canonical example of Brane's "Minimal but Solid" ABI Wrapper.

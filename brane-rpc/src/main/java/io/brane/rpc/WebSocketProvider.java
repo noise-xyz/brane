@@ -1,90 +1,199 @@
 package io.brane.rpc;
 
+import static io.brane.rpc.internal.RpcUtils.MAPPER;
+
+import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.time.Duration;
+import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
+import java.util.concurrent.atomic.LongAdder;
+import java.util.function.Consumer;
+
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.lmax.disruptor.BlockingWaitStrategy;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.YieldingWaitStrategy;
 import com.lmax.disruptor.dsl.Disruptor;
 import com.lmax.disruptor.dsl.ProducerType;
-import io.brane.core.error.RpcException;
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
+import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
+import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
-import io.netty.handler.codec.http.HttpClientCodec;
-import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
 import io.netty.handler.codec.http.FullHttpResponse;
+import io.netty.handler.codec.http.HttpClientCodec;
+import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.websocketx.*;
-import io.netty.util.CharsetUtil;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
-
-import io.netty.buffer.ByteBufInputStream;
-import io.netty.channel.EventLoopGroup;
-import com.fasterxml.jackson.core.JsonParser;
-import com.fasterxml.jackson.core.JsonToken;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
-import java.time.Duration;
-import java.util.List;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.LongAdder;
-import java.util.function.Consumer;
-import java.util.concurrent.TimeUnit;
-import java.util.Objects;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.brane.core.error.RpcException;
+
 /**
  * Ultra-low latency WebSocket provider using Netty and LMAX Disruptor.
- * 
- * Optimizations:
- * - Zero-allocation JSON serialization directly to ByteBuf
- * - Low-allocation response parsing from ByteBuf
- * - Lock-free request ID generation
- * - Batched writes with flush on end-of-batch
- * - Optimized Netty channel options (TCP_NODELAY, etc.)
- * - Large ring buffer for high throughput bursts
+ *
+ * <p><b>Thread Safety:</b> This class is thread-safe. Multiple threads can
+ * safely call {@link #send}, {@link #sendAsync}, and {@link #sendAsyncBatch}
+ * concurrently. Request tracking uses an {@link AtomicReferenceArray} with
+ * CAS-based slot allocation to prevent race conditions between the caller
+ * threads, Disruptor thread, and Netty I/O thread.
+ *
+ * <p><b>Optimizations:</b>
+ * <ul>
+ *   <li>Zero-allocation JSON serialization directly to ByteBuf</li>
+ *   <li>Low-allocation response parsing from ByteBuf</li>
+ *   <li>Lock-free request ID generation using AtomicLong</li>
+ *   <li>CAS-based slot allocation for thread-safe request tracking</li>
+ *   <li>Batched writes with flush on end-of-batch</li>
+ *   <li>Optimized Netty channel options (TCP_NODELAY, etc.)</li>
+ *   <li>Large ring buffer for high throughput bursts</li>
+ * </ul>
  */
 public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
     private static final Logger log = LoggerFactory.getLogger(WebSocketProvider.class);
-    private static final ObjectMapper mapper = new ObjectMapper();
+
+    // ==================== Connection State Machine ====================
+    /**
+     * Connection state for explicit state machine management.
+     *
+     * <p>State transitions:
+     * <pre>
+     * CONNECTING ---(success)---> CONNECTED
+     *     |                           |
+     *     | (failure)                 | (disconnect)
+     *     v                           v
+     *   CLOSED <---------------  RECONNECTING
+     *     ^                           |
+     *     |                           | (max retries or close())
+     *     +---------------------------+
+     * </pre>
+     *
+     * <p><b>Request handling by state:</b>
+     * <ul>
+     *   <li>CONNECTING: Requests queued until connection established</li>
+     *   <li>CONNECTED: Normal operation - requests sent immediately</li>
+     *   <li>RECONNECTING: Requests rejected with RpcException (connection unavailable)</li>
+     *   <li>CLOSED: Requests rejected with RpcException (provider closed)</li>
+     * </ul>
+     */
+    public enum ConnectionState {
+        /** Initial connection in progress. */
+        CONNECTING,
+        /** WebSocket is connected and ready for requests. */
+        CONNECTED,
+        /** Connection lost, reconnect in progress. Requests are rejected. */
+        RECONNECTING,
+        /** Provider is permanently closed. No more requests accepted. */
+        CLOSED
+    }
+
+    /**
+     * Current connection state. All state transitions must use atomic compareAndSet
+     * to ensure thread-safe state machine transitions.
+     */
+    private final AtomicReference<ConnectionState> connectionState =
+            new AtomicReference<>(ConnectionState.CONNECTING);
 
     // ==================== Configuration ====================
-    private static final int DEFAULT_MAX_PENDING_REQUESTS = 65536; // Power of 2
+    /**
+     * Default maximum pending requests before backpressure triggers.
+     * <p>
+     * Value is 65536 (2^16) because:
+     * <ul>
+     *   <li>Must be power of 2 for efficient slot indexing via bitwise AND mask</li>
+     *   <li>Large enough for high-throughput scenarios (65K concurrent requests)</li>
+     *   <li>Matches typical WebSocket connection capacity before server-side limits</li>
+     * </ul>
+     */
+    private static final int DEFAULT_MAX_PENDING_REQUESTS = 65536;
+
+    /**
+     * Default timeout for requests in milliseconds.
+     * <p>
+     * 60 seconds provides sufficient time for:
+     * <ul>
+     *   <li>Slow RPC endpoints under load</li>
+     *   <li>Network latency variations</li>
+     *   <li>Block finality waiting (some methods wait for confirmations)</li>
+     * </ul>
+     */
     private static final long DEFAULT_TIMEOUT_MS = 60_000;
-    private static final long RESPONSE_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB
+
+    /**
+     * Ring buffer saturation threshold (10% remaining capacity).
+     * <p>
+     * When remaining capacity drops below this fraction of total buffer size,
+     * the metrics callback is invoked to warn of impending backpressure.
+     * <p>
+     * 10% threshold chosen because:
+     * <ul>
+     *   <li>Early warning before hitting 0% (backpressure limit)</li>
+     *   <li>Small enough to avoid false alarms during normal bursts</li>
+     *   <li>Allows time for producers to slow down gracefully</li>
+     * </ul>
+     */
+    private static final double RING_BUFFER_SATURATION_THRESHOLD = 0.1;
 
     // Instance configuration (from WebSocketConfig or defaults)
     private final int maxPendingRequests;
-    private final int slotMask;
     private final Duration defaultRequestTimeout;
+    // Note: slotMask was removed - it was a remnant of slot-based indexing that is no longer used
+    // since pending request tracking switched to ConcurrentHashMap.
 
     // ==================== Connection State ====================
     private final String url;
     private final URI uri;
     private final EventLoopGroup group;
-    private Channel channel;
-    private final WebSocketClientHandler handler;
+    /** True if we created the EventLoopGroup internally and are responsible for shutting it down. */
+    private final boolean ownsEventLoopGroup;
+    /**
+     * The active WebSocket channel. Volatile because it is accessed from multiple threads:
+     * caller threads (sendAsync), Netty I/O thread, and reconnect scheduler.
+     */
+    private volatile Channel channel;
     private final AtomicBoolean connected = new AtomicBoolean(false);
     private final AtomicBoolean closed = new AtomicBoolean(false);
 
+    // ==================== Reconnect Configuration ====================
+    /** Maximum number of reconnect attempts before giving up. */
+    private static final int MAX_RECONNECT_ATTEMPTS = 10;
+    /** Maximum delay between reconnect attempts (32 seconds). */
+    private static final long MAX_RECONNECT_DELAY_MS = 32_000;
+    /** Current reconnect attempt counter. Reset to 0 on successful connection. */
+    private final AtomicLong reconnectAttempts = new AtomicLong(0);
+
     // ==================== Request Tracking ====================
-    private final CompletableFuture<JsonRpcResponse>[] slots;
+    /**
+     * Thread-safe map for tracking pending requests by ID.
+     * <p>
+     * Uses ConcurrentHashMap keyed by request ID instead of slot-based array to:
+     * <ul>
+     *   <li>Eliminate TOCTOU race conditions in slot allocation</li>
+     *   <li>Prevent response/request ID mismatches under high concurrency</li>
+     *   <li>Allow atomic put-if-absent semantics for thread-safe allocation</li>
+     * </ul>
+     */
+    private final ConcurrentHashMap<Long, CompletableFuture<JsonRpcResponse>> pendingRequests = new ConcurrentHashMap<>();
 
     // ==================== Subscriptions ====================
     private final ConcurrentHashMap<String, Consumer<JsonRpcResponse>> subscriptions = new ConcurrentHashMap<>();
@@ -94,7 +203,13 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * Callbacks are dispatched to this executor to avoid blocking the Netty I/O
      * thread.
      */
-    private volatile Executor subscriptionExecutor = Executors.newVirtualThreadPerTaskExecutor();
+    private volatile Executor subscriptionExecutor;
+
+    /**
+     * Tracks whether we own the subscription executor (created internally) and
+     * are responsible for shutting it down. User-provided executors are NOT owned.
+     */
+    private volatile boolean ownsSubscriptionExecutor = true;
 
     /**
      * Sets a custom executor for subscription callbacks.
@@ -102,8 +217,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * <p>
      * By default, subscription callbacks run on virtual threads to avoid blocking
      * the Netty I/O thread. Use this method to provide a custom executor if you
-     * need
-     * specific threading behavior (e.g., a bounded pool, or the same thread as
+     * need specific threading behavior (e.g., a bounded pool, or the same thread as
      * Netty).
      *
      * <p>
@@ -111,12 +225,18 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * Netty I/O thread (or any single thread), ensure callbacks complete quickly.
      * Blocking operations will stall all WebSocket I/O.
      *
+     * <p>
+     * <strong>Lifecycle:</strong> User-provided executors are NOT closed when
+     * {@link #close()} is called. The caller is responsible for managing the
+     * lifecycle of custom executors.
+     *
      * @param executor the executor to use for subscription callbacks (must not be
      *                 null)
      * @throws NullPointerException if executor is null
      */
     public void setSubscriptionExecutor(Executor executor) {
         this.subscriptionExecutor = Objects.requireNonNull(executor, "executor");
+        this.ownsSubscriptionExecutor = false; // User-provided - caller manages lifecycle
     }
 
     // ==================== Metrics ====================
@@ -136,9 +256,61 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         this.metrics = Objects.requireNonNull(metrics, "metrics");
     }
 
-    private final LongAdder totalRequests = new LongAdder();
-    private final LongAdder totalResponses = new LongAdder();
-    private final LongAdder totalErrors = new LongAdder();
+    /**
+     * Counter for orphaned responses (responses received with no matching pending request).
+     * Orphaned responses occur when:
+     * <ul>
+     *   <li>Response ID cannot be parsed</li>
+     *   <li>Request timed out before response arrived</li>
+     *   <li>Request was cancelled</li>
+     * </ul>
+     * <p>
+     * Orphaned responses are logged at ERROR level for debugging. This counter provides
+     * visibility into how often this occurs. High counts may indicate network issues,
+     * server-side delays, or timeout values that are too aggressive.
+     *
+     * @see #getOrphanedResponseCount()
+     */
+    private final LongAdder orphanedResponses = new LongAdder();
+
+    /**
+     * Returns the total count of orphaned responses received since this provider was created.
+     *
+     * <p>Orphaned responses are responses received with no matching pending request.
+     * This typically occurs when:
+     * <ul>
+     *   <li>The response ID cannot be parsed</li>
+     *   <li>The request timed out before the response arrived</li>
+     *   <li>The request was cancelled</li>
+     * </ul>
+     *
+     * <p>This metric is useful for monitoring connection health. High orphan counts
+     * may indicate network issues, server-side delays, or timeout values that are
+     * too aggressive.
+     *
+     * @return the total count of orphaned responses
+     * @since 0.5.0
+     */
+    public long getOrphanedResponseCount() {
+        return orphanedResponses.sum();
+    }
+
+    /**
+     * Returns the current connection state.
+     *
+     * <p>This method is useful for monitoring and diagnostics. Clients can use
+     * this to check whether the provider is connected, reconnecting, or closed
+     * before attempting operations.
+     *
+     * <p><b>Thread safety:</b> This method returns a snapshot of the current state.
+     * The state may change immediately after this method returns.
+     *
+     * @return the current {@link ConnectionState}
+     * @since 0.5.0
+     */
+    public ConnectionState getConnectionState() {
+        return connectionState.get();
+    }
 
     // Lock-free ID generator
     private final AtomicLong idGenerator = new AtomicLong(1);
@@ -157,28 +329,27 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private static final byte[] TRUE_BYTES = "true".getBytes(StandardCharsets.UTF_8);
     private static final byte[] FALSE_BYTES = "false".getBytes(StandardCharsets.UTF_8);
 
-    @SuppressWarnings("unchecked")
     private WebSocketProvider(WebSocketConfig config) {
         this.url = config.url();
         this.uri = URI.create(config.url());
         this.maxPendingRequests = config.maxPendingRequests();
-        this.slotMask = maxPendingRequests - 1;
         this.defaultRequestTimeout = config.defaultRequestTimeout();
-        this.slots = new CompletableFuture[maxPendingRequests];
 
-        this.handler = new WebSocketClientHandler(
-                WebSocketClientHandshakerFactory.newHandshaker(
-                        uri, WebSocketVersion.V13, null, false, new DefaultHttpHeaders()));
+        // Initialize default subscription executor (owned by this provider)
+        this.subscriptionExecutor = Executors.newVirtualThreadPerTaskExecutor();
+        this.ownsSubscriptionExecutor = true;
 
         // Use provided EventLoopGroup or create default
         if (config.eventLoopGroup() != null) {
             this.group = config.eventLoopGroup();
+            this.ownsEventLoopGroup = false; // External group - caller is responsible for lifecycle
         } else {
             this.group = new NioEventLoopGroup(config.ioThreads(), r -> {
                 Thread t = new Thread(r, "brane-netty-io");
                 t.setDaemon(true);
                 return t;
             });
+            this.ownsEventLoopGroup = true; // Internal group - we manage lifecycle
         }
 
         // Configurable wait strategy
@@ -210,7 +381,6 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     /**
      * Backward-compatible constructor using defaults.
      */
-    @SuppressWarnings("unchecked")
     private WebSocketProvider(String url) {
         this(WebSocketConfig.withDefaults(url));
     }
@@ -264,28 +434,6 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 sslContext = null;
             }
 
-            Bootstrap b = new Bootstrap();
-            b.group(group)
-                    .channel(NioSocketChannel.class)
-                    .option(ChannelOption.TCP_NODELAY, true)
-                    .option(ChannelOption.SO_KEEPALIVE, true)
-                    .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
-                    .option(ChannelOption.WRITE_BUFFER_WATER_MARK,
-                            new WriteBufferWaterMark(8 * 1024, 32 * 1024))
-                    .handler(new ChannelInitializer<SocketChannel>() {
-                        @Override
-                        protected void initChannel(SocketChannel ch) {
-                            ChannelPipeline p = ch.pipeline();
-                            if (sslContext != null) {
-                                p.addLast(sslContext.newHandler(ch.alloc(), uri.getHost(),
-                                        uri.getPort() == -1 ? 443 : uri.getPort()));
-                            }
-                            p.addLast(new HttpClientCodec());
-                            p.addLast(new HttpObjectAggregator(65536));
-                            p.addLast(handler);
-                        }
-                    });
-
             int port = uri.getPort();
             if (port == -1) {
                 port = "wss".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
@@ -295,11 +443,43 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             long delay = 100;
             Exception lastError = null;
 
-            while (attempt < 5 && !closed.get()) {
+            while (attempt < MAX_RECONNECT_ATTEMPTS && !closed.get()) {
+                // Create a fresh handler for each connection attempt.
+                // This is critical for thread safety: the WebSocketClientHandshaker tracks
+                // handshake state internally, and the handshakeFuture is a ChannelPromise
+                // tied to a specific channel. Reusing the same handler across reconnections
+                // would leave the handshaker in an inconsistent state.
+                final WebSocketClientHandler connectionHandler = new WebSocketClientHandler(
+                        WebSocketClientHandshakerFactory.newHandshaker(
+                                uri, WebSocketVersion.V13, null, false, new DefaultHttpHeaders()));
+
+                Bootstrap b = new Bootstrap();
+                b.group(group)
+                        .channel(NioSocketChannel.class)
+                        .option(ChannelOption.TCP_NODELAY, true)
+                        .option(ChannelOption.SO_KEEPALIVE, true)
+                        .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
+                        .option(ChannelOption.WRITE_BUFFER_WATER_MARK,
+                                new WriteBufferWaterMark(8 * 1024, 32 * 1024))
+                        .handler(new ChannelInitializer<SocketChannel>() {
+                            @Override
+                            protected void initChannel(SocketChannel ch) {
+                                ChannelPipeline p = ch.pipeline();
+                                if (sslContext != null) {
+                                    p.addLast(sslContext.newHandler(ch.alloc(), uri.getHost(),
+                                            uri.getPort() == -1 ? 443 : uri.getPort()));
+                                }
+                                p.addLast(new HttpClientCodec());
+                                p.addLast(new HttpObjectAggregator(65536));
+                                p.addLast(connectionHandler);
+                            }
+                        });
+
                 try {
                     this.channel = b.connect(uri.getHost(), port).sync().channel();
-                    handler.handshakeFuture().sync();
+                    connectionHandler.handshakeFuture().sync();
                     connected.set(true);
+                    connectionState.set(ConnectionState.CONNECTED);
                     return;
                 } catch (Exception e) {
                     lastError = e;
@@ -311,7 +491,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                         Thread.sleep(delay);
                     } catch (InterruptedException ie) {
                         Thread.currentThread().interrupt();
-                        break;
+                        throw new RuntimeException("Connection attempt interrupted", ie);
                     }
                     delay = Math.min(delay * 2, 5000);
                     attempt++;
@@ -320,52 +500,6 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             throw new RuntimeException("Failed to connect to " + uri + " after " + attempt + " attempts", lastError);
         } catch (Exception e) {
             throw new RuntimeException("Failed to connect to " + uri, e);
-        }
-    }
-
-    /**
-     * Parse JSON-RPC response from ByteBuf using Jackson Streaming API.
-     * Visible for testing.
-     */
-    static JsonRpcResponse parseResponseFromByteBuf(ByteBuf buf) {
-        try (ByteBufInputStream in = new ByteBufInputStream(buf);
-                JsonParser parser = mapper.getFactory().createParser((java.io.InputStream) in)) {
-
-            String jsonrpc = null;
-            Object id = null;
-            Object result = null;
-            JsonRpcError error = null;
-
-            if (parser.nextToken() != JsonToken.START_OBJECT) {
-                return new JsonRpcResponse("2.0", null, null, null);
-            }
-
-            while (parser.nextToken() != JsonToken.END_OBJECT) {
-                String fieldName = parser.currentName();
-                parser.nextToken();
-
-                if ("jsonrpc".equals(fieldName)) {
-                    jsonrpc = parser.getText();
-                } else if ("id".equals(fieldName)) {
-                    if (parser.currentToken() == JsonToken.VALUE_NUMBER_INT) {
-                        id = String.valueOf(parser.getLongValue());
-                    } else if (parser.currentToken() == JsonToken.VALUE_STRING) {
-                        id = parser.getText();
-                    } else {
-                        id = null;
-                    }
-                } else if ("result".equals(fieldName)) {
-                    result = mapper.readValue(parser, Object.class);
-                } else if ("error".equals(fieldName)) {
-                    error = mapper.readValue(parser, JsonRpcError.class);
-                } else {
-                    parser.skipChildren();
-                }
-            }
-            return new JsonRpcResponse(jsonrpc, result, error, (String) id);
-        } catch (Exception e) {
-            return new JsonRpcResponse("2.0", null, new JsonRpcError(-32700, "Parse error: " + e.getMessage(), null),
-                    null);
         }
     }
 
@@ -394,6 +528,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         @Override
         public void channelInactive(ChannelHandlerContext ctx) {
             if (!closed.get()) {
+                // Transition to RECONNECTING state - requests will be rejected until reconnected
+                connectionState.set(ConnectionState.RECONNECTING);
                 log.warn("Connection lost, triggering reconnect");
                 reconnect();
             }
@@ -403,30 +539,29 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         public void channelRead0(ChannelHandlerContext ctx, Object msg) throws Exception {
             Channel ch = ctx.channel();
             if (!handshaker.isHandshakeComplete()) {
-                try {
-                    handshaker.finishHandshake(ch, (FullHttpResponse) msg);
-                    handshakeFuture.setSuccess();
-                } catch (WebSocketHandshakeException e) {
-                    handshakeFuture.setFailure(e);
+                if (msg instanceof FullHttpResponse response) {
+                    try {
+                        handshaker.finishHandshake(ch, response);
+                        handshakeFuture.setSuccess();
+                    } catch (WebSocketHandshakeException e) {
+                        handshakeFuture.setFailure(e);
+                    }
                 }
                 return;
             }
 
-            if (msg instanceof FullHttpResponse) {
-                FullHttpResponse response = (FullHttpResponse) msg;
+            if (msg instanceof FullHttpResponse response) {
                 throw new IllegalStateException(
                         "Unexpected FullHttpResponse (status=" + response.status() + ")");
             }
 
-            if (msg instanceof WebSocketFrame) {
-                WebSocketFrame frame = (WebSocketFrame) msg;
-                if (frame instanceof TextWebSocketFrame) {
-                    TextWebSocketFrame textFrame = (TextWebSocketFrame) frame;
+            if (msg instanceof WebSocketFrame frame) {
+                if (frame instanceof TextWebSocketFrame textFrame) {
                     ByteBuf content = textFrame.content();
                     try {
-                        try (JsonParser parser = mapper.getFactory()
+                        try (JsonParser parser = MAPPER.getFactory()
                                 .createParser((java.io.InputStream) new ByteBufInputStream(content))) {
-                            JsonNode node = mapper.readTree(parser);
+                            JsonNode node = MAPPER.readTree(parser);
 
                             if (node.has("method") && node.get("method").asText().endsWith("_subscription")) {
                                 handleNotificationNode(node);
@@ -444,17 +579,39 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         }
 
         private void handleNotificationNode(JsonNode node) {
-            JsonNode params = node.get("params");
-            if (params != null) {
-                String subId = params.get("subscription").asText();
+            try {
+                JsonNode params = node.get("params");
+                if (params == null) {
+                    log.warn("Malformed subscription notification: missing 'params' field");
+                    return;
+                }
+
+                JsonNode subscriptionNode = params.get("subscription");
+                if (subscriptionNode == null || subscriptionNode.isNull()) {
+                    log.warn("Malformed subscription notification: missing 'subscription' field in params");
+                    return;
+                }
+
+                String subId = subscriptionNode.asText();
                 Consumer<JsonRpcResponse> listener = subscriptions.get(subId);
                 if (listener != null) {
                     JsonNode resultNode = params.get("result");
-                    Object result = mapper.convertValue(resultNode, Object.class);
+                    Object result = MAPPER.convertValue(resultNode, Object.class);
                     JsonRpcResponse response = new JsonRpcResponse("2.0", result, null, null);
                     // Dispatch to subscription executor to avoid blocking Netty I/O thread
-                    subscriptionExecutor.execute(() -> listener.accept(response));
+                    subscriptionExecutor.execute(() -> {
+                        try {
+                            listener.accept(response);
+                        } catch (Exception callbackEx) {
+                            log.error("Subscription callback error for subscription {}", subId, callbackEx);
+                            metrics.onSubscriptionCallbackError(subId, callbackEx);
+                        }
+                    });
                 }
+            } catch (Exception e) {
+                // Never let exceptions escape to Netty's exceptionCaught handler,
+                // as that would disconnect the WebSocket and lose all in-flight requests
+                log.error("Error handling subscription notification", e);
             }
         }
 
@@ -469,27 +626,43 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 try {
                     id = Long.parseLong(idNode.asText());
                 } catch (Exception e) {
-                    log.warn("Could not parse text response ID '{}' as long", idNode.asText(), e);
+                    log.error("Orphaned response: could not parse ID '{}' as long - caller future will never complete",
+                            idNode.asText(), e);
+                    orphanedResponses.increment();
+                    metrics.onOrphanedResponse("unparseable ID: " + idNode.asText());
+                    return;
                 }
             }
 
-            if (id != -1) {
-                int slot = (int) (id & slotMask);
-                CompletableFuture<JsonRpcResponse> future = slots[slot];
-                if (future != null) {
-                    slots[slot] = null;
-                    JsonNode errorNode = node.get("error");
-                    JsonRpcError error = null;
-                    if (errorNode != null && !errorNode.isNull()) {
-                        error = mapper.treeToValue(errorNode, JsonRpcError.class);
-                    }
-                    Object result = null;
-                    if (node.has("result")) {
-                        result = mapper.treeToValue(node.get("result"), Object.class);
-                    }
-                    future.complete(new JsonRpcResponse("2.0", result, error, String.valueOf(id)));
-                }
+            if (id == -1) {
+                // ID node exists but is neither number nor textual (e.g., null, object, array)
+                log.error("Orphaned response: ID node has unexpected type '{}' - caller future will never complete",
+                        idNode.getNodeType());
+                orphanedResponses.increment();
+                metrics.onOrphanedResponse("unexpected ID type: " + idNode.getNodeType());
+                return;
             }
+
+            // Atomically remove the pending request to prevent race conditions
+            CompletableFuture<JsonRpcResponse> future = pendingRequests.remove(id);
+            if (future == null) {
+                // Response received but no pending request found - may have timed out or been cancelled
+                log.error("Orphaned response: no pending request found for ID {} - response dropped", id);
+                orphanedResponses.increment();
+                metrics.onOrphanedResponse("no pending request for ID: " + id);
+                return;
+            }
+
+            JsonNode errorNode = node.get("error");
+            JsonRpcError error = null;
+            if (errorNode != null && !errorNode.isNull()) {
+                error = MAPPER.treeToValue(errorNode, JsonRpcError.class);
+            }
+            Object result = null;
+            if (node.has("result")) {
+                result = MAPPER.treeToValue(node.get("result"), Object.class);
+            }
+            future.complete(new JsonRpcResponse("2.0", result, error, String.valueOf(id)));
         }
 
         @Override
@@ -531,23 +704,36 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     }
 
     /**
-     * Allocates a slot for a new request with backpressure handling.
-     * 
+     * Allocates a pending request slot for a new request with backpressure handling.
+     * <p>
+     * Uses atomic putIfAbsent to ensure thread-safety without TOCTOU race conditions.
+     * Each request ID is unique, so there are no slot collisions.
+     *
      * @param id the request ID
      * @return the allocated future, or a failed future if backpressure is triggered
      */
     private CompletableFuture<JsonRpcResponse> allocateSlot(long id) {
-        int slot = (int) (id & slotMask);
-        CompletableFuture<JsonRpcResponse> existing = slots[slot];
-        if (existing != null && !existing.isDone()) {
-            metrics.onBackpressure();
+        // Check pending request count for backpressure
+        if (pendingRequests.size() >= maxPendingRequests) {
+            metrics.onBackpressure(pendingRequests.size(), maxPendingRequests);
             return CompletableFuture.failedFuture(new io.brane.core.error.RpcException(
                     -32000,
-                    "Too many pending requests (" + maxPendingRequests + " limit reached, slot " + slot + " in use)",
+                    "Too many pending requests (" + maxPendingRequests + " limit reached)",
                     null));
         }
+
         CompletableFuture<JsonRpcResponse> future = new CompletableFuture<>();
-        slots[slot] = future;
+        // Atomic put - if another thread somehow used the same ID, this would return non-null
+        // In practice, IDs are monotonically increasing, so this won't happen
+        CompletableFuture<JsonRpcResponse> existing = pendingRequests.putIfAbsent(id, future);
+        if (existing != null) {
+            // Should never happen with monotonic IDs, but handle defensively
+            metrics.onBackpressure(pendingRequests.size(), maxPendingRequests);
+            return CompletableFuture.failedFuture(new io.brane.core.error.RpcException(
+                    -32000,
+                    "Request ID " + id + " already in use (internal error)",
+                    null));
+        }
         return future;
     }
 
@@ -590,8 +776,18 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      *         exceptionally on timeout
      */
     public CompletableFuture<JsonRpcResponse> sendAsync(String method, List<?> params, Duration timeout) {
+        // Check connection state - reject requests during RECONNECTING or CLOSED
+        ConnectionState state = connectionState.get();
+        if (state == ConnectionState.CLOSED) {
+            return CompletableFuture.failedFuture(new RpcException(
+                    -32000, "WebSocketProvider is closed", null));
+        }
+        if (state == ConnectionState.RECONNECTING) {
+            return CompletableFuture.failedFuture(new RpcException(
+                    -32000, "WebSocket is reconnecting - request rejected to prevent loss", null));
+        }
+
         long id = idGenerator.getAndIncrement();
-        int slot = (int) (id & slotMask);
 
         CompletableFuture<JsonRpcResponse> future = allocateSlot(id);
         if (future.isCompletedExceptionally()) {
@@ -604,8 +800,9 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             if (timeout != null && timeout.toMillis() > 0) {
                 ch.eventLoop().schedule(() -> {
                     if (!future.isDone()) {
-                        slots[slot] = null; // Clear slot
-                        metrics.onRequestTimeout(method);
+                        // Remove from pending requests on timeout
+                        pendingRequests.remove(id, future);
+                        metrics.onRequestTimeout(method, id);
                         future.completeExceptionally(new io.brane.core.error.RpcException(
                                 -32000,
                                 "Request timed out after " + timeout.toMillis() + "ms (method: " + method + ")",
@@ -650,7 +847,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * <p>
      * This method is optimized for high-throughput scenarios where many requests
      * are sent in rapid succession. Requests are batched and flushed together,
-     * reducing syscall overhead.
+     * reducing syscall overhead. Uses the configured default request timeout.
      * </p>
      *
      * <p>
@@ -665,21 +862,66 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * @param method the JSON-RPC method name
      * @param params the method parameters, or null/empty for no parameters
      * @return a CompletableFuture that completes with the JSON-RPC response
+     * @see #sendAsyncBatch(String, List, Duration) for custom timeout support
      */
     public CompletableFuture<JsonRpcResponse> sendAsyncBatch(String method, List<?> params) {
+        return sendAsyncBatch(method, params, defaultRequestTimeout);
+    }
+
+    /**
+     * Sends an asynchronous JSON-RPC request optimized for high-throughput batching,
+     * with a custom timeout.
+     *
+     * <p>
+     * Same as {@link #sendAsyncBatch(String, List)} but allows specifying a custom timeout
+     * for this request. The timeout applies to the individual request, not the batch write.
+     * </p>
+     *
+     * @param method  the JSON-RPC method name
+     * @param params  the method parameters, or null/empty for no parameters
+     * @param timeout the timeout duration for this request; if null, no timeout is applied
+     * @return a CompletableFuture that completes with the JSON-RPC response or
+     *         exceptionally on timeout
+     */
+    public CompletableFuture<JsonRpcResponse> sendAsyncBatch(String method, List<?> params, Duration timeout) {
+        // Check connection state - reject requests during RECONNECTING or CLOSED
+        ConnectionState state = connectionState.get();
+        if (state == ConnectionState.CLOSED) {
+            return CompletableFuture.failedFuture(new RpcException(
+                    -32000, "WebSocketProvider is closed", null));
+        }
+        if (state == ConnectionState.RECONNECTING) {
+            return CompletableFuture.failedFuture(new RpcException(
+                    -32000, "WebSocket is reconnecting - request rejected to prevent loss", null));
+        }
+
         long id = idGenerator.getAndIncrement();
-        int slot = (int) (id & slotMask);
 
         CompletableFuture<JsonRpcResponse> future = allocateSlot(id);
         if (future.isCompletedExceptionally()) {
             return future; // Backpressure triggered
         }
 
-        // Check ring buffer saturation before publishing (metrics hook for early
-        // warning)
+        // Schedule timeout if specified
+        Channel ch = this.channel;
+        if (timeout != null && timeout.toMillis() > 0 && ch != null && ch.isActive()) {
+            ch.eventLoop().schedule(() -> {
+                if (!future.isDone()) {
+                    // Remove from pending requests on timeout
+                    pendingRequests.remove(id, future);
+                    metrics.onRequestTimeout(method, id);
+                    future.completeExceptionally(new RpcException(
+                            -32000,
+                            "Request timed out after " + timeout.toMillis() + "ms (method: " + method + ")",
+                            null));
+                }
+            }, timeout.toMillis(), TimeUnit.MILLISECONDS);
+        }
+
+        // Check ring buffer saturation before publishing (metrics hook for early warning)
         int bufferSize = ringBuffer.getBufferSize();
         long remainingCapacity = ringBuffer.remainingCapacity();
-        if (remainingCapacity < bufferSize * 0.1) { // 10% threshold
+        if (remainingCapacity < bufferSize * RING_BUFFER_SATURATION_THRESHOLD) {
             metrics.onRingBufferSaturation(remainingCapacity, bufferSize);
         }
 
@@ -775,11 +1017,25 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * This method:
      * </p>
      * <ul>
+     * <li>Fails any pending requests with an exception</li>
      * <li>Shuts down the Disruptor</li>
      * <li>Closes the WebSocket channel</li>
-     * <li>Shuts down the Netty event loop group</li>
-     * <li>Fails any pending requests with an exception</li>
+     * <li>Shuts down the subscription executor (only if created internally)</li>
+     * <li>Shuts down the Netty event loop group (only if created internally)</li>
      * </ul>
+     *
+     * <p>
+     * <b>Resource ownership:</b> Externally-provided resources are NOT closed:
+     * </p>
+     * <ul>
+     * <li>If an {@code EventLoopGroup} was provided via {@link WebSocketConfig#eventLoopGroup()},
+     *     it will NOT be shut down.</li>
+     * <li>If a custom executor was set via {@link #setSubscriptionExecutor(Executor)},
+     *     it will NOT be shut down.</li>
+     * </ul>
+     * <p>
+     * The caller is responsible for managing the lifecycle of externally-provided resources.
+     * </p>
      *
      * <p>
      * After calling close(), this provider cannot be reused.
@@ -787,39 +1043,110 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      */
     @Override
     public void close() {
-        closed.set(true);
-        disruptor.shutdown();
-        if (channel != null) {
-            channel.close();
+        if (!closed.compareAndSet(false, true)) {
+            return; // Already closed
         }
-        group.shutdownGracefully();
+
+        // Transition to CLOSED state - all new requests will be rejected
+        connectionState.set(ConnectionState.CLOSED);
+
+        // Fail all pending requests before shutting down
+        RpcException shutdownException = new RpcException(-32000, "WebSocketProvider is shutting down", null);
+        failAllPending(shutdownException);
+
+        // Shutdown Disruptor - halt() stops immediately, shutdown() waits for drain
+        // Use halt() since we've already failed all pending requests
+        try {
+            disruptor.halt();
+        } catch (Exception e) {
+            log.warn("Error halting Disruptor", e);
+        }
+
+        // Close the WebSocket channel
+        if (channel != null) {
+            try {
+                channel.close().sync();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Interrupted while closing channel", e);
+            } catch (Exception e) {
+                log.warn("Error closing channel", e);
+            }
+        }
+
+        // Shutdown the subscription executor only if we created it internally.
+        // User-provided executors are NOT closed - the caller manages their lifecycle.
+        if (ownsSubscriptionExecutor && subscriptionExecutor instanceof java.util.concurrent.ExecutorService es) {
+            try {
+                es.shutdown();
+                if (!es.awaitTermination(5, TimeUnit.SECONDS)) {
+                    es.shutdownNow();
+                    log.warn("Subscription executor did not terminate gracefully");
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                es.shutdownNow();
+                log.warn("Interrupted while shutting down subscription executor", e);
+            } catch (Exception e) {
+                log.warn("Error shutting down subscription executor", e);
+            }
+        }
+
+        // Only shutdown the EventLoopGroup if we created it internally
+        if (ownsEventLoopGroup) {
+            try {
+                group.shutdownGracefully(0, 5, TimeUnit.SECONDS).sync();
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                log.warn("Interrupted while shutting down EventLoopGroup", e);
+            } catch (Exception e) {
+                log.warn("Error shutting down EventLoopGroup", e);
+            }
+        }
     }
 
     private void reconnect() {
-        if (!closed.get()) {
-            group.schedule(() -> {
-                if (!connected.get() && !closed.get()) {
-                    log.info("Attempting reconnect to {}", uri);
-                    try {
-                        connect();
-                    } catch (Exception e) {
-                        log.error("Reconnect failed", e);
-                        reconnect();
-                    }
-                }
-            }, 1, TimeUnit.SECONDS);
+        if (closed.get() || connectionState.get() == ConnectionState.CLOSED) {
+            return;
         }
+
+        long attempt = reconnectAttempts.incrementAndGet();
+        if (attempt > MAX_RECONNECT_ATTEMPTS) {
+            log.error("Max reconnect attempts ({}) exceeded, giving up on {}", MAX_RECONNECT_ATTEMPTS, uri);
+            closed.set(true);
+            connectionState.set(ConnectionState.CLOSED);
+            failAllPending(new RpcException(-32000,
+                "WebSocket connection permanently failed after " + MAX_RECONNECT_ATTEMPTS + " reconnect attempts", null));
+            return;
+        }
+
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s (capped)
+        long delayMs = Math.min(1000L * (1L << (attempt - 1)), MAX_RECONNECT_DELAY_MS);
+        log.info("Scheduling reconnect attempt {}/{} to {} in {}ms", attempt, MAX_RECONNECT_ATTEMPTS, uri, delayMs);
+
+        group.schedule(() -> {
+            if (!connected.get() && connectionState.get() == ConnectionState.RECONNECTING) {
+                try {
+                    connect();
+                    // Reset counter on successful connection
+                    reconnectAttempts.set(0);
+                    log.info("Reconnected successfully to {}", uri);
+                } catch (Exception e) {
+                    log.error("Reconnect attempt {} failed: {}", attempt, e.getMessage());
+                    reconnect();
+                }
+            }
+        }, delayMs, TimeUnit.MILLISECONDS);
     }
 
     private void failAllPending(RpcException e) {
         connected.set(false);
-        for (int i = 0; i < slots.length; i++) {
-            CompletableFuture<JsonRpcResponse> f = slots[i];
-            if (f != null) {
-                slots[i] = null;
-                f.completeExceptionally(e);
+        // Atomically remove and fail all pending requests
+        pendingRequests.forEach((id, future) -> {
+            if (pendingRequests.remove(id, future)) {
+                future.completeExceptionally(e);
             }
-        }
+        });
     }
 
     /**
@@ -851,10 +1178,9 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 ch.write(new TextWebSocketFrame(buffer));
             } catch (Exception e) {
                 buffer.release();
-                int slot = (int) (event.id & slotMask);
-                CompletableFuture<JsonRpcResponse> future = slots[slot];
+                // Atomically remove the pending request
+                CompletableFuture<JsonRpcResponse> future = pendingRequests.remove(event.id);
                 if (future != null) {
-                    slots[slot] = null;
                     future.completeExceptionally(e);
                 }
             }
@@ -865,17 +1191,26 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             }
         } else {
             // Channel not active - fail the request
-            int slot = (int) (event.id & slotMask);
-            CompletableFuture<JsonRpcResponse> future = slots[slot];
+            CompletableFuture<JsonRpcResponse> future = pendingRequests.remove(event.id);
             if (future != null) {
-                slots[slot] = null;
                 future.completeExceptionally(new RpcException(-1, "Channel not active", null));
             }
         }
+        // Clear event data to prevent stale references when Disruptor reuses this event object.
+        // This is important for memory hygiene: params may reference large objects that should
+        // be eligible for GC after the request is processed.
+        event.clear();
     }
 
     /**
      * Write a string with JSON escaping directly to ByteBuf.
+     * <p>
+     * Properly handles:
+     * <ul>
+     *   <li>ASCII characters (0x00-0x7F) - written as single bytes</li>
+     *   <li>Non-ASCII BMP characters (0x80-0xFFFF) - encoded as UTF-8</li>
+     *   <li>Supplementary characters (emoji, etc.) - detected via surrogate pairs and encoded as UTF-8</li>
+     * </ul>
      */
     private void writeEscapedString(ByteBuf buf, String s) {
         for (int i = 0; i < s.length(); i++) {
@@ -910,10 +1245,52 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                         buf.writeByte(HEX[(c >> 8) & 0xF]);
                         buf.writeByte(HEX[(c >> 4) & 0xF]);
                         buf.writeByte(HEX[c & 0xF]);
-                    } else {
+                    } else if (c < 128) {
+                        // ASCII - single byte
                         buf.writeByte(c);
+                    } else {
+                        // Non-ASCII: encode as UTF-8
+                        writeUtf8Char(buf, s, i);
+                        // If this was a surrogate pair, skip the low surrogate
+                        if (Character.isHighSurrogate(c) && i + 1 < s.length()
+                                && Character.isLowSurrogate(s.charAt(i + 1))) {
+                            i++;
+                        }
                     }
             }
+        }
+    }
+
+    /**
+     * Write a character (possibly a surrogate pair) as UTF-8 bytes.
+     */
+    private void writeUtf8Char(ByteBuf buf, String s, int index) {
+        char c = s.charAt(index);
+
+        // Handle surrogate pairs for supplementary characters (emoji, etc.)
+        if (Character.isHighSurrogate(c) && index + 1 < s.length()) {
+            char low = s.charAt(index + 1);
+            if (Character.isLowSurrogate(low)) {
+                // Valid surrogate pair - decode to codepoint and encode as 4-byte UTF-8
+                int codePoint = Character.toCodePoint(c, low);
+                buf.writeByte(0xF0 | (codePoint >> 18));
+                buf.writeByte(0x80 | ((codePoint >> 12) & 0x3F));
+                buf.writeByte(0x80 | ((codePoint >> 6) & 0x3F));
+                buf.writeByte(0x80 | (codePoint & 0x3F));
+                return;
+            }
+        }
+
+        // BMP character (or unpaired surrogate - encode as-is per CESU-8/WTF-8)
+        if (c < 0x800) {
+            // 2-byte UTF-8
+            buf.writeByte(0xC0 | (c >> 6));
+            buf.writeByte(0x80 | (c & 0x3F));
+        } else {
+            // 3-byte UTF-8
+            buf.writeByte(0xE0 | (c >> 12));
+            buf.writeByte(0x80 | ((c >> 6) & 0x3F));
+            buf.writeByte(0x80 | (c & 0x3F));
         }
     }
 
@@ -966,6 +1343,19 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         }
     }
 
+    /**
+     * Write an int value directly to ByteBuf without String allocation.
+     *
+     * <p><b>Allocation note:</b> The 10-byte digitBuf array is allocated on each call for
+     * values >= 10. We deliberately skip ThreadLocal optimization because:
+     * <ul>
+     *   <li>Array is small (10 bytes) and short-lived</li>
+     *   <li>Does not escape this method - eligible for JVM escape analysis</li>
+     *   <li>Modern JVMs (HotSpot C2) can perform scalar replacement, allocating on stack</li>
+     *   <li>ThreadLocal would add complexity and cleanup concerns (see Keccak256.cleanup())</li>
+     * </ul>
+     * If profiling shows GC pressure from this allocation, consider ThreadLocal buffers.
+     */
     private void writeInt(ByteBuf buf, int value) {
         if (value == Integer.MIN_VALUE) {
             buf.writeBytes("-2147483648".getBytes(StandardCharsets.UTF_8));
@@ -983,7 +1373,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             buf.writeByte('0' + value);
             return;
         }
-        // Max int is 10 digits
+        // Max int is 10 digits - small array eligible for escape analysis
         byte[] digitBuf = new byte[10];
         int pos = 9;
         while (value > 0) {
@@ -1014,6 +1404,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
     /**
      * Write a long value directly to ByteBuf without String allocation.
+     *
+     * <p><b>Allocation note:</b> Same rationale as {@link #writeInt} - the 20-byte digitBuf
+     * array is small, short-lived, and eligible for JVM escape analysis / scalar replacement.
+     * ThreadLocal optimization skipped due to complexity vs. minimal benefit trade-off.
      */
     private void writeLong(ByteBuf buf, long value) {
         if (value == Long.MIN_VALUE) {
@@ -1043,7 +1437,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             temp /= 10;
         }
 
-        // Write digits in reverse order using a small buffer
+        // Write digits in reverse order - small array eligible for escape analysis
         byte[] digitBuf = new byte[20]; // Max long is 19 digits
         int pos = digits - 1;
         while (value > 0) {
@@ -1054,18 +1448,40 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         buf.writeBytes(digitBuf, 0, digits);
     }
 
-    // Event class for Disruptor - pre-allocated and reused
+    /**
+     * Event class for LMAX Disruptor - instances are pre-allocated and reused.
+     *
+     * <p>The Disruptor maintains a fixed pool of RequestEvent objects in its ring buffer.
+     * Each event is reused across multiple requests, so {@link #clear()} must be called
+     * after processing to prevent stale data leakage and allow referenced objects to be
+     * garbage collected.
+     */
     public static class RequestEvent {
         String method;
         List<?> params;
         long id;
 
+        /**
+         * Populates this event with request data before publishing to the ring buffer.
+         *
+         * @param method the JSON-RPC method name
+         * @param params the method parameters
+         * @param id     the request ID used to correlate responses
+         */
         public void set(String method, List<?> params, long id) {
             this.method = method;
             this.params = params;
             this.id = id;
         }
 
+        /**
+         * Clears all fields to release references for garbage collection.
+         *
+         * <p>This method is called after event processing in {@code handleEvent()}
+         * to ensure that the params list and any objects it references can be GC'd.
+         * Without clearing, large parameter objects would remain referenced until
+         * the next request reuses this event slot.
+         */
         public void clear() {
             this.method = null;
             this.params = null;

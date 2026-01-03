@@ -1,15 +1,16 @@
 package io.brane.core.abi;
 
-import io.brane.core.error.AbiDecodingException;
-import io.brane.core.types.Address;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.math.BigInteger;
 import java.util.List;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.types.Address;
 
 class AbiDecoderTest {
 

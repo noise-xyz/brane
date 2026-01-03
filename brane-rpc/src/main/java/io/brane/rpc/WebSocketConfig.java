@@ -1,8 +1,13 @@
 package io.brane.rpc;
 
-import io.netty.channel.EventLoopGroup;
+import static io.brane.rpc.internal.RpcUtils.WS_SCHEMES;
+import static io.brane.rpc.internal.RpcUtils.validateUrl;
+
 import java.time.Duration;
 import java.util.Objects;
+
+import io.netty.channel.EventLoopGroup;
+import org.jspecify.annotations.Nullable;
 
 /**
  * Configuration for {@link WebSocketProvider}.
@@ -14,7 +19,7 @@ import java.util.Objects;
  *
  * <p>
  * <strong>Usage:</strong>
- * 
+ *
  * <pre>{@code
  * WebSocketConfig config = WebSocketConfig.builder("wss://eth.example.com")
  *         .maxPendingRequests(32768)
@@ -54,7 +59,7 @@ public record WebSocketConfig(
         Duration defaultRequestTimeout,
         Duration connectTimeout,
         int ioThreads,
-        EventLoopGroup eventLoopGroup) {
+        @Nullable EventLoopGroup eventLoopGroup) {
 
     /**
      * Disruptor wait strategy types.
@@ -81,10 +86,30 @@ public record WebSocketConfig(
     private static final int DEFAULT_IO_THREADS = 1;
 
     /**
+     * Maximum power of 2 that fits in a signed 32-bit int: 2^30 = 1,073,741,824.
+     */
+    private static final int MAX_POWER_OF_2 = 1 << 30;
+
+    /**
+     * Returns the next power of 2 greater than or equal to the given value.
+     *
+     * @throws IllegalArgumentException if value > 2^30 (would overflow)
+     */
+    private static int nextPowerOf2(int value) {
+        if (value <= 0) return 1;
+        if (value > MAX_POWER_OF_2) {
+            throw new IllegalArgumentException(
+                    "value " + value + " exceeds maximum power of 2 (" + MAX_POWER_OF_2 + ")");
+        }
+        int highestBit = Integer.highestOneBit(value);
+        return (value == highestBit) ? value : highestBit << 1;
+    }
+
+    /**
      * Compact constructor with validation and defaults.
      */
     public WebSocketConfig {
-        Objects.requireNonNull(url, "url");
+        validateUrl(url, WS_SCHEMES);
 
         // Apply defaults for zero/null values
         if (maxPendingRequests <= 0)
@@ -103,11 +128,13 @@ public record WebSocketConfig(
         // Validate power of 2 constraints
         if ((maxPendingRequests & (maxPendingRequests - 1)) != 0) {
             throw new IllegalArgumentException(
-                    "maxPendingRequests must be a power of 2, got: " + maxPendingRequests);
+                    "maxPendingRequests must be a power of 2, got: " + maxPendingRequests
+                            + ", try: " + nextPowerOf2(maxPendingRequests));
         }
         if ((ringBufferSize & (ringBufferSize - 1)) != 0) {
             throw new IllegalArgumentException(
-                    "ringBufferSize must be a power of 2, got: " + ringBufferSize);
+                    "ringBufferSize must be a power of 2, got: " + ringBufferSize
+                            + ", try: " + nextPowerOf2(ringBufferSize));
         }
     }
 

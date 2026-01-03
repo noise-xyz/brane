@@ -1,10 +1,10 @@
 package io.brane.core.util;
 
+import java.util.Objects;
+
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.primitives.Hex;
-
-import java.util.Objects;
 
 /**
  * Utility class for creating event topics from typed values.

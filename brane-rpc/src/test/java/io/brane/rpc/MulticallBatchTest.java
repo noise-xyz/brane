@@ -8,11 +8,13 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import io.brane.core.types.Address;
 import java.math.BigInteger;
 import java.util.List;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import io.brane.core.types.Address;
 
 class MulticallBatchTest {
 
@@ -117,6 +119,25 @@ class MulticallBatchTest {
     void throwsOnAddWithoutCall() {
         assertThrows(IllegalStateException.class, () -> batch.add(null),
                 "Should throw if add() is called without a preceding proxy call");
+    }
+
+    @Test
+    void clearsThreadLocalOnOrphanedCallDetection() {
+        TestContract proxy = batch.bind(TestContract.class, contractAddress, abiJson);
+        Address owner = new Address("0x" + "2".repeat(40));
+
+        // Step 1: Call proxy (sets pendingCall)
+        proxy.balanceOf(owner);
+        assertTrue(batch.hasPending(), "Should have pending call after proxy method");
+
+        // Step 2: Call proxy AGAIN without add() - should throw and clear ThreadLocal
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> proxy.balanceOf(owner),
+                "Should throw when there's an orphaned call");
+        assertTrue(ex.getMessage().contains("already recorded"));
+
+        // Step 3: Verify ThreadLocal was cleared BEFORE throwing
+        assertFalse(batch.hasPending(), "ThreadLocal should be cleared after exception");
     }
 
     @Test
@@ -542,4 +563,3 @@ class MulticallBatchTest {
                 "Should throw when ABI has no matching functions for interface");
     }
 }
-

@@ -1,12 +1,14 @@
 package io.brane.core.abi;
 
-import io.brane.core.types.Address;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import io.brane.primitives.Hex;
-import org.junit.jupiter.api.Test;
 import java.math.BigInteger;
 import java.util.List;
-import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+import io.brane.core.types.Address;
+import io.brane.primitives.Hex;
 
 class AbiEncoderTest {
 

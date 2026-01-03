@@ -14,20 +14,25 @@ import io.brane.rpc.BraneMetrics;
 import java.time.Duration;
 
 public class MyMetrics implements BraneMetrics {
-    
+
     @Override
     public void onRequestCompleted(String method, Duration latency) {
         // Record latency per method
     }
-    
+
     @Override
-    public void onRequestTimeout(String method) {
-        // Increment timeout counter
+    public void onRequestTimeout(String method, long requestId) {
+        // Increment timeout counter, correlate with logs using requestId
     }
-    
+
     @Override
-    public void onBackpressure() {
-        // Alert: too many pending requests
+    public void onBackpressure(int pendingCount, int maxPendingRequests) {
+        // Alert: queue at capacity (pendingCount / maxPendingRequests)
+    }
+
+    @Override
+    public void onOrphanedResponse(String reason) {
+        // Track responses that arrived after timeout
     }
 }
 ```
@@ -53,13 +58,15 @@ provider.setMetrics(new MyMetrics());
 |--------|-------------|----------|
 | `onRequestStarted(method)` | Request begins | Track in-flight requests |
 | `onRequestCompleted(method, latency)` | Request succeeds | Latency histograms |
-| `onRequestTimeout(method)` | Request times out | Timeout counters |
+| `onRequestTimeout(method, requestId)` | Request times out | Timeout counters, log correlation |
 | `onRequestFailed(method, error)` | Request fails | Error rates |
-| `onBackpressure()` | Too many pending requests | Backpressure alerts |
+| `onBackpressure(pendingCount, maxPending)` | Too many pending requests | Backpressure alerts, capacity tuning |
 | `onConnectionLost()` | WebSocket disconnects | Connection health |
 | `onReconnect()` | WebSocket reconnects | Reconnection tracking |
 | `onSubscriptionNotification(id)` | Subscription event received | Subscription throughput |
 | `onRingBufferSaturation(remaining, size)` | Buffer nearing capacity | Early warning |
+| `onOrphanedResponse(reason)` | Response with no matching request | Detect timeouts, network issues |
+| `onSubscriptionCallbackError(id, error)` | Subscription callback throws | Debug misbehaving callbacks |
 
 ---
 
@@ -76,20 +83,22 @@ import java.time.Duration;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class MicrometerMetrics implements BraneMetrics {
-    
+
     private final MeterRegistry registry;
     private final ConcurrentHashMap<String, Timer> timers = new ConcurrentHashMap<>();
     private final Counter backpressureCounter;
     private final Counter timeoutCounter;
     private final Counter reconnectCounter;
-    
+    private final Counter orphanCounter;
+
     public MicrometerMetrics(MeterRegistry registry) {
         this.registry = registry;
         this.backpressureCounter = registry.counter("brane.rpc.backpressure");
         this.timeoutCounter = registry.counter("brane.rpc.timeout");
         this.reconnectCounter = registry.counter("brane.rpc.reconnect");
+        this.orphanCounter = registry.counter("brane.rpc.orphaned");
     }
-    
+
     @Override
     public void onRequestCompleted(String method, Duration latency) {
         Timer timer = timers.computeIfAbsent(method, m ->
@@ -99,27 +108,36 @@ public class MicrometerMetrics implements BraneMetrics {
         );
         timer.record(latency);
     }
-    
+
     @Override
-    public void onRequestTimeout(String method) {
+    public void onRequestTimeout(String method, long requestId) {
         timeoutCounter.increment();
         registry.counter("brane.rpc.timeout", "method", method).increment();
     }
-    
+
     @Override
-    public void onBackpressure() {
+    public void onBackpressure(int pendingCount, int maxPendingRequests) {
         backpressureCounter.increment();
+        // Track utilization when backpressure occurs
+        double utilization = (double) pendingCount / maxPendingRequests;
+        registry.gauge("brane.rpc.pending.utilization", utilization);
     }
-    
+
     @Override
     public void onReconnect() {
         reconnectCounter.increment();
     }
-    
+
     @Override
     public void onRingBufferSaturation(long remaining, int size) {
         double pctFull = 1.0 - ((double) remaining / size);
         registry.gauge("brane.ringbuffer.saturation", pctFull);
+    }
+
+    @Override
+    public void onOrphanedResponse(String reason) {
+        orphanCounter.increment();
+        registry.counter("brane.rpc.orphaned", "reason", reason).increment();
     }
 }
 ```
@@ -189,31 +207,37 @@ import io.brane.rpc.BraneMetrics;
 import java.time.Duration;
 
 public class LoggingMetrics implements BraneMetrics {
-    
+
     @Override
     public void onRequestCompleted(String method, Duration latency) {
-        System.out.printf("[METRICS] %s completed in %dms%n", 
+        System.out.printf("[METRICS] %s completed in %dms%n",
             method, latency.toMillis());
     }
-    
+
     @Override
-    public void onRequestTimeout(String method) {
-        System.err.printf("[METRICS] %s timed out%n", method);
+    public void onRequestTimeout(String method, long requestId) {
+        System.err.printf("[METRICS] %s timed out (requestId=%d)%n", method, requestId);
     }
-    
+
     @Override
-    public void onBackpressure() {
-        System.err.println("[METRICS] Backpressure triggered!");
+    public void onBackpressure(int pendingCount, int maxPendingRequests) {
+        System.err.printf("[METRICS] Backpressure! %d/%d pending%n",
+            pendingCount, maxPendingRequests);
     }
-    
+
     @Override
     public void onConnectionLost() {
         System.err.println("[METRICS] Connection lost");
     }
-    
+
     @Override
     public void onReconnect() {
         System.out.println("[METRICS] Reconnected");
+    }
+
+    @Override
+    public void onOrphanedResponse(String reason) {
+        System.err.printf("[METRICS] Orphaned response: %s%n", reason);
     }
 }
 ```

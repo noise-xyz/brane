@@ -6,7 +6,7 @@ import java.util.stream.Collectors;
 
 /**
  * Represents a Solidity tuple (sequence of types).
- * 
+ *
  * @param components the list of component types
  */
 public record Tuple(List<AbiType> components) implements AbiType {

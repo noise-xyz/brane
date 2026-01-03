@@ -3,20 +3,20 @@ package io.brane.contract;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import io.brane.core.error.AbiDecodingException;
+import java.math.BigInteger;
+import java.util.Map;
+
+import org.junit.jupiter.api.Test;
+
 import io.brane.core.abi.Abi;
+import io.brane.core.error.AbiDecodingException;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.Transaction;
 import io.brane.core.types.Address;
-import io.brane.rpc.Subscription;
 import io.brane.core.types.Hash;
 import io.brane.rpc.PublicClient;
-import java.math.BigInteger;
-
-import java.util.Map;
-import org.junit.jupiter.api.Test;
 
 class ReadOnlyContractTest {
 
@@ -128,6 +128,15 @@ class ReadOnlyContractTest {
             return transaction;
         }
 
+        @Override
+        public io.brane.core.types.HexData call(io.brane.rpc.CallRequest request, io.brane.rpc.BlockTag blockTag) {
+            if (toThrow != null) {
+                throw toThrow;
+            }
+            return callResult != null ? new io.brane.core.types.HexData(callResult) : io.brane.core.types.HexData.EMPTY;
+        }
+
+        @SuppressWarnings("deprecation")
         @Override
         public String call(final Map<String, Object> callObject, final String blockTag)
                 throws RpcException {

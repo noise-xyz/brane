@@ -1,15 +1,15 @@
 package io.brane.examples;
 
+import java.nio.charset.StandardCharsets;
+
 import io.brane.core.crypto.Keccak256;
 import io.brane.core.crypto.PrivateKey;
 import io.brane.core.crypto.Signature;
 import io.brane.core.types.Address;
 
-import java.nio.charset.StandardCharsets;
-
 /**
  * Sanity check for Milestone 1 crypto primitives.
- * 
+ *
  * <p>
  * Demonstrates:
  * <ul>

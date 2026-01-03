@@ -1,11 +1,12 @@
 package io.brane.core.crypto;
 
-import io.brane.core.types.Address;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.charset.StandardCharsets;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import io.brane.core.types.Address;
 
 /**
  * Integration test demonstrating complete crypto primitive usage.

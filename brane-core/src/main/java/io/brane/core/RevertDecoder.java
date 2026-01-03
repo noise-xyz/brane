@@ -1,31 +1,33 @@
 package io.brane.core;
 
-import io.brane.core.abi.AbiDecoder;
-import io.brane.core.abi.AbiType;
-import io.brane.core.abi.TypeSchema;
-import io.brane.core.abi.Utf8String;
-import io.brane.core.abi.UInt;
-import io.brane.core.error.RevertException;
-import io.brane.core.error.RpcException;
-import io.brane.primitives.Hex;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import io.brane.core.abi.AbiDecoder;
+import io.brane.core.abi.AbiType;
+import io.brane.core.abi.TypeSchema;
+import io.brane.core.abi.UInt;
+import io.brane.core.abi.Utf8String;
+import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
+import io.brane.primitives.Hex;
+
 /**
  * Decodes EVM revert reasons from raw transaction revert data.
- * 
+ *
  * <p>
  * When a smart contract reverts, the EVM returns hex-encoded revert data.
  * This class decodes that data into human-readable revert reasons and
  * categorizes
  * the revert type.
- * 
+ *
  * <p>
  * <strong>Revert Types:</strong>
  * <ul>
@@ -58,16 +60,16 @@ import org.slf4j.LoggerFactory;
  * </li>
  * <li><strong>UNKNOWN:</strong> Unrecognized revert data format</li>
  * </ul>
- * 
+ *
  * <p>
  * <strong>Usage Example:</strong>
- * 
+ *
  * <pre>{@code
  * try {
  *     client.sendTransactionAndWait(request);
  * } catch (RevertException e) {
  *     RevertDecoder.Decoded decoded = RevertDecoder.decode(e.rawDataHex());
- * 
+ *
  *     switch (decoded.kind()) {
  *         case ERROR_STRING ->
  *             System.err.println("Reverted: " + decoded.reason());
@@ -78,7 +80,7 @@ import org.slf4j.LoggerFactory;
  *     }
  * }
  * }</pre>
- * 
+ *
  * @see RevertException
  */
 public final class RevertDecoder {

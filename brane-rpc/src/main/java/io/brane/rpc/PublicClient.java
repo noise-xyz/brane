@@ -1,12 +1,16 @@
 package io.brane.rpc;
 
+import java.util.List;
+import java.util.Map;
+
+import org.jspecify.annotations.Nullable;
+
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.Transaction;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Hash;
-import java.util.Map;
-import java.util.List;
+import io.brane.core.types.HexData;
 
 /**
  * A client for interacting with an Ethereum node via JSON-RPC.
@@ -23,7 +27,7 @@ import java.util.List;
  * thread-safe and can be shared across multiple threads.
  * <p>
  * <strong>Usage Example:</strong>
- * 
+ *
  * <pre>{@code
  * PublicClient client = BranePublicClient.forChain(ChainProfiles.MAINNET)
  *         .build();
@@ -61,34 +65,55 @@ public interface PublicClient {
     /**
      * Retrieves the latest block header.
      *
-     * @return the latest block header, or null if not found
+     * @return the latest block header, or {@code null} if not found
      */
-    BlockHeader getLatestBlock();
+    @Nullable BlockHeader getLatestBlock();
 
     /**
      * Retrieves a block header by its number.
      *
      * @param blockNumber the block number
-     * @return the block header, or null if not found
+     * @return the block header, or {@code null} if not found
      */
-    BlockHeader getBlockByNumber(long blockNumber);
+    @Nullable BlockHeader getBlockByNumber(long blockNumber);
 
     /**
      * Retrieves a transaction by its hash.
      *
      * @param hash the transaction hash
-     * @return the transaction, or null if not found
+     * @return the transaction, or {@code null} if not found
      */
-    Transaction getTransactionByHash(Hash hash);
+    @Nullable Transaction getTransactionByHash(Hash hash);
+
+    /**
+     * Executes a read-only call on the blockchain.
+     * <p>
+     * <strong>Example:</strong>
+     * <pre>{@code
+     * CallRequest request = CallRequest.builder()
+     *     .to(contractAddress)
+     *     .data(encodedFunctionCall)
+     *     .build();
+     * HexData result = client.call(request, BlockTag.LATEST);
+     * }</pre>
+     *
+     * @param request  the type-safe call request
+     * @param blockTag the block tag (e.g., BlockTag.LATEST)
+     * @return the raw hex return value as HexData
+     * @since 0.1.0-alpha
+     */
+    HexData call(CallRequest request, BlockTag blockTag);
 
     /**
      * Executes a read-only call on the blockchain.
      *
      * @param callObject the call parameters (e.g., "to", "data")
      * @param blockTag   the block tag (e.g., "latest")
-     * @return the raw hex return value
+     * @return the raw hex return value, or {@code null} if the call returns empty data
+     * @deprecated Use {@link #call(CallRequest, BlockTag)} for type-safe calls
      */
-    String call(Map<String, Object> callObject, String blockTag);
+    @Deprecated(since = "0.1.0-alpha", forRemoval = true)
+    @Nullable String call(Map<String, Object> callObject, String blockTag);
 
     /**
      * Retrieves logs matching the given filter.
@@ -132,15 +157,15 @@ public interface PublicClient {
 
     /**
      * Creates an access list for the given transaction request.
-     * 
+     *
      * <p>
      * This method simulates the transaction and returns the storage slots it
      * would access along with the gas that would be consumed. The access list can
      * be used to optimize gas costs by pre-declaring storage access (EIP-2930).
-     * 
+     *
      * <p>
      * <strong>Example:</strong>
-     * 
+     *
      * <pre>{@code
      * TransactionRequest request = new TransactionRequest(
      *         fromAddress,
@@ -155,11 +180,11 @@ public interface PublicClient {
      *         true, // isEip1559
      *         null  // accessList
      * );
-     * 
+     *
      * AccessListWithGas result = client.createAccessList(request);
      * // Use result.accessList() in your transaction
      * }</pre>
-     * 
+     *
      * @param request the transaction request to analyze
      * @return the access list and gas used
      */
@@ -167,7 +192,7 @@ public interface PublicClient {
 
     /**
      * Creates a new multicall batch for bundling multiple read operations.
-     * 
+     *
      * @return a new MulticallBatch instance
      */
     MulticallBatch createBatch();

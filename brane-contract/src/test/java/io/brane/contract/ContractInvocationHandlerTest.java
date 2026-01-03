@@ -2,23 +2,23 @@ package io.brane.contract;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.math.BigInteger;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
+import org.junit.jupiter.api.Test;
+
 import io.brane.core.error.AbiDecodingException;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
-import io.brane.core.types.Wei;
-import io.brane.rpc.Subscription;
 import io.brane.core.types.Hash;
+import io.brane.core.types.Wei;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
-import java.math.BigInteger;
-import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
-import org.junit.jupiter.api.Test;
 
 class ContractInvocationHandlerTest {
 
@@ -559,6 +559,12 @@ class ContractInvocationHandlerTest {
             throw new UnsupportedOperationException();
         }
 
+        @Override
+        public io.brane.core.types.HexData call(io.brane.rpc.CallRequest request, io.brane.rpc.BlockTag blockTag) {
+            return io.brane.core.types.HexData.EMPTY;
+        }
+
+        @SuppressWarnings("deprecation")
         @Override
         public String call(Map<String, Object> callObject, String blockTag) {
             return "0x";

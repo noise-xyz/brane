@@ -1,9 +1,10 @@
 package io.brane.core.error;
 
-import io.brane.core.RevertDecoder.RevertKind;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import io.brane.core.RevertDecoder.RevertKind;
 
 /**
  * Tests for RevertException.

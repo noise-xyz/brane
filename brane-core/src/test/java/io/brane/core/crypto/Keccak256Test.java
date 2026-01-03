@@ -1,10 +1,10 @@
 package io.brane.core.crypto;
 
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.nio.charset.StandardCharsets;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
 
 /**
  * Tests for Keccak256 hashing against known Ethereum test vectors.

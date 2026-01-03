@@ -1,15 +1,14 @@
 package io.brane.examples;
 
-import io.brane.contract.BraneContract;
+import java.math.BigInteger;
 
+import io.brane.contract.BraneContract;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
-
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
-import java.math.BigInteger;
 
 /**
  * Demo of Runtime ABI Wrapper Binding with ERC20.

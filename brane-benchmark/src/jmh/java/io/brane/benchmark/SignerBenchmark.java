@@ -1,13 +1,14 @@
 package io.brane.benchmark;
 
+import java.util.concurrent.TimeUnit;
+
+import org.openjdk.jmh.annotations.*;
+
+import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.tx.LegacyTransaction;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
-import io.brane.core.crypto.PrivateKeySigner;
-import org.openjdk.jmh.annotations.*;
-
-import java.util.concurrent.TimeUnit;
 
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)

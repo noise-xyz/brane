@@ -1,8 +1,8 @@
 package io.brane.core.model;
 
-import io.brane.core.types.HexData;
-
 import java.util.Objects;
+
+import io.brane.core.types.HexData;
 
 /**
  * Represents the raw result of an individual call from Multicall3.
@@ -24,4 +24,3 @@ public record MulticallResult(
         Objects.requireNonNull(returnData, "returnData cannot be null");
     }
 }
-

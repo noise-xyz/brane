@@ -1,5 +1,6 @@
 dependencies {
     api project(":brane-core")
+    api "org.jspecify:jspecify:1.0.0"
     implementation project(":brane-primitives")
     implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
     implementation "io.netty:netty-handler:4.1.107.Final"

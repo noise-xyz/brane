@@ -1,10 +1,11 @@
 package io.brane.benchmark;
 
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WebSocketProvider;
+import java.util.concurrent.TimeUnit;
+
 import org.openjdk.jmh.annotations.*;
 
-import java.util.concurrent.TimeUnit;
+import io.brane.rpc.PublicClient;
+import io.brane.rpc.WebSocketProvider;
 
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.Throughput)

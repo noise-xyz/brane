@@ -1,9 +1,14 @@
 package io.brane.examples;
 
-import io.brane.core.abi.Abi;
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
 import io.brane.contract.BraneContract;
 import io.brane.contract.ReadOnlyContract;
 import io.brane.core.AnsiColors;
+import io.brane.core.abi.Abi;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
@@ -16,10 +21,6 @@ import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.LogFilter;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
 
 /**
  * Canonical "High-Level" Example for Brane 0.1.0-alpha.
@@ -172,7 +173,7 @@ public final class CanonicalErc20Example {
       final LogFilter filter = new LogFilter(
           Optional.of(receipt.blockNumber()),
           Optional.of(receipt.blockNumber()),
-          Optional.of(tokenAddress),
+          Optional.of(List.of(tokenAddress)),
           Optional.of(topics));
 
       final var logs = publicClient.getLogs(filter);

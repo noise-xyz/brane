@@ -1,31 +1,68 @@
 package io.brane.rpc;
 
-import io.brane.core.DebugLogger;
-import io.brane.core.abi.Abi;
-import io.brane.core.abi.AbiBinding;
-import io.brane.core.model.Call3;
-import io.brane.core.model.MulticallResult;
-import io.brane.core.RevertDecoder;
-import io.brane.core.error.AbiDecodingException;
-import io.brane.core.types.Address;
-import io.brane.core.types.HexData;
 import java.lang.reflect.Proxy;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import java.util.Objects;
+
+import io.brane.core.DebugLogger;
+import io.brane.core.RevertDecoder;
+import io.brane.core.abi.Abi;
+import io.brane.core.abi.AbiBinding;
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.model.Call3;
+import io.brane.core.model.MulticallResult;
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
 
 /**
  * Orchestrates a batch of Multicall3 requests.
- * 
+ *
  * <p>
  * This class captures multiple contract calls and bundles them into a single
  * {@code eth_call} using the Multicall3 contract.
- * 
+ *
+ * <h2>IMPORTANT: ThreadLocal Cleanup Requirement</h2>
+ *
+ * <p>This class uses a {@link ThreadLocal} to temporarily store call metadata between
+ * a proxy method call and the subsequent {@link #add(Object)} call. <b>You MUST ensure
+ * that every proxy method call is followed by an {@code add()} call</b>, or explicitly
+ * call {@link #clearPending()} to prevent ThreadLocal leaks.
+ *
+ * <p><b>Leak Detection:</b> If you call a proxy method twice without calling {@code add()}
+ * in between, an {@link IllegalStateException} is thrown and the stale pending call is
+ * automatically cleared. However, this is a fail-safe—you should not rely on it.
+ *
+ * <p><b>Safe Patterns:</b>
+ * <pre>{@code
+ * // Pattern 1: Direct chaining (recommended)
+ * var handle = batch.add(myContract.myMethod(arg));  // Safe - add() clears pending
+ *
+ * // Pattern 2: Try-finally for complex logic
+ * try {
+ *     var result = myContract.myMethod(arg);
+ *     // ... validation or other logic that might throw ...
+ *     handle = batch.add(result);
+ * } catch (Exception e) {
+ *     batch.clearPending();  // Prevent ThreadLocal leak
+ *     throw e;
+ * }
+ *
+ * // Pattern 3: Using hasPending() for debugging
+ * assert !batch.hasPending() : "Unexpected pending call";
+ * }</pre>
+ *
+ * <p><b>Warning:</b> If you use this class in a thread pool or virtual thread context,
+ * be especially careful to clear pending calls. ThreadLocals in pooled threads can
+ * persist across task boundaries, causing memory leaks or incorrect behavior.
+ *
  * @implNote This class is <strong>not thread-safe</strong>. A batch instance
  *           must be used from a single thread only. The recording pattern uses
  *           ThreadLocal to temporarily store call metadata between the proxy
  *           call and the subsequent {@code add()} call.
+ *
+ * @see #clearPending()
+ * @see #hasPending()
  */
 public final class MulticallBatch {
 
@@ -48,10 +85,28 @@ public final class MulticallBatch {
     private static final Address MULTICALL_ADDRESS = new Address("0xca11bde05977b3631167028862be2a173976ca11");
 
     /**
-     * Default chunk size for batching. 500 balances RPC payload size with
-     * efficiency.
-     * Most RPC providers support payloads up to 1MB; 500 calls typically stays well
-     * under.
+     * Default maximum number of calls per chunk when batching via Multicall3.
+     *
+     * <p><strong>Derivation:</strong> This value balances payload size against efficiency:
+     * <ul>
+     *   <li>Each Call3 tuple is ~120-200 bytes (address + bool + calldata)</li>
+     *   <li>A typical ERC-20 balanceOf call is ~68 bytes of calldata</li>
+     *   <li>500 calls × ~170 bytes ≈ 85KB request payload</li>
+     *   <li>Most RPC providers support 1-10MB payloads; 85KB provides 10x headroom</li>
+     *   <li>Response payload is typically smaller (32-byte returns per call)</li>
+     * </ul>
+     *
+     * <p><strong>Trade-offs:</strong>
+     * <ul>
+     *   <li>Smaller chunks: More RPC round-trips, higher latency</li>
+     *   <li>Larger chunks: Risk of timeouts, payload size limits, memory pressure</li>
+     * </ul>
+     *
+     * <p>Use {@link #chunkSize(int)} to override this default if your use case requires
+     * different batching characteristics (e.g., complex calls with large calldata).
+     *
+     * @see #chunkSize(int)
+     * @see #MAX_CHUNK_SIZE
      */
     private static final int DEFAULT_CHUNK_SIZE = 500;
 
@@ -74,7 +129,7 @@ public final class MulticallBatch {
 
     /**
      * Creates a new multicall batch.
-     * 
+     *
      * @param publicClient the public client to use for execution
      * @return a new batch instance
      */
@@ -85,7 +140,7 @@ public final class MulticallBatch {
     /**
      * Sets whether individual calls are allowed to fail without reverting the
      * entire batch.
-     * 
+     *
      * @param allowFailure true to allow failure, false to revert batch on any
      *                     failure
      * @return this batch instance
@@ -97,7 +152,7 @@ public final class MulticallBatch {
 
     /**
      * Sets the maximum number of calls per RPC request.
-     * 
+     *
      * @param chunkSize the maximum number of calls per chunk
      * @return this batch instance
      */
@@ -113,13 +168,40 @@ public final class MulticallBatch {
     }
 
     /**
-     * Binds a contract interface to a recording proxy.
-     * 
+     * Binds a contract interface to a recording proxy for batched calls.
+     *
+     * <p>The returned proxy records all method invocations without executing them.
+     * Calls are batched and executed together when {@link #execute()} is called.
+     * Method return values are wrapped in {@link CompletableFuture} to retrieve
+     * results after batch execution.
+     *
+     * <p><strong>Example usage:</strong>
+     * <pre>{@code
+     * MulticallBatch batch = publicClient.createBatch();
+     *
+     * // Bind contracts
+     * ERC20 token = batch.bind(ERC20.class, tokenAddress, ERC20_ABI);
+     *
+     * // Record calls (these don't execute yet)
+     * CompletableFuture<BigInteger> balance1 = batch.add(token.balanceOf(addr1));
+     * CompletableFuture<BigInteger> balance2 = batch.add(token.balanceOf(addr2));
+     *
+     * // Execute all calls in a single RPC request
+     * batch.execute();
+     *
+     * // Get results
+     * BigInteger b1 = balance1.get();
+     * BigInteger b2 = balance2.get();
+     * }</pre>
+     *
      * @param <T>               the contract interface type
-     * @param contractInterface the interface to bind
+     * @param contractInterface the interface to bind (must be an interface)
      * @param address           the contract address
      * @param abiJson           the contract ABI in JSON format
      * @return a recording proxy instance
+     * @throws NullPointerException if any argument is null
+     * @see #add(Object)
+     * @see #execute()
      */
     @SuppressWarnings("unchecked") // Safe: Proxy creates correct type for contractInterface
     public <T> T bind(final Class<T> contractInterface, final Address address, final String abiJson) {
@@ -139,27 +221,38 @@ public final class MulticallBatch {
 
     /**
      * Internal method used by recording proxies to record a call.
-     * 
-     * <p>
-     * <strong>Important:</strong> Every call to this method must be followed by
+     *
+     * <p><b>ThreadLocal Safety:</b> Every call to this method must be followed by
      * a call to {@link #add(Object)} to consume the pending call and prevent
      * ThreadLocal leaks. The recording proxy pattern ensures this by design.
+     *
+     * <p><b>Stale Call Detection:</b> If this method detects a stale pending call
+     * (i.e., a previous proxy call that was never consumed by {@code add()}), it will:
+     * <ol>
+     *   <li>Clear the stale pending call to prevent ThreadLocal leaks</li>
+     *   <li>Throw an {@link IllegalStateException} to alert the caller</li>
+     * </ol>
+     * This is a fail-safe mechanism—callers should use {@link #clearPending()} in
+     * exception handlers rather than relying on this detection.
+     *
+     * @throws IllegalStateException if a stale pending call is detected (indicating
+     *         the caller forgot to call {@code add()} after a previous proxy call)
      */
     <T> void recordCall(final Address target, final Abi.FunctionCall call, final Class<T> returnType) {
         // Fail fast if user forgot to call add() after a previous proxy call
-        // Throw BEFORE removing state so catch blocks can still see what was recorded
+        // Clear the orphaned call BEFORE throwing to prevent ThreadLocal leaks
         if (pendingCall.get() != null) {
+            pendingCall.remove(); // Clear BEFORE throwing to prevent leak
             throw new IllegalStateException(
                     "A call was already recorded but not added to the batch. " +
-                            "You must call batch.add() after each proxy method call. " +
-                            "Call pendingCall.remove() to clear the orphaned call if continuing.");
+                            "You must call batch.add() after each proxy method call.");
         }
         pendingCall.set(new CallContext<>(target, call, returnType, null));
     }
 
     /**
      * Adds a recorded call to the batch and returns a handle for the result.
-     * 
+     *
      * @param <T>    the return type of the call
      * @param ignore the result of the proxy call (ignored)
      * @return a handle to the eventual result
@@ -183,6 +276,51 @@ public final class MulticallBatch {
             calls.add(call);
         }
         return handle;
+    }
+
+    /**
+     * Clears any pending call that was recorded but not added to the batch.
+     *
+     * <p><b>IMPORTANT:</b> Call this method in a finally block or catch handler if
+     * an exception might occur between a proxy method call and {@link #add(Object)}.
+     * This prevents ThreadLocal leaks that can cause memory issues in thread pools
+     * and virtual thread contexts.
+     *
+     * <p><b>Example:</b>
+     * <pre>{@code
+     * try {
+     *     var result = myContract.myMethod(arg);
+     *     // ... code that might throw ...
+     *     handle = batch.add(result);
+     * } catch (Exception e) {
+     *     batch.clearPending();  // Prevent ThreadLocal leak
+     *     throw e;
+     * }
+     * }</pre>
+     *
+     * <p>This method is safe to call even if there is no pending call (returns {@code false}).
+     *
+     * @return {@code true} if a pending call was cleared, {@code false} if there was nothing to clear
+     */
+    public boolean clearPending() {
+        final CallContext<?> pending = pendingCall.get();
+        if (pending != null) {
+            pendingCall.remove();
+            return true;
+        }
+        return false;
+    }
+
+    /**
+     * Returns true if there is a pending call that was recorded but not yet added.
+     *
+     * <p>
+     * This can be useful for debugging or asserting state in tests.
+     *
+     * @return true if a call is pending, false otherwise
+     */
+    public boolean hasPending() {
+        return pendingCall.get() != null;
     }
 
     /**
@@ -217,39 +355,48 @@ public final class MulticallBatch {
     }
 
     private void executeChunk(final List<CallContext<?>> chunk) {
-        // 1. Prepare Call3 objects as a list of tuples
-        final List<Object> call3List = new ArrayList<>(chunk.size());
-        for (final CallContext<?> call : chunk) {
-            final Call3 call3 = call.toCall3(globalAllowFailure);
-            // Each Call3 is a tuple (address string, bool, HexData callData)
-            // Note: address is extracted as string, but callData stays as HexData for ABI
-            // encoding
-            call3List.add(List.of(
-                    call3.target().value(),
-                    call3.allowFailure(),
-                    call3.callData()));
-        }
+        try {
+            // 1. Prepare Call3 objects as a list of tuples
+            final var call3List = new ArrayList<Object>(chunk.size());
+            for (final CallContext<?> call : chunk) {
+                final Call3 call3 = call.toCall3(globalAllowFailure);
+                // Each Call3 is a tuple (address string, bool, HexData callData)
+                // Note: address is extracted as string, but callData stays as HexData for ABI
+                // encoding
+                call3List.add(List.of(
+                        call3.target().value(),
+                        call3.allowFailure(),
+                        call3.callData()));
+            }
 
-        // 2. Encode aggregate3 call
-        final Abi.FunctionCall aggregate3Call = MULTICALL_ABI.encodeFunction("aggregate3", call3List);
+            // 2. Encode aggregate3 call
+            final Abi.FunctionCall aggregate3Call = MULTICALL_ABI.encodeFunction("aggregate3", call3List);
 
-        // 3. Send eth_call
-        final Map<String, Object> callObject = Map.of(
-                "to", MULTICALL_ADDRESS.value(),
-                "data", aggregate3Call.data());
+            // 3. Send eth_call
+            final CallRequest callRequest = CallRequest.of(
+                    MULTICALL_ADDRESS,
+                    new HexData(aggregate3Call.data()));
 
-        final String resultHex = publicClient.call(callObject, "latest");
+            final String resultHex = publicClient.call(callRequest, BlockTag.LATEST).value();
 
-        // 4. Decode results and update handles
-        final List<MulticallResult> results = Abi.decodeMulticallResults(resultHex);
+            // 4. Decode results and update handles
+            final List<MulticallResult> results = Abi.decodeMulticallResults(resultHex);
 
-        if (results.size() != chunk.size()) {
-            throw new IllegalStateException("Multicall3 returned " + results.size()
-                    + " results, but we sent " + chunk.size() + " calls");
-        }
+            if (results.size() != chunk.size()) {
+                throw new IllegalStateException("Multicall3 returned " + results.size()
+                        + " results, but we sent " + chunk.size() + " calls");
+            }
 
-        for (int i = 0; i < chunk.size(); i++) {
-            chunk.get(i).complete(results.get(i));
+            for (int i = 0; i < chunk.size(); i++) {
+                chunk.get(i).complete(results.get(i));
+            }
+        } catch (Exception e) {
+            // Fail all handles in this chunk so callers don't hang waiting for results
+            final String errorMessage = "Chunk execution failed: " + e.getMessage();
+            for (final CallContext<?> call : chunk) {
+                call.failWithError(errorMessage);
+            }
+            throw e;
         }
     }
 
@@ -267,8 +414,7 @@ public final class MulticallBatch {
         }
 
         void complete(MulticallResult result) {
-            if (handle() == null)
-                return;
+            Objects.requireNonNull(handle(), "handle should never be null in executed context");
 
             T data = null;
             String revertReason = null;
@@ -299,6 +445,20 @@ public final class MulticallBatch {
             }
 
             handle().complete(new BatchResult<>(data, success, revertReason));
+        }
+
+        /**
+         * Fails this call's handle with an error message.
+         *
+         * <p>Used when chunk execution fails (e.g., network error, invalid response)
+         * to ensure callers don't hang waiting for results.
+         *
+         * @param errorMessage the error message to include in the result
+         */
+        void failWithError(String errorMessage) {
+            if (handle() != null) {
+                handle().complete(new BatchResult<>(null, false, errorMessage));
+            }
         }
 
     }

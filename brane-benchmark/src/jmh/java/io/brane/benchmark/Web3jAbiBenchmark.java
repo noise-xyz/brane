@@ -1,5 +1,9 @@
 package io.brane.benchmark;
 
+import java.math.BigInteger;
+import java.util.Arrays;
+import java.util.concurrent.TimeUnit;
+
 import org.openjdk.jmh.annotations.*;
 import org.web3j.abi.TypeEncoder;
 import org.web3j.abi.datatypes.DynamicArray;
@@ -7,10 +11,6 @@ import org.web3j.abi.datatypes.DynamicStruct;
 import org.web3j.abi.datatypes.Utf8String;
 import org.web3j.abi.datatypes.generated.Bytes32;
 import org.web3j.abi.datatypes.generated.Uint256;
-
-import java.math.BigInteger;
-import java.util.Arrays;
-import java.util.concurrent.TimeUnit;
 
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)

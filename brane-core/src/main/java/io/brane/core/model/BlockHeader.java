@@ -1,9 +1,9 @@
 package io.brane.core.model;
 
+import java.util.Objects;
+
 import io.brane.core.types.Hash;
 import io.brane.core.types.Wei;
-
-import java.util.Objects;
 
 /**
  * Represents a block header in the blockchain.

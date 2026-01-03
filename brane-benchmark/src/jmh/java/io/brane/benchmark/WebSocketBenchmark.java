@@ -1,19 +1,20 @@
 package io.brane.benchmark;
 
-import io.brane.rpc.WebSocketProvider;
-import org.openjdk.jmh.annotations.*;
-import org.openjdk.jmh.infra.Blackhole;
-import org.web3j.protocol.Web3j;
-import org.web3j.protocol.websocket.WebSocketService;
-
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
+import org.openjdk.jmh.annotations.*;
+import org.openjdk.jmh.infra.Blackhole;
+import org.web3j.protocol.Web3j;
+import org.web3j.protocol.websocket.WebSocketService;
+
+import io.brane.rpc.WebSocketProvider;
+
 /**
  * Comprehensive WebSocket benchmark comparing Brane UltraFast vs Web3j.
- * 
+ *
  * Metrics measured:
  * - Throughput (ops/sec)
  * - Average latency (time/op)

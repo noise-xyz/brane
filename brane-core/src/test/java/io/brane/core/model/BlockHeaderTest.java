@@ -1,10 +1,11 @@
 package io.brane.core.model;
 
-import io.brane.core.types.Hash;
-import io.brane.core.types.Wei;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import io.brane.core.types.Hash;
+import io.brane.core.types.Wei;
 
 /**
  * Tests for BlockHeader validation.

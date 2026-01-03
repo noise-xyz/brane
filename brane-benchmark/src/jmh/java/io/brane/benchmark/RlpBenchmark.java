@@ -1,13 +1,14 @@
 package io.brane.benchmark;
 
-import io.brane.primitives.rlp.Rlp;
-import io.brane.primitives.rlp.RlpList;
-import io.brane.primitives.rlp.RlpString;
-import org.openjdk.jmh.annotations.*;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+
+import org.openjdk.jmh.annotations.*;
+
+import io.brane.primitives.rlp.Rlp;
+import io.brane.primitives.rlp.RlpList;
+import io.brane.primitives.rlp.RlpString;
 
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)

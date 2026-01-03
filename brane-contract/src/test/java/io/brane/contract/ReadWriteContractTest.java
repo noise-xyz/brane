@@ -3,19 +3,19 @@ package io.brane.contract;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import io.brane.core.error.ChainMismatchException;
+import java.math.BigInteger;
+
+import org.junit.jupiter.api.Test;
+
 import io.brane.core.abi.Abi;
+import io.brane.core.error.ChainMismatchException;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
-import io.brane.rpc.Subscription;
 import io.brane.core.types.Hash;
-import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
-import java.math.BigInteger;
-import org.junit.jupiter.api.Test;
 
 class ReadWriteContractTest {
 
@@ -284,6 +284,12 @@ class ReadWriteContractTest {
             throw new UnsupportedOperationException();
         }
 
+        @Override
+        public io.brane.core.types.HexData call(io.brane.rpc.CallRequest request, io.brane.rpc.BlockTag blockTag) {
+            throw new UnsupportedOperationException();
+        }
+
+        @SuppressWarnings("deprecation")
         @Override
         public String call(java.util.Map<String, Object> callObject, String blockTag) {
             throw new UnsupportedOperationException();

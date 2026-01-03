@@ -1,5 +1,7 @@
 package io.brane.examples;
 
+import java.math.BigInteger;
+
 import io.brane.contract.ReadOnlyContract;
 import io.brane.core.abi.Abi;
 import io.brane.core.error.RevertException;
@@ -7,7 +9,6 @@ import io.brane.core.error.RpcException;
 import io.brane.core.types.Address;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
-import java.math.BigInteger;
 
 public final class Main {
 

@@ -1,6 +1,7 @@
 package io.brane.examples;
 
 import io.brane.core.chain.ChainProfiles;
+import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
@@ -8,7 +9,6 @@ import io.brane.core.types.Wei;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
-import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.rpc.PublicClient;
 
 /**

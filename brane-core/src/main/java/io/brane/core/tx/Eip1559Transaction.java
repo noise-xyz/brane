@@ -1,5 +1,9 @@
 package io.brane.core.tx;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Objects;
+
 import io.brane.core.crypto.Signature;
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.types.Address;
@@ -12,39 +16,35 @@ import io.brane.primitives.rlp.RlpList;
 import io.brane.primitives.rlp.RlpNumeric;
 import io.brane.primitives.rlp.RlpString;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 /**
  * EIP-1559 transaction with dynamic fee market.
- * 
+ *
  * <p>
  * This transaction type uses the EIP-1559 fee market with separate
  * {@code maxFeePerGas} and {@code maxPriorityFeePerGas} fields. It is encoded
  * using EIP-2718 typed transaction envelopes with type byte {@code 0x02}.
- * 
+ *
  * <h2>EIP-2718/1559 Encoding</h2>
  * <p>
  * Signing preimage:
- * 
+ *
  * <pre>
  * 0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList])
  * </pre>
- * 
+ *
  * <p>
  * Signed envelope:
- * 
+ *
  * <pre>
  * 0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList, yParity, r, s])
  * </pre>
- * 
+ *
  * <p>
  * Note: The {@code v} value in the signature is just the yParity (0 or 1), not
  * EIP-155 encoded.
- * 
+ *
  * <h2>Usage Example</h2>
- * 
+ *
  * <pre>{@code
  * Eip1559Transaction tx = new Eip1559Transaction(
  *         1L, // chainId
@@ -57,12 +57,12 @@ import java.util.Objects;
  *         HexData.EMPTY, // data
  *         List.of() // accessList
  * );
- * 
+ *
  * byte[] preimage = tx.encodeForSigning(1);
  * Signature sig = privateKey.sign(Keccak256.hash(preimage));
  * byte[] envelope = tx.encodeAsEnvelope(sig);
  * }</pre>
- * 
+ *
  * @param chainId              the chain ID
  * @param nonce                the transaction nonce
  * @param maxPriorityFeePerGas the maximum priority fee (miner tip)
@@ -139,7 +139,7 @@ public record Eip1559Transaction(
 
     /**
      * Encodes the RLP payload (without type byte prefix).
-     * 
+     *
      * @param includeSig whether to include signature fields
      * @param signature  the signature (required if includeSig is true)
      * @return RLP-encoded payload
@@ -177,7 +177,7 @@ public record Eip1559Transaction(
 
     /**
      * Encodes the access list as RLP.
-     * 
+     *
      * @return RLP list of access list entries
      */
     private RlpItem encodeAccessList() {

@@ -1,9 +1,10 @@
 package io.brane.core.chain;
 
-import io.brane.core.types.Wei;
+import static org.junit.jupiter.api.Assertions.*;
+
 import org.junit.jupiter.api.Test;
 
-import static org.junit.jupiter.api.Assertions.*;
+import io.brane.core.types.Wei;
 
 /**
  * Tests for ChainProfile validation.

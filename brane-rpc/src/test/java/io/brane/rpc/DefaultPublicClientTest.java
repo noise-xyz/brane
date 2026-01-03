@@ -5,6 +5,18 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
+import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
@@ -13,16 +25,6 @@ import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
-import java.math.BigInteger;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
 class DefaultPublicClientTest {
@@ -107,8 +109,48 @@ class DefaultPublicClientTest {
                 JsonRpcResponse response = new JsonRpcResponse("2.0", "0x2a", null, "1");
                 when(provider.send(eq("eth_call"), any())).thenReturn(response);
 
-                String result = client.call(Map.of("to", "0xabc", "data", "0x1234"), "latest");
+                String result = client.call(Map.of("to", "0x" + "a".repeat(40), "data", "0x1234"), "latest");
                 assertEquals("0x2a", result);
+        }
+
+        @SuppressWarnings("deprecation")
+        @Test
+        void deprecatedCallThrowsOnNullCallObject() {
+                assertThrows(NullPointerException.class, () -> client.call(null, "latest"));
+        }
+
+        @SuppressWarnings("deprecation")
+        @Test
+        void deprecatedCallThrowsOnNullBlockTag() {
+                Map<String, Object> callObject = Map.of("to", "0x" + "a".repeat(40));
+                assertThrows(NullPointerException.class, () -> client.call(callObject, null));
+        }
+
+        @SuppressWarnings("deprecation")
+        @Test
+        void deprecatedCallThrowsOnMissingToKey() {
+                Map<String, Object> callObject = Map.of("data", "0x1234");
+                IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                                () -> client.call(callObject, "latest"));
+                assertTrue(ex.getMessage().contains("'to' key"));
+        }
+
+        @SuppressWarnings("deprecation")
+        @Test
+        void deprecatedCallThrowsOnNonStringToValue() {
+                Map<String, Object> callObject = Map.of("to", Integer.valueOf(123));
+                IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                                () -> client.call(callObject, "latest"));
+                assertTrue(ex.getMessage().contains("'to' must be a String"));
+        }
+
+        @SuppressWarnings("deprecation")
+        @Test
+        void deprecatedCallThrowsOnNonStringDataValue() {
+                Map<String, Object> callObject = Map.of("to", "0x" + "a".repeat(40), "data", Integer.valueOf(456));
+                IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                                () -> client.call(callObject, "latest"));
+                assertTrue(ex.getMessage().contains("'data' must be a String"));
         }
 
         @Test

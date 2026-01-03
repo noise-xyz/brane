@@ -239,6 +239,54 @@ The provider attempts to reconnect automatically. If the connection is lost whil
 
 ---
 
+## Connection State Machine
+
+The `WebSocketProvider` exposes its connection state for monitoring and handling edge cases:
+
+```java
+import io.brane.rpc.WebSocketProvider;
+import io.brane.rpc.WebSocketProvider.ConnectionState;
+
+var provider = WebSocketProvider.create("wss://...");
+
+// Check current state
+ConnectionState state = provider.getConnectionState();
+System.out.println("Connection state: " + state);
+```
+
+### Connection States
+
+| State | Description |
+|-------|-------------|
+| `CONNECTING` | Initial connection in progress |
+| `CONNECTED` | WebSocket is connected and operational |
+| `RECONNECTING` | Connection lost, attempting to reconnect |
+| `CLOSED` | Provider has been closed |
+
+### Handling Reconnection
+
+During `RECONNECTING` state, requests may fail temporarily. For resilient applications:
+
+```java
+ConnectionState state = provider.getConnectionState();
+
+if (state == ConnectionState.RECONNECTING) {
+    // Wait or use fallback strategy
+    log.warn("WebSocket reconnecting, request may fail");
+}
+
+if (state == ConnectionState.CLOSED) {
+    // Provider is shut down, need a new instance
+    throw new IllegalStateException("Provider is closed");
+}
+```
+
+<Tip>
+Use `BraneMetrics.onConnectionLost()` and `onReconnect()` hooks for monitoring connection health instead of polling `getConnectionState()`.
+</Tip>
+
+---
+
 ## Integration with Clients
 
 WebSocket providers work seamlessly with `PublicClient` and `WalletClient`:

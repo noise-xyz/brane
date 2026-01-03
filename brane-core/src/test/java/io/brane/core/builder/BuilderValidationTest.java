@@ -2,8 +2,9 @@ package io.brane.core.builder;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import io.brane.core.types.HexData;
 import org.junit.jupiter.api.Test;
+
+import io.brane.core.types.HexData;
 
 class BuilderValidationTest {
 

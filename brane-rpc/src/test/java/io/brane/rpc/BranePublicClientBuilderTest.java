@@ -5,9 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.junit.jupiter.api.Test;
+
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.chain.ChainProfiles;
-import org.junit.jupiter.api.Test;
 
 class BranePublicClientBuilderTest {
 

@@ -1,5 +1,11 @@
 package io.brane.examples;
 
+import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+
 import io.brane.core.AnsiColors;
 import io.brane.core.crypto.Keccak256;
 import io.brane.core.crypto.PrivateKeySigner;
@@ -8,12 +14,6 @@ import io.brane.core.crypto.Signer;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.primitives.Hex;
-
-import java.math.BigInteger;
-import java.nio.ByteBuffer;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
 
 /**
  * Canonical Safe (Multisig) Example.

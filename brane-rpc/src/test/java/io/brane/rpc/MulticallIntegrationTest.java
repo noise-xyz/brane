@@ -3,6 +3,12 @@ package io.brane.rpc;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+import java.math.BigInteger;
+
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+
 import io.brane.core.abi.Abi;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.crypto.PrivateKeySigner;
@@ -10,11 +16,6 @@ import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
-import java.math.BigInteger;
-import java.util.Map;
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 
 /**
  * Integration test for MulticallBatch against real Multicall3 on Anvil.
@@ -239,4 +240,3 @@ class MulticallIntegrationTest {
         return new Address(receipt.contractAddress().value());
     }
 }
-

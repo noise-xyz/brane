@@ -1,15 +1,16 @@
 package io.brane.core.model;
 
-import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
-import io.brane.core.types.Wei;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import org.junit.jupiter.api.Test;
+
+import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
+import io.brane.core.types.Wei;
 
 /**
  * Tests for TransactionReceipt validation.

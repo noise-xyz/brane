@@ -1,14 +1,15 @@
 package io.brane.examples;
 
+import java.io.ByteArrayOutputStream;
+import java.io.PrintStream;
+import java.util.ArrayList;
+import java.util.List;
+
 import io.brane.core.BraneDebug;
 import io.brane.core.error.RpcException;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
-import java.io.ByteArrayOutputStream;
-import java.io.PrintStream;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Sanity check for Request ID Correlation (Phase 2.9).

@@ -1,10 +1,11 @@
 package io.brane.core.abi;
 
-import io.brane.core.util.MethodUtils;
 import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
+
+import io.brane.core.util.MethodUtils;
 
 /**
  * Binds Java interface methods to ABI function metadata for type-safe contract interactions.
@@ -76,4 +77,3 @@ public final class AbiBinding {
                                         "No ABI function named '" + method.getName() + "'"));
     }
 }
-
