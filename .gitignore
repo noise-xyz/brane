@@ -4,6 +4,8 @@
 cache/
 build/
 **/build/
+**/build\ */
+**/build[0-9]*/
 **/out/
 **/bin/
 
