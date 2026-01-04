@@ -56,7 +56,7 @@ class AccountOverrideTest {
         assertEquals("0x3e8", map.get("balance"));
         assertEquals("0x2a", map.get("nonce"));
         assertEquals("0x1234", map.get("code"));
-        
+
         @SuppressWarnings("unchecked")
         Map<String, String> stateDiffMap = (Map<String, String>) map.get("stateDiff");
         assertNotNull(stateDiffMap);
@@ -79,9 +79,9 @@ class AccountOverrideTest {
 
         // Verify override didn't change
         assertEquals(1, override.stateDiff().size());
-        
+
         // Verify result of stateDiff() is immutable
-        assertThrows(UnsupportedOperationException.class, () -> 
+        assertThrows(UnsupportedOperationException.class, () ->
             override.stateDiff().put(new Hash("0x" + "4".repeat(64)), val));
     }
 
@@ -96,4 +96,3 @@ class AccountOverrideTest {
         assertFalse(override2.toMap().containsKey("stateDiff"));
     }
 }
-
