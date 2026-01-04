@@ -53,11 +53,12 @@ SimulateRequest request = SimulateRequest.builder()
         .to(anotherContract)
         .value(Wei.fromEther("1.0"))
         .build())
-    .blockTag(BlockTag.LATEST)                           // optional: default LATEST
-    .stateOverride(address, StateOverride.builder()      // optional
+    .blockTag(BlockTag.LATEST)                           // optional: use BlockTag.LATEST, BlockTag.of(12345L), etc. (default: LATEST)
+    .stateOverride(address, AccountOverride.builder()    // optional
         .balance(Wei.fromEther("1000"))
         .build())
     .traceAssetChanges(true)                             // optional: enable asset tracing
+    .fetchTokenMetadata(false)                           // optional: fetch decimals/symbol (default: false)
     .validation(false)                                   // optional: skip validation mode
     .build();
 
@@ -115,26 +116,53 @@ The full simulation request:
 
 ```java
 public record SimulateRequest(
-    @Nullable Address account,                    // Default from account
-    List<SimulateCall> calls,                     // Calls to simulate (required, non-empty)
-    @Nullable BlockTag blockTag,                  // Block reference (default: LATEST)
-    @Nullable Long blockNumber,                   // Alternative: specific block number
-    @Nullable List<StateOverride> stateOverrides, // State modifications
-    boolean traceAssetChanges,                    // Enable asset change tracking
-    boolean traceTransfers,                       // Enable transfer tracing
-    boolean validation                            // Enable validation mode
+    @Nullable Address account,                         // Default from account
+    List<SimulateCall> calls,                          // Calls to simulate (required, non-empty)
+    @Nullable BlockTag blockTag,                       // Block reference: BlockTag.LATEST, BlockTag.of(number), etc. (default: LATEST)
+    @Nullable Map<Address, AccountOverride> stateOverrides, // State modifications (map from address to override)
+    boolean traceAssetChanges,                         // Enable asset change tracking
+    boolean traceTransfers,                            // Enable transfer tracing
+    boolean validation,                                // Enable validation mode
+    boolean fetchTokenMetadata                         // Fetch decimals/symbol via eth_call (default: false)
 ) {
     // Builder pattern for construction
+    // Note: blockTag defaults to BlockTag.LATEST if null
 }
 ```
 
-### StateOverride
+**Block Reference Behavior:**
 
-For modifying account state during simulation:
+The `blockTag` field uses the existing `BlockTag` type, which supports both named tags and specific block numbers:
+
+- **Named tags**: `BlockTag.LATEST`, `BlockTag.PENDING`, `BlockTag.EARLIEST`, `BlockTag.SAFE`, `BlockTag.FINALIZED`
+- **Specific block number**: `BlockTag.of(12345678L)`
+
+When `blockTag` is `null` (not specified), it defaults to `BlockTag.LATEST`. This avoids ambiguity and matches the pattern used in `PublicClient.call()`.
+
+**Examples:**
+```java
+// Use named tag
+SimulateRequest.builder()
+    .blockTag(BlockTag.LATEST)
+    .build();
+
+// Use specific block number
+SimulateRequest.builder()
+    .blockTag(BlockTag.of(12345678L))
+    .build();
+
+// Default to LATEST (omit blockTag)
+SimulateRequest.builder()
+    // blockTag defaults to BlockTag.LATEST
+    .build();
+```
+
+### AccountOverride
+
+For modifying account state during simulation. The address is specified as the map key in `SimulateRequest.stateOverrides`, not as a field in this record:
 
 ```java
-public record StateOverride(
-    Address address,                             // Account to override
+public record AccountOverride(
     @Nullable Wei balance,                       // Override balance
     @Nullable Long nonce,                        // Override nonce
     @Nullable HexData code,                      // Override contract code
@@ -143,6 +171,8 @@ public record StateOverride(
     // Builder pattern for construction
 }
 ```
+
+**Rationale:** This design aligns with the JSON-RPC format where `stateOverrides` is a map from address to override object (`{ "0x...": { "balance": "0x..." } }`). Using `Map<Address, AccountOverride>` prevents duplicate overrides for the same address and provides a cleaner, more type-safe API.
 
 ### SimulateResult
 
@@ -173,11 +203,17 @@ public sealed interface CallResult {
     record Failure(
         BigInteger gasUsed,
         List<LogEntry> logs,
-        String errorMessage,
-        @Nullable HexData revertData              // For decoding custom errors
+        String errorMessage,                      // From error.message in JSON response
+        @Nullable HexData revertData              // From returnData in JSON response (revert data)
     ) implements CallResult {}
 }
 ```
+
+**Field Mapping from JSON-RPC Response:**
+- `errorMessage`: Populated from the `error.message` field in the failed call result object
+- `revertData`: Populated from the `returnData` field (contains revert data for failed calls, may be `null` or empty `"0x"` if no revert data)
+- `gasUsed`: From `gasUsed` field (gas consumed before failure)
+- `logs`: From `logs` array (any logs emitted before failure)
 
 ### AssetChange
 
@@ -191,8 +227,8 @@ public record AssetChange(
 
 public record AssetToken(
     Address address,                             // Token address (0xeee...eee for ETH)
-    int decimals,
-    String symbol
+    @Nullable Integer decimals,                  // null if fetchTokenMetadata=false or fetch failed
+    @Nullable String symbol                       // null if fetchTokenMetadata=false or fetch failed
 ) {}
 
 public record AssetValue(
@@ -201,6 +237,44 @@ public record AssetValue(
     BigInteger diff                              // Change amount (can be negative)
 ) {}
 ```
+
+### Token Metadata Fetching
+
+The `eth_simulateV1` RPC method returns asset changes with token addresses and balance deltas, but **does not include token metadata** such as `decimals` and `symbol`.
+
+To populate the `AssetToken.decimals()` and `AssetToken.symbol()` fields, the client library must make additional `eth_call` requests:
+
+- For ERC-20 tokens: Call `decimals()` and `symbol()` functions
+- For native ETH: Use hardcoded values (18 decimals, "ETH" symbol, address `0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee`)
+
+**Performance Considerations:**
+
+- Each unique token address requires 2 additional `eth_call` requests (decimals + symbol)
+- For simulations with many tokens, this can significantly increase latency
+- **Recommendation**: Use `MulticallBatch` internally to batch all metadata requests into a single RPC call
+
+**Design Decision:**
+
+Token metadata fetching is **optional** and **defaults to `false`**:
+
+```java
+SimulateRequest request = SimulateRequest.builder()
+    .calls(...)
+    .traceAssetChanges(true)
+    .fetchTokenMetadata(false)  // Default: false (no extra network calls)
+    .build();
+```
+
+When `fetchTokenMetadata=false` (default):
+- `AssetToken.decimals()` returns `null`
+- `AssetToken.symbol()` returns `null`
+
+When `fetchTokenMetadata=true`:
+- The library makes additional `eth_call` requests (batched via `MulticallBatch` for efficiency)
+- `decimals()` and `symbol()` are populated if the calls succeed
+- If a call fails (e.g., non-ERC-20 contract), the field remains `null`
+
+This allows users to opt-in to the performance cost when metadata is needed, or skip it when only addresses and balance changes are sufficient.
 
 ---
 
@@ -230,27 +304,26 @@ public final class SimulateNotSupportedException extends RpcException {
 
 ### Detection Logic
 
+The `sendWithRetry` method (via `RpcRetry.runRpc()`) returns a `JsonRpcResponse` for all RPC-level responses, including errors. It only throws exceptions for network/transport failures or when retries are exhausted. This design allows error handling to be centralized in a single `if (response.hasError())` block.
+
 ```java
 private SimulateResult doSimulateCalls(SimulateRequest request) {
-    try {
-        JsonRpcResponse response = sendWithRetry("eth_simulateV1", buildParams(request));
-        if (response.hasError()) {
-            JsonRpcError err = response.error();
-            if (err.code() == -32601) {
-                throw new SimulateNotSupportedException(err.message());
-            }
-            // Handle other RPC errors normally
-            throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), null);
+    JsonRpcResponse response = sendWithRetry("eth_simulateV1", buildParams(request));
+    
+    if (response.hasError()) {
+        JsonRpcError err = response.error();
+        if (err.code() == -32601) {
+            throw new SimulateNotSupportedException(err.message());
         }
-        return parseResult(response.result());
-    } catch (RpcException e) {
-        if (e.code() == -32601) {
-            throw new SimulateNotSupportedException(e.getMessage());
-        }
-        throw e;
+        // Handle other RPC errors normally
+        throw new RpcException(err.code(), err.message(), extractErrorData(err.data()), null);
     }
+    
+    return parseResult(response.result());
 }
 ```
+
+**Note:** `sendWithRetry` may throw `RetryExhaustedException` or network exceptions (e.g., `IOException`), but these are distinct from RPC-level errors and represent transport failures rather than JSON-RPC method errors.
 
 ### Other Error Cases
 
@@ -298,6 +371,7 @@ private SimulateResult doSimulateCalls(SimulateRequest request) {
 
 ### Response Format
 
+**Successful Call:**
 ```json
 {
   "jsonrpc": "2.0",
@@ -316,6 +390,36 @@ private SimulateResult doSimulateCalls(SimulateRequest request) {
   ]
 }
 ```
+
+**Failed Call:**
+```json
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "result": [
+    {
+      "calls": [
+        {
+          "status": "0x0",
+          "gasUsed": "0x5208",
+          "logs": [],
+          "error": {
+            "message": "execution reverted",
+            "code": -32000
+          },
+          "returnData": "0x08c379a00000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000000e496e73756666696369656e742066756e64730000000000000000000000000000"
+        }
+      ]
+    }
+  ]
+}
+```
+
+**Field Mapping:**
+- `status`: `"0x1"` = success, `"0x0"` = failure
+- `error.message`: Maps to `CallResult.Failure.errorMessage`
+- `error.code`: Optional error code (may be null)
+- `returnData`: For failures, contains revert data (may be empty `"0x"`). Maps to `CallResult.Failure.revertData`
 
 ---
 
@@ -354,17 +458,21 @@ SimulateResult result = client.simulateCalls(SimulateRequest.builder()
         .function("deposit")
         .value(Wei.fromEther("100"))
         .build())
-    .stateOverride(myAddress, StateOverride.builder()
+    .stateOverride(myAddress, AccountOverride.builder()
         .balance(Wei.fromEther("1000"))
         .build())
     .traceAssetChanges(true)
+    .fetchTokenMetadata(true)  // Fetch decimals/symbol for better UX
     .build());
 
 // Check asset changes
 if (result.assetChanges() != null) {
     for (AssetChange change : result.assetChanges()) {
+        String symbol = change.token().symbol() != null 
+            ? change.token().symbol() 
+            : change.token().address().value();  // Fallback to address if metadata not fetched
         System.out.printf("%s: %s -> %s (diff: %s)%n",
-            change.token().symbol(),
+            symbol,
             change.value().pre(),
             change.value().post(),
             change.value().diff());
@@ -406,8 +514,8 @@ for (int i = 0; i < result.results().size(); i++) {
 ### Phase 1: Core Implementation
 
 - [ ] Add `SimulateCall` record with builder
-- [ ] Add `SimulateRequest` record with builder  
-- [ ] Add `StateOverride` record with builder
+- [ ] Add `SimulateRequest` record with builder
+- [ ] Add `AccountOverride` record with builder
 - [ ] Add `CallResult` sealed interface with Success/Failure records
 - [ ] Add `SimulateResult` record
 - [ ] Add `SimulateNotSupportedException` class
