@@ -59,7 +59,7 @@ class SimulateNotSupportedExceptionTest {
                 "Message should indicate lack of support");
 
         // Should mention compatible nodes/providers
-        assertTrue(message.contains("geth") || message.contains("erigon") || 
+        assertTrue(message.contains("geth") || message.contains("erigon") ||
                    message.contains("node") || message.contains("provider"),
                 "Message should mention compatible RPC providers");
 

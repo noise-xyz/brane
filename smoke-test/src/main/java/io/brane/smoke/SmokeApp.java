@@ -1,5 +1,6 @@
 package io.brane.smoke;
 
+import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
@@ -116,6 +117,7 @@ public class SmokeApp {
                 testCustomErrorDecoding(); // Scenario N
                 testComplexNestedStructs(); // Scenario O
                 testWebSocket(); // Scenario P
+                testSimulateCalls(); // Scenario Q
             }
 
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
@@ -695,6 +697,144 @@ public class SmokeApp {
                 }
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    /**
+     * Scenario Q: Transaction Simulation (eth_simulateV1).
+     * <p>
+     * Tests the simulateCalls feature for dry-run transaction validation,
+     * gas estimation, and multi-call sequence simulation.
+     */
+    private static void testSimulateCalls() {
+        System.out.println("\n[Scenario Q] Testing Transaction Simulation (eth_simulateV1)");
+
+        try {
+            // Import classes needed
+            io.brane.rpc.SimulateRequest SimulateRequest = null;
+            io.brane.rpc.SimulateCall SimulateCall = null;
+            io.brane.rpc.SimulateResult SimulateResult = null;
+            io.brane.rpc.CallResult CallResult = null;
+            io.brane.rpc.AccountOverride AccountOverride = null;
+
+            // Test 1: Simple value transfer simulation
+            System.out.println("  Testing simple value transfer simulation");
+            io.brane.rpc.SimulateRequest request1 = io.brane.rpc.SimulateRequest.builder()
+                    .account(OWNER)
+                    .call(io.brane.rpc.SimulateCall.builder()
+                            .to(RECIPIENT)
+                            .value(Wei.fromEther(new BigDecimal("1.0")))
+                            .build())
+                    .build();
+
+            io.brane.rpc.SimulateResult result1 = publicClient.simulateCalls(request1);
+            if (result1.results().size() != 1) {
+                throw new RuntimeException("Expected 1 result, got " + result1.results().size());
+            }
+            if (!(result1.results().get(0) instanceof io.brane.rpc.CallResult.Success)) {
+                throw new RuntimeException("Simple transfer should succeed");
+            }
+            System.out.println("    ✓ Simple value transfer simulation works");
+
+            // Test 2: Contract call simulation (balanceOf)
+            System.out.println("  Testing contract call simulation");
+            HexData balanceOfData = new HexData(abi.encodeFunction("balanceOf", OWNER).data());
+            io.brane.rpc.SimulateRequest request2 = io.brane.rpc.SimulateRequest.builder()
+                    .call(io.brane.rpc.SimulateCall.builder()
+                            .to(tokenAddress)
+                            .data(balanceOfData)
+                            .build())
+                    .build();
+
+            io.brane.rpc.SimulateResult result2 = publicClient.simulateCalls(request2);
+            if (!(result2.results().get(0) instanceof io.brane.rpc.CallResult.Success)) {
+                throw new RuntimeException("balanceOf call should succeed");
+            }
+            io.brane.rpc.CallResult.Success success = (io.brane.rpc.CallResult.Success) result2.results().get(0);
+            if (success.returnData() == null) {
+                throw new RuntimeException("balanceOf should return data");
+            }
+            System.out.println("    ✓ Contract call simulation works");
+
+            // Test 3: Multiple calls in sequence
+            System.out.println("  Testing multiple calls simulation");
+            HexData transferData = new HexData(abi.encodeFunction("transfer", RECIPIENT, BigInteger.valueOf(100)).data());
+            io.brane.rpc.SimulateRequest request3 = io.brane.rpc.SimulateRequest.builder()
+                    .account(OWNER)
+                    .call(io.brane.rpc.SimulateCall.builder()
+                            .to(tokenAddress)
+                            .data(transferData)
+                            .build())
+                    .call(io.brane.rpc.SimulateCall.builder()
+                            .to(tokenAddress)
+                            .data(balanceOfData)
+                            .build())
+                    .build();
+
+            io.brane.rpc.SimulateResult result3 = publicClient.simulateCalls(request3);
+            if (result3.results().size() != 2) {
+                throw new RuntimeException("Expected 2 results");
+            }
+            System.out.println("    ✓ Multiple calls simulation works");
+
+            // Test 4: State override
+            System.out.println("  Testing state override");
+            io.brane.rpc.AccountOverride override = io.brane.rpc.AccountOverride.builder()
+                    .balance(Wei.fromEther(new BigDecimal("10000")))
+                    .build();
+
+            io.brane.rpc.SimulateRequest request4 = io.brane.rpc.SimulateRequest.builder()
+                    .call(io.brane.rpc.SimulateCall.builder()
+                            .to(tokenAddress)
+                            .data(balanceOfData)
+                            .build())
+                    .stateOverride(OWNER, override)
+                    .build();
+
+            io.brane.rpc.SimulateResult result4 = publicClient.simulateCalls(request4);
+            if (!(result4.results().get(0) instanceof io.brane.rpc.CallResult.Success)) {
+                throw new RuntimeException("Call with state override should succeed");
+            }
+            System.out.println("    ✓ State override works");
+
+            // Test 5: Gas estimation via simulation
+            System.out.println("  Testing gas estimation");
+            io.brane.rpc.CallResult.Success transferResult = (io.brane.rpc.CallResult.Success) result3.results().get(0);
+            BigInteger gasUsed = transferResult.gasUsed();
+            if (gasUsed == null || gasUsed.compareTo(BigInteger.ZERO) <= 0) {
+                throw new RuntimeException("Gas used should be > 0");
+            }
+            System.out.println("    ✓ Gas estimation: " + gasUsed + " gas");
+
+            // Test 6: Failed call simulation
+            System.out.println("  Testing failed call simulation");
+            BigInteger tooMuch = new BigInteger("999999999999999999999999");
+            HexData failTransfer = new HexData(abi.encodeFunction("transfer", RECIPIENT, tooMuch).data());
+            io.brane.rpc.SimulateRequest request6 = io.brane.rpc.SimulateRequest.builder()
+                    .account(OWNER)
+                    .call(io.brane.rpc.SimulateCall.builder()
+                            .to(tokenAddress)
+                            .data(failTransfer)
+                            .build())
+                    .build();
+
+            io.brane.rpc.SimulateResult result6 = publicClient.simulateCalls(request6);
+            if (!(result6.results().get(0) instanceof io.brane.rpc.CallResult.Failure)) {
+                throw new RuntimeException("Transfer with insufficient balance should fail");
+            }
+            io.brane.rpc.CallResult.Failure failure = (io.brane.rpc.CallResult.Failure) result6.results().get(0);
+            if (failure.errorMessage() == null) {
+                throw new RuntimeException("Failure should have error message");
+            }
+            System.out.println("    ✓ Failed call simulation works: " + failure.errorMessage());
+
+            System.out.println("  ✅ Scenario Q: Transaction Simulation PASSED");
+
+        } catch (io.brane.rpc.exception.SimulateNotSupportedException e) {
+            System.out.println("  ⚠️ eth_simulateV1 not supported by this node (skipping test)");
+            System.out.println("    This is expected on older Anvil versions or some RPC providers");
+        } catch (Exception e) {
+            throw new RuntimeException("Simulation test failed", e);
         }
     }
 }

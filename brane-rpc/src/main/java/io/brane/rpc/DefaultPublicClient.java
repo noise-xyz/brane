@@ -265,6 +265,47 @@ final class DefaultPublicClient implements PublicClient {
     }
 
     @Override
+    public SimulateResult simulateCalls(final SimulateRequest request) {
+        Objects.requireNonNull(request, "request");
+        final Map<String, Object> payload = request.toMap();
+        final String blockTagStr = request.blockTag() != null 
+                ? request.blockTag().toRpcValue() 
+                : "latest";
+
+        final JsonRpcResponse response = sendWithRetry("eth_simulateV1", List.of(payload, blockTagStr));
+        if (response.hasError()) {
+            final JsonRpcError err = response.error();
+            if (err.code() == -32601) { // Method not found
+                throw new io.brane.rpc.exception.SimulateNotSupportedException(err.message());
+            }
+            throw new io.brane.core.error.RpcException(
+                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+        }
+
+        final Object result = response.result();
+        if (result == null) {
+            throw new io.brane.core.error.RpcException(0, "eth_simulateV1 returned null", (String) null, (Throwable) null);
+        }
+
+        // Standard eth_simulateV1 returns an Array of block results
+        if (result instanceof List<?> list) {
+            @SuppressWarnings("unchecked")
+            final List<Map<String, Object>> mapList = (List<Map<String, Object>>) list;
+            return SimulateResult.fromList(mapList);
+        }
+
+        // Fallback for non-standard implementations returning a single Object
+        if (result instanceof Map) {
+            final Map<String, Object> map = MAPPER.convertValue(result, new TypeReference<Map<String, Object>>() {});
+            return SimulateResult.fromMap(map);
+        }
+
+        throw new io.brane.core.error.RpcException(0, 
+                "Unexpected eth_simulateV1 response format. Expected Array or Object, got: " + result.getClass().getSimpleName(), 
+                (String) null, (Throwable) null);
+    }
+
+    @Override
     public MulticallBatch createBatch() {
         return MulticallBatch.create(this);
     }

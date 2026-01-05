@@ -70,6 +70,56 @@ public record SimulateRequest(
     }
 
     /**
+     * Converts this request to a map suitable for JSON-RPC serialization.
+     * <p>
+     * This method constructs the first parameter (payload object) for {@code eth_simulateV1}.
+     * Note that the block tag is passed as a separate second parameter in the RPC call.
+     *
+     * @return a map representation of the simulation payload
+     */
+    public Map<String, Object> toMap() {
+        var map = new LinkedHashMap<String, Object>();
+
+        // 1. blockStateCalls (Array of objects, each containing a list of calls)
+        var blockStateCall = new LinkedHashMap<String, Object>();
+        
+        // Map calls and apply default account if not present
+        List<Map<String, Object>> mappedCalls = calls.stream().map(call -> {
+            Map<String, Object> callMap = call.toMap();
+            if (account != null && !callMap.containsKey("from")) {
+                callMap.put("from", account.value());
+            }
+            return callMap;
+        }).toList();
+        
+        blockStateCall.put("calls", mappedCalls);
+
+        // Add global state overrides to this block simulation
+        if (stateOverrides != null && !stateOverrides.isEmpty()) {
+            var blockState = new LinkedHashMap<String, Object>();
+            var overrides = new LinkedHashMap<String, Map<String, Object>>();
+            stateOverrides.forEach((addr, override) -> overrides.put(addr.value(), override.toMap()));
+            blockState.put("stateOverrides", overrides);
+            blockStateCall.put("blockState", blockState);
+        }
+
+        map.put("blockStateCalls", List.of(blockStateCall));
+
+        // 2. Flags at top level
+        if (traceAssetChanges) {
+            map.put("traceAssetChanges", true);
+        }
+        if (traceTransfers) {
+            map.put("traceTransfers", true);
+        }
+        if (validation) {
+            map.put("validation", true);
+        }
+
+        return map;
+    }
+
+    /**
      * Creates a builder for constructing {@link SimulateRequest} instances.
      *
      * @return a new builder

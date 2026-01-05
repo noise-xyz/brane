@@ -238,6 +238,11 @@ class DefaultWalletClientDebugTest {
         public io.brane.rpc.MulticallBatch createBatch() {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public SimulateResult simulateCalls(SimulateRequest request) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     private static final class FakeBraneProvider implements BraneProvider {

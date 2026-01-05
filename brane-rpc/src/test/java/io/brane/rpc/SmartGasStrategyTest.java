@@ -320,6 +320,11 @@ class SmartGasStrategyTest {
         public MulticallBatch createBatch() {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public SimulateResult simulateCalls(SimulateRequest request) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     @Test
@@ -420,6 +425,11 @@ class SmartGasStrategyTest {
 
         @Override
         public io.brane.rpc.MulticallBatch createBatch() {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public io.brane.rpc.SimulateResult simulateCalls(io.brane.rpc.SimulateRequest request) {
             throw new UnsupportedOperationException();
         }
     }

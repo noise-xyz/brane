@@ -2,12 +2,15 @@ package io.brane.rpc;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
 import io.brane.core.model.LogEntry;
 import io.brane.core.types.HexData;
+import io.brane.rpc.internal.LogParser;
+import io.brane.rpc.internal.RpcUtils;
 
 /**
  * Represents the result of a single call in a transaction simulation.
@@ -23,6 +26,39 @@ import io.brane.core.types.HexData;
  * @see SimulateResult
  */
 public sealed interface CallResult {
+
+    /**
+     * Parses a call result from a JSON-RPC response map.
+     *
+     * @param map the raw map from the JSON-RPC response
+     * @return a Success or Failure record
+     */
+    @SuppressWarnings("unchecked")
+    static CallResult fromMap(Map<String, Object> map) {
+        BigInteger gasUsed = RpcUtils.decodeHexBigInteger(String.valueOf(map.getOrDefault("gasUsed", "0x0")));
+        List<LogEntry> logs = LogParser.parseLogs(map.get("logs"));
+
+        // Check for failure: either 'error' field is present, or 'status' field is 0.
+        boolean isFailure = map.containsKey("error") && map.get("error") != null;
+        if (!isFailure && map.containsKey("status")) {
+            Object status = map.get("status");
+            if (status instanceof Number) {
+                isFailure = ((Number) status).intValue() == 0;
+            } else if (status instanceof String) {
+                isFailure = RpcUtils.decodeHexBigInteger((String) status).intValue() == 0;
+            }
+        }
+
+        if (isFailure) {
+            Map<String, Object> error = (Map<String, Object>) map.get("error");
+            String message = error != null ? String.valueOf(error.get("message")) : "execution failed";
+            String returnData = (String) map.get("returnData");
+            return new Failure(gasUsed, logs, message, returnData != null ? new HexData(returnData) : null);
+        } else {
+            String returnData = (String) map.get("returnData");
+            return new Success(gasUsed, logs, returnData != null ? new HexData(returnData) : null);
+        }
+    }
 
     /**
      * The gas consumed by this call.
