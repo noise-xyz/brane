@@ -144,6 +144,26 @@ class RlpTest {
     }
 
     @Test
+    @DisplayName("RlpList rejects null elements")
+    void testRlpListNullElementRejection() {
+        // Null list should be rejected
+        assertThrows(NullPointerException.class, () -> RlpList.of((List<RlpItem>) null));
+
+        // List containing null element should be rejected
+        final List<RlpItem> listWithNull = new ArrayList<>();
+        listWithNull.add(RlpString.of(1L));
+        listWithNull.add(null);
+        listWithNull.add(RlpString.of(2L));
+        final IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> RlpList.of(listWithNull));
+        assertTrue(ex.getMessage().contains("cannot contain null"));
+
+        // Varargs with null should also be rejected
+        assertThrows(IllegalArgumentException.class, () -> RlpList.of(RlpString.of(1L), null));
+    }
+
+    @Test
     @DisplayName("Test enhanced error messages with context")
     void testEnhancedErrorMessages() {
         // Test bounds check error message includes context
