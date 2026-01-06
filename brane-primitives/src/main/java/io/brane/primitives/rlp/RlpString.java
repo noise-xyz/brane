@@ -36,6 +36,10 @@ public final class RlpString implements RlpItem {
      * This constructor is intended for internal use where the caller guarantees
      * exclusive ownership of the array (e.g., decoder, numeric helpers).
      *
+     * @apiNote This constructor does not make a defensive copy. Modifying the passed
+     *          array after construction will corrupt this instance's internal state
+     *          and may invalidate any cached encoded representation. Use {@link #of(byte[])}
+     *          for safe external construction with defensive copying.
      * @param bytes the value to wrap (must not be null)
      */
     public RlpString(final byte[] bytes) {
