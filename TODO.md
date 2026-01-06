@@ -36,7 +36,7 @@ if (rawValue == null) {
 **Issue:** Added deprecated `getCode()`/`getData()` on NEW code - suggests false backward compat. These methods don't serve any real backward compatibility purpose.
 **Fix:** Remove the deprecated `getCode()` and `getData()` methods entirely since this is new code and no backward compatibility is needed.
 
-### T3-2: Hide or remove unimplemented fetchTokenMetadata from public API
+### T3-2: [DONE] Hide or remove unimplemented fetchTokenMetadata from public API
 **File:** `brane-rpc/src/main/java/io/brane/rpc/SimulateRequest.java:42,248-254`
 **Issue:** `fetchTokenMetadata` documented as "NOT YET IMPLEMENTED" but exposed in public API. Users may set this flag expecting functionality that doesn't exist.
 **Fix:** Either remove from public API until implemented, or throw `UnsupportedOperationException` if set to `true` (fail-fast).
