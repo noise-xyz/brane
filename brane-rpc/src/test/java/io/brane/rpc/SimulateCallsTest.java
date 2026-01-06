@@ -241,6 +241,39 @@ class SimulateCallsTest {
     }
 
     @Test
+    void simulateCallsParsesFailureFromStatusZeroWithoutErrorField() throws Exception {
+        // Test the status=0 failure detection path in CallResult.fromMap()
+        // When status is "0x0" but there's no error field, it should still produce a Failure
+        SimulateCall call = SimulateCall.builder().to(TO).build();
+        SimulateRequest request = SimulateRequest.builder().call(call).build();
+
+        // Response with status=0 but NO error field
+        Map<String, Object> callResult = new HashMap<>();
+        callResult.put("gasUsed", "0x5208");
+        callResult.put("status", "0x0");  // Failed status
+        callResult.put("returnData", "0x08c379a0");  // Revert data present
+        // Note: no "error" field - this tests the status-based failure detection
+
+        Map<String, Object> mockResult = Map.of(
+                "results", List.of(callResult)
+        );
+
+        JsonRpcResponse response = new JsonRpcResponse("2.0", mockResult, null, "1");
+        when(provider.send(eq("eth_simulateV1"), any())).thenReturn(response);
+
+        SimulateResult result = client.simulateCalls(request);
+
+        assertEquals(1, result.results().size());
+        assertTrue(result.results().get(0) instanceof CallResult.Failure,
+                "status=0 without error field should produce Failure");
+        CallResult.Failure failure = (CallResult.Failure) result.results().get(0);
+        assertEquals("execution failed", failure.errorMessage(),
+                "Default error message should be 'execution failed' when no error field");
+        assertEquals(BigInteger.valueOf(21000), failure.gasUsed());
+        assertEquals("0x08c379a0", failure.revertData().value());
+    }
+
+    @Test
     void simulateCallsSerializesValidationFlagWhenFalse() throws Exception {
         // Verify that validation=false is explicitly serialized (not omitted)
         SimulateRequest request = SimulateRequest.builder()
