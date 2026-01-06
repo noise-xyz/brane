@@ -19,6 +19,7 @@ import java.util.Objects;
  * @see <a href=
  *      "https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/">Ethereum
  *      RLP Specification</a>
+ * @since 1.0
  */
 public final class Rlp {
 
@@ -144,7 +145,7 @@ public final class Rlp {
         Objects.requireNonNull(encoded, "encoded cannot be null");
         final DecodeResult result = decode(encoded, 0);
         if (result.consumed != encoded.length) {
-            throw new IllegalArgumentException("RLP data has trailing bytes");
+            throw new IllegalArgumentException("RLP encoded data has trailing bytes");
         }
         return result.item;
     }
@@ -160,7 +161,7 @@ public final class Rlp {
         if (item instanceof RlpList list) {
             return list.items();
         }
-        throw new IllegalArgumentException("RLP data is not a list");
+        throw new IllegalArgumentException("RLP encoded data is not a list");
     }
 
     /**
@@ -168,7 +169,7 @@ public final class Rlp {
      */
     private static DecodeResult decode(final byte[] data, final int offset) {
         if (offset >= data.length) {
-            throw new IllegalArgumentException("Invalid RLP data: offset beyond end");
+            throw new IllegalArgumentException("invalid RLP data: offset beyond end");
         }
 
         final int prefix = data[offset] & 0xFF;
@@ -231,7 +232,7 @@ public final class Rlp {
 
         if (length < 56) {
             throw new IllegalArgumentException(
-                    String.format("Non-minimal length encoding for string: length=%d < 56 (prefix=0x%02X)",
+                    String.format("non-minimal length encoding for string: length=%d < 56, prefix=0x%02X",
                             length, data[offset] & 0xFF));
         }
 
@@ -271,7 +272,7 @@ public final class Rlp {
 
         if (currentOffset != end) {
             throw new IllegalArgumentException(
-                    String.format("RLP list length mismatch: expected end=%d, actual=%d (prefix=0x%02X)",
+                    String.format("RLP list length mismatch: expected end=%d, actual=%d, prefix=0x%02X",
                             end, currentOffset, data[offset] & 0xFF));
         }
 
@@ -292,7 +293,7 @@ public final class Rlp {
 
         if (length < 56) {
             throw new IllegalArgumentException(
-                    String.format("Non-minimal length encoding for list: length=%d < 56 (prefix=0x%02X)",
+                    String.format("non-minimal length encoding for list: length=%d < 56, prefix=0x%02X",
                             length, data[offset] & 0xFF));
         }
 
@@ -304,12 +305,12 @@ public final class Rlp {
      */
     private static int readLength(final byte[] data, final int start, final int lengthOfLength) {
         if (lengthOfLength < 1 || lengthOfLength > 4) {
-            throw new IllegalArgumentException("Invalid length-of-length: " + lengthOfLength);
+            throw new IllegalArgumentException("invalid length-of-length: " + lengthOfLength);
         }
 
         final int first = data[start] & 0xFF;
         if (first == 0) {
-            throw new IllegalArgumentException("Length has leading zeros");
+            throw new IllegalArgumentException("length has leading zeros");
         }
 
         return switch (lengthOfLength) {
@@ -323,7 +324,7 @@ public final class Rlp {
                     | ((data[start + 1] & 0xFF) << 16)
                     | ((data[start + 2] & 0xFF) << 8)
                     | (data[start + 3] & 0xFF);
-            default -> throw new IllegalArgumentException("Invalid length-of-length: " + lengthOfLength);
+            default -> throw new IllegalArgumentException("invalid length-of-length: " + lengthOfLength);
         };
     }
 
@@ -332,7 +333,7 @@ public final class Rlp {
      */
     private static int lengthSize(final int value) {
         if (value < 0) {
-            throw new IllegalArgumentException("Length cannot be negative");
+            throw new IllegalArgumentException("length cannot be negative");
         }
         if (value < 0x100) {
             return 1; // < 256
@@ -353,7 +354,7 @@ public final class Rlp {
             final byte[] buffer, final int offset, final int value, final int size) {
 
         if (value < 0) {
-            throw new IllegalArgumentException("Length cannot be negative");
+            throw new IllegalArgumentException("length cannot be negative");
         }
 
         switch (size) {
@@ -373,7 +374,7 @@ public final class Rlp {
                 buffer[offset + 2] = (byte) (value >>> 8);
                 buffer[offset + 3] = (byte) value;
             }
-            default -> throw new IllegalArgumentException("Unsupported length size: " + size);
+            default -> throw new IllegalArgumentException("unsupported length size: " + size);
         }
     }
 
@@ -390,7 +391,7 @@ public final class Rlp {
             final byte[] data, final int offset, final int required, final String context) {
         if (required < 0 || offset < 0 || offset > data.length - required) {
             throw new IllegalArgumentException(
-                    String.format("Invalid RLP %s: offset=%d, required=%d, available=%d",
+                    String.format("invalid RLP %s: offset=%d, required=%d, available=%d",
                             context, offset, required, Math.max(0, data.length - offset)));
         }
     }

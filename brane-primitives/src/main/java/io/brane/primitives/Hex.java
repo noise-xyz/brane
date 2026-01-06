@@ -2,6 +2,8 @@ package io.brane.primitives;
 
 /**
  * Utility methods for hex encoding/decoding with optional {@code 0x} prefixes.
+ *
+ * @since 1.0
  */
 public final class Hex {
     private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();
@@ -36,16 +38,16 @@ public final class Hex {
      */
     public static byte[] decode(final String hexString) {
         if (hexString == null) {
-            throw new IllegalArgumentException("Hex string cannot be null");
+            throw new IllegalArgumentException("hex string cannot be null");
         }
 
         final String cleanHex = cleanPrefix(hexString);
-        if (cleanHex.length() == 0) {
+        if (cleanHex.isEmpty()) {
             return new byte[0];
         }
 
         if ((cleanHex.length() & 1) == 1) {
-            throw new IllegalArgumentException("Hex string must have an even length: " + hexString);
+            throw new IllegalArgumentException("hex string must have even length: " + hexString);
         }
 
         final int len = cleanHex.length() / 2;
@@ -70,7 +72,7 @@ public final class Hex {
      */
     public static String encodeByte(final int value) {
         if (value < 0 || value > 0xFF) {
-            throw new IllegalArgumentException("Byte value must be in range 0-255: " + value);
+            throw new IllegalArgumentException("byte value must be in range 0-255: " + value);
         }
         final char[] chars = new char[4];
         chars[0] = '0';
@@ -89,7 +91,7 @@ public final class Hex {
      */
     public static String encode(final byte[] bytes) {
         if (bytes == null) {
-            throw new IllegalArgumentException("Bytes cannot be null");
+            throw new IllegalArgumentException("bytes cannot be null");
         }
 
         final char[] chars = new char[2 + bytes.length * 2];
@@ -112,7 +114,7 @@ public final class Hex {
      */
     public static String encodeNoPrefix(final byte[] bytes) {
         if (bytes == null) {
-            throw new IllegalArgumentException("Bytes cannot be null");
+            throw new IllegalArgumentException("bytes cannot be null");
         }
 
         final char[] chars = new char[bytes.length * 2];
@@ -133,7 +135,7 @@ public final class Hex {
      */
     public static String cleanPrefix(final String hexString) {
         if (hexString == null) {
-            throw new IllegalArgumentException("Hex string cannot be null");
+            throw new IllegalArgumentException("hex string cannot be null");
         }
         return hasPrefix(hexString) ? hexString.substring(2) : hexString;
     }
@@ -167,7 +169,7 @@ public final class Hex {
      */
     public static byte[] toBytes(final Object input) {
         if (input == null) {
-            throw new IllegalArgumentException("Input cannot be null");
+            throw new IllegalArgumentException("input cannot be null");
         }
         if (input instanceof byte[] bytes) {
             return bytes;
@@ -176,12 +178,12 @@ public final class Hex {
             return decode(hex);
         }
         throw new IllegalArgumentException(
-                "Unsupported input type: " + input.getClass().getName() + ". Expected String or byte[]");
+                "unsupported input type: " + input.getClass().getName() + ", expected String or byte[]");
     }
 
     private static int toNibble(final char c, final String originalInput) {
         if (c >= NIBBLE_LOOKUP.length || NIBBLE_LOOKUP[c] == -1) {
-            throw new IllegalArgumentException("Invalid hex character in: " + originalInput);
+            throw new IllegalArgumentException("invalid hex character in: " + originalInput);
         }
         return NIBBLE_LOOKUP[c];
     }

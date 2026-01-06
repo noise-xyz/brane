@@ -15,6 +15,8 @@ import io.brane.primitives.Hex;
  *   perform defensive copies or build fresh arrays, preserving external immutability.
  * - Encoded RLP bytes are cached lazily in {@link #encode()} to avoid recomputing for
  *   hot paths that re-encode the same value many times (transactions, benchmarks, etc.).
+ *
+ * @since 1.0
  */
 public final class RlpString implements RlpItem {
 
@@ -36,6 +38,10 @@ public final class RlpString implements RlpItem {
      * This constructor is intended for internal use where the caller guarantees
      * exclusive ownership of the array (e.g., decoder, numeric helpers).
      *
+     * @apiNote This constructor does not make a defensive copy. Modifying the passed
+     *          array after construction will corrupt this instance's internal state
+     *          and may invalidate any cached encoded representation. Use {@link #of(byte[])}
+     *          for safe external construction with defensive copying.
      * @param bytes the value to wrap (must not be null)
      */
     public RlpString(final byte[] bytes) {
@@ -72,7 +78,7 @@ public final class RlpString implements RlpItem {
      */
     public static RlpString of(final long value) {
         if (value < 0) {
-            throw new IllegalArgumentException("RLP numeric values must be non-negative");
+            throw new IllegalArgumentException("value must be non-negative");
         }
         return new RlpString(longToMinimalBytes(value));
     }
@@ -87,7 +93,7 @@ public final class RlpString implements RlpItem {
     public static RlpString of(final BigInteger value) {
         Objects.requireNonNull(value, "value cannot be null");
         if (value.signum() < 0) {
-            throw new IllegalArgumentException("RLP numeric values must be non-negative");
+            throw new IllegalArgumentException("value must be non-negative");
         }
         return new RlpString(toMinimalBytes(value));
     }
@@ -162,12 +168,12 @@ public final class RlpString implements RlpItem {
         }
         if (bytes.length > 8) {
             throw new IllegalArgumentException(
-                    String.format("Value too large for long: %d bytes (max 8)", bytes.length));
+                    String.format("value too large for long: %d bytes, max 8", bytes.length));
         }
         // Reject values that would overflow into negative territory
         if (bytes.length == 8 && (bytes[0] & 0x80) != 0) {
             throw new IllegalArgumentException(
-                    "Value exceeds Long.MAX_VALUE, use asBigInteger() instead");
+                    "value exceeds Long.MAX_VALUE, use asBigInteger() instead");
         }
         long result = 0L;
         for (final byte b : bytes) {
