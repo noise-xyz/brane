@@ -196,4 +196,24 @@ public interface PublicClient {
      * @return a new MulticallBatch instance
      */
     MulticallBatch createBatch();
+
+    /**
+     * Simulates one or more calls on the blockchain using eth_simulateV1.
+     * <p>
+     * This method allows you to:
+     * <ul>
+     *   <li>Execute multiple calls in sequence without changing the blockchain state</li>
+     *   <li>Perform state overrides (balance, nonce, storage, code) during simulation</li>
+     *   <li>Get detailed asset changes (token balance shifts)</li>
+     * </ul>
+     * <p>
+     * If the RPC node does not support {@code eth_simulateV1} (returns -32601),
+     * a {@link io.brane.rpc.exception.SimulateNotSupportedException} is thrown.
+     *
+     * @param request the simulation request parameters
+     * @return the simulation results for each call
+     * @throws io.brane.rpc.exception.SimulateNotSupportedException if eth_simulateV1 is not supported
+     * @see <a href="https://ethereum.github.io/execution-apis/api-documentation/">eth_simulateV1 Specification</a>
+     */
+    SimulateResult simulateCalls(SimulateRequest request);
 }

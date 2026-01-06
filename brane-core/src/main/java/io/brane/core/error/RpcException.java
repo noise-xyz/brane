@@ -37,7 +37,7 @@ package io.brane.core.error;
  *      Error Specification</a>
  * @since 0.1.0-alpha
  */
-public final class RpcException extends BraneException {
+public non-sealed class RpcException extends BraneException {
 
     private final int code;
     private final String data;

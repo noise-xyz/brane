@@ -197,6 +197,12 @@ public final class BranePublicClient implements PublicClient, AutoCloseable {
         return delegate.createBatch();
     }
 
+    @Override
+    public SimulateResult simulateCalls(final SimulateRequest request) {
+        ensureOpen();
+        return delegate.simulateCalls(request);
+    }
+
     public static final class Builder {
         private final ChainProfile profile;
         private String rpcUrlOverride;

@@ -14,8 +14,10 @@ build/
 .vscode/
 *.iml
 anvil.log
+anvil_integration.log
 .vercel
 anvil_smoke_temp.log
+fix_logs/
 
 
 # Eclipse / Gradle IDE
@@ -31,3 +33,7 @@ benchmark_output.txt
 
 # Security
 .env
+
+# Planning files
+TODO.md
+spec.md

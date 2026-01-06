@@ -1,0 +1,124 @@
+---
+title: Simulating Calls (eth_simulateV1)
+description: 'Simulate one or more calls, apply state overrides, and inspect per-call results without changing chain state.'
+---
+
+Brane exposes `eth_simulateV1` via `PublicClient.simulateCalls()`. This lets you **dry-run** one or more calls (in sequence), optionally applying **state overrides** (balance/nonce/code/storage) and collecting richer output such as **per-call gas used**, **logs**, and **asset changes**.
+
+<Warning>
+`eth_simulateV1` is not supported by all nodes/providers. If the node returns JSON-RPC error `-32601` ("Method not found"), Brane throws `SimulateNotSupportedException`.
+</Warning>
+
+## Basic Usage
+
+### 1. Build a Simulation Request
+
+```java
+import io.brane.rpc.BlockTag;
+import io.brane.rpc.PublicClient;
+import io.brane.rpc.SimulateCall;
+import io.brane.rpc.SimulateRequest;
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
+
+Address from = new Address("0x1111111111111111111111111111111111111111");
+Address to = new Address("0x2222222222222222222222222222222222222222");
+
+SimulateRequest request = SimulateRequest.builder()
+    .account(from) // default "from" if not provided per-call
+    .call(SimulateCall.builder()
+        .to(to)
+        .data(new HexData("0x1234"))
+        .build())
+    .blockTag(BlockTag.LATEST)
+    .traceAssetChanges(true)
+    .build();
+```
+
+### 2. Execute
+
+```java
+import io.brane.rpc.SimulateResult;
+
+SimulateResult result = publicClient.simulateCalls(request);
+```
+
+## Handling Results
+
+Each call produces a `CallResult` in the **same order** as the input calls.
+
+```java
+import io.brane.rpc.CallResult;
+
+for (var r : result.results()) {
+    switch (r) {
+        case CallResult.Success s -> {
+            System.out.println("ok gasUsed=" + s.gasUsed());
+            System.out.println("returnData=" + s.returnData());
+        }
+        case CallResult.Failure f -> {
+            System.out.println("fail gasUsed=" + f.gasUsed());
+            System.out.println("error=" + f.errorMessage());
+            System.out.println("revertData=" + f.revertData());
+        }
+    }
+}
+```
+
+### Asset Changes
+
+If you enabled `traceAssetChanges(true)`, `assetChanges()` may contain token balance changes observed during the simulation:
+
+```java
+var changes = result.assetChanges();
+if (changes != null) {
+    for (var c : changes) {
+        System.out.println(c.token().symbol() + " diff=" + c.value().diff());
+    }
+}
+```
+
+## State Overrides
+
+State overrides allow you to simulate “what if” scenarios without touching real chain state.
+
+```java
+import io.brane.rpc.AccountOverride;
+import io.brane.core.types.Wei;
+
+Address who = new Address("0x3333333333333333333333333333333333333333");
+
+SimulateRequest requestWithOverride = SimulateRequest.builder()
+    .account(from)
+    .call(SimulateCall.builder().to(to).data(new HexData("0x1234")).build())
+    .stateOverride(who, AccountOverride.builder()
+        .balance(Wei.fromEther("1000"))
+        .build())
+    .build();
+```
+
+## Error Handling
+
+```java
+import io.brane.core.error.RpcException;
+import io.brane.rpc.exception.SimulateNotSupportedException;
+
+try {
+    var result = publicClient.simulateCalls(request);
+} catch (SimulateNotSupportedException e) {
+    // Node/provider does not implement eth_simulateV1
+    // Consider falling back to eth_call / createAccessList depending on your use case.
+    System.err.println(e.getMessage());
+} catch (RpcException e) {
+    // Other RPC failures (timeouts, reverts surfaced by the node, etc.)
+    System.err.println(e.getMessage());
+}
+```
+
+## Technical Notes
+
+- **Block selection**: `SimulateRequest.blockTag()` defaults to `"latest"` if not set.
+- **Request format**: Brane serializes the request payload as the first parameter and passes the block tag as the second parameter, per the `eth_simulateV1` API shape.
+- **Spec reference**: See the [eth_simulateV1 specification](https://ethereum.github.io/execution-apis/api-documentation/) and [supplementary notes](https://ethereum.github.io/execution-apis/ethsimulatev1-notes/).
+
+

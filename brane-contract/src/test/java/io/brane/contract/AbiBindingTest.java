@@ -602,6 +602,11 @@ class AbiBindingTest {
         public io.brane.rpc.MulticallBatch createBatch() {
             throw new UnsupportedOperationException();
         }
+
+        @Override
+        public io.brane.rpc.SimulateResult simulateCalls(io.brane.rpc.SimulateRequest request) {
+            throw new UnsupportedOperationException();
+        }
     }
 
     private static abstract class FakeWalletClient implements io.brane.rpc.WalletClient {

@@ -146,3 +146,27 @@ for (AccessListEntry entry : result.accessList()) {
     System.out.println("Address: " + entry.address().value());
     System.out.println("Storage slots: " + entry.storageKeys().size());
 }
+```
+
+### simulateCalls
+
+Simulate one or more calls using `eth_simulateV1` (supports per-call results and optional state overrides).
+
+```java
+import io.brane.rpc.SimulateCall;
+import io.brane.rpc.SimulateRequest;
+import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
+
+SimulateRequest request = SimulateRequest.builder()
+    .call(SimulateCall.builder()
+        .to(new Address("0x..."))
+        .data(new HexData("0x..."))
+        .build())
+    .traceAssetChanges(true)
+    .build();
+
+var result = client.simulateCalls(request);
+```
+
+For full details (state overrides, result handling, error cases), see [Simulating Calls](/public-client/simulate).

@@ -8,6 +8,7 @@
 - **Overview**: Reading from the blockchain.
 - **API**: `getBalance`, `getChainId`, `getBlock`, `call`.
 - **Events**: `getLogs` (Filtering & Topics).
+- **Simulation**: `simulateCalls` (`eth_simulateV1`).
 
 ## 3. Wallet Client (Write)
 - **Overview**: Managing accounts and transactions.
