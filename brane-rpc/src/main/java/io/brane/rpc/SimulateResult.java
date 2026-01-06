@@ -118,6 +118,9 @@ public record SimulateResult(
         AssetToken token = new AssetToken(tokenAddr, decimals, symbol);
 
         Map<String, Object> rawValue = (Map<String, Object>) map.get("value");
+        if (rawValue == null) {
+            throw new IllegalArgumentException("assetChange entry missing required 'value' field");
+        }
         BigInteger pre = RpcUtils.decodeHexBigInteger(String.valueOf(rawValue.get("pre")));
         BigInteger post = RpcUtils.decodeHexBigInteger(String.valueOf(rawValue.get("post")));
         BigInteger diff = RpcUtils.decodeHexBigInteger(String.valueOf(rawValue.get("diff")));

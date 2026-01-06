@@ -76,4 +76,24 @@ class SimulateResultTest {
         assertNotNull(simulateResult.assetChanges());
         assertEquals(1, simulateResult.assetChanges().size());
     }
+
+    @Test
+    void testAssetChangeMissingValueField() {
+        // Construct response with assetChanges where 'value' field is missing
+        var assetChangeWithoutValue = new java.util.LinkedHashMap<String, Object>();
+        assetChangeWithoutValue.put("token", "0x1234567890123456789012345678901234567890");
+        assetChangeWithoutValue.put("decimals", 18);
+        assetChangeWithoutValue.put("symbol", "WETH");
+        // Intentionally omit 'value' field
+
+        var map = new java.util.LinkedHashMap<String, Object>();
+        map.put("results", java.util.List.of(
+                java.util.Map.of("status", "0x1", "gasUsed", "0x5208", "returnData", "0x")
+        ));
+        map.put("assetChanges", java.util.List.of(assetChangeWithoutValue));
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> SimulateResult.fromMap(map));
+        assertTrue(ex.getMessage().contains("value"));
+    }
 }
