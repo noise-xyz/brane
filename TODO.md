@@ -50,7 +50,7 @@ if (rawValue == null) {
 
 ## T4 - Minor (Nice to Have)
 
-### T4-1: Add missing @since tags to new public classes
+### T4-1: [DONE] Add missing @since tags to new public classes
 **Files:** `SimulateCall.java`, `SimulateRequest.java`, `SimulateResult.java`, `CallResult.java`, `AccountOverride.java`
 **Issue:** New public API classes lack `@since` version tags, inconsistent with existing classes like `CallRequest`.
 **Fix:** Add `@since 0.2.0` to all new public classes.
