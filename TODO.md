@@ -41,7 +41,7 @@ if (rawValue == null) {
 **Issue:** `fetchTokenMetadata` documented as "NOT YET IMPLEMENTED" but exposed in public API. Users may set this flag expecting functionality that doesn't exist.
 **Fix:** Either remove from public API until implemented, or throw `UnsupportedOperationException` if set to `true` (fail-fast).
 
-### T3-3: Document multi-block simulation limitation
+### T3-3: [DONE] Document multi-block simulation limitation
 **File:** `brane-rpc/src/main/java/io/brane/rpc/SimulateResult.java:83-111`
 **Issue:** `fromList()` only processes first block - subsequent blocks silently ignored. eth_simulateV1 spec supports multi-block simulation.
 **Fix:** Add clear Javadoc warning that only single-block simulation is currently supported.
