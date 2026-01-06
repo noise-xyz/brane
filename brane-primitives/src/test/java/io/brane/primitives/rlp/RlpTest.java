@@ -160,7 +160,7 @@ class RlpTest {
         final IllegalArgumentException ex2 = assertThrows(
                 IllegalArgumentException.class,
                 () -> Rlp.decode(nonMinimalString));
-        assertTrue(ex2.getMessage().contains("Non-minimal"));
+        assertTrue(ex2.getMessage().contains("non-minimal"));
         assertTrue(ex2.getMessage().contains("prefix="));
 
         // Test list length mismatch error includes details

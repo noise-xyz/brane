@@ -34,7 +34,7 @@ public final class RlpNumeric {
      */
     public static byte[] encodeLongUnsigned(final long value) {
         if (value < 0L) {
-            throw new IllegalArgumentException("RLP numeric encoding only supports non-negative long values");
+            throw new IllegalArgumentException("value must be non-negative");
         }
 
         if (value == 0L) {
@@ -65,7 +65,7 @@ public final class RlpNumeric {
      */
     public static RlpItem encodeLongUnsignedItem(final long value) {
         if (value < 0L) {
-            throw new IllegalArgumentException("RLP numeric encoding only supports non-negative long values");
+            throw new IllegalArgumentException("value must be non-negative");
         }
 
         if (value == 0L) {
@@ -95,7 +95,7 @@ public final class RlpNumeric {
     public static byte[] encodeBigIntegerUnsigned(final BigInteger value) {
         Objects.requireNonNull(value, "value cannot be null");
         if (value.signum() < 0) {
-            throw new IllegalArgumentException("RLP numeric encoding only supports non-negative BigInteger values");
+            throw new IllegalArgumentException("value must be non-negative");
         }
 
         if (value.signum() == 0) {
@@ -130,7 +130,7 @@ public final class RlpNumeric {
     public static RlpItem encodeBigIntegerUnsignedItem(final BigInteger value) {
         Objects.requireNonNull(value, "value cannot be null");
         if (value.signum() < 0) {
-            throw new IllegalArgumentException("RLP numeric encoding only supports non-negative BigInteger values");
+            throw new IllegalArgumentException("value must be non-negative");
         }
 
         if (value.signum() == 0) {

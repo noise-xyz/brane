@@ -78,7 +78,7 @@ public final class RlpString implements RlpItem {
      */
     public static RlpString of(final long value) {
         if (value < 0) {
-            throw new IllegalArgumentException("RLP numeric values must be non-negative");
+            throw new IllegalArgumentException("value must be non-negative");
         }
         return new RlpString(longToMinimalBytes(value));
     }
@@ -93,7 +93,7 @@ public final class RlpString implements RlpItem {
     public static RlpString of(final BigInteger value) {
         Objects.requireNonNull(value, "value cannot be null");
         if (value.signum() < 0) {
-            throw new IllegalArgumentException("RLP numeric values must be non-negative");
+            throw new IllegalArgumentException("value must be non-negative");
         }
         return new RlpString(toMinimalBytes(value));
     }
@@ -168,12 +168,12 @@ public final class RlpString implements RlpItem {
         }
         if (bytes.length > 8) {
             throw new IllegalArgumentException(
-                    String.format("Value too large for long: %d bytes (max 8)", bytes.length));
+                    String.format("value too large for long: %d bytes, max 8", bytes.length));
         }
         // Reject values that would overflow into negative territory
         if (bytes.length == 8 && (bytes[0] & 0x80) != 0) {
             throw new IllegalArgumentException(
-                    "Value exceeds Long.MAX_VALUE, use asBigInteger() instead");
+                    "value exceeds Long.MAX_VALUE, use asBigInteger() instead");
         }
         long result = 0L;
         for (final byte b : bytes) {
