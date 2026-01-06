@@ -32,7 +32,7 @@ import io.brane.core.error.RpcException;
  * }</pre>
  *
  * @see RpcException
- * @see <a href="https://github.com/ethereum/execution-apis/pull/484">eth_simulateV1 Specification</a>
+ * @see <a href="https://ethereum.github.io/execution-apis/api-documentation/">eth_simulateV1 Specification</a>
  */
 public final class SimulateNotSupportedException extends RpcException {
 
