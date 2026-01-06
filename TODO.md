@@ -55,7 +55,7 @@ if (rawValue == null) {
 **Issue:** New public API classes lack `@since` version tags, inconsistent with existing classes like `CallRequest`.
 **Fix:** Add `@since 0.2.0` to all new public classes.
 
-### T4-2: Add test for status=0 failure detection in CallResult
+### T4-2: [DONE] Add test for status=0 failure detection in CallResult
 **File:** `brane-rpc/src/test/java/io/brane/rpc/SimulateCallsTest.java`
 **Issue:** `CallResult.fromMap()` has dual failure detection (error field OR status=0), but only error field path is tested.
 **Fix:** Add test case that verifies `status=0` correctly produces a `Failure` even without error field.
