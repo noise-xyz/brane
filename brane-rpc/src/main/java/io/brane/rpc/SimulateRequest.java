@@ -39,7 +39,7 @@ import io.brane.core.types.Address;
  * @param traceAssetChanges enable asset change tracking
  * @param traceTransfers enable transfer tracing
  * @param validation enable validation mode
- * @param fetchTokenMetadata fetch token decimals/symbol via eth_call
+ * @param fetchTokenMetadata fetch token decimals/symbol via eth_call (NOT YET IMPLEMENTED)
  */
 public record SimulateRequest(
         @Nullable Address account,
@@ -82,25 +82,27 @@ public record SimulateRequest(
 
         // 1. blockStateCalls (Array of objects, each containing a list of calls)
         var blockStateCall = new LinkedHashMap<String, Object>();
-        
+
         // Map calls and apply default account if not present
+        // Create a new map to avoid mutating the map returned by call.toMap()
         List<Map<String, Object>> mappedCalls = calls.stream().map(call -> {
-            Map<String, Object> callMap = call.toMap();
-            if (account != null && !callMap.containsKey("from")) {
+            Map<String, Object> originalMap = call.toMap();
+            if (account != null && !originalMap.containsKey("from")) {
+                var callMap = new LinkedHashMap<String, Object>();
                 callMap.put("from", account.value());
+                callMap.putAll(originalMap);
+                return callMap;
             }
-            return callMap;
+            return originalMap;
         }).toList();
-        
+
         blockStateCall.put("calls", mappedCalls);
 
-        // Add global state overrides to this block simulation
+        // Add global state overrides as direct child of blockStateCall (per eth_simulateV1 spec)
         if (stateOverrides != null && !stateOverrides.isEmpty()) {
-            var blockState = new LinkedHashMap<String, Object>();
             var overrides = new LinkedHashMap<String, Map<String, Object>>();
             stateOverrides.forEach((addr, override) -> overrides.put(addr.value(), override.toMap()));
-            blockState.put("stateOverrides", overrides);
-            blockStateCall.put("blockState", blockState);
+            blockStateCall.put("stateOverrides", overrides);
         }
 
         map.put("blockStateCalls", List.of(blockStateCall));
@@ -112,9 +114,8 @@ public record SimulateRequest(
         if (traceTransfers) {
             map.put("traceTransfers", true);
         }
-        if (validation) {
-            map.put("validation", true);
-        }
+        // Always serialize validation flag so users can explicitly disable it
+        map.put("validation", validation);
 
         return map;
     }
@@ -243,6 +244,10 @@ public record SimulateRequest(
          * When enabled, additional {@code eth_call} requests will be made to fetch
          * token metadata for asset changes. This adds latency but provides richer data.
          * Default: {@code false}
+         *
+         * <p><b>Note:</b> This feature is not yet implemented. Setting this to {@code true}
+         * currently has no effect. Token metadata will be populated only if the RPC node
+         * includes it natively in the {@code eth_simulateV1} response.
          */
         public Builder fetchTokenMetadata(boolean fetchTokenMetadata) {
             this.fetchTokenMetadata = fetchTokenMetadata;

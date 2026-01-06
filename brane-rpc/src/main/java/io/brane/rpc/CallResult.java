@@ -35,7 +35,11 @@ public sealed interface CallResult {
      */
     @SuppressWarnings("unchecked")
     static CallResult fromMap(Map<String, Object> map) {
-        BigInteger gasUsed = RpcUtils.decodeHexBigInteger(String.valueOf(map.getOrDefault("gasUsed", "0x0")));
+        Object gasUsedRaw = map.get("gasUsed");
+        if (gasUsedRaw == null) {
+            throw new IllegalArgumentException("Malformed eth_simulateV1 response: missing required field 'gasUsed'");
+        }
+        BigInteger gasUsed = RpcUtils.decodeHexBigInteger(String.valueOf(gasUsedRaw));
         List<LogEntry> logs = LogParser.parseLogs(map.get("logs"));
 
         // Check for failure: either 'error' field is present, or 'status' field is 0.

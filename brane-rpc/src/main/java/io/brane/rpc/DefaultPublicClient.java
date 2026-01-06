@@ -268,8 +268,8 @@ final class DefaultPublicClient implements PublicClient {
     public SimulateResult simulateCalls(final SimulateRequest request) {
         Objects.requireNonNull(request, "request");
         final Map<String, Object> payload = request.toMap();
-        final String blockTagStr = request.blockTag() != null 
-                ? request.blockTag().toRpcValue() 
+        final String blockTagStr = request.blockTag() != null
+                ? request.blockTag().toRpcValue()
                 : "latest";
 
         final JsonRpcResponse response = sendWithRetry("eth_simulateV1", List.of(payload, blockTagStr));
@@ -300,8 +300,8 @@ final class DefaultPublicClient implements PublicClient {
             return SimulateResult.fromMap(map);
         }
 
-        throw new io.brane.core.error.RpcException(0, 
-                "Unexpected eth_simulateV1 response format. Expected Array or Object, got: " + result.getClass().getSimpleName(), 
+        throw new io.brane.core.error.RpcException(0,
+                "Unexpected eth_simulateV1 response format. Expected Array or Object, got: " + result.getClass().getSimpleName(),
                 (String) null, (Throwable) null);
     }
 

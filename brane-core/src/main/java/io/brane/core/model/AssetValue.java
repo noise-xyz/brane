@@ -21,10 +21,18 @@ public record AssetValue(
 
     /**
      * Compact constructor with validation.
+     *
+     * @throws IllegalArgumentException if diff does not equal post - pre
      */
     public AssetValue {
         Objects.requireNonNull(pre, "pre cannot be null");
         Objects.requireNonNull(post, "post cannot be null");
         Objects.requireNonNull(diff, "diff cannot be null");
+
+        BigInteger expectedDiff = post.subtract(pre);
+        if (!diff.equals(expectedDiff)) {
+            throw new IllegalArgumentException(
+                    "Inconsistent AssetValue: diff (" + diff + ") does not equal post - pre (" + expectedDiff + ")");
+        }
     }
 }

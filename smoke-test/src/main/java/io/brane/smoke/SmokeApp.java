@@ -710,13 +710,6 @@ public class SmokeApp {
         System.out.println("\n[Scenario Q] Testing Transaction Simulation (eth_simulateV1)");
 
         try {
-            // Import classes needed
-            io.brane.rpc.SimulateRequest SimulateRequest = null;
-            io.brane.rpc.SimulateCall SimulateCall = null;
-            io.brane.rpc.SimulateResult SimulateResult = null;
-            io.brane.rpc.CallResult CallResult = null;
-            io.brane.rpc.AccountOverride AccountOverride = null;
-
             // Test 1: Simple value transfer simulation
             System.out.println("  Testing simple value transfer simulation");
             io.brane.rpc.SimulateRequest request1 = io.brane.rpc.SimulateRequest.builder()

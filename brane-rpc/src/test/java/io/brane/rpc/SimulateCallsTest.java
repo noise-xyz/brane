@@ -22,6 +22,7 @@ import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.rpc.exception.SimulateNotSupportedException;
 
+
 @ExtendWith(MockitoExtension.class)
 class SimulateCallsTest {
 
@@ -39,7 +40,7 @@ class SimulateCallsTest {
     }
 
     @Test
-    void simulateCallsSerializesRequestCorrecty() throws Exception {
+    void simulateCallsSerializesRequestCorrectly() throws Exception {
         SimulateCall call1 = SimulateCall.builder().from(FROM).to(TO).data(new HexData("0x1234")).build();
         SimulateRequest request = SimulateRequest.builder()
                 .call(call1)
@@ -74,17 +75,17 @@ class SimulateCallsTest {
         List<Map<String, Object>> blockStateCalls = (List<Map<String, Object>>) payload.get("blockStateCalls");
         assertNotNull(blockStateCalls);
         assertEquals(1, blockStateCalls.size());
-        
+
         Map<String, Object> firstBlock = blockStateCalls.get(0);
         List<Map<String, Object>> calls = (List<Map<String, Object>>) firstBlock.get("calls");
         assertNotNull(calls);
         assertEquals(1, calls.size());
         assertEquals(FROM.value(), calls.get(0).get("from"));
         assertEquals(TO.value(), calls.get(0).get("to"));
-        
+
         // Check block tag (2nd parameter)
         assertEquals("latest", blockTag);
-        
+
         // Check flags in payload
         assertEquals(true, payload.get("traceAssetChanges"));
     }
@@ -125,6 +126,7 @@ class SimulateCallsTest {
         error.put("data", "0x08c379a0");
 
         Map<String, Object> callResult = new HashMap<>();
+        callResult.put("gasUsed", "0x5208");
         callResult.put("error", error);
         callResult.put("returnData", "0x08c379a0");
 
@@ -190,6 +192,81 @@ class SimulateCallsTest {
         when(provider.send(eq("eth_simulateV1"), any())).thenReturn(response);
 
         assertThrows(SimulateNotSupportedException.class, () -> client.simulateCalls(request));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void simulateCallsSerializesStateOverridesAsDirectChild() throws Exception {
+        // Per eth_simulateV1 spec, stateOverrides should be a direct child of blockStateCall,
+        // NOT nested inside a "blockState" wrapper object
+        Address overrideAddress = new Address("0x3333333333333333333333333333333333333333");
+        SimulateRequest request = SimulateRequest.builder()
+                .call(SimulateCall.builder().to(TO).build())
+                .stateOverride(overrideAddress, AccountOverride.builder()
+                        .balance(io.brane.core.types.Wei.fromEther(new java.math.BigDecimal("100")))
+                        .nonce(42)
+                        .build())
+                .build();
+
+        // Mock response
+        Map<String, Object> mockResult = Map.of(
+                "results", List.of(Map.of("gasUsed", "0x5208", "returnData", "0x"))
+        );
+        JsonRpcResponse response = new JsonRpcResponse("2.0", mockResult, null, "1");
+        when(provider.send(eq("eth_simulateV1"), any())).thenReturn(response);
+
+        client.simulateCalls(request);
+
+        ArgumentCaptor<List<Object>> captor = ArgumentCaptor.forClass(List.class);
+        verify(provider).send(eq("eth_simulateV1"), captor.capture());
+
+        List<Object> params = captor.getValue();
+        Map<String, Object> payload = (Map<String, Object>) params.get(0);
+        List<Map<String, Object>> blockStateCalls = (List<Map<String, Object>>) payload.get("blockStateCalls");
+        Map<String, Object> firstBlock = blockStateCalls.get(0);
+
+        // CRITICAL: stateOverrides should be a DIRECT child, NOT nested in "blockState"
+        assertNull(firstBlock.get("blockState"),
+                "stateOverrides should NOT be nested inside blockState");
+        assertNotNull(firstBlock.get("stateOverrides"),
+                "stateOverrides should be a direct child of blockStateCall");
+
+        // Verify the override values are correct
+        Map<String, Map<String, Object>> stateOverrides =
+                (Map<String, Map<String, Object>>) firstBlock.get("stateOverrides");
+        Map<String, Object> override = stateOverrides.get(overrideAddress.value());
+        assertNotNull(override, "Override for address should exist");
+        assertNotNull(override.get("balance"), "Balance should be set");
+        assertEquals("0x2a", override.get("nonce"), "Nonce should be 42 (0x2a)");
+    }
+
+    @Test
+    void simulateCallsSerializesValidationFlagWhenFalse() throws Exception {
+        // Verify that validation=false is explicitly serialized (not omitted)
+        SimulateRequest request = SimulateRequest.builder()
+                .call(SimulateCall.builder().to(TO).build())
+                .validation(false)
+                .build();
+
+        // Mock response
+        Map<String, Object> mockResult = Map.of(
+                "results", List.of(Map.of("gasUsed", "0x5208", "returnData", "0x"))
+        );
+        JsonRpcResponse response = new JsonRpcResponse("2.0", mockResult, null, "1");
+        when(provider.send(eq("eth_simulateV1"), any())).thenReturn(response);
+
+        client.simulateCalls(request);
+
+        ArgumentCaptor<List<Object>> captor = ArgumentCaptor.forClass(List.class);
+        verify(provider).send(eq("eth_simulateV1"), captor.capture());
+
+        List<Object> params = captor.getValue();
+        @SuppressWarnings("unchecked")
+        Map<String, Object> payload = (Map<String, Object>) params.get(0);
+
+        // validation should be explicitly set to false
+        assertEquals(false, payload.get("validation"),
+                "validation=false should be explicitly serialized");
     }
 
     // Helper for verify since verify(provider).send(eq("eth_simulateV1"), captor.capture())

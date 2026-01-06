@@ -52,4 +52,15 @@ class AssetValueTest {
     void rejectsNullDiff() {
         assertThrows(NullPointerException.class, () -> new AssetValue(BigInteger.ONE, BigInteger.ONE, null));
     }
+
+    @Test
+    void rejectsInconsistentDiff() {
+        BigInteger pre = new BigInteger("1000");
+        BigInteger post = new BigInteger("1500");
+        BigInteger wrongDiff = new BigInteger("100"); // Should be 500
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> new AssetValue(pre, post, wrongDiff));
+        assertTrue(ex.getMessage().contains("Inconsistent AssetValue"));
+    }
 }
