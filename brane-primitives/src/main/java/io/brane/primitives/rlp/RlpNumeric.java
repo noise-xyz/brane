@@ -12,6 +12,8 @@ import java.util.Objects;
  *  - Delegate the actual RLP framing to {@link Rlp#encodeString(byte[])}.
  *
  * This class is pure helpers; it does not change the core Rlp logic.
+ *
+ * @since 1.0
  */
 public final class RlpNumeric {
 

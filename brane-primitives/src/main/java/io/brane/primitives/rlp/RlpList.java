@@ -8,6 +8,8 @@ import java.util.Objects;
 
 /**
  * RLP representation of a list of items.
+ *
+ * @since 1.0
  */
 public record RlpList(List<RlpItem> items) implements RlpItem {
     /**

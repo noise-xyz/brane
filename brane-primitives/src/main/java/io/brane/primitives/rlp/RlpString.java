@@ -15,6 +15,8 @@ import io.brane.primitives.Hex;
  *   perform defensive copies or build fresh arrays, preserving external immutability.
  * - Encoded RLP bytes are cached lazily in {@link #encode()} to avoid recomputing for
  *   hot paths that re-encode the same value many times (transactions, benchmarks, etc.).
+ *
+ * @since 1.0
  */
 public final class RlpString implements RlpItem {
 

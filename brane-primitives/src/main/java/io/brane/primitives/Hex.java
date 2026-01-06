@@ -2,6 +2,8 @@ package io.brane.primitives;
 
 /**
  * Utility methods for hex encoding/decoding with optional {@code 0x} prefixes.
+ *
+ * @since 1.0
  */
 public final class Hex {
     private static final char[] HEX_CHARS = "0123456789abcdef".toCharArray();

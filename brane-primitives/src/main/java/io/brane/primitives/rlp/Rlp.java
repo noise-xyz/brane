@@ -19,6 +19,7 @@ import java.util.Objects;
  * @see <a href=
  *      "https://ethereum.org/en/developers/docs/data-structures-and-encoding/rlp/">Ethereum
  *      RLP Specification</a>
+ * @since 1.0
  */
 public final class Rlp {
 

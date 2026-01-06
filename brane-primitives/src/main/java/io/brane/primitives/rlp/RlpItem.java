@@ -2,6 +2,8 @@ package io.brane.primitives.rlp;
 
 /**
  * Base sealed interface for all RLP items.
+ *
+ * @since 1.0
  */
 public sealed interface RlpItem permits RlpString, RlpList {
     /**
