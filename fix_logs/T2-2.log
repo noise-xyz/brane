@@ -1,9 +1,0 @@
-Done. I've completed issue **T2-2**:
-
-1. **Added null check** at `brane-rpc/src/main/java/io/brane/rpc/SimulateResult.java:120-122` - if `rawValue` is null, an `IllegalArgumentException` is thrown with the message "assetChange entry missing required 'value' field"
-
-2. **Added test** in `SimulateResultTest.java` - the new `testAssetChangeMissingValueField()` test verifies that parsing an assetChange without a `value` field throws the appropriate `IllegalArgumentException`
-
-3. **Tests pass** - `./gradlew :brane-rpc:test --tests "*SimulateResultTest*"` completed successfully
-
-4. **Committed** with: `fix(rpc): add null check for value field in parseAssetChange() [T2-2]`

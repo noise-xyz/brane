@@ -1,6 +1,0 @@
-The fix for T2-1 is complete. 
-
-**Summary:**
-- **Issue:** In `CallResult.fromMap()`, when the error object existed but the message field was null/missing, `String.valueOf(error.get("message"))` would return the string `"null"` instead of defaulting to `"execution failed"`.
-- **Fix:** Added an explicit null check by first extracting `rawMessage` from the error map, then checking if it's null before calling `String.valueOf()`. If null, it defaults to `"execution failed"`.
-- **Tests:** All `SimulateCallsTest` tests pass.

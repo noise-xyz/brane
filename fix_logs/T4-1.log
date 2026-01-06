@@ -1,8 +1,0 @@
-Done. Added `@since 0.2.0` tags to all 5 simulation-related classes:
-- `SimulateCall.java`
-- `SimulateRequest.java`
-- `SimulateResult.java`
-- `CallResult.java`
-- `AccountOverride.java`
-
-Committed as `3d8278d`.

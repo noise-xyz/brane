@@ -1,7 +1,0 @@
-Done. I've completed task T4-4:
-
-**Summary:**
-- Added `SimulateCall.of(Address to, HexData data)` convenience factory method at `brane-rpc/src/main/java/io/brane/rpc/SimulateCall.java:97`
-- This matches the existing pattern from `CallRequest.of(Address, HexData)` for API consistency
-- Added two tests in `SimulateCallTest.java`: `testOfFactoryMethod()` and `testOfFactoryMethodToMap()` to verify the factory method works correctly
-- All tests pass

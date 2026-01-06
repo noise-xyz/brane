@@ -1,8 +1,0 @@
-Done. I've completed task T4-2:
-
-**Summary:**
-- Added test `simulateCallsParsesFailureFromStatusZeroWithoutErrorField()` to `SimulateCallsTest.java`
-- The test verifies that when `status=0x0` is present but no `error` field exists, `CallResult.fromMap()` correctly produces a `Failure` with the default message "execution failed"
-- This tests the status-based failure detection path at `CallResult.java:48-55`
-- All tests pass
-- Committed as `74864aa`
