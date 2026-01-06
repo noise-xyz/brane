@@ -40,6 +40,7 @@ import io.brane.core.types.Address;
  * @param traceTransfers enable transfer tracing
  * @param validation enable validation mode
  * @param fetchTokenMetadata fetch token decimals/symbol via eth_call (NOT YET IMPLEMENTED)
+ * @since 0.2.0
  */
 public record SimulateRequest(
         @Nullable Address account,

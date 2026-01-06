@@ -1,0 +1,8 @@
+Task T3-3 is complete. I added a Javadoc warning to `SimulateResult.fromList()` at line 76-82 explaining that:
+
+1. The method only processes the first block in the response list
+2. Results from subsequent blocks are ignored
+3. This is sufficient for single-block simulations
+4. Callers simulating across multiple blocks should parse each block separately
+
+The tests pass and the change has been committed with the appropriate message format.

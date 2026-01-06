@@ -16,6 +16,8 @@ import io.brane.core.types.Wei;
  * <p>
  * Similar to {@link CallRequest}, but used specifically for {@code eth_simulateV1}
  * where multiple calls can be simulated in sequence with state changes preserved between calls.
+ *
+ * @since 0.2.0
  */
 public record SimulateCall(
         @Nullable Address from,          // Override account for this specific call

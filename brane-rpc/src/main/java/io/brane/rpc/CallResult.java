@@ -24,6 +24,7 @@ import io.brane.rpc.internal.RpcUtils;
  * Both success and failure cases include gas used and logs emitted up to the point of completion/failure.
  *
  * @see SimulateResult
+ * @since 0.2.0
  */
 public sealed interface CallResult {
 

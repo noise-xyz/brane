@@ -17,6 +17,8 @@ import io.brane.core.types.Wei;
  * <p>
  * The address is specified as the map key in {@link SimulateRequest#stateOverrides()},
  * not as a field in this record.
+ *
+ * @since 0.2.0
  */
 public record AccountOverride(
         @Nullable Wei balance,              // Override balance

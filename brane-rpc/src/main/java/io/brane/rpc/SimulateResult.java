@@ -22,6 +22,7 @@ import io.brane.rpc.internal.RpcUtils;
  * @param results per-call results (same order as input)
  * @param assetChanges token balance changes (null if traceAssetChanges=false)
  * @see SimulateRequest
+ * @since 0.2.0
  */
 public record SimulateResult(
         List<CallResult> results,
