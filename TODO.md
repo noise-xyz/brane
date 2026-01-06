@@ -16,7 +16,7 @@ String message = error != null && error.get("message") != null
     : "execution failed";
 ```
 
-### T2-2: Add null check for rawValue in SimulateResult.parseAssetChange()
+### T2-2: [DONE] Add null check for rawValue in SimulateResult.parseAssetChange()
 **File:** `brane-rpc/src/main/java/io/brane/rpc/SimulateResult.java:120`
 **Issue:** `rawValue` cast from `map.get("value")` without null check - NPE if malformed response.
 **Fix:** Add null check before accessing rawValue:
