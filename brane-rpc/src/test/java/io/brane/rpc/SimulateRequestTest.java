@@ -63,8 +63,12 @@ class SimulateRequestTest {
 
     @Test
     void testRejectsEmptyCalls() {
-        assertThrows(IllegalArgumentException.class, () -> SimulateRequest.builder().calls(List.of()).build());
-        assertThrows(IllegalArgumentException.class, () -> SimulateRequest.builder().build());
+        var ex1 = assertThrows(IllegalStateException.class, () -> SimulateRequest.builder().calls(List.of()).build());
+        assertTrue(ex1.getMessage().contains("requires at least one call"));
+        assertTrue(ex1.getMessage().contains(".call(SimulateCall)"));
+
+        var ex2 = assertThrows(IllegalStateException.class, () -> SimulateRequest.builder().build());
+        assertTrue(ex2.getMessage().contains("requires at least one call"));
     }
 
     @Test

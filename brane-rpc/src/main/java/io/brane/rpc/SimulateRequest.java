@@ -265,13 +265,17 @@ public record SimulateRequest(
          * Builds the {@link SimulateRequest} instance.
          *
          * @return a new SimulateRequest
-         * @throws NullPointerException if calls is null
-         * @throws IllegalArgumentException if calls is empty
+         * @throws IllegalStateException if no calls have been added
          */
         public SimulateRequest build() {
+            if (calls == null || calls.isEmpty()) {
+                throw new IllegalStateException(
+                        "SimulateRequest requires at least one call. "
+                                + "Use .call(SimulateCall) or .calls(List<SimulateCall>) to add calls.");
+            }
             return new SimulateRequest(
                     account,
-                    calls != null ? calls : List.of(),
+                    calls,
                     blockTag,
                     stateOverrides,
                     traceAssetChanges,
