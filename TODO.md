@@ -75,7 +75,7 @@ if (calls == null || calls.isEmpty()) {
 **Issue:** `CallRequest` has `CallRequest.of(Address to, HexData data)` convenience factory. `SimulateCall` lacks this, requiring builder for simple cases.
 **Fix:** Add `SimulateCall.of(Address to, HexData data)` factory method.
 
-### T4-5: Update spec link to final merged spec
+### T4-5: [DONE] Update spec link to final merged spec
 **Files:** `brane-rpc/src/main/java/io/brane/rpc/exception/SimulateNotSupportedException.java:35`, `docs/public-client/simulate.mdx:122`
 **Issue:** Links reference PR `https://github.com/ethereum/execution-apis/pull/484` instead of merged spec.
 **Fix:** Update link to point to merged specification if available.
