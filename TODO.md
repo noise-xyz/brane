@@ -31,7 +31,7 @@ if (rawValue == null) {
 
 ## T3 - Design Issues (Should Address)
 
-### T3-1: Remove confusing deprecated methods from RpcException
+### T3-1: [DONE] Remove confusing deprecated methods from RpcException
 **File:** `brane-core/src/main/java/io/brane/core/error/RpcException.java:74-100`
 **Issue:** Added deprecated `getCode()`/`getData()` on NEW code - suggests false backward compat. These methods don't serve any real backward compatibility purpose.
 **Fix:** Remove the deprecated `getCode()` and `getData()` methods entirely since this is new code and no backward compatibility is needed.
