@@ -6,7 +6,7 @@ Principal engineer review findings for eth_simulateV1 implementation.
 
 ## T2 - High Priority (Fix Before Merge)
 
-### T2-1: Fix null message handling in CallResult.fromMap()
+### T2-1: [DONE] Fix null message handling in CallResult.fromMap()
 **File:** `brane-rpc/src/main/java/io/brane/rpc/CallResult.java:57-58`
 **Issue:** When `error.get("message")` is null, `String.valueOf()` returns literal `"null"` string - confusing UX.
 **Fix:** Add null check and provide default message:
