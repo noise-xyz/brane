@@ -42,7 +42,7 @@ public final class Hex {
         }
 
         final String cleanHex = cleanPrefix(hexString);
-        if (cleanHex.length() == 0) {
+        if (cleanHex.isEmpty()) {
             return new byte[0];
         }
 
