@@ -17,6 +17,7 @@ import java.util.Objects;
  */
 public final class RlpNumeric {
 
+    /** Empty byte array used to represent zero in RLP encoding. */
     private static final byte[] EMPTY = new byte[0];
 
     private RlpNumeric() {
