@@ -71,31 +71,7 @@ public non-sealed class RpcException extends BraneException {
         return code;
     }
 
-    /**
-     * Deprecated: Use {@link #code()} instead.
-     * This method is provided for backward compatibility.
-     *
-     * @return the error code
-     * @deprecated Use {@link #code()} instead
-     */
-    @Deprecated(since = "0.2.0", forRemoval = true)
-    public int getCode() {
-        return code;
-    }
-
     public String data() {
-        return data;
-    }
-
-    /**
-     * Deprecated: Use {@link #data()} instead.
-     * This method is provided for backward compatibility.
-     *
-     * @return the error data
-     * @deprecated Use {@link #data()} instead
-     */
-    @Deprecated(since = "0.2.0", forRemoval = true)
-    public String getData() {
         return data;
     }
 
