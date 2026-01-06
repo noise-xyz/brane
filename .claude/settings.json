@@ -14,7 +14,7 @@
           },
           {
             "type": "command",
-            "command": "file=$(jq -r '.tool_input.file_path'); if echo \"$file\" | grep -q '\\.java$' && echo \"$file\" | grep -q '/src/main/' && ! echo \"$file\" | grep -q 'Test\\.java$'; then cd \"$CLAUDE_PROJECT_DIR\" && ./scripts/suggest_tests.sh \"$file\" 2>/dev/null; fi; exit 0"
+            "command": "file=$(jq -r '.tool_input.file_path'); if echo \"$file\" | grep -q '\\.java$' && echo \"$file\" | grep -q '/src/main/' && ! echo \"$file\" | grep -q 'Test\\.java$'; then cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/suggest_tests.sh \"$file\" 2>/dev/null; fi; exit 0"
           }
         ]
       },
@@ -32,7 +32,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "cmd=$(jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE '^git commit'; then echo '{\"systemMessage\": \"Tip: Run ./scripts/pre_commit_check.sh before committing to verify affected tests pass.\"}'; fi; exit 0"
+            "command": "cmd=$(jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE '^git commit'; then echo '{\"systemMessage\": \"Tip: Run ./.claude/scripts/pre_commit_check.sh before committing to verify affected tests pass.\"}'; fi; exit 0"
           }
         ]
       }
