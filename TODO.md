@@ -60,7 +60,7 @@ if (rawValue == null) {
 **Issue:** `CallResult.fromMap()` has dual failure detection (error field OR status=0), but only error field path is tested.
 **Fix:** Add test case that verifies `status=0` correctly produces a `Failure` even without error field.
 
-### T4-3: Improve builder error message in SimulateRequest.Builder.build()
+### T4-3: [DONE] Improve builder error message in SimulateRequest.Builder.build()
 **File:** `brane-rpc/src/main/java/io/brane/rpc/SimulateRequest.java:265-267`
 **Issue:** Builder silently converts null calls to empty list, then fails in record constructor. Error comes from wrong place.
 **Fix:** Validate in `build()` and throw helpful exception:
