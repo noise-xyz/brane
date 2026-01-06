@@ -70,7 +70,7 @@ if (calls == null || calls.isEmpty()) {
 }
 ```
 
-### T4-4: Add SimulateCall.of() convenience factory method
+### T4-4: [DONE] Add SimulateCall.of() convenience factory method
 **File:** `brane-rpc/src/main/java/io/brane/rpc/SimulateCall.java`
 **Issue:** `CallRequest` has `CallRequest.of(Address to, HexData data)` convenience factory. `SimulateCall` lacks this, requiring builder for simple cases.
 **Fix:** Add `SimulateCall.of(Address to, HexData data)` factory method.
