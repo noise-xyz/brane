@@ -1,0 +1,7 @@
+Done. I've completed the fix for T3-1:
+
+**Summary:**
+- Removed the deprecated `getCode()` and `getData()` methods from `RpcException` (lines 74-100)
+- These methods were marked `@Deprecated(since = "0.2.0", forRemoval = true)` but served no backward compatibility purpose
+- Verified no usages of these methods exist in the codebase via grep search
+- All tests pass and the code compiles successfully

@@ -28,7 +28,6 @@ class SimulateRequestTest {
                 .traceAssetChanges(true)
                 .traceTransfers(true)
                 .validation(false)
-                .fetchTokenMetadata(true)
                 .build();
 
         assertNotNull(request);
@@ -41,7 +40,20 @@ class SimulateRequestTest {
         assertTrue(request.traceAssetChanges());
         assertTrue(request.traceTransfers());
         assertFalse(request.validation());
-        assertTrue(request.fetchTokenMetadata());
+        assertFalse(request.fetchTokenMetadata());
+    }
+
+    @Test
+    void testFetchTokenMetadataThrowsUnsupportedOperationException() {
+        SimulateCall call = SimulateCall.builder().to(TO).build();
+
+        var ex = assertThrows(UnsupportedOperationException.class, () ->
+                SimulateRequest.builder()
+                        .call(call)
+                        .fetchTokenMetadata(true)
+                        .build());
+
+        assertTrue(ex.getMessage().contains("fetchTokenMetadata is not yet implemented"));
     }
 
     @Test

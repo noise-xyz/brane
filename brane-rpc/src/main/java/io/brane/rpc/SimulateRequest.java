@@ -62,6 +62,12 @@ public record SimulateRequest(
             throw new IllegalArgumentException("calls must contain at least one call");
         }
 
+        if (fetchTokenMetadata) {
+            throw new UnsupportedOperationException(
+                    "fetchTokenMetadata is not yet implemented - token metadata is only "
+                            + "available if the RPC node includes it natively in eth_simulateV1 response");
+        }
+
         calls = List.copyOf(calls);
 
         if (stateOverrides != null) {
