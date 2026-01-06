@@ -20,11 +20,11 @@ echo ""
 ./scripts/test_smoke.sh
 echo ""
 
-# Level 4: Performance (Optional, can be skipped with --skip-perf)
-if [[ "$1" != "--skip-perf" ]]; then
+# Level 4: Performance (Optional, run with --perf flag)
+if [[ "$1" == "--perf" ]]; then
     ./scripts/test_perf.sh
 else
-    echo "⏩ Skipping Performance Tests"
+    echo "⏩ Skipping Performance Tests (use --perf to run)"
 fi
 
 echo ""
