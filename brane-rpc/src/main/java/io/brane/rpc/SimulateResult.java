@@ -75,6 +75,11 @@ public record SimulateResult(
 
     /**
      * Parses a simulation result from a JSON-RPC response list (direct array of blocks).
+     * <p>
+     * <strong>Warning:</strong> This method only processes the first block in the list.
+     * If the response contains multiple blocks, results from subsequent blocks are ignored.
+     * This is sufficient for single-block simulations but callers simulating across multiple
+     * blocks should parse each block separately.
      *
      * @param list the raw list from the JSON-RPC response
      * @return a new SimulateResult instance

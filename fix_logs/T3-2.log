@@ -1,0 +1,7 @@
+Done. I've completed task T3-2:
+
+**Summary:**
+- Modified `SimulateRequest.java` to throw `UnsupportedOperationException` in the compact constructor when `fetchTokenMetadata` is set to `true`
+- Updated the test `testValidRequestCreation()` to not set `fetchTokenMetadata(true)` since it now fails
+- Added a new test `testFetchTokenMetadataThrowsUnsupportedOperationException()` to verify the fail-fast behavior
+- All tests pass
