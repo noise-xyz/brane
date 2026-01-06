@@ -55,7 +55,8 @@ public sealed interface CallResult {
 
         if (isFailure) {
             Map<String, Object> error = (Map<String, Object>) map.get("error");
-            String message = error != null ? String.valueOf(error.get("message")) : "execution failed";
+            Object rawMessage = error != null ? error.get("message") : null;
+            String message = rawMessage != null ? String.valueOf(rawMessage) : "execution failed";
             String returnData = (String) map.get("returnData");
             return new Failure(gasUsed, logs, message, returnData != null ? new HexData(returnData) : null);
         } else {
