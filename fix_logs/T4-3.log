@@ -1,0 +1,6 @@
+Task T4-3 is complete. The fix:
+
+1. **Changed validation location**: Moved the validation from relying on the record constructor to the `build()` method itself
+2. **Changed exception type**: Changed from `IllegalArgumentException` (thrown by record constructor) to `IllegalStateException` (more appropriate for builder state issues)
+3. **Improved error message**: Now provides a helpful message: "SimulateRequest requires at least one call. Use .call(SimulateCall) or .calls(List<SimulateCall>) to add calls."
+4. **Updated test**: Modified `testRejectsEmptyCalls()` to expect `IllegalStateException` and verify the helpful message content

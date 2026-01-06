@@ -83,6 +83,22 @@ public record SimulateCall(
     }
 
     /**
+     * Creates a simple simulate call with just target address and data.
+     * <p>
+     * This is a convenience factory method for the common case where only
+     * the target address and calldata are needed, matching the pattern
+     * used by {@link CallRequest#of(Address, HexData)}.
+     *
+     * @param to the target contract address
+     * @param data the encoded function call data
+     * @return a new SimulateCall
+     * @since 0.2.0
+     */
+    public static SimulateCall of(Address to, HexData data) {
+        return new SimulateCall(null, to, data, null, null, null, null, null);
+    }
+
+    /**
      * Creates a builder for constructing {@link SimulateCall} instances.
      *
      * @return a new builder

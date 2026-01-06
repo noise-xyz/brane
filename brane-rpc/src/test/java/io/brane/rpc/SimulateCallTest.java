@@ -124,4 +124,33 @@ class SimulateCallTest {
         assertFalse(map.containsKey("maxFeePerGas"));
         assertFalse(map.containsKey("maxPriorityFeePerGas"));
     }
+
+    @Test
+    void testOfFactoryMethod() {
+        SimulateCall call = SimulateCall.of(TO, DATA);
+
+        assertEquals(TO, call.to());
+        assertEquals(DATA, call.data());
+        assertNull(call.from());
+        assertNull(call.value());
+        assertNull(call.gas());
+        assertNull(call.gasPrice());
+        assertNull(call.maxFeePerGas());
+        assertNull(call.maxPriorityFeePerGas());
+    }
+
+    @Test
+    void testOfFactoryMethodToMap() {
+        SimulateCall call = SimulateCall.of(TO, DATA);
+        Map<String, Object> map = call.toMap();
+
+        assertEquals(TO.value(), map.get("to"));
+        assertEquals(DATA.value(), map.get("data"));
+        assertFalse(map.containsKey("from"));
+        assertFalse(map.containsKey("value"));
+        assertFalse(map.containsKey("gas"));
+        assertFalse(map.containsKey("gasPrice"));
+        assertFalse(map.containsKey("maxFeePerGas"));
+        assertFalse(map.containsKey("maxPriorityFeePerGas"));
+    }
 }
