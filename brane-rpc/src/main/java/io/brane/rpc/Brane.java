@@ -2,9 +2,12 @@ package io.brane.rpc;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
+
+import io.brane.core.chain.ChainProfile;
 
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
@@ -287,6 +290,59 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @since 0.1.0
      */
     Subscription onLogs(LogFilter filter, Consumer<LogEntry> callback);
+
+    // ==================== Metadata Methods ====================
+
+    /**
+     * Returns the chain profile associated with this client, if configured.
+     *
+     * <p>The chain profile provides network-specific configuration such as whether
+     * EIP-1559 transactions are supported and default gas settings.
+     *
+     * @return an optional containing the chain profile, or empty if not configured
+     * @since 0.1.0
+     */
+    Optional<ChainProfile> chain();
+
+    /**
+     * Returns whether this client has transaction signing capability.
+     *
+     * <p>This is a convenience method for type checking. Clients implementing
+     * {@link Signer} return {@code true}; clients implementing only {@link Reader}
+     * return {@code false}.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * if (client.canSign()) {
+     *     Brane.Signer signer = (Brane.Signer) client;
+     *     signer.sendTransaction(request);
+     * }
+     * }</pre>
+     *
+     * @return {@code true} if this client can sign transactions, {@code false} otherwise
+     * @since 0.1.0
+     */
+    default boolean canSign() {
+        return this instanceof Signer;
+    }
+
+    /**
+     * Returns whether this client supports real-time subscriptions.
+     *
+     * <p>Subscription support requires a WebSocket-capable provider. HTTP-only
+     * providers do not support subscriptions.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * if (client.canSubscribe()) {
+     *     client.onNewHeads(header -> System.out.println("New block: " + header.number()));
+     * }
+     * }</pre>
+     *
+     * @return {@code true} if subscriptions are supported, {@code false} otherwise
+     * @since 0.1.0
+     */
+    boolean canSubscribe();
 
     /**
      * Read-only client for blockchain queries.

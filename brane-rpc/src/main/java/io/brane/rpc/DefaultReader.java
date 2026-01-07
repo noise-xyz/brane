@@ -2,9 +2,12 @@ package io.brane.rpc;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Optional;
 import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
+
+import io.brane.core.chain.ChainProfile;
 
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
@@ -95,6 +98,16 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public Subscription onLogs(final LogFilter filter, final Consumer<LogEntry> callback) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public Optional<ChainProfile> chain() {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public boolean canSubscribe() {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
