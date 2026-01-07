@@ -3,8 +3,6 @@ package io.brane.contract;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import io.brane.core.RevertDecoder;
@@ -19,6 +17,8 @@ import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.core.util.MethodUtils;
+import io.brane.rpc.BlockTag;
+import io.brane.rpc.CallRequest;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 
@@ -82,20 +82,22 @@ final class ContractInvocationHandler implements InvocationHandler {
     }
 
     private Object invokeView(final Method method, final Abi.FunctionCall call) {
-        final Map<String, Object> callObject = new LinkedHashMap<>();
-        callObject.put("to", address.value());
-        callObject.put("data", call.data());
+        final CallRequest request = CallRequest.builder()
+                .to(address)
+                .data(new HexData(call.data()))
+                .build();
 
         try {
-            final String output = publicClient.call(callObject, "latest");
-            if (output == null || output.isBlank()) {
+            final HexData output = publicClient.call(request, BlockTag.LATEST);
+            final String outputValue = output != null ? output.value() : null;
+            if (outputValue == null || outputValue.isBlank() || "0x".equals(outputValue)) {
                 throw new AbiDecodingException(
                         "eth_call returned empty result for function call");
             }
             if (method.getReturnType() == void.class || method.getReturnType() == Void.class) {
                 return null;
             }
-            return call.decode(output, method.getReturnType());
+            return call.decode(outputValue, method.getReturnType());
         } catch (RpcException e) {
             RevertDecoder.throwIfRevert(e);
             throw e;

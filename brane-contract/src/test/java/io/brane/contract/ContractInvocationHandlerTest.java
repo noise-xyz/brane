@@ -3,7 +3,6 @@ package io.brane.contract;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigInteger;
-import java.util.Map;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -45,10 +44,10 @@ class ContractInvocationHandlerTest {
 
         PublicClient publicClient = new FakePublicClient() {
             @Override
-            public String call(Map<String, Object> callObject, String blockTag) {
+            public io.brane.core.types.HexData call(io.brane.rpc.CallRequest request, io.brane.rpc.BlockTag blockTag) {
                 publicClientCalled.set(true);
                 // Return encoded uint256(100)
-                return "0x0000000000000000000000000000000000000000000000000000000000000064";
+                return new io.brane.core.types.HexData("0x0000000000000000000000000000000000000000000000000000000000000064");
             }
         };
 
@@ -100,7 +99,7 @@ class ContractInvocationHandlerTest {
 
         PublicClient publicClient = new FakePublicClient() {
             @Override
-            public String call(Map<String, Object> callObject, String blockTag) {
+            public io.brane.core.types.HexData call(io.brane.rpc.CallRequest request, io.brane.rpc.BlockTag blockTag) {
                 publicClientCalled.set(true);
                 throw new AssertionError("PublicClient should not be called for write functions");
             }
@@ -205,8 +204,8 @@ class ContractInvocationHandlerTest {
 
         PublicClient publicClient = new FakePublicClient() {
             @Override
-            public String call(Map<String, Object> callObject, String blockTag) {
-                return encodedString;
+            public io.brane.core.types.HexData call(io.brane.rpc.CallRequest request, io.brane.rpc.BlockTag blockTag) {
+                return new io.brane.core.types.HexData(encodedString);
             }
         };
 
@@ -249,7 +248,7 @@ class ContractInvocationHandlerTest {
 
         PublicClient publicClient = new FakePublicClient() {
             @Override
-            public String call(Map<String, Object> callObject, String blockTag) {
+            public io.brane.core.types.HexData call(io.brane.rpc.CallRequest request, io.brane.rpc.BlockTag blockTag) {
                 throw new RpcException(-32000, "execution reverted", revertData);
             }
         };
@@ -289,8 +288,8 @@ class ContractInvocationHandlerTest {
 
         PublicClient publicClient = new FakePublicClient() {
             @Override
-            public String call(Map<String, Object> callObject, String blockTag) {
-                return "";  // Empty response
+            public io.brane.core.types.HexData call(io.brane.rpc.CallRequest request, io.brane.rpc.BlockTag blockTag) {
+                return new io.brane.core.types.HexData("0x");  // Empty response
             }
         };
 
@@ -329,7 +328,7 @@ class ContractInvocationHandlerTest {
 
         PublicClient publicClient = new FakePublicClient() {
             @Override
-            public String call(Map<String, Object> callObject, String blockTag) {
+            public io.brane.core.types.HexData call(io.brane.rpc.CallRequest request, io.brane.rpc.BlockTag blockTag) {
                 return null;  // Null response
             }
         };
@@ -566,7 +565,7 @@ class ContractInvocationHandlerTest {
 
         @SuppressWarnings("deprecation")
         @Override
-        public String call(Map<String, Object> callObject, String blockTag) {
+        public String call(java.util.Map<String, Object> callObject, String blockTag) {
             return "0x";
         }
 
