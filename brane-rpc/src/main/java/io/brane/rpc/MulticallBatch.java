@@ -116,15 +116,24 @@ public final class MulticallBatch {
      */
     private static final int MAX_CHUNK_SIZE = 1000;
 
-    private final PublicClient publicClient;
+    /**
+     * Functional interface for executing eth_call requests.
+     * This allows MulticallBatch to work with both PublicClient and Brane.
+     */
+    @FunctionalInterface
+    interface CallExecutor {
+        HexData call(CallRequest request, BlockTag blockTag);
+    }
+
+    private final CallExecutor callExecutor;
     private final List<CallContext<?>> calls = new ArrayList<>();
     private final ThreadLocal<CallContext<?>> pendingCall = new ThreadLocal<>();
     private boolean globalAllowFailure = true;
     private int chunkSize = DEFAULT_CHUNK_SIZE;
     private boolean executed = false;
 
-    private MulticallBatch(final PublicClient publicClient) {
-        this.publicClient = Objects.requireNonNull(publicClient, "publicClient");
+    private MulticallBatch(final CallExecutor callExecutor) {
+        this.callExecutor = Objects.requireNonNull(callExecutor, "callExecutor");
     }
 
     /**
@@ -134,7 +143,19 @@ public final class MulticallBatch {
      * @return a new batch instance
      */
     static MulticallBatch create(final PublicClient publicClient) {
-        return new MulticallBatch(publicClient);
+        Objects.requireNonNull(publicClient, "publicClient");
+        return new MulticallBatch(publicClient::call);
+    }
+
+    /**
+     * Creates a new multicall batch using a Brane client.
+     *
+     * @param brane the Brane client to use for execution
+     * @return a new batch instance
+     */
+    static MulticallBatch create(final Brane brane) {
+        Objects.requireNonNull(brane, "brane");
+        return new MulticallBatch(brane::call);
     }
 
     /**
@@ -377,7 +398,7 @@ public final class MulticallBatch {
                     MULTICALL_ADDRESS,
                     new HexData(aggregate3Call.data()));
 
-            final String resultHex = publicClient.call(callRequest, BlockTag.LATEST).value();
+            final String resultHex = callExecutor.call(callRequest, BlockTag.LATEST).value();
 
             // 4. Decode results and update handles
             final List<MulticallResult> results = Abi.decodeMulticallResults(resultHex);

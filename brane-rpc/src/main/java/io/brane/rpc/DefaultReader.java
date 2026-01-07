@@ -459,7 +459,8 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public MulticallBatch batch() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        return MulticallBatch.create(this);
     }
 
     @Override
