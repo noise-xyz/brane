@@ -14,6 +14,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 import io.brane.core.error.RpcException;
+import io.brane.rpc.exception.RetryExhaustedException;
 
 class RpcRetryTest {
 
