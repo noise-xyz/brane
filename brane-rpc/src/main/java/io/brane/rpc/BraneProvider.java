@@ -21,8 +21,8 @@ import io.brane.core.error.RpcException;
  * <strong>Thread Safety:</strong> Implementations must be thread-safe.
  *
  * <p>
- * <strong>Usage:</strong> Most users should use {@link PublicClient} or
- * {@link WalletClient} instead of calling this directly. This interface is
+ * <strong>Usage:</strong> Most users should use {@link Brane.Reader} or
+ * {@link Brane.Signer} instead of calling this directly. This interface is
  * primarily for internal use and custom provider implementations.
  *
  * <p>
