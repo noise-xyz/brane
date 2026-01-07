@@ -695,7 +695,9 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          */
         public Reader buildReader() {
             validateProviderConfig();
-            return new DefaultReader();
+            BraneProvider resolvedProvider = provider != null ? provider : BraneProvider.http(rpcUrl);
+            RpcRetryConfig resolvedRetryConfig = retryConfig != null ? retryConfig : RpcRetryConfig.defaults();
+            return new DefaultReader(resolvedProvider, chain, retries, resolvedRetryConfig);
         }
 
         /**
