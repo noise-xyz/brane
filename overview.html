@@ -36,8 +36,8 @@
             </ul>
         </li>
         <li><b>Access Lists (EIP-2930)</b>: Support for specifying access lists to reduce gas costs.</li>
-        <li><b>Offline Signing</b>: Secure transaction signing using <code>PrivateKeyTransactionSigner</code>.</li>
-        <li><b>Nonce Management</b>: Automatic nonce handling via <code>WalletClient</code>.</li>
+        <li><b>Offline Signing</b>: Secure transaction signing using <code>PrivateKey</code> from <code>brane-core</code>.</li>
+        <li><b>Nonce Management</b>: Automatic nonce handling via <code>Brane.Signer</code>.</li>
     </ul>
 
     <h3>3. Smart Contracts and ABI</h3>
@@ -86,8 +86,8 @@
     <ul>
         <li><b>brane-core</b>: Domain types (<code>Address</code>, <code>Wei</code>, <code>HexData</code>), error
             hierarchy, and chain configurations.</li>
-        <li><b>brane-rpc</b>: The primary entry point. Contains <code>PublicClient</code> for reads and
-            <code>WalletClient</code> for writes.
+        <li><b>brane-rpc</b>: The primary entry point. Contains <code>Brane.Reader</code> for reads and
+            <code>Brane.Signer</code> for writes. Use <code>Brane.connect()</code> to get started.
         </li>
         <li><b>brane-contract</b>: The ABI engine and contract binding logic.</li>
         <li><b>brane-primitives</b>: Low-level encoding utilities (Hex, RLP).</li>

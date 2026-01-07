@@ -138,7 +138,7 @@ Study these for the expected style:
 - `brane-contract/.../BraneContract.java` - Comprehensive class Javadoc
 - `brane-core/.../types/Address.java` - Record with validation
 - `brane-core/.../abi/Abi.java` - Interface with static factories
-- `brane-rpc/.../WalletClient.java` - Client interface methods
+- `brane-rpc/.../Brane.java` - Client interface methods (see Brane.Reader and Brane.Signer)
 
 ---
 

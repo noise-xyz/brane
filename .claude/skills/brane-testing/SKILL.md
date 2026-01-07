@@ -35,7 +35,7 @@ Before writing new tests, read these to understand our patterns:
 - **Simple type validation**: `brane-core/.../types/AddressTest.java`
 - **ABI encoding**: `brane-core/.../abi/AbiEncoderTest.java`
 - **Contract binding**: `brane-contract/.../BraneContractTest.java`
-- **RPC client**: `brane-rpc/.../DefaultPublicClientTest.java`
+- **RPC client**: `brane-rpc/.../BraneTest.java`
 - **Error handling**: `brane-core/.../error/RpcExceptionTest.java`
 
 ---
@@ -327,7 +327,7 @@ public class MyFeatureExample {
         "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 
     public static void main(String[] args) {
-        var client = DefaultWalletClient.create(ANVIL_URL, PRIVATE_KEY);
+        var client = Brane.connect(ANVIL_URL, PrivateKey.from(PRIVATE_KEY));
 
         // Test against real EVM
         // Throw RuntimeException on failure

@@ -21,7 +21,7 @@ Brane is a type-safe Ethereum SDK for Java 21. The codebase follows these princi
 |--------|---------|--------------|
 | `brane-primitives` | Low-level Hex/RLP encoding | None (foundation) |
 | `brane-core` | Types, ABI, Crypto, Models, Errors | `brane-primitives` |
-| `brane-rpc` | JSON-RPC clients (PublicClient, WalletClient) | `brane-core` |
+| `brane-rpc` | JSON-RPC clients (Brane.Reader, Brane.Signer) | `brane-core` |
 | `brane-contract` | High-level contract binding via dynamic proxy | `brane-core`, `brane-rpc` |
 | `brane-examples` | Integration tests and usage examples | All modules |
 | `brane-benchmark` | Performance benchmarks (may use external libs) | All modules |
@@ -36,7 +36,7 @@ Before reviewing, understand these exemplary implementations:
 
 - **Record + validation**: `brane-core/.../types/Address.java`
 - **Exception hierarchy**: `brane-core/.../error/RpcException.java`
-- **Complex client**: `brane-rpc/.../DefaultWalletClient.java`
+- **Complex client**: `brane-rpc/.../DefaultSigner.java`
 - **Dynamic proxy**: `brane-contract/.../BraneContract.java`
 - **Javadoc style**: `brane-contract/.../BraneContract.java`
 
