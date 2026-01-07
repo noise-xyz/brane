@@ -12,6 +12,9 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import org.jspecify.annotations.Nullable;
 
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -42,6 +45,8 @@ import io.brane.rpc.internal.RpcUtils;
  * @since 0.1.0
  */
 final class DefaultReader implements Brane.Reader {
+
+    private static final Logger log = LoggerFactory.getLogger(DefaultReader.class);
 
     private final BraneProvider provider;
     private final @Nullable ChainProfile chain;
@@ -465,12 +470,58 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public Subscription onNewHeads(final Consumer<BlockHeader> callback) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        if (!(provider instanceof WebSocketProvider)) {
+            throw new UnsupportedOperationException(
+                    "Subscriptions require a WebSocket provider. Use Brane.builder().wsUrl() or a WebSocketProvider.");
+        }
+        final String id = provider.subscribe("newHeads", List.of(), result -> {
+            final Map<String, Object> map = MAPPER.convertValue(
+                    result, new TypeReference<Map<String, Object>>() {}
+            );
+
+            final String hash = RpcUtils.stringValue(map.get("hash"));
+            final String parentHash = RpcUtils.stringValue(map.get("parentHash"));
+            final Long number = RpcUtils.decodeHexLong(map.get("number"));
+            final Long timestamp = RpcUtils.decodeHexLong(map.get("timestamp"));
+            final String baseFeeHex = RpcUtils.stringValue(map.get("baseFeePerGas"));
+
+            final BlockHeader header = new BlockHeader(
+                    hash != null ? new Hash(hash) : null,
+                    number,
+                    parentHash != null ? new Hash(parentHash) : null,
+                    timestamp,
+                    baseFeeHex != null ? new Wei(RpcUtils.decodeHexBigInteger(baseFeeHex)) : null);
+
+            try {
+                callback.accept(header);
+            } catch (Exception e) {
+                log.error("Exception in newHeads subscription callback (block {})", number, e);
+            }
+        });
+        return new SubscriptionImpl(id, provider);
     }
 
     @Override
     public Subscription onLogs(final LogFilter filter, final Consumer<LogEntry> callback) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        if (!(provider instanceof WebSocketProvider)) {
+            throw new UnsupportedOperationException(
+                    "Subscriptions require a WebSocket provider. Use Brane.builder().wsUrl() or a WebSocketProvider.");
+        }
+        final Map<String, Object> params = buildLogParams(filter);
+        final String id = provider.subscribe("logs", List.of(params), result -> {
+            final Map<String, Object> map = MAPPER.convertValue(
+                    result, new TypeReference<Map<String, Object>>() {}
+            );
+            final LogEntry logEntry = LogParser.parseLogStrict(map);
+            try {
+                callback.accept(logEntry);
+            } catch (Exception e) {
+                log.error("Exception in logs subscription callback (tx {})", logEntry.transactionHash(), e);
+            }
+        });
+        return new SubscriptionImpl(id, provider);
     }
 
     @Override
@@ -480,7 +531,7 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public boolean canSubscribe() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return provider instanceof WebSocketProvider;
     }
 
     @Override
@@ -546,5 +597,50 @@ final class DefaultReader implements Brane.Reader {
      */
     JsonRpcResponse sendWithRetry(final String method, final List<?> params) {
         return RpcRetry.runRpc(() -> provider.send(method, params), maxRetries + 1, retryConfig);
+    }
+
+    /**
+     * Subscription implementation that handles unsubscribe errors gracefully.
+     *
+     * <p><strong>Idempotency:</strong> Calling {@link #unsubscribe()} multiple times
+     * is safe and has no additional effect after the first call.
+     *
+     * <p><strong>Error Handling:</strong> Unsubscribe failures are logged at WARN level
+     * and do not throw exceptions. This prevents resource cleanup issues when the
+     * subscription is already terminated (e.g., WebSocket disconnected).
+     */
+    private static final class SubscriptionImpl implements Subscription {
+        private final String id;
+        private final BraneProvider provider;
+        private final AtomicBoolean unsubscribed = new AtomicBoolean(false);
+
+        SubscriptionImpl(final String id, final BraneProvider provider) {
+            this.id = id;
+            this.provider = provider;
+        }
+
+        @Override
+        public String id() {
+            return id;
+        }
+
+        @Override
+        public void unsubscribe() {
+            // Idempotent: only unsubscribe once
+            if (!unsubscribed.compareAndSet(false, true)) {
+                log.debug("Subscription {} already unsubscribed, ignoring duplicate call", id);
+                return;
+            }
+
+            try {
+                provider.unsubscribe(id);
+                log.debug("Successfully unsubscribed from {}", id);
+            } catch (Exception e) {
+                // Log and swallow - unsubscribe failures should not propagate
+                // Common causes: connection already closed, subscription already terminated
+                log.warn("Failed to unsubscribe from {}: {} ({})",
+                        id, e.getMessage(), e.getClass().getSimpleName());
+            }
+        }
     }
 }
