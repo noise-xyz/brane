@@ -84,17 +84,12 @@ CLASSES=$(find brane-examples/src/main/java/io/brane/examples -name "*Example.ja
     sed 's|.java||')
 
 for class in $CLASSES; do
-    # Skip RequestIdSanityCheck here as we run it separately/explicitly if needed, 
-    # but actually it's fine to run it in the loop too if it works.
-    # However, we want to be explicit about Sanity checks.
-    if [[ "$class" == *"RequestIdSanityCheck" ]]; then continue; fi
-    
     run_example "$class"
 done
 
-# 4. Run Sanity Checks with I/O
-echo "   Running Sanity Checks with I/O..."
-run_example "io.brane.examples.RequestIdSanityCheck"
+# 4. Run Sanity Checks with I/O (skipped - RequestIdSanityCheck not implemented)
+# echo "   Running Sanity Checks with I/O..."
+# run_example "io.brane.examples.RequestIdSanityCheck"
 
 # 5. Run JUnit Integration Tests (brane-contract, brane-rpc, etc.)
 echo "   Running JUnit Integration Tests..."
