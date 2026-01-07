@@ -59,7 +59,14 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public BigInteger chainId() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        final JsonRpcResponse response = sendWithRetry("eth_chainId", List.of());
+        final Object result = response.result();
+        if (result == null) {
+            throw new io.brane.core.error.RpcException(
+                    0, "eth_chainId returned null", (String) null, (Throwable) null);
+        }
+        return io.brane.rpc.internal.RpcUtils.decodeHexBigInteger(result.toString());
     }
 
     @Override
@@ -194,5 +201,16 @@ final class DefaultReader implements Brane.Reader {
         if (closed.get()) {
             throw new IllegalStateException("This reader has been closed");
         }
+    }
+
+    /**
+     * Sends an RPC request with automatic retry on transient failures.
+     *
+     * @param method the JSON-RPC method name
+     * @param params the method parameters
+     * @return the JSON-RPC response
+     */
+    JsonRpcResponse sendWithRetry(final String method, final List<?> params) {
+        return RpcRetry.runRpc(() -> provider.send(method, params), maxRetries + 1, retryConfig);
     }
 }
