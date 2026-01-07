@@ -698,10 +698,9 @@ public class SmokeApp {
             if (sepoliaMode
                     && (e instanceof RpcException || e.getCause() instanceof java.net.http.HttpTimeoutException)) {
                 System.out.println("  ⚠️ Sepolia Network Error (Expected on public RPC): " + e.getMessage());
+            } else if (e instanceof RuntimeException re) {
+                throw re;
             } else {
-                if (e instanceof RuntimeException) {
-                    throw (RuntimeException) e;
-                }
                 throw new RuntimeException(e);
             }
         }
