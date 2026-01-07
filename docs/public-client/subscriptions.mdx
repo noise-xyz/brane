@@ -12,11 +12,12 @@ Subscriptions require a WebSocket provider. HTTP providers do not support `eth_s
 ## Setup
 
 ```java
-import io.brane.rpc.WebSocketProvider;
-import io.brane.rpc.PublicClient;
+import io.brane.rpc.Brane;
 
-var provider = WebSocketProvider.create("wss://ethereum.publicnode.com");
-var client = PublicClient.from(provider);
+// Create a WebSocket-based client using the builder
+Brane client = Brane.builder()
+    .wsUrl("wss://ethereum.publicnode.com")
+    .build();
 ```
 
 ---
@@ -29,11 +30,11 @@ Get notified when new blocks are mined:
 import io.brane.rpc.Subscription;
 import io.brane.core.model.BlockHeader;
 
-Subscription subscription = client.subscribeToNewHeads(header -> {
+Subscription subscription = client.onNewHeads(header -> {
     System.out.println("New block #" + header.number());
     System.out.println("  Hash: " + header.hash());
     System.out.println("  Timestamp: " + header.timestamp());
-    
+
     if (header.baseFeePerGas() != null) {
         System.out.println("  Base Fee: " + header.baseFeePerGas().value() + " wei");
     }
@@ -79,7 +80,7 @@ Hash transferTopic = new Hash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11
 // Use the byContract factory method
 LogFilter filter = LogFilter.byContract(usdc, List.of(transferTopic));
 
-Subscription subscription = client.subscribeToLogs(filter, log -> {
+Subscription subscription = client.onLogs(filter, log -> {
     System.out.println("Transfer detected!");
     System.out.println("  Tx: " + log.transactionHash());
     System.out.println("  From: " + log.topics().get(1));  // indexed param
@@ -130,7 +131,7 @@ provider.unsubscribe(subscriptionId);
 Always unsubscribe when done to free resources:
 
 ```java
-Subscription sub = client.subscribeToNewHeads(header -> { ... });
+Subscription sub = client.onNewHeads(header -> { ... });
 
 // When done
 sub.unsubscribe();
@@ -141,8 +142,8 @@ sub.unsubscribe();
 You can have multiple subscriptions on the same connection:
 
 ```java
-var blockSub = client.subscribeToNewHeads(header -> { ... });
-var logSub = client.subscribeToLogs(filter, log -> { ... });
+var blockSub = client.onNewHeads(header -> { ... });
+var logSub = client.onLogs(filter, log -> { ... });
 
 // Both run concurrently on the same WebSocket connection
 ```
@@ -156,7 +157,7 @@ sequenceDiagram
     participant WebSocket
     participant Node
     
-    App->>Client: subscribeToNewHeads()
+    App->>Client: onNewHeads()
     Client->>WebSocket: eth_subscribe("newHeads")
     WebSocket->>Node: Subscribe
     Node-->>WebSocket: subscription_id
@@ -206,13 +207,13 @@ Never block in callbacks if using the default executor or Netty I/O thread. Use 
 When a reorg occurs, logs may be marked as `removed`:
 
 ```java
-client.subscribeToLogs(filter, log -> {
+client.onLogs(filter, log -> {
     if (log.removed()) {
         System.out.println("Log reverted due to reorg: " + log.transactionHash());
         // Handle revert - e.g., undo state change
         return;
     }
-    
+
     // Process normally
 });
 ```
@@ -229,7 +230,7 @@ Consumer<BlockHeader> callback = header -> {
 };
 
 try {
-    var sub = client.subscribeToNewHeads(callback);
+    var sub = client.onNewHeads(callback);
 } catch (RpcException e) {
     // Handle error, implement retry logic
     System.err.println("Subscription failed: " + e.getMessage());
@@ -246,13 +247,12 @@ try {
 
 3. **Don't block callbacks** — Use the subscription executor for heavy work.
 
-4. **Use try-with-resources for provider** — Ensures cleanup:
+4. **Use try-with-resources for client** — Ensures cleanup:
    ```java
-   try (var provider = WebSocketProvider.create("wss://...")) {
-       var client = PublicClient.from(provider);
-       var sub = client.subscribeToNewHeads(callback);
+   try (Brane client = Brane.builder().wsUrl("wss://...").build()) {
+       var sub = client.onNewHeads(callback);
        // ...
-   } // Provider closes, subscriptions cleaned up
+   } // Client closes, subscriptions cleaned up
    ```
 
 5. **Filter precisely** — The more specific your `LogFilter`, the less data transferred.
