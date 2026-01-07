@@ -1093,7 +1093,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          */
         public Reader buildReader() {
             validateProviderConfig();
-            BraneProvider resolvedProvider = provider != null ? provider : BraneProvider.http(rpcUrl);
+            BraneProvider resolvedProvider = resolveProvider();
             RpcRetryConfig resolvedRetryConfig = retryConfig != null ? retryConfig : RpcRetryConfig.defaults();
             return new DefaultReader(resolvedProvider, chain, retries, resolvedRetryConfig);
         }
@@ -1125,15 +1125,28 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
                 throw new IllegalStateException(
                         "Cannot build Signer without a signer. Call signer() before buildSigner().");
             }
-            BraneProvider resolvedProvider = provider != null ? provider : BraneProvider.http(rpcUrl);
+            BraneProvider resolvedProvider = resolveProvider();
             RpcRetryConfig resolvedRetryConfig = retryConfig != null ? retryConfig : RpcRetryConfig.defaults();
             return new DefaultSigner(resolvedProvider, resolvedSigner, chain, retries, resolvedRetryConfig);
         }
 
+        /**
+         * Resolves the provider with priority: explicit provider > wsUrl > rpcUrl.
+         */
+        private BraneProvider resolveProvider() {
+            if (provider != null) {
+                return provider;
+            }
+            if (wsUrl != null) {
+                return WebSocketProvider.create(wsUrl);
+            }
+            return BraneProvider.http(rpcUrl);
+        }
+
         private void validateProviderConfig() {
-            if (provider == null && rpcUrl == null) {
+            if (provider == null && rpcUrl == null && wsUrl == null) {
                 throw new IllegalStateException(
-                        "Either rpcUrl or provider must be configured. Call rpcUrl() or provider().");
+                        "Either rpcUrl, wsUrl, or provider must be configured. Call rpcUrl(), wsUrl(), or provider().");
             }
         }
     }
