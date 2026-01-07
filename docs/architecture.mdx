@@ -56,15 +56,12 @@ The `Brane` sealed interface is the main entry point:
 
 ## Module Dependencies
 
-```text
-brane-primitives (no dependencies)
-         │
-         ▼
-     brane-core (BouncyCastle, Jackson)
-         │
-         ▼
-      brane-rpc (Netty, Disruptor)
-         │
-         ▼
-    brane-contract
+```mermaid
+flowchart TD
+    PRIMITIVES["📦 brane-primitives<br/><i>no dependencies</i>"]
+    CORE["📦 brane-core<br/><i>BouncyCastle, Jackson</i>"]
+    RPC["📦 brane-rpc<br/><i>Netty, Disruptor</i>"]
+    CONTRACT["📦 brane-contract"]
+
+    PRIMITIVES --> CORE --> RPC --> CONTRACT
 ```
