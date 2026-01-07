@@ -3,24 +3,37 @@ title: WebSocket Provider
 description: 'Real-time blockchain communication with WebSocket.'
 ---
 
-Brane's `WebSocketProvider` enables persistent connections for real-time subscriptions and lower-latency RPC calls.
+Brane's WebSocket transport enables persistent connections for real-time subscriptions and lower-latency RPC calls.
 
 ## Basic Usage
 
 ```java
-import io.brane.rpc.WebSocketProvider;
-import io.brane.rpc.PublicClient;
+import io.brane.rpc.Brane;
 
-// Connect to a WebSocket endpoint
-var provider = WebSocketProvider.create("wss://ethereum.publicnode.com");
-var client = PublicClient.from(provider);
+// Create a WebSocket-based client
+Brane client = Brane.builder()
+    .wsUrl("wss://ethereum.publicnode.com")
+    .build();
 
-// Use like any other provider
+// Use like any other client
 var latestBlock = client.getLatestBlock();
 System.out.println("Block #" + latestBlock.number());
 
 // Always close when done
-provider.close();
+client.close();
+```
+
+For simple connection without additional configuration:
+
+```java
+import io.brane.rpc.Brane;
+import io.brane.rpc.WebSocketProvider;
+
+// If you need direct provider access
+WebSocketProvider provider = WebSocketProvider.create("wss://ethereum.publicnode.com");
+Brane client = Brane.builder()
+    .provider(provider)
+    .build();
 ```
 
 <Tip>
@@ -35,7 +48,10 @@ For production use cases, you'll want fine-grained control over connection behav
 
 ### WebSocketConfig
 
+For fine-grained control over WebSocket behavior, configure via `WebSocketConfig`:
+
 ```java
+import io.brane.rpc.Brane;
 import io.brane.rpc.WebSocketConfig;
 import io.brane.rpc.WebSocketConfig.WaitStrategyType;
 import io.brane.rpc.WebSocketProvider;
@@ -50,7 +66,10 @@ var config = WebSocketConfig.builder("wss://eth.example.com")
     .ioThreads(1)                           // Usually 1 is optimal
     .build();
 
-var provider = WebSocketProvider.create(config);
+WebSocketProvider provider = WebSocketProvider.create(config);
+Brane client = Brane.builder()
+    .provider(provider)
+    .build();
 ```
 
 ### Configuration Reference
@@ -112,7 +131,7 @@ When a request times out, the slot is freed but the request may still complete o
 WebSocket enables real-time event subscriptions via `eth_subscribe`.
 
 <Tip>
-For **type-safe subscriptions**, use [`PublicClient.subscribeToNewHeads()`](/public-client/subscriptions) and [`subscribeToLogs()`](/public-client/subscriptions) instead of the raw provider API shown below.
+For **type-safe subscriptions**, use [`client.onNewHeads()`](/public-client/subscriptions) and [`client.onLogs()`](/public-client/subscriptions) instead of the raw provider API shown below.
 </Tip>
 
 ### New Block Headers
@@ -287,38 +306,37 @@ Use `BraneMetrics.onConnectionLost()` and `onReconnect()` hooks for monitoring c
 
 ---
 
-## Integration with Clients
+## Client Types
 
-WebSocket providers work seamlessly with `PublicClient` and `WalletClient`:
+The builder creates different client types based on configuration:
 
 ```java
-import io.brane.rpc.WebSocketProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.DefaultWalletClient;
-import io.brane.core.crypto.PrivateKeySigner;
-import io.brane.core.chain.ChainProfiles;
-import io.brane.core.builder.TxBuilder;
+import io.brane.rpc.Brane;
+import io.brane.core.crypto.PrivateKey;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;
 
-var provider = WebSocketProvider.create("wss://ethereum.publicnode.com");
-var publicClient = PublicClient.from(provider);
+// Read-only client (Brane.Reader) - for queries and subscriptions
+Brane.Reader reader = Brane.builder()
+    .wsUrl("wss://ethereum.publicnode.com")
+    .buildReader();
 
-var wallet = DefaultWalletClient.create(
-    provider,
-    publicClient,
-    new PrivateKeySigner("0x..."),
-    ChainProfiles.ETH_MAINNET
-);
+var balance = reader.getBalance(Address.from("0x..."));
+var sub = reader.onNewHeads(header -> System.out.println("Block: " + header.number()));
 
-// Create a transaction request
-var request = TxBuilder.eip1559()
-    .to(new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"))
-    .value(Wei.fromEther(new java.math.BigDecimal("0.01")))
+// Signing client (Brane.Signer) - can send transactions
+Brane.Signer signer = Brane.builder()
+    .wsUrl("wss://ethereum.publicnode.com")
+    .signer(PrivateKey.fromHex("0x..."))
+    .buildSigner();
+
+// Create and send a transaction over WebSocket
+var request = signer.eip1559()
+    .to(Address.from("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"))
+    .value(Wei.fromEther("0.01"))
     .build();
 
-// Send transactions over WebSocket
-var receipt = wallet.sendTransactionAndWait(request, 60_000, 1_000);
+var receipt = signer.sendTransactionAndWait(request);
 ```
 
 ---
