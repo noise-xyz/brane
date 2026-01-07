@@ -2,6 +2,11 @@ package io.brane.rpc;
 
 import java.math.BigInteger;
 
+import org.jspecify.annotations.Nullable;
+
+import io.brane.core.model.BlockHeader;
+import io.brane.core.types.Address;
+
 /**
  * Unified entry point for interacting with Ethereum/EVM blockchains.
  *
@@ -31,6 +36,32 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @since 0.1.0
      */
     BigInteger chainId();
+
+    /**
+     * Retrieves the balance of an account.
+     *
+     * @param address the account address
+     * @return the balance in Wei
+     * @since 0.1.0
+     */
+    BigInteger getBalance(Address address);
+
+    /**
+     * Retrieves the latest block header.
+     *
+     * @return the latest block header, or {@code null} if not found
+     * @since 0.1.0
+     */
+    @Nullable BlockHeader getLatestBlock();
+
+    /**
+     * Retrieves a block header by its number.
+     *
+     * @param blockNumber the block number
+     * @return the block header, or {@code null} if not found
+     * @since 0.1.0
+     */
+    @Nullable BlockHeader getBlockByNumber(long blockNumber);
 
     /**
      * Read-only client for blockchain queries.
