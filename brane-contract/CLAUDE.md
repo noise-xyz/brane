@@ -27,7 +27,7 @@ ERC20 token = BraneContract.bind(
     ERC20.class,
     abi,
     contractAddress,
-    walletClient
+    signerClient
 );
 
 // Use like a regular Java object
@@ -52,7 +52,7 @@ interface WETH {
 ### Low-Level Facade
 ```java
 // When you don't want interface binding
-var contract = new ReadWriteContract(abi, address, walletClient);
+var contract = new ReadWriteContract(abi, address, signerClient);
 
 // Call view function
 BigInteger balance = contract.call("balanceOf", BigInteger.class, owner);
