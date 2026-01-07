@@ -82,31 +82,25 @@ public class RemoteSigner implements Signer {
 }
 ```
 
-## Usage with WalletClient
+## Usage with Brane.Signer
 
-Once you have your custom signer, simply pass it to the `WalletClient` builder.
+Once you have your custom signer, pass it to `Brane.connect()` to create a `Brane.Signer` client.
 
 ```java
-import io.brane.rpc.DefaultWalletClient;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.core.chain.ChainProfiles;
+import io.brane.rpc.Brane;
 
-// Assume these are defined
-BraneProvider provider = ...;
-PublicClient publicClient = ...;
+// Assume service is defined
 ExternalService service = ...;
 
 Signer mySigner = new RemoteSigner(
-    "key-123", 
-    new Address("0x..."), 
+    "key-123",
+    new Address("0x..."),
     service
 );
 
-WalletClient wallet = DefaultWalletClient.create(
-    provider,
-    publicClient,
-    mySigner,
-    ChainProfiles.ANVIL_LOCAL
-);
+// Create a Brane.Signer client with your custom signer
+Brane.Signer client = Brane.connect("https://rpc.sepolia.org", mySigner);
+
+// Now you can send transactions
+TransactionReceipt receipt = client.sendTransactionAndWait(request, 60_000, 1_000);
 ```
