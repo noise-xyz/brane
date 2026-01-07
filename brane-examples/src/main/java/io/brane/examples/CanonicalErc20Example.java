@@ -26,7 +26,7 @@ import io.brane.core.error.RpcException;
  * Canonical "High-Level" Example for Brane 0.1.0-alpha.
  * <p>
  * Demonstrates the idiomatic way to interact with a smart contract using
- * {@link BraneContract#bind(Address, String, PublicClient, WalletClient, Class)}.
+ * {@link BraneContract#bind(Address, String, Brane.Signer, Class)}.
  * <p>
  * Steps:
  * 1. Bind a Java interface to an ERC-20 contract.
