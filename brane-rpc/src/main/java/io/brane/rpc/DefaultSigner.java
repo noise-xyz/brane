@@ -1,9 +1,11 @@
 package io.brane.rpc;
 
 import java.math.BigInteger;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
@@ -14,6 +16,7 @@ import io.brane.core.LogFormatter;
 import io.brane.core.RevertDecoder;
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.error.InvalidSenderException;
+import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 
 import io.brane.core.model.AccessListWithGas;
@@ -424,10 +427,109 @@ final class DefaultSigner implements Brane.Signer {
         }
     }
 
+    /** Maximum poll interval for exponential backoff (10 seconds). */
+    private static final long MAX_POLL_INTERVAL_MILLIS = 10_000L;
+
     @Override
     public TransactionReceipt sendTransactionAndWait(
             final TransactionRequest request, final long timeoutMillis, final long pollIntervalMillis) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        final Hash txHash = sendTransaction(request);
+        DebugLogger.logTx(LogFormatter.formatTxWait(txHash.value(), timeoutMillis));
+
+        // Use monotonic clock (System.nanoTime) instead of wall clock (Instant.now)
+        // to avoid issues with NTP adjustments or VM clock skew.
+        final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+
+        // Exponential backoff: start with user-provided interval, double each time, cap at MAX
+        long currentInterval = pollIntervalMillis;
+
+        while (System.nanoTime() - deadlineNanos < 0) {
+            final TransactionReceipt receipt = getTransactionReceipt(txHash);
+            if (receipt != null) {
+                DebugLogger.logTx(
+                        LogFormatter.formatTxReceipt(txHash.value(), receipt.blockNumber(), receipt.status()));
+                if (!receipt.status()) {
+                    // Transaction was mined but reverted - replay via eth_call to get revert reason
+                    throwRevertException(request, txHash, receipt);
+                }
+                return receipt;
+            }
+            try {
+                Thread.sleep(currentInterval);
+                // Double the interval for next iteration, capped at MAX_POLL_INTERVAL_MILLIS
+                currentInterval = Math.min(currentInterval * 2, MAX_POLL_INTERVAL_MILLIS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RpcException(-32000, "Interrupted while waiting for receipt", null, e);
+            }
+        }
+
+        throw new RpcException(
+                -32000,
+                "Timed out waiting for transaction receipt for " + txHash.value(),
+                null,
+                null,
+                null);
+    }
+
+    /**
+     * Replays a reverted transaction via eth_call to extract the revert reason.
+     */
+    private void throwRevertException(
+            final TransactionRequest request, final Hash txHash, final TransactionReceipt receipt) {
+        // Try to replay the transaction via eth_call to get the revert reason
+        final Map<String, Object> tx = new LinkedHashMap<>();
+        final Address from = receipt.from() != null ? receipt.from() : signer.address();
+        tx.put("from", from.value());
+        if (request.to() != null) {
+            tx.put("to", request.to().value());
+        }
+        if (request.value() != null) {
+            tx.put("value", RpcUtils.toQuantityHex(request.value().value()));
+        }
+        if (request.data() != null) {
+            tx.put("data", request.data().value());
+        }
+
+        // Replay at the block where the transaction was mined
+        final String blockNumber = RpcUtils.toQuantityHex(BigInteger.valueOf(receipt.blockNumber()));
+
+        try {
+            final JsonRpcResponse response = provider.send("eth_call", List.of(tx, blockNumber));
+            if (response.hasError()) {
+                final JsonRpcError err = response.error();
+                final String data = RpcUtils.extractErrorData(err.data());
+                if (data != null && data.startsWith("0x") && data.length() > 10) {
+                    final RevertDecoder.Decoded decoded = RevertDecoder.decode(data);
+                    DebugLogger.logTx(
+                            LogFormatter.formatTxRevert(txHash.value(), decoded.kind().toString(), decoded.reason()));
+                    throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), null);
+                }
+                throw new RevertException(
+                        RevertDecoder.RevertKind.UNKNOWN,
+                        err.message() != null ? err.message() : "Transaction reverted",
+                        null,
+                        null);
+            }
+            // eth_call succeeded but transaction was marked as reverted in receipt - unexpected state
+            throw new RevertException(
+                    RevertDecoder.RevertKind.UNKNOWN,
+                    "Transaction reverted but eth_call replay succeeded (txHash: " + txHash.value() + ")",
+                    null,
+                    null);
+        } catch (RevertException e) {
+            throw e;
+        } catch (Exception e) {
+            // If eth_call fails for any other reason, throw a generic revert exception
+            // but preserve the original exception as the cause for debugging
+            DebugLogger.logTx(LogFormatter.formatTxRevert(txHash.value(), "UNKNOWN",
+                    "Transaction reverted (eth_call replay failed: " + e.getMessage() + ")"));
+            throw new RevertException(
+                    RevertDecoder.RevertKind.UNKNOWN,
+                    "Transaction reverted (eth_call replay failed: " + e.getMessage() + ")",
+                    null,
+                    e);
+        }
     }
 
     @Override

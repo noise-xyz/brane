@@ -451,6 +451,36 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          */
         Hash sendTransaction(TransactionRequest request);
 
+        /** Default timeout for waiting for transaction confirmation: 60 seconds. */
+        long DEFAULT_TIMEOUT_MILLIS = 60_000;
+
+        /** Default poll interval for checking transaction receipt: 1 second. */
+        long DEFAULT_POLL_INTERVAL_MILLIS = 1_000;
+
+        /**
+         * Submits a transaction and waits for it to be confirmed in a block using default settings.
+         *
+         * <p>This is a convenience method that uses default timeout (60 seconds) and poll
+         * interval (1 second). For custom settings, use
+         * {@link #sendTransactionAndWait(TransactionRequest, long, long)}.
+         *
+         * <p>This method combines {@link #sendTransaction} with polling for the receipt.
+         * It will:
+         * <ol>
+         *   <li>Submit the transaction (same as {@link #sendTransaction})</li>
+         *   <li>Poll {@code eth_getTransactionReceipt} every second</li>
+         *   <li>Return the receipt once the transaction is included in a block</li>
+         *   <li>Throw an exception if 60 seconds is exceeded or transaction reverts</li>
+         * </ol>
+         *
+         * @param request the transaction request
+         * @return the transaction receipt once confirmed
+         * @since 0.1.0
+         */
+        default TransactionReceipt sendTransactionAndWait(TransactionRequest request) {
+            return sendTransactionAndWait(request, DEFAULT_TIMEOUT_MILLIS, DEFAULT_POLL_INTERVAL_MILLIS);
+        }
+
         /**
          * Submits a transaction and waits for it to be confirmed in a block.
          *
