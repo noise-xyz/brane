@@ -9,7 +9,10 @@ import java.util.concurrent.TimeUnit;
 
 import org.openjdk.jmh.annotations.*;
 
-import io.brane.rpc.*;
+import io.brane.rpc.BraneProvider;
+import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.JsonRpcResponse;
+import io.brane.rpc.WebSocketProvider;
 
 /**
  * Comprehensive provider comparison benchmark for Section 9.1 of
