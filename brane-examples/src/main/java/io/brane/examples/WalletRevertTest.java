@@ -11,9 +11,9 @@ import io.brane.core.types.HexData;
 import io.brane.rpc.Brane;
 
 /**
- * Integration test for WalletClient revert handling.
+ * Integration test for Brane.Signer revert handling.
  *
- * Verifies that WalletClient.sendTransaction() throws RevertException
+ * Verifies that Brane.Signer#sendTransaction() throws RevertException
  * when the node rejects a transaction with revert data.
  *
  * Usage:
