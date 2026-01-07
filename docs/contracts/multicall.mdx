@@ -20,7 +20,7 @@ You can batch them into a single request:
 
 ```java
 // ✅ Efficient: 1 RPC call for all reads
-MulticallBatch batch = publicClient.createBatch();
+MulticallBatch batch = client.batch();
 Erc20 token1Proxy = batch.bind(Erc20.class, token1Address, abiJson);
 Erc20 token2Proxy = batch.bind(Erc20.class, token2Address, abiJson);
 Erc20 tokenProxy = batch.bind(Erc20.class, tokenAddress, abiJson);
@@ -42,9 +42,9 @@ String symbol = symbolHandle.result().data();
 
 ```java
 import io.brane.rpc.MulticallBatch;
-import io.brane.rpc.PublicClient;
+import io.brane.rpc.Brane;
 
-MulticallBatch batch = publicClient.createBatch();
+MulticallBatch batch = client.batch();
 ```
 
 ### 2. Bind Contract Interfaces
@@ -115,7 +115,7 @@ import io.brane.rpc.MulticallBatch;
 import io.brane.rpc.BatchHandle;
 import io.brane.rpc.BatchResult;
 import io.brane.core.types.Address;
-import io.brane.rpc.PublicClient;
+import io.brane.rpc.Brane;
 import java.math.BigInteger;
 
 public class MulticallExample {
@@ -128,10 +128,10 @@ public class MulticallExample {
     }
 
     public static void main(String[] args) {
-        PublicClient publicClient = // ... your client
-        
+        Brane client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY");
+
         // Create batch
-        MulticallBatch batch = publicClient.createBatch();
+        MulticallBatch batch = client.batch();
         
         // Bind contracts
         Address tokenAddress = new Address("0x...");
@@ -219,7 +219,7 @@ This is especially useful when:
 You can batch calls across multiple contracts in a single batch:
 
 ```java
-MulticallBatch batch = publicClient.createBatch();
+MulticallBatch batch = client.batch();
 
 // Bind multiple contracts
 Erc20 token1 = batch.bind(Erc20.class, token1Address, abiJson);
@@ -270,13 +270,13 @@ BigInteger balance = handle.result().data();
 Each batch is designed for a single execution cycle. After `execute()`, create a new batch for additional calls.
 
 ```java
-MulticallBatch batch = publicClient.createBatch();
+MulticallBatch batch = client.batch();
 // ... add calls ...
 batch.execute();
 // ... use results ...
 
 // For more calls, create a new batch
-MulticallBatch batch2 = publicClient.createBatch();
+MulticallBatch batch2 = client.batch();
 // ... add new calls ...
 ```
 
@@ -285,7 +285,7 @@ MulticallBatch batch2 = publicClient.createBatch();
 `MulticallBatch` uses a `ThreadLocal` to capture call metadata between the proxy method call and `add()`. If an exception occurs between these two calls, you **must** call `clearPending()` to prevent ThreadLocal leaks.
 
 ```java
-MulticallBatch batch = publicClient.createBatch();
+MulticallBatch batch = client.batch();
 Erc20 token = batch.bind(Erc20.class, tokenAddress, abiJson);
 
 try {
