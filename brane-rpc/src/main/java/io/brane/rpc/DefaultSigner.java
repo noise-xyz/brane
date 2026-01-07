@@ -9,6 +9,7 @@ import io.brane.core.model.Transaction;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
+import io.brane.core.types.HexData;
 
 /**
  * Default implementation of {@link Brane.Signer} for full blockchain operations.
@@ -44,6 +45,16 @@ final class DefaultSigner implements Brane.Signer {
 
     @Override
     public @Nullable TransactionReceipt getTransactionReceipt(final Hash hash) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public HexData call(final CallRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public HexData call(final CallRequest request, final BlockTag blockTag) {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 

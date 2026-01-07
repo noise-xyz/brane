@@ -9,6 +9,7 @@ import io.brane.core.model.Transaction;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
+import io.brane.core.types.HexData;
 
 /**
  * Unified entry point for interacting with Ethereum/EVM blockchains.
@@ -83,6 +84,37 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @since 0.1.0
      */
     @Nullable TransactionReceipt getTransactionReceipt(Hash hash);
+
+    /**
+     * Executes a read-only call on the blockchain at the latest block.
+     *
+     * <p>This is a convenience method equivalent to calling
+     * {@code call(request, BlockTag.LATEST)}.
+     *
+     * @param request the type-safe call request
+     * @return the raw hex return value as HexData
+     * @since 0.1.0
+     */
+    HexData call(CallRequest request);
+
+    /**
+     * Executes a read-only call on the blockchain at the specified block.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * CallRequest request = CallRequest.builder()
+     *     .to(contractAddress)
+     *     .data(encodedFunctionCall)
+     *     .build();
+     * HexData result = client.call(request, BlockTag.LATEST);
+     * }</pre>
+     *
+     * @param request  the type-safe call request
+     * @param blockTag the block tag (e.g., BlockTag.LATEST, BlockTag.PENDING)
+     * @return the raw hex return value as HexData
+     * @since 0.1.0
+     */
+    HexData call(CallRequest request, BlockTag blockTag);
 
     /**
      * Read-only client for blockchain queries.
