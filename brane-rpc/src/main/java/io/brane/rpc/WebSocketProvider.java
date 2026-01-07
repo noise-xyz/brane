@@ -90,7 +90,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      *
      * <p><b>Request handling by state:</b>
      * <ul>
-     *   <li>CONNECTING: Requests queued until connection established</li>
+     *   <li>CONNECTING: Requests may fail if channel not yet active</li>
      *   <li>CONNECTED: Normal operation - requests sent immediately</li>
      *   <li>RECONNECTING: Requests rejected with RpcException (connection unavailable)</li>
      *   <li>CLOSED: Requests rejected with RpcException (provider closed)</li>
