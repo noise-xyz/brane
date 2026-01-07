@@ -13,6 +13,7 @@ import io.brane.core.abi.AbiBinding;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
+import io.brane.rpc.Brane;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
 
@@ -270,6 +271,81 @@ public final class BraneContract {
     }
 
     /**
+     * Binds a Java interface to a deployed smart contract for read-only operations using the new Brane API.
+     *
+     * <p>
+     * Creates a type-safe proxy instance that implements the specified interface.
+     * This method only supports view/pure functions - attempting to call state-changing
+     * functions will throw {@link UnsupportedOperationException}.
+     *
+     * <p>
+     * <strong>Interface Requirements:</strong>
+     * <ul>
+     * <li>Must be an interface (not a class)</li>
+     * <li>Method names must exactly match ABI function names</li>
+     * <li>All methods must be view or pure functions</li>
+     * <li>Parameter types must match Solidity types</li>
+     * <li>Return types must be compatible with function mutability</li>
+     * </ul>
+     *
+     * <p>
+     * <strong>Example:</strong>
+     * <pre>{@code
+     * // Define read-only interface
+     * public interface Erc20View {
+     *     BigInteger balanceOf(Address owner);
+     *     String name();
+     *     String symbol();
+     *     BigInteger decimals();
+     * }
+     *
+     * // Bind using Brane
+     * Brane client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...");
+     * Erc20View token = BraneContract.bindReadOnly(
+     *         Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+     *         abiJson,
+     *         client,
+     *         Erc20View.class);
+     *
+     * BigInteger balance = token.balanceOf(myAddress);
+     * }</pre>
+     *
+     * @param <T>               the contract interface type
+     * @param address           the deployed contract address
+     * @param abiJson           the contract ABI in JSON format
+     * @param client            the Brane client for read operations
+     * @param contractInterface the Java interface class representing the contract
+     * @return a proxy instance implementing the contract interface (read-only)
+     * @throws IllegalArgumentException if validation fails or interface contains non-view functions
+     * @throws NullPointerException     if any parameter is null
+     * @since 0.1.0
+     */
+    public static <T> T bindReadOnly(
+            final Address address,
+            final String abiJson,
+            final Brane client,
+            final Class<T> contractInterface) {
+        Objects.requireNonNull(address, "address");
+        Objects.requireNonNull(abiJson, "abiJson");
+        Objects.requireNonNull(client, "client");
+        Objects.requireNonNull(contractInterface, "contractInterface");
+
+        if (!contractInterface.isInterface()) {
+            throw new IllegalArgumentException("contractInterface must be an interface");
+        }
+
+        final Abi abi = Abi.fromJson(abiJson);
+        validateReadOnlyMethods(contractInterface, abi);
+
+        final AbiBinding binding = new AbiBinding(abi, contractInterface);
+        final ReadOnlyContractInvocationHandler handler = new ReadOnlyContractInvocationHandler(
+                address, abi, binding, client);
+        final Object proxy = Proxy.newProxyInstance(
+                contractInterface.getClassLoader(), new Class<?>[] { contractInterface }, handler);
+        return contractInterface.cast(proxy);
+    }
+
+    /**
      * Creates a deployment transaction request for a contract.
      *
      * @param abiJson  the contract ABI JSON
@@ -312,6 +388,32 @@ public final class BraneContract {
                     .orElseThrow(
                             () -> new IllegalArgumentException(
                                     "No ABI function named '" + method.getName() + "'"));
+            validateParameters(method, metadata);
+            validateReturnType(method, metadata);
+        }
+    }
+
+    private static void validateReadOnlyMethods(final Class<?> contractInterface, final Abi abi) {
+        for (Method method : contractInterface.getMethods()) {
+            if (method.getDeclaringClass() == Object.class) {
+                continue;
+            }
+
+            final Abi.FunctionMetadata metadata = abi.getFunction(method.getName())
+                    .orElseThrow(
+                            () -> new IllegalArgumentException(
+                                    "No ABI function named '" + method.getName() + "'"));
+
+            // Ensure all methods are view/pure for read-only binding
+            if (!metadata.isView()) {
+                throw new IllegalArgumentException(
+                        "bindReadOnly only supports view/pure functions, but '"
+                                + method.getName()
+                                + "' has stateMutability '"
+                                + metadata.stateMutability()
+                                + "'");
+            }
+
             validateParameters(method, metadata);
             validateReturnType(method, metadata);
         }
