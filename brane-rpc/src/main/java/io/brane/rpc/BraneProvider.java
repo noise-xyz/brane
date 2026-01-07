@@ -32,7 +32,7 @@ import io.brane.core.error.RpcException;
  * </ul>
  *
  * @see HttpBraneProvider
- * @see PublicClient#from(BraneProvider)
+ * @see Brane#connect(String)
  */
 public interface BraneProvider extends AutoCloseable {
 
