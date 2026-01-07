@@ -4,7 +4,7 @@ import java.util.concurrent.TimeUnit;
 
 import org.openjdk.jmh.annotations.*;
 
-import io.brane.rpc.PublicClient;
+import io.brane.rpc.Brane;
 import io.brane.rpc.WebSocketProvider;
 
 /**
@@ -29,12 +29,12 @@ public class BraneBenchmark {
     private static final String WS_URL = "ws://127.0.0.1:8545";
 
     private WebSocketProvider braneProvider;
-    private PublicClient braneClient;
+    private Brane braneClient;
 
     @Setup
     public void setup() {
         braneProvider = WebSocketProvider.create(WS_URL);
-        braneClient = PublicClient.from(braneProvider);
+        braneClient = Brane.builder().provider(braneProvider).buildReader();
     }
 
     @TearDown
