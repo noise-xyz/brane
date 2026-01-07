@@ -89,6 +89,7 @@ public interface WalletClient {
      *                                insufficient funds, etc.)
      * @throws ChainMismatchException if the configured chain ID doesn't match the
      *                                node
+     * @since 0.1.0
      */
     Hash sendTransaction(TransactionRequest request);
 
@@ -119,6 +120,7 @@ public interface WalletClient {
      * @throws RevertException        if the transaction reverts
      * @throws ChainMismatchException if the configured chain ID doesn't match
      * @throws RuntimeException       if the timeout is exceeded before confirmation
+     * @since 0.1.0
      */
     TransactionReceipt sendTransactionAndWait(
             TransactionRequest request, long timeoutMillis, long pollIntervalMillis);
