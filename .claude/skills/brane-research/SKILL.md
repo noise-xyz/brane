@@ -49,8 +49,8 @@ Map your Brane feature to the equivalent concept:
 
 | Brane Area | viem Equivalent | alloy Equivalent |
 |------------|-----------------|------------------|
-| `PublicClient` | `publicClient` / `PublicActions` | `Provider` |
-| `WalletClient` | `walletClient` / `WalletActions` | `Signer` + `Provider` |
+| `Brane.Reader` | `publicClient` / `PublicActions` | `Provider` |
+| `Brane.Signer` | `walletClient` / `WalletActions` | `Signer` + `Provider` |
 | `BraneContract.bind()` | `getContract()` | `ContractInstance` |
 | `TransactionRequest` | `TransactionRequest` | `TransactionRequest` |
 | `Address`, `Hash`, `HexData` | Branded types | `Address`, `B256`, `Bytes` |

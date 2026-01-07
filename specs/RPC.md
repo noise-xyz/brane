@@ -124,11 +124,11 @@ var client = Brane.connect("https://...");
 var client = Brane.connect("https://...", mySigner);
 ```
 
-**vs. Current Design:**
+**vs. Old Design (Replaced):**
 ```java
-// Must choose between two separate builders
-PublicClient client = PublicClient.builder().rpcUrl(url).build();
-WalletClient wallet = WalletClient.builder().rpcUrl(url).signer(s).build();
+// OLD API (no longer exists) - required choosing between separate builders
+// PublicClient client = PublicClient.builder().rpcUrl(url).build();
+// WalletClient wallet = WalletClient.builder().rpcUrl(url).signer(s).build();
 ```
 
 ### 2. Compile-Time Safety via Sealed Types

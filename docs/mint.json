@@ -20,19 +20,19 @@
             ]
         },
         {
-            "group": "Read Operations",
+            "group": "Read Operations (Brane.Reader)",
             "pages": [
-                "public-client/api",
-                "public-client/simulate",
-                "public-client/subscriptions"
+                "brane-reader/api",
+                "brane-reader/simulate",
+                "brane-reader/subscriptions"
             ]
         },
         {
-            "group": "Write Operations",
+            "group": "Write Operations (Brane.Signer)",
             "pages": [
-                "wallet-client/api",
-                "wallet-client/signers",
-                "wallet-client/custom-signers"
+                "brane-signer/api",
+                "brane-signer/signers",
+                "brane-signer/custom-signers"
             ]
         },
         {

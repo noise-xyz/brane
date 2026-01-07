@@ -207,14 +207,14 @@ anvil &  # No permission needed
 ```
 Direct:     brane-core/.../types/AddressTest.java
 Dependent:  brane-core/.../abi/AbiEncoderTest.java
-            brane-rpc/.../DefaultPublicClientTest.java
+            brane-rpc/.../BraneTest.java
             brane-contract/.../BraneContractTest.java
 Integration: brane-examples/.../TransferExample.java
 ```
 
-### When `PublicClient` (brane-rpc) Changes
+### When `Brane` (brane-rpc) Changes
 ```
-Direct:     brane-rpc/.../DefaultPublicClientTest.java
+Direct:     brane-rpc/.../BraneTest.java
 Dependent:  brane-contract/.../BraneContractTest.java
 Integration: brane-examples/.../*Example.java
 ```
