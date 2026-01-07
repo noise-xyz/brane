@@ -3,7 +3,7 @@ title: Simulating Calls (eth_simulateV1)
 description: 'Simulate one or more calls, apply state overrides, and inspect per-call results without changing chain state.'
 ---
 
-Brane exposes `eth_simulateV1` via `PublicClient.simulateCalls()`. This lets you **dry-run** one or more calls (in sequence), optionally applying **state overrides** (balance/nonce/code/storage) and collecting richer output such as **per-call gas used**, **logs**, and **asset changes**.
+Brane exposes `eth_simulateV1` via `Brane.simulate()`. This lets you **dry-run** one or more calls (in sequence), optionally applying **state overrides** (balance/nonce/code/storage) and collecting richer output such as **per-call gas used**, **logs**, and **asset changes**.
 
 <Warning>
 `eth_simulateV1` is not supported by all nodes/providers. If the node returns JSON-RPC error `-32601` ("Method not found"), Brane throws `SimulateNotSupportedException`.
@@ -15,7 +15,7 @@ Brane exposes `eth_simulateV1` via `PublicClient.simulateCalls()`. This lets you
 
 ```java
 import io.brane.rpc.BlockTag;
-import io.brane.rpc.PublicClient;
+import io.brane.rpc.Brane;
 import io.brane.rpc.SimulateCall;
 import io.brane.rpc.SimulateRequest;
 import io.brane.core.types.Address;
@@ -40,7 +40,8 @@ SimulateRequest request = SimulateRequest.builder()
 ```java
 import io.brane.rpc.SimulateResult;
 
-SimulateResult result = publicClient.simulateCalls(request);
+Brane client = Brane.connect("https://eth-mainnet.example.com");
+SimulateResult result = client.simulate(request);
 ```
 
 ## Handling Results
@@ -104,7 +105,7 @@ import io.brane.core.error.RpcException;
 import io.brane.rpc.exception.SimulateNotSupportedException;
 
 try {
-    var result = publicClient.simulateCalls(request);
+    var result = client.simulate(request);
 } catch (SimulateNotSupportedException e) {
     // Node/provider does not implement eth_simulateV1
     // Consider falling back to eth_call / createAccessList depending on your use case.
