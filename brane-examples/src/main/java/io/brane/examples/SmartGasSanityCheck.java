@@ -17,6 +17,10 @@ import io.brane.rpc.PublicClient;
  */
 public final class SmartGasSanityCheck {
 
+        private SmartGasSanityCheck() {
+                // Prevent instantiation
+        }
+
         // Default Anvil Account 0 Private Key
         private static final String PRIVATE_KEY = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 

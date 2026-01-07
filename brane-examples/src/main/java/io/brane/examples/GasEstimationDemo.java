@@ -34,6 +34,10 @@ import io.brane.rpc.WalletClient;
  */
 public final class GasEstimationDemo {
 
+        private GasEstimationDemo() {
+                // Prevent instantiation
+        }
+
         public static void main(String[] args) throws Exception {
                 System.out.println("=== Gas Estimation Configuration Demo ===\n");
 

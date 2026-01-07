@@ -22,6 +22,10 @@ import io.brane.rpc.WebSocketProvider;
  */
 public final class HighPerformanceExample {
 
+    private HighPerformanceExample() {
+        // Prevent instantiation
+    }
+
     public static void main(String[] args) throws ExecutionException, InterruptedException {
         // Create high-performance provider (optimized for high throughput)
         try (WebSocketProvider provider = WebSocketProvider.create("ws://127.0.0.1:8545")) {

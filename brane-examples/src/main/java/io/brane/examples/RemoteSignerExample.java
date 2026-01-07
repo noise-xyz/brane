@@ -24,6 +24,10 @@ import io.brane.rpc.WalletClient;
  */
 public final class RemoteSignerExample {
 
+    private RemoteSignerExample() {
+        // Prevent instantiation
+    }
+
     // 1. Define a "Remote Service" interface
     interface RemoteKeyManagementService {
         Signature sign(String keyId, byte[] hash);
