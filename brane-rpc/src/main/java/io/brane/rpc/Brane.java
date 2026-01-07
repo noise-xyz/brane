@@ -2,6 +2,7 @@ package io.brane.rpc;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
 
@@ -232,6 +233,60 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @since 0.1.0
      */
     MulticallBatch batch();
+
+    /**
+     * Subscribes to new block headers.
+     *
+     * <p>This method establishes a WebSocket subscription to receive real-time notifications
+     * whenever a new block is added to the chain. The provided callback is invoked with each
+     * new {@link BlockHeader} as it becomes available.
+     *
+     * <p><strong>Requirements:</strong> This method requires a WebSocket-capable provider.
+     * If called on an HTTP-only client, an {@link UnsupportedOperationException} will be thrown.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Subscription sub = client.onNewHeads(header -> {
+     *     System.out.println("New block: " + header.number());
+     * });
+     * // Later, when done listening:
+     * sub.unsubscribe();
+     * }</pre>
+     *
+     * @param callback the consumer to receive new block headers
+     * @return a subscription handle that can be used to unsubscribe
+     * @throws UnsupportedOperationException if the underlying provider does not support subscriptions
+     * @since 0.1.0
+     */
+    Subscription onNewHeads(Consumer<BlockHeader> callback);
+
+    /**
+     * Subscribes to log events matching the given filter.
+     *
+     * <p>This method establishes a WebSocket subscription to receive real-time notifications
+     * for log events that match the specified filter criteria. The provided callback is invoked
+     * with each matching {@link LogEntry} as it is emitted.
+     *
+     * <p><strong>Requirements:</strong> This method requires a WebSocket-capable provider.
+     * If called on an HTTP-only client, an {@link UnsupportedOperationException} will be thrown.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * LogFilter filter = LogFilter.byContract(contractAddress, List.of(transferEventTopic));
+     * Subscription sub = client.onLogs(filter, log -> {
+     *     System.out.println("Log from block " + log.blockNumber() + ": " + log.data());
+     * });
+     * // Later, when done listening:
+     * sub.unsubscribe();
+     * }</pre>
+     *
+     * @param filter   the log filter criteria
+     * @param callback the consumer to receive matching log entries
+     * @return a subscription handle that can be used to unsubscribe
+     * @throws UnsupportedOperationException if the underlying provider does not support subscriptions
+     * @since 0.1.0
+     */
+    Subscription onLogs(LogFilter filter, Consumer<LogEntry> callback);
 
     /**
      * Read-only client for blockchain queries.

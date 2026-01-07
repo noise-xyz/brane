@@ -2,6 +2,7 @@ package io.brane.rpc;
 
 import java.math.BigInteger;
 import java.util.List;
+import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
 
@@ -84,6 +85,16 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public MulticallBatch batch() {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public Subscription onNewHeads(final Consumer<BlockHeader> callback) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public Subscription onLogs(final LogFilter filter, final Consumer<LogEntry> callback) {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
