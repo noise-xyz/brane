@@ -445,6 +445,10 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
         private @Nullable String rpcUrl;
         private @Nullable String wsUrl;
         private @Nullable BraneProvider provider;
+        private @Nullable Signer signer;
+        private @Nullable ChainProfile chain;
+        private int retries = 3;
+        private @Nullable RpcRetryConfig retryConfig;
 
         /**
          * Creates a new builder instance.
@@ -494,6 +498,80 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          */
         public Builder provider(BraneProvider provider) {
             this.provider = provider;
+            return this;
+        }
+
+        /**
+         * Sets the signer for transaction signing.
+         *
+         * <p>If a signer is provided, {@link #build()} will return a {@link Brane.Signer}
+         * instance capable of sending transactions. Without a signer, {@link #build()}
+         * returns a {@link Brane.Reader} instance limited to read-only operations.
+         *
+         * @param signer the signer instance for transaction signing
+         * @return this builder for chaining
+         * @since 0.1.0
+         */
+        public Builder signer(Signer signer) {
+            this.signer = signer;
+            return this;
+        }
+
+        /**
+         * Sets the chain profile for network-specific configuration.
+         *
+         * <p>The chain profile provides network-specific settings such as whether
+         * EIP-1559 transactions are supported. If not set, the client will operate
+         * without network-specific optimizations.
+         *
+         * @param chain the chain profile
+         * @return this builder for chaining
+         * @since 0.1.0
+         * @see io.brane.core.chain.ChainProfiles
+         */
+        public Builder chain(ChainProfile chain) {
+            this.chain = chain;
+            return this;
+        }
+
+        /**
+         * Sets the maximum number of retry attempts for transient RPC failures.
+         *
+         * <p>When an RPC call fails with a transient error (e.g., network timeout,
+         * rate limiting), the client will retry up to this many times before
+         * throwing an exception.
+         *
+         * <p>Default is 3 retries.
+         *
+         * @param retries the maximum number of retries (must be &gt;= 0)
+         * @return this builder for chaining
+         * @throws IllegalArgumentException if retries is negative
+         * @since 0.1.0
+         */
+        public Builder retries(int retries) {
+            if (retries < 0) {
+                throw new IllegalArgumentException("retries must be >= 0, got: " + retries);
+            }
+            this.retries = retries;
+            return this;
+        }
+
+        /**
+         * Sets the retry configuration for backoff timing.
+         *
+         * <p>This configuration controls the exponential backoff behavior when
+         * retrying failed RPC calls, including base delay, maximum delay, and
+         * jitter parameters.
+         *
+         * <p>If not set, {@link RpcRetryConfig#defaults()} is used.
+         *
+         * @param retryConfig the retry configuration
+         * @return this builder for chaining
+         * @since 0.1.0
+         * @see RpcRetryConfig
+         */
+        public Builder retryConfig(RpcRetryConfig retryConfig) {
+            this.retryConfig = retryConfig;
             return this;
         }
     }
