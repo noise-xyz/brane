@@ -46,7 +46,7 @@ public class BraneBenchmark {
 
     @Benchmark
     public void latency_chainId() {
-        braneClient.getChainId();
+        braneClient.chainId();
     }
 
     @Benchmark
