@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -90,9 +91,38 @@ loadScripts(document, 'script');</script>
 </div>
 </div>
 <section class="class-description" id="class-description">
+<dl class="notes">
+<dt>Record Components:</dt>
+<dd><code><span id="param-chainId">chainId</span></code> - the unique chain identifier (must be &gt; 0)</dd>
+<dd><code><span id="param-defaultRpcUrl">defaultRpcUrl</span></code> - the default RPC endpoint URL (optional, may be null)</dd>
+<dd><code><span id="param-supportsEip1559">supportsEip1559</span></code> - true if the chain supports EIP-1559 transactions</dd>
+<dd><code><span id="param-defaultPriorityFeePerGas">defaultPriorityFeePerGas</span></code> - the default priority fee (tip) for EIP-1559 transactions (optional)</dd>
+</dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public record </span><span class="element-name type-name-label">ChainProfile</span>(long&nbsp;chainId, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;defaultRpcUrl, boolean&nbsp;supportsEip1559, <a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;defaultPriorityFeePerGas)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a></span></div>
+<div class="block">Configuration profile for an Ethereum-compatible blockchain.
+
+ <p>
+ A chain profile encapsulates network-specific settings that configure how
+ transactions are built and submitted. Each profile defines the chain ID for
+ replay protection, an optional default RPC endpoint, and transaction format preferences.
+
+ <p>
+ <strong>Field constraints:</strong>
+ <ul>
+ <li><code>chainId</code> - must be positive (greater than 0)</li>
+ <li><code>defaultRpcUrl</code> - optional; if provided, must be non-empty</li>
+ <li><code>defaultPriorityFeePerGas</code> - optional; used for EIP-1559 transactions</li>
+ </ul></div>
+<dl class="notes">
+<dt>See Also:</dt>
+<dd>
+<ul class="tag-list">
+<li><a href="ChainProfiles.html" title="class in io.brane.core.chain"><code>ChainProfiles</code></a></li>
+</ul>
+</dd>
+</dl>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -109,7 +139,7 @@ loadScripts(document, 'script');</script>
  boolean&nbsp;supportsEip1559,
  <a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;defaultPriorityFeePerGas)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Creates an instance of a <code>ChainProfile</code> record class.</div>
+<div class="block">Validates all fields meet their constraints.</div>
 </div>
 </div>
 </section>
@@ -128,17 +158,17 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>long</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#chainId()" class="member-name-link">chainId</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns the value of the <code>chainId</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-chainId"><code>chainId</code></a> record component.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#defaultPriorityFeePerGas()" class="member-name-link">defaultPriorityFeePerGas</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns the value of the <code>defaultPriorityFeePerGas</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-defaultPriorityFeePerGas"><code>defaultPriorityFeePerGas</code></a> record component.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#defaultRpcUrl()" class="member-name-link">defaultRpcUrl</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns the value of the <code>defaultRpcUrl</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-defaultRpcUrl"><code>defaultRpcUrl</code></a> record component.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final boolean</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#equals(java.lang.Object)" class="member-name-link">equals</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;o)</code></div>
@@ -155,11 +185,13 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;defaultRpcUrl,
  boolean&nbsp;supportsEip1559,
  <a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;defaultPriorityFeePerGas)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a new ChainProfile with the specified settings.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#supportsEip1559()" class="member-name-link">supportsEip1559</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns the value of the <code>supportsEip1559</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-supportsEip1559"><code>supportsEip1559</code></a> record component.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
@@ -190,13 +222,10 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;defaultRpcUrl,
  boolean&nbsp;supportsEip1559,
  <a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;defaultPriorityFeePerGas)</span></div>
-<div class="block">Creates an instance of a <code>ChainProfile</code> record class.</div>
+<div class="block">Validates all fields meet their constraints.</div>
 <dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>chainId</code> - the value for the <code>chainId</code> record component</dd>
-<dd><code>defaultRpcUrl</code> - the value for the <code>defaultRpcUrl</code> record component</dd>
-<dd><code>supportsEip1559</code> - the value for the <code>supportsEip1559</code> record component</dd>
-<dd><code>defaultPriorityFeePerGas</code> - the value for the <code>defaultPriorityFeePerGas</code> record component</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if chainId is not positive or defaultRpcUrl is non-null but empty</dd>
 </dl>
 </section>
 </li>
@@ -215,6 +244,22 @@ loadScripts(document, 'script');</script>
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;defaultRpcUrl,
  boolean&nbsp;supportsEip1559,
  <a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;defaultPriorityFeePerGas)</span></div>
+<div class="block">Creates a new ChainProfile with the specified settings.
+
+ <p>This factory method is provided alongside the canonical constructor for API consistency
+ and to allow for potential future enhancements (e.g., caching common profiles, validation
+ in a central location, or parameter transformation). Both the factory method and constructor
+ are valid ways to create instances; the factory method is preferred in application code
+ for readability.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>chainId</code> - the unique chain identifier (must be &gt; 0)</dd>
+<dd><code>defaultRpcUrl</code> - the default RPC endpoint URL</dd>
+<dd><code>supportsEip1559</code> - true if the chain supports EIP-1559</dd>
+<dd><code>defaultPriorityFeePerGas</code> - the default priority fee for EIP-1559</dd>
+<dt>Returns:</dt>
+<dd>a new ChainProfile instance</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -262,10 +307,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="chainId()">
 <h3>chainId</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">long</span>&nbsp;<span class="element-name">chainId</span>()</div>
-<div class="block">Returns the value of the <code>chainId</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-chainId"><code>chainId</code></a> record component.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>the value of the <code>chainId</code> record component</dd>
+<dd>the value of the <a href="#param-chainId"><code>chainId</code></a> record component</dd>
 </dl>
 </section>
 </li>
@@ -273,10 +318,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="defaultRpcUrl()">
 <h3>defaultRpcUrl</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">defaultRpcUrl</span>()</div>
-<div class="block">Returns the value of the <code>defaultRpcUrl</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-defaultRpcUrl"><code>defaultRpcUrl</code></a> record component.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>the value of the <code>defaultRpcUrl</code> record component</dd>
+<dd>the value of the <a href="#param-defaultRpcUrl"><code>defaultRpcUrl</code></a> record component</dd>
 </dl>
 </section>
 </li>
@@ -284,10 +329,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="supportsEip1559()">
 <h3>supportsEip1559</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">supportsEip1559</span>()</div>
-<div class="block">Returns the value of the <code>supportsEip1559</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-supportsEip1559"><code>supportsEip1559</code></a> record component.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>the value of the <code>supportsEip1559</code> record component</dd>
+<dd>the value of the <a href="#param-supportsEip1559"><code>supportsEip1559</code></a> record component</dd>
 </dl>
 </section>
 </li>
@@ -295,10 +340,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="defaultPriorityFeePerGas()">
 <h3>defaultPriorityFeePerGas</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a></span>&nbsp;<span class="element-name">defaultPriorityFeePerGas</span>()</div>
-<div class="block">Returns the value of the <code>defaultPriorityFeePerGas</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-defaultPriorityFeePerGas"><code>defaultPriorityFeePerGas</code></a> record component.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>the value of the <code>defaultPriorityFeePerGas</code> record component</dd>
+<dd>the value of the <a href="#param-defaultPriorityFeePerGas"><code>defaultPriorityFeePerGas</code></a> record component</dd>
 </dl>
 </section>
 </li>

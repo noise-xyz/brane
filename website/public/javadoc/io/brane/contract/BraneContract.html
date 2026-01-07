@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../index-all.html">Index</a></li>
 <li><a href="../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -93,20 +94,17 @@ loadScripts(document, 'script');</script>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span></div>
 <div class="block">Dynamic proxy-based contract binding system that maps Java interfaces to
  smart contracts.
- 
+
  <p>
  This class enables type-safe smart contract interaction by binding a Java
- interface
- to a contract's ABI. At runtime, it creates a dynamic proxy that:
+ interface to a contract's ABI. At runtime, it creates a dynamic proxy that:
  <ul>
  <li>Encodes method calls to contract function calls (ABI encoding)</li>
  <li>Routes view/pure functions to <code>eth_call</code> (read-only)</li>
- <li>Routes state-changing functions to <code>eth_sendTransaction</code>
- (write)</li>
+ <li>Routes state-changing functions to <code>sendTransactionAndWait</code> (write)</li>
  <li>Decodes return values from hex to Java types (ABI decoding)</li>
  </ul>
- 
- <p>
+
  <p>
  <strong>Supported Type Mappings:</strong>
  <ul>
@@ -117,7 +115,16 @@ loadScripts(document, 'script');</script>
  <li><code>bytes, bytes32</code> → <code>byte[]</code>/<a href="../core/types/HexData.html" title="class in io.brane.core.types"><code>HexData</code></a></li>
  <li><code>T[]</code> → <code>T[]</code>/<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link"><code>List</code></a>&lt;T&gt;</li>
  </ul>
- 
+
+ <p>
+ <strong>Limitations:</strong>
+ <ul>
+ <li><strong>Tuple/Struct return types:</strong> Functions returning Solidity structs
+ or tuples are not currently supported. The proxy binding will fail at bind time
+ with "Unsupported return type" for methods that return Java record types or custom
+ classes.</li>
+ </ul>
+
  <p>
  <strong>Method Return Types:</strong>
  <ul>
@@ -126,70 +133,88 @@ loadScripts(document, 'script');</script>
  <li><strong>State-changing functions:</strong> <a href="../core/model/TransactionReceipt.html" title="class in io.brane.core.model"><code>TransactionReceipt</code></a>,
  <code>void</code>, or <code>Void</code></li>
  </ul>
- 
+
  <p>
  <strong>Complete Usage Example:</strong>
- 
+
  <pre><code>
  // 1. Define Java interface matching contract ABI
  public interface Erc20Contract {
      // View function: balanceOf(address) returns (uint256)
      BigInteger balanceOf(Address owner);
- 
+
      // State-changing: transfer(address,uint256) returns (bool)
      TransactionReceipt transfer(Address to, BigInteger amount);
- 
+
      // Can also return void for state-changing functions
      void approve(Address spender, BigInteger amount);
  }
- 
+
  // 2. Load contract ABI JSON
  String abiJson = Files.readString(Path.of("erc20-abi.json"));
- 
- // 3. Bind interface to deployed contract
+
+ // 3. Connect to network with signing capability
+ Brane.Signer client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...", signer);
+
+ // 4. Bind interface to deployed contract
  Erc20Contract usdc = BraneContract.bind(
-         new Address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"), // USDC address
+         Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"), // USDC address
          abiJson,
-         publicClient,
-         walletClient,
+         client,
          Erc20Contract.class);
- 
- // 4. Call view functions (no gas, instant)
+
+ // 5. Call view functions (no gas, instant)
  BigInteger balance = usdc.balanceOf(myAddress);
  System.out.println("Balance: " + balance);
- 
- // 5. Call state-changing functions (costs gas, returns receipt)
+
+ // 6. Call state-changing functions (costs gas, returns receipt)
  TransactionReceipt receipt = usdc.transfer(
          recipientAddress,
          new BigInteger("1000000") // 1 USDC (6 decimals)
  );
- 
+
  if (receipt.status()) {
-     System.out.println("✓ Transfer confirmed in block " + receipt.blockNumber());
+     System.out.println("Transfer confirmed in block " + receipt.blockNumber());
  }
  </code></pre>
- 
+
  <p>
- <strong>Validation:</strong> The <a href="#bind(io.brane.core.types.Address,java.lang.String,io.brane.rpc.PublicClient,io.brane.rpc.WalletClient,java.lang.Class)"><code>bind(io.brane.core.types.Address, java.lang.String, io.brane.rpc.PublicClient, io.brane.rpc.WalletClient, java.lang.Class&lt;T&gt;)</code></a> method validates that:
+ <strong>Validation:</strong> The <a href="#bind(io.brane.core.types.Address,java.lang.String,io.brane.rpc.Brane.Signer,java.lang.Class)"><code>bind(io.brane.core.types.Address, java.lang.String, io.brane.rpc.Brane.Signer, java.lang.Class&lt;T&gt;)</code></a> method validates that:
  <ul>
  <li>All interface methods exist in the ABI</li>
  <li>Parameter counts and types match</li>
- <li>Return types are compatible with function mutability (view vs
- non-view)</li>
+ <li>Return types are compatible with function mutability (view vs non-view)</li>
  </ul>
- 
+
  <p>
  <strong>Implementation:</strong> Uses Java's <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/reflect/Proxy.html" title="class or interface in java.lang.reflect" class="external-link"><code>Proxy</code></a> API with
- <code>ContractInvocationHandler</code>
- to intercept method calls and translate them to RPC calls.</div>
+ invocation handlers to intercept method calls and translate them to RPC calls.
+
+ <p>
+ <strong>Runtime Exceptions from Proxy Methods:</strong>
+ Methods on the bound contract proxy may throw these exceptions at runtime:
+ <ul>
+ <li><strong>View/Pure functions:</strong>
+   <ul>
+   <li><a href="../core/error/RpcException.html" title="class in io.brane.core.error"><code>RpcException</code></a> - RPC communication failures</li>
+   <li><a href="../core/error/RevertException.html" title="class in io.brane.core.error"><code>RevertException</code></a> - Contract reverted (includes revert reason if available)</li>
+   <li><a href="../core/error/AbiDecodingException.html" title="class in io.brane.core.error"><code>AbiDecodingException</code></a> - Failed to decode return value</li>
+   </ul>
+ </li>
+ <li><strong>State-changing functions:</strong>
+   <ul>
+   <li><a href="../core/error/RpcException.html" title="class in io.brane.core.error"><code>RpcException</code></a> - RPC communication failures or transaction rejection</li>
+   <li><a href="../core/error/AbiEncodingException.html" title="class in io.brane.core.error"><code>AbiEncodingException</code></a> - Failed to encode function parameters</li>
+   </ul>
+ </li>
+ </ul></div>
 <dl class="notes">
 <dt>See Also:</dt>
 <dd>
 <ul class="tag-list">
-<li><a href="Abi.html" title="interface in io.brane.contract"><code>Abi</code></a></li>
-<li><code>ContractInvocationHandler</code></li>
-<li><a href="../rpc/PublicClient.html" title="interface in io.brane.rpc"><code>PublicClient</code></a></li>
-<li><a href="../rpc/WalletClient.html" title="interface in io.brane.rpc"><code>WalletClient</code></a></li>
+<li><a href="../core/abi/Abi.html" title="interface in io.brane.core.abi"><code>Abi</code></a></li>
+<li><a href="../rpc/Brane.html" title="interface in io.brane.rpc"><code>Brane</code></a></li>
+<li><a href="../rpc/Brane.Signer.html" title="interface in io.brane.rpc"><code>Brane.Signer</code></a></li>
 </ul>
 </dd>
 </dl>
@@ -208,13 +233,30 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static &lt;T&gt;&nbsp;T</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#bind(io.brane.core.types.Address,java.lang.String,io.brane.rpc.PublicClient,io.brane.rpc.WalletClient,java.lang.Class)" class="member-name-link">bind</a><wbr>(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address,
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#bind(io.brane.core.types.Address,java.lang.String,io.brane.rpc.Brane.Signer,java.lang.Class)" class="member-name-link">bind</a><wbr>(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;abiJson,
- <a href="../rpc/PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="../rpc/WalletClient.html" title="interface in io.brane.rpc">WalletClient</a>&nbsp;walletClient,
+ <a href="../rpc/Brane.Signer.html" title="interface in io.brane.rpc">Brane.Signer</a>&nbsp;client,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;contractInterface)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
-<div class="block">Binds a Java interface to a deployed smart contract using dynamic proxy.</div>
+<div class="block">Binds a Java interface to a deployed smart contract for read-write operations using the new Brane.Signer API.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static &lt;T&gt;&nbsp;T</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#bind(io.brane.core.types.Address,java.lang.String,io.brane.rpc.Brane.Signer,java.lang.Class,io.brane.contract.ContractOptions)" class="member-name-link">bind</a><wbr>(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;abiJson,
+ <a href="../rpc/Brane.Signer.html" title="interface in io.brane.rpc">Brane.Signer</a>&nbsp;client,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;contractInterface,
+ <a href="ContractOptions.html" title="class in io.brane.contract">ContractOptions</a>&nbsp;options)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Binds a Java interface to a deployed smart contract for read-write operations using the new Brane.Signer API
+ with custom options.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static &lt;T&gt;&nbsp;T</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#bindReadOnly(io.brane.core.types.Address,java.lang.String,io.brane.rpc.Brane,java.lang.Class)" class="member-name-link">bindReadOnly</a><wbr>(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;abiJson,
+ <a href="../rpc/Brane.html" title="interface in io.brane.rpc">Brane</a>&nbsp;client,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;contractInterface)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Binds a Java interface to a deployed smart contract for read-only operations.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="../core/model/TransactionRequest.html" title="class in io.brane.core.model">TransactionRequest</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#deployRequest(java.lang.String,java.lang.String,java.lang.Object...)" class="member-name-link">deployRequest</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;abiJson,
@@ -241,24 +283,86 @@ loadScripts(document, 'script');</script>
 <h2>Method Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="bind(io.brane.core.types.Address,java.lang.String,io.brane.rpc.PublicClient,io.brane.rpc.WalletClient,java.lang.Class)">
+<section class="detail" id="bindReadOnly(io.brane.core.types.Address,java.lang.String,io.brane.rpc.Brane,java.lang.Class)">
+<h3>bindReadOnly</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type">T</span>&nbsp;<span class="element-name">bindReadOnly</span><wbr><span class="parameters">(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;abiJson,
+ <a href="../rpc/Brane.html" title="interface in io.brane.rpc">Brane</a>&nbsp;client,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;contractInterface)</span></div>
+<div class="block">Binds a Java interface to a deployed smart contract for read-only operations.
+
+ <p>
+ Creates a type-safe proxy instance that implements the specified interface.
+ This method only supports view/pure functions - attempting to call state-changing
+ functions will throw <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/UnsupportedOperationException.html" title="class or interface in java.lang" class="external-link"><code>UnsupportedOperationException</code></a>.
+
+ <p>
+ <strong>Interface Requirements:</strong>
+ <ul>
+ <li>Must be an interface (not a class)</li>
+ <li>Method names must exactly match ABI function names</li>
+ <li>All methods must be view or pure functions</li>
+ <li>Parameter types must match Solidity types</li>
+ <li>Return types must be compatible with function mutability</li>
+ </ul>
+
+ <p>
+ <strong>Example:</strong>
+ <pre><code>
+ // Define read-only interface
+ public interface Erc20View {
+     BigInteger balanceOf(Address owner);
+     String name();
+     String symbol();
+     BigInteger decimals();
+ }
+
+ // Bind using Brane
+ Brane client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...");
+ Erc20View token = BraneContract.bindReadOnly(
+         Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+         abiJson,
+         client,
+         Erc20View.class);
+
+ BigInteger balance = token.balanceOf(myAddress);
+ </code></pre></div>
+<dl class="notes">
+<dt>Type Parameters:</dt>
+<dd><code>T</code> - the contract interface type</dd>
+<dt>Parameters:</dt>
+<dd><code>address</code> - the deployed contract address</dd>
+<dd><code>abiJson</code> - the contract ABI in JSON format</dd>
+<dd><code>client</code> - the Brane client for read operations</dd>
+<dd><code>contractInterface</code> - the Java interface class representing the contract</dd>
+<dt>Returns:</dt>
+<dd>a proxy instance implementing the contract interface (read-only)</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if validation fails or interface contains non-view functions</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
+<dt>Since:</dt>
+<dd>0.1.0</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="bind(io.brane.core.types.Address,java.lang.String,io.brane.rpc.Brane.Signer,java.lang.Class)">
 <h3>bind</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type">T</span>&nbsp;<span class="element-name">bind</span><wbr><span class="parameters">(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;abiJson,
- <a href="../rpc/PublicClient.html" title="interface in io.brane.rpc">PublicClient</a>&nbsp;publicClient,
- <a href="../rpc/WalletClient.html" title="interface in io.brane.rpc">WalletClient</a>&nbsp;walletClient,
+ <a href="../rpc/Brane.Signer.html" title="interface in io.brane.rpc">Brane.Signer</a>&nbsp;client,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;contractInterface)</span></div>
-<div class="block">Binds a Java interface to a deployed smart contract using dynamic proxy.
- 
+<div class="block">Binds a Java interface to a deployed smart contract for read-write operations using the new Brane.Signer API.
+
  <p>
  Creates a type-safe proxy instance that implements the specified interface.
  Method calls on the proxy are translated to contract function calls:
  <ul>
- <li>View/pure functions → <code>eth_call</code> via <a href="../rpc/PublicClient.html" title="interface in io.brane.rpc"><code>PublicClient</code></a></li>
- <li>State-changing functions → <code>eth_sendTransaction</code> via
- <a href="../rpc/WalletClient.html" title="interface in io.brane.rpc"><code>WalletClient</code></a></li>
+ <li>View/pure functions → <code>eth_call</code> via <a href="../rpc/Brane.Signer.html" title="interface in io.brane.rpc"><code>Brane.Signer</code></a></li>
+ <li>State-changing functions → <code>sendTransactionAndWait</code> via
+ <a href="../rpc/Brane.Signer.html" title="interface in io.brane.rpc"><code>Brane.Signer</code></a></li>
  </ul>
- 
+
  <p>
  <strong>Interface Requirements:</strong>
  <ul>
@@ -266,23 +370,94 @@ loadScripts(document, 'script');</script>
  <li>Method names must exactly match ABI function names</li>
  <li>Parameter types must match Solidity types</li>
  <li>Return types must be compatible with function mutability</li>
- </ul></div>
+ </ul>
+
+ <p>
+ <strong>Example:</strong>
+ <pre><code>
+ // Define contract interface
+ public interface Erc20Contract {
+     BigInteger balanceOf(Address owner);
+     TransactionReceipt transfer(Address to, BigInteger amount);
+ }
+
+ // Bind using Brane.Signer
+ Brane.Signer client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...", signer);
+ Erc20Contract token = BraneContract.bind(
+         Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+         abiJson,
+         client,
+         Erc20Contract.class);
+
+ BigInteger balance = token.balanceOf(myAddress);
+ TransactionReceipt receipt = token.transfer(recipient, amount);
+ </code></pre></div>
 <dl class="notes">
 <dt>Type Parameters:</dt>
 <dd><code>T</code> - the contract interface type</dd>
 <dt>Parameters:</dt>
 <dd><code>address</code> - the deployed contract address</dd>
-<dd><code>abiJson</code> - the contract ABI in JSON format (array of
-                          function/event definitions)</dd>
-<dd><code>publicClient</code> - the client for view function calls</dd>
-<dd><code>walletClient</code> - the client for state-changing function calls</dd>
+<dd><code>abiJson</code> - the contract ABI in JSON format</dd>
+<dd><code>client</code> - the Brane.Signer client for read and write operations</dd>
 <dd><code>contractInterface</code> - the Java interface class representing the contract</dd>
 <dt>Returns:</dt>
 <dd>a proxy instance implementing the contract interface</dd>
 <dt>Throws:</dt>
-<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if validation fails (method not in ABI, type
-                                  mismatch, etc.)</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if validation fails (method not in ABI, type mismatch, etc.)</dd>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
+<dt>Since:</dt>
+<dd>0.1.0</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="bind(io.brane.core.types.Address,java.lang.String,io.brane.rpc.Brane.Signer,java.lang.Class,io.brane.contract.ContractOptions)">
+<h3>bind</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="type-parameters">&lt;T&gt;</span>&nbsp;<span class="return-type">T</span>&nbsp;<span class="element-name">bind</span><wbr><span class="parameters">(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;abiJson,
+ <a href="../rpc/Brane.Signer.html" title="interface in io.brane.rpc">Brane.Signer</a>&nbsp;client,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;T&gt;&nbsp;contractInterface,
+ <a href="ContractOptions.html" title="class in io.brane.contract">ContractOptions</a>&nbsp;options)</span></div>
+<div class="block">Binds a Java interface to a deployed smart contract for read-write operations using the new Brane.Signer API
+ with custom options.
+
+ <p>
+ Creates a type-safe proxy instance that implements the specified interface.
+ Method calls on the proxy are translated to contract function calls:
+ <ul>
+ <li>View/pure functions → <code>eth_call</code> via <a href="../rpc/Brane.Signer.html" title="interface in io.brane.rpc"><code>Brane.Signer</code></a></li>
+ <li>State-changing functions → <code>sendTransactionAndWait</code> via
+ <a href="../rpc/Brane.Signer.html" title="interface in io.brane.rpc"><code>Brane.Signer</code></a></li>
+ </ul>
+
+ <p>
+ <strong>Example with custom options:</strong>
+ <pre><code>
+ var options = ContractOptions.builder()
+     .gasLimit(500_000L)
+     .timeout(Duration.ofSeconds(30))
+     .pollInterval(Duration.ofMillis(100))
+     .build();
+
+ Erc20Contract usdc = BraneContract.bind(
+         address, abiJson, client, Erc20Contract.class, options);
+ </code></pre></div>
+<dl class="notes">
+<dt>Type Parameters:</dt>
+<dd><code>T</code> - the contract interface type</dd>
+<dt>Parameters:</dt>
+<dd><code>address</code> - the deployed contract address</dd>
+<dd><code>abiJson</code> - the contract ABI in JSON format</dd>
+<dd><code>client</code> - the Brane.Signer client for read and write operations</dd>
+<dd><code>contractInterface</code> - the Java interface class representing the contract</dd>
+<dd><code>options</code> - the contract options for gas limit, timeouts, etc.</dd>
+<dt>Returns:</dt>
+<dd>a proxy instance implementing the contract interface</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if validation fails (method not in ABI, type mismatch, etc.)</dd>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if any parameter is null</dd>
+<dt>Since:</dt>
+<dd>0.1.0</dd>
 </dl>
 </section>
 </li>

@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -158,9 +159,14 @@ implements <a href="TypeSchema.html" title="interface in io.brane.core.abi">Type
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a string representation of this record class.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#width()" class="member-name-link">width</a>()</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#typeName()" class="member-name-link">typeName</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Returns the Solidity type name for this schema.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>int</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#width()" class="member-name-link">width</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <code>width</code> record component.</div>
 </div>
 </div>
@@ -209,6 +215,20 @@ implements <a href="TypeSchema.html" title="interface in io.brane.core.abi">Type
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TypeSchema.html#isDynamic()">isDynamic</a></code>&nbsp;in interface&nbsp;<code><a href="TypeSchema.html" title="interface in io.brane.core.abi">TypeSchema</a></code></dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="typeName()">
+<h3>typeName</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">typeName</span>()</div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TypeSchema.html#typeName()">TypeSchema</a></code></span></div>
+<div class="block">Returns the Solidity type name for this schema.</div>
+<dl class="notes">
+<dt>Specified by:</dt>
+<dd><code><a href="TypeSchema.html#typeName()">typeName</a></code>&nbsp;in interface&nbsp;<code><a href="TypeSchema.html" title="interface in io.brane.core.abi">TypeSchema</a></code></dd>
+<dt>Returns:</dt>
+<dd>the type name (e.g., "uint256", "address", "bytes32[]")</dd>
 </dl>
 </section>
 </li>

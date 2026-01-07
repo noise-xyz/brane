@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -93,12 +94,12 @@ loadScripts(document, 'script');</script>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span></div>
 <div class="block">Decodes byte arrays into ABI types according to the Ethereum Contract ABI
  specification.
- 
+
  <p>
  This class provides static methods for decoding byte arrays into lists of
  <a href="AbiType.html" title="interface in io.brane.core.abi"><code>AbiType</code></a> based on a provided <a href="TypeSchema.html" title="interface in io.brane.core.abi"><code>TypeSchema</code></a>. It handles both static
  and dynamic types, resolving offsets and decoding primitive values.
- 
+
  <h2 id="usage-example-heading">Usage Example</h2>
  <pre><code>
  // Schema: (uint256, string)
@@ -106,7 +107,7 @@ loadScripts(document, 'script');</script>
      new TypeSchema.UIntSchema(256),
      new TypeSchema.StringSchema()
  );
- 
+
  // Decode
  List&lt;AbiType&gt; decoded = AbiDecoder.decode(data, schemas);
  UInt u = (UInt) decoded.get(0);
@@ -165,7 +166,7 @@ loadScripts(document, 'script');</script>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="AbiType.html" title="interface in io.brane.core.abi">AbiType</a>&gt;</span>&nbsp;<span class="element-name">decode</span><wbr><span class="parameters">(byte[]&nbsp;data,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="TypeSchema.html" title="interface in io.brane.core.abi">TypeSchema</a>&gt;&nbsp;schemas)</span></div>
 <div class="block">Decodes a byte array into a list of ABI types based on the provided schemas.
- 
+
  <p>
  This method expects the data to be encoded as a tuple, which is the standard
  format for function arguments and return values.</div>

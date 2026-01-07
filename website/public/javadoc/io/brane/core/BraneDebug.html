@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../index-all.html">Index</a></li>
 <li><a href="../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -91,7 +92,12 @@ loadScripts(document, 'script');</script>
 <hr>
 <div class="type-signature"><span class="modifiers">public final class </span><span class="element-name type-name-label">BraneDebug</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span></div>
-<div class="block">Global toggle for enabling verbose debug logging across Brane modules.</div>
+<div class="block">Global toggle for enabling verbose debug logging across Brane modules.
+
+ <p>Thread safety: The individual boolean fields are volatile, ensuring visibility
+ across threads. The compound check in <a href="#isEnabled()"><code>isEnabled()</code></a> is not atomic, but this
+ is acceptable for best-effort logging purposes - a brief inconsistency between
+ flags has no correctness impact.</div>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -108,7 +114,9 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#isEnabled()" class="member-name-link">isEnabled</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Checks if any debug logging is enabled.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static boolean</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#isRpcLoggingEnabled()" class="member-name-link">isRpcLoggingEnabled</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
@@ -145,6 +153,15 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="isEnabled()">
 <h3>isEnabled</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">isEnabled</span>()</div>
+<div class="block">Checks if any debug logging is enabled.
+
+ <p>Note: This check reads two volatile fields non-atomically, which is acceptable
+ for best-effort logging. The result may briefly reflect an inconsistent state
+ during concurrent flag updates, but this has no correctness impact.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>true if either RPC or transaction logging is enabled</dd>
+</dl>
 </section>
 </li>
 <li>

@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -96,6 +97,37 @@ loadScripts(document, 'script');</script>
 <div class="type-signature"><span class="modifiers">public final class </span><span class="element-name type-name-label">Eip1559Builder</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>
 implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a>&gt;</span></div>
+<div class="block">Builder for EIP-1559 transactions with dynamic fee market.
+
+ <p>EIP-1559 transactions use separate <code>maxFeePerGas</code> and <code>maxPriorityFeePerGas</code>
+ fields instead of a single <code>gasPrice</code>. This enables more predictable gas pricing
+ and allows users to set a tip for miners/validators.
+
+ <p><strong>Example:</strong>
+ <pre><code>
+ TransactionRequest tx = TxBuilder.eip1559()
+     .from(sender)
+     .to(recipient)
+     .value(Wei.ether("1"))
+     .maxFeePerGas(Wei.gwei(100))
+     .maxPriorityFeePerGas(Wei.gwei(2))
+     .gasLimit(21000)
+     .build();
+ </code></pre>
+
+ <p><strong>Thread Safety:</strong> This builder is <em>not</em> thread-safe. Each thread
+ should use its own builder instance. The <a href="#build()"><code>build()</code></a> method creates an immutable
+ <a href="../model/TransactionRequest.html" title="class in io.brane.core.model"><code>TransactionRequest</code></a> that is safe to share across threads.</div>
+<dl class="notes">
+<dt>Since:</dt>
+<dd>0.1.0-alpha</dd>
+<dt>See Also:</dt>
+<dd>
+<ul class="tag-list">
+<li><a href="TxBuilder.html#eip1559()"><code>TxBuilder.eip1559()</code></a></li>
+</ul>
+</dd>
+</dl>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -125,34 +157,54 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#accessList(java.util.List)" class="member-name-link">accessList</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/AccessListEntry.html" title="class in io.brane.core.model">AccessListEntry</a>&gt;&nbsp;accessList)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the EIP-2930 access list for gas optimization.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../model/TransactionRequest.html" title="class in io.brane.core.model">TransactionRequest</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#build()" class="member-name-link">build</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Builds the transaction request.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#data(io.brane.core.types.HexData)" class="member-name-link">data</a><wbr>(<a href="../types/HexData.html" title="class in io.brane.core.types">HexData</a>&nbsp;data)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the transaction input data (calldata).</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#from(io.brane.core.types.Address)" class="member-name-link">from</a><wbr>(<a href="../types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the sender address.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#gasLimit(long)" class="member-name-link">gasLimit</a><wbr>(long&nbsp;gasLimit)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the gas limit.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxFeePerGas(io.brane.core.types.Wei)" class="member-name-link">maxFeePerGas</a><wbr>(<a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;maxFeePerGas)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the maximum total fee per gas unit.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#maxPriorityFeePerGas(io.brane.core.types.Wei)" class="member-name-link">maxPriorityFeePerGas</a><wbr>(<a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;maxPriorityFeePerGas)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the maximum priority fee (tip) per gas unit.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#nonce(long)" class="member-name-link">nonce</a><wbr>(long&nbsp;nonce)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the transaction nonce.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#to(io.brane.core.types.Address)" class="member-name-link">to</a><wbr>(<a href="../types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the recipient address.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#value(io.brane.core.types.Wei)" class="member-name-link">value</a><wbr>(<a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;value)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the value to transfer.</div>
+</div>
 </div>
 </div>
 </div>
@@ -188,9 +240,19 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="from(io.brane.core.types.Address)">
 <h3>from</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></span>&nbsp;<span class="element-name">from</span><wbr><span class="parameters">(<a href="../types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#from(io.brane.core.types.Address)">TxBuilder</a></code></span></div>
+<div class="block">Sets the sender address.
+
+ <p>The sender address is required for all transactions. Calling <a href="TxBuilder.html#build()"><code>TxBuilder.build()</code></a>
+ without setting a from address will result in incomplete transaction data that
+ cannot be signed or submitted.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#from(io.brane.core.types.Address)">from</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>address</code> - the sender address (must not be null)</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
 </dl>
 </section>
 </li>
@@ -198,9 +260,15 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="to(io.brane.core.types.Address)">
 <h3>to</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></span>&nbsp;<span class="element-name">to</span><wbr><span class="parameters">(<a href="../types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#to(io.brane.core.types.Address)">TxBuilder</a></code></span></div>
+<div class="block">Sets the recipient address. Null for contract deployment.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#to(io.brane.core.types.Address)">to</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>address</code> - the recipient address, or null for contract creation</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
 </dl>
 </section>
 </li>
@@ -208,9 +276,15 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="value(io.brane.core.types.Wei)">
 <h3>value</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></span>&nbsp;<span class="element-name">value</span><wbr><span class="parameters">(<a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;value)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#value(io.brane.core.types.Wei)">TxBuilder</a></code></span></div>
+<div class="block">Sets the value to transfer.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#value(io.brane.core.types.Wei)">value</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>value</code> - the amount of native currency to transfer</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
 </dl>
 </section>
 </li>
@@ -218,9 +292,15 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="data(io.brane.core.types.HexData)">
 <h3>data</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></span>&nbsp;<span class="element-name">data</span><wbr><span class="parameters">(<a href="../types/HexData.html" title="class in io.brane.core.types">HexData</a>&nbsp;data)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#data(io.brane.core.types.HexData)">TxBuilder</a></code></span></div>
+<div class="block">Sets the transaction input data (calldata).</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#data(io.brane.core.types.HexData)">data</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>data</code> - the encoded function call or contract bytecode</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
 </dl>
 </section>
 </li>
@@ -228,9 +308,15 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="nonce(long)">
 <h3>nonce</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></span>&nbsp;<span class="element-name">nonce</span><wbr><span class="parameters">(long&nbsp;nonce)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#nonce(long)">TxBuilder</a></code></span></div>
+<div class="block">Sets the transaction nonce.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#nonce(long)">nonce</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>nonce</code> - the sender's transaction count</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
 </dl>
 </section>
 </li>
@@ -238,9 +324,15 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="gasLimit(long)">
 <h3>gasLimit</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></span>&nbsp;<span class="element-name">gasLimit</span><wbr><span class="parameters">(long&nbsp;gasLimit)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#gasLimit(long)">TxBuilder</a></code></span></div>
+<div class="block">Sets the gas limit.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#gasLimit(long)">gasLimit</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>gasLimit</code> - the maximum gas to use</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
 </dl>
 </section>
 </li>
@@ -248,27 +340,61 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="maxFeePerGas(io.brane.core.types.Wei)">
 <h3>maxFeePerGas</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></span>&nbsp;<span class="element-name">maxFeePerGas</span><wbr><span class="parameters">(<a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;maxFeePerGas)</span></div>
+<div class="block">Sets the maximum total fee per gas unit.
+
+ <p>This is the absolute maximum the sender is willing to pay per gas unit,
+ including both the base fee and priority fee.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>maxFeePerGas</code> - the maximum fee per gas</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="maxPriorityFeePerGas(io.brane.core.types.Wei)">
 <h3>maxPriorityFeePerGas</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></span>&nbsp;<span class="element-name">maxPriorityFeePerGas</span><wbr><span class="parameters">(<a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;maxPriorityFeePerGas)</span></div>
+<div class="block">Sets the maximum priority fee (tip) per gas unit.
+
+ <p>This is the tip paid directly to miners/validators to incentivize
+ inclusion of the transaction.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>maxPriorityFeePerGas</code> - the maximum priority fee per gas</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="accessList(java.util.List)">
 <h3>accessList</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a></span>&nbsp;<span class="element-name">accessList</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../model/AccessListEntry.html" title="class in io.brane.core.model">AccessListEntry</a>&gt;&nbsp;accessList)</span></div>
+<div class="block">Sets the EIP-2930 access list for gas optimization.
+
+ <p>Access lists pre-declare which accounts and storage slots will be accessed,
+ reducing gas costs for those accesses.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>accessList</code> - the list of access list entries, or null for no access list</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="build()">
 <h3>build</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../model/TransactionRequest.html" title="class in io.brane.core.model">TransactionRequest</a></span>&nbsp;<span class="element-name">build</span>()</div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#build()">TxBuilder</a></code></span></div>
+<div class="block">Builds the transaction request.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#build()">build</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="Eip1559Builder.html" title="class in io.brane.core.builder">Eip1559Builder</a>&gt;</code></dd>
+<dt>Returns:</dt>
+<dd>the constructed transaction request</dd>
 </dl>
 </section>
 </li>

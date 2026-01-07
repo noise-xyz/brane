@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../index-all.html">Index</a></li>
 <li><a href="../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -87,7 +88,29 @@ loadScripts(document, 'script');</script>
 <section class="class-description" id="class-description">
 <hr>
 <div class="type-signature"><span class="modifiers">public interface </span><span class="element-name type-name-label">Subscription</span></div>
-<div class="block">Represents an active subscription to a real-time event stream.</div>
+<div class="block">Represents an active subscription to a real-time event stream.
+
+ <p>Subscriptions are created via <a href="BraneProvider.html#subscribe(java.lang.String,java.util.List,java.util.function.Consumer)"><code>BraneProvider.subscribe(String, java.util.List, java.util.function.Consumer)</code></a> and remain active until explicitly cancelled via
+ <a href="#unsubscribe()"><code>unsubscribe()</code></a> or the underlying connection is closed.
+
+ <p><strong>Thread Safety:</strong> Implementations must be thread-safe. The subscription
+ ID is immutable after creation, and <a href="#unsubscribe()"><code>unsubscribe()</code></a> may be called from any thread.
+
+ <p><strong>Lifecycle:</strong>
+ <ol>
+   <li>Subscription is created and starts receiving events</li>
+   <li>Events are delivered to the registered callback</li>
+   <li><a href="#unsubscribe()"><code>unsubscribe()</code></a> is called to stop receiving events</li>
+   <li>No further events will be delivered after unsubscribe completes</li>
+ </ol></div>
+<dl class="notes">
+<dt>See Also:</dt>
+<dd>
+<ul class="tag-list-long">
+<li><a href="BraneProvider.html#subscribe(java.lang.String,java.util.List,java.util.function.Consumer)"><code>BraneProvider.subscribe(String, java.util.List, java.util.function.Consumer)</code></a></li>
+</ul>
+</dd>
+</dl>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -110,7 +133,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>void</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#unsubscribe()" class="member-name-link">unsubscribe</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
-<div class="block">Unsubscribes from the event stream.</div>
+<div class="block">Unsubscribes from the event stream, stopping further event delivery.</div>
 </div>
 </div>
 </div>
@@ -130,10 +153,14 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="id()">
 <h3>id</h3>
 <div class="member-signature"><span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">id</span>()</div>
-<div class="block">Returns the unique identifier for this subscription.</div>
+<div class="block">Returns the unique identifier for this subscription.
+
+ <p>The subscription ID is assigned by the server and is used internally
+ to route incoming notifications to the correct callback. This ID is
+ immutable and remains constant for the lifetime of the subscription.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>the subscription ID</dd>
+<dd>the subscription ID, never <code>null</code></dd>
 </dl>
 </section>
 </li>
@@ -141,7 +168,22 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="unsubscribe()">
 <h3>unsubscribe</h3>
 <div class="member-signature"><span class="return-type">void</span>&nbsp;<span class="element-name">unsubscribe</span>()</div>
-<div class="block">Unsubscribes from the event stream.</div>
+<div class="block">Unsubscribes from the event stream, stopping further event delivery.
+
+ <p><strong>Idempotency:</strong> This method is idempotent. Calling it multiple
+ times has no additional effect after the first successful call. Subsequent calls
+ will return silently without throwing exceptions.
+
+ <p><strong>Error Handling:</strong> If the unsubscribe RPC fails (e.g., due to
+ network issues or the connection being already closed), the error is logged but
+ not thrown. The subscription is considered terminated regardless.
+
+ <p><strong>Thread Safety:</strong> This method is thread-safe and may be called
+ from any thread, including the callback thread.
+
+ <p><strong>Blocking Behavior:</strong> This method may block briefly while
+ sending the unsubscribe request to the server. It does not wait for confirmation
+ that all in-flight events have been processed.</div>
 </section>
 </li>
 </ul>

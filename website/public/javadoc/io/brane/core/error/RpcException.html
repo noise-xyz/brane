@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -100,15 +101,19 @@ loadScripts(document, 'script');</script>
 <dt>All Implemented Interfaces:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/io/Serializable.html" title="class or interface in java.io" class="external-link">Serializable</a></code></dd>
 </dl>
+<dl class="notes">
+<dt>Direct Known Subclasses:</dt>
+<dd><code><a href="../../rpc/exception/SimulateNotSupportedException.html" title="class in io.brane.rpc.exception">SimulateNotSupportedException</a></code></dd>
+</dl>
 <hr>
-<div class="type-signature"><span class="modifiers">public final class </span><span class="element-name type-name-label">RpcException</span>
+<div class="type-signature"><span class="modifiers">public non-sealed class </span><span class="element-name type-name-label">RpcException</span>
 <span class="extends-implements">extends <a href="BraneException.html" title="class in io.brane.core.error">BraneException</a></span></div>
 <div class="block">Exception thrown when a JSON-RPC request to an Ethereum node fails.
- 
+
  <p>
  This exception wraps JSON-RPC errors returned by the Ethereum node,
  including both standard and node-specific error codes.
- 
+
  <p>
  <strong>Common Standard Error Codes:</strong>
  <ul>
@@ -120,7 +125,7 @@ loadScripts(document, 'script');</script>
  <li><strong>-32000 to -32099</strong>: Server/implementation-specific
  errors</li>
  </ul>
- 
+
  <p>
  <strong>Common Ethereum Node Errors:</strong>
  <ul>
@@ -129,12 +134,14 @@ loadScripts(document, 'script');</script>
  <li><strong>-32001</strong>: Resource not found</li>
  <li><strong>-32005</strong>: Request rate limit exceeded</li>
  </ul>
- 
+
  <p>
  The <code>data</code> field may contain additional error details, often including
  revert data for failed transactions (use <a href="RevertException.html" title="class in io.brane.core.error"><code>RevertException</code></a> for typed
  revert handling).</div>
 <dl class="notes">
+<dt>Since:</dt>
+<dd>0.1.0-alpha</dd>
 <dt>See Also:</dt>
 <dd>
 <ul class="tag-list-long">

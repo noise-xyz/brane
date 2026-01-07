@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../index-all.html">Index</a></li>
 <li><a href="../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -94,64 +95,61 @@ loadScripts(document, 'script');</script>
 <dt>Record Components:</dt>
 <dd><code><span id="param-fromBlock">fromBlock</span></code> - the starting block number (inclusive), or empty for genesis</dd>
 <dd><code><span id="param-toBlock">toBlock</span></code> - the ending block number (inclusive), or empty for latest</dd>
-<dd><code><span id="param-address">address</span></code> - the contract address to filter by, or empty for all
-                  contracts</dd>
+<dd><code><span id="param-addresses">addresses</span></code> - the contract addresses to filter by, or empty for all contracts</dd>
 <dd><code><span id="param-topics">topics</span></code> - the event topic filters, or empty for all events</dd>
 </dl>
 <hr>
-<div class="type-signature"><span class="modifiers">public record </span><span class="element-name type-name-label">LogFilter</span>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Long.html" title="class or interface in java.lang" class="external-link">Long</a>&gt;&nbsp;fromBlock, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Long.html" title="class or interface in java.lang" class="external-link">Long</a>&gt;&nbsp;toBlock, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;&nbsp;address, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Hash.html" title="class in io.brane.core.types">Hash</a>&gt;&gt;&nbsp;topics)
+<div class="type-signature"><span class="modifiers">public record </span><span class="element-name type-name-label">LogFilter</span>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Long.html" title="class or interface in java.lang" class="external-link">Long</a>&gt;&nbsp;fromBlock, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Long.html" title="class or interface in java.lang" class="external-link">Long</a>&gt;&nbsp;toBlock, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;&gt;&nbsp;addresses, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Hash.html" title="class in io.brane.core.types">Hash</a>&gt;&gt;&nbsp;topics)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a></span></div>
 <div class="block">Filter criteria for querying event logs via <code>eth_getLogs</code>.
- 
- <p>
- Use this to filter blockchain event logs by:
+
+ <p>Use this to filter blockchain event logs by:
  <ul>
- <li>Block range (<code>fromBlock</code> to <code>toBlock</code>)</li>
- <li>Contract address (specific contract or all contracts)</li>
- <li>Event topics (event signatures and indexed parameters)</li>
+   <li>Block range (<code>fromBlock</code> to <code>toBlock</code>)</li>
+   <li>Contract addresses (one or more contracts, or all contracts)</li>
+   <li>Event topics (event signatures and indexed parameters)</li>
  </ul>
- 
- <p>
- <strong>Block Range:</strong>
+
+ <p><strong>Block Range:</strong>
  <ul>
- <li>Empty <code>fromBlock</code>/<code>toBlock</code> = query entire chain (may timeout
- on mainnet!)</li>
- <li>Recommended: Always specify a limited range</li>
+   <li>Empty <code>fromBlock</code>/<code>toBlock</code> = query entire chain (may timeout on mainnet!)</li>
+   <li>Recommended: Always specify a limited range</li>
  </ul>
- 
- <p>
- <strong>Topics:</strong>
- Event signatures and indexed parameters. The first topic is usually
- the event signature hash (keccak256 of "EventName(type1,type2,...)").
- 
- <p>
- <strong>Usage Examples:</strong>
- 
+
+ <p><strong>Addresses:</strong>
+ The <code>eth_getLogs</code> RPC method supports filtering by one or more contract addresses.
+ When multiple addresses are specified, logs from any of the addresses will be returned.
+
+ <p><strong>Topics:</strong>
+ Event signatures and indexed parameters. The first topic is usually the event signature
+ hash (keccak256 of "EventName(type1,type2,...)").
+
+ <p><strong>Usage Examples:</strong>
  <pre><code>
- // Filter by contract address only
- LogFilter filter = LogFilter.byContract(
-         new Address("0x..."),
-         List.of() // all events
- );
- 
+ // Filter by single contract address
+ LogFilter filter = LogFilter.byContract(usdcAddress, List.of());
+
+ // Filter by multiple contract addresses
+ LogFilter filter = LogFilter.byContracts(
+         List.of(usdcAddress, usdtAddress, daiAddress),
+         List.of(transferEventTopic));
+
  // Filter by contract + specific event signature
  Hash transferSig = new Hash("0xddf252ad..."); // keccak256("Transfer(address,address,uint256)")
- LogFilter filter = LogFilter.byContract(
-         usdcAddress,
-         List.of(transferSig));
- 
- // Filter with block range
+ LogFilter filter = LogFilter.byContract(usdcAddress, List.of(transferSig));
+
+ // Filter with block range and multiple addresses
  LogFilter filter = new LogFilter(
-         Optional.of(1000000L), // from block
-         Optional.of(1001000L), // to block
-         Optional.of(contractAddress),
+         Optional.of(1000000L),
+         Optional.of(1001000L),
+         Optional.of(List.of(addr1, addr2)),
          Optional.of(topics));
  </code></pre></div>
 <dl class="notes">
 <dt>See Also:</dt>
 <dd>
-<ul class="tag-list-long">
-<li><a href="PublicClient.html#getLogs(io.brane.rpc.LogFilter)"><code>PublicClient.getLogs(LogFilter)</code></a></li>
+<ul class="tag-list">
+<li><a href="Brane.html#getLogs(io.brane.rpc.LogFilter)"><code>Brane.getLogs(LogFilter)</code></a></li>
 </ul>
 </dd>
 </dl>
@@ -168,7 +166,7 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-last">Description</div>
 <div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(java.util.Optional,java.util.Optional,java.util.Optional,java.util.Optional)" class="member-name-link">LogFilter</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Long.html" title="class or interface in java.lang" class="external-link">Long</a>&gt;&nbsp;fromBlock,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Long.html" title="class or interface in java.lang" class="external-link">Long</a>&gt;&nbsp;toBlock,
- <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;&nbsp;address,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;&gt;&nbsp;addresses,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Hash.html" title="class in io.brane.core.types">Hash</a>&gt;&gt;&nbsp;topics)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Creates an instance of a <code>LogFilter</code> record class.</div>
@@ -181,21 +179,36 @@ loadScripts(document, 'script');</script>
 <section class="method-summary" id="method-summary">
 <h2>Method Summary</h2>
 <div id="method-summary-table">
-<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab1" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab1', 3)" class="table-tab">Static Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab4" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab4', 3)" class="table-tab">Concrete Methods</button></div>
+<div class="table-tabs" role="tablist" aria-orientation="horizontal"><button id="method-summary-table-tab0" role="tab" aria-selected="true" aria-controls="method-summary-table.tabpanel" tabindex="0" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table', 3)" class="active-table-tab">All Methods</button><button id="method-summary-table-tab1" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab1', 3)" class="table-tab">Static Methods</button><button id="method-summary-table-tab2" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab2', 3)" class="table-tab">Instance Methods</button><button id="method-summary-table-tab4" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab4', 3)" class="table-tab">Concrete Methods</button><button id="method-summary-table-tab6" role="tab" aria-selected="false" aria-controls="method-summary-table.tabpanel" tabindex="-1" onkeydown="switchTab(event)" onclick="show('method-summary-table', 'method-summary-table-tab6', 3)" class="table-tab">Deprecated Methods</button></div>
 <div id="method-summary-table.tabpanel" role="tabpanel" aria-labelledby="method-summary-table-tab0">
 <div class="summary-table three-column-summary">
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a><wbr>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#address()" class="member-name-link">address</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns the value of the <a href="#param-address"><code>address</code></a> record component.</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4 method-summary-table-tab6"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a><wbr>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4 method-summary-table-tab6"><code><a href="#address()" class="member-name-link">address</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4 method-summary-table-tab6">
+<div class="block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">Access <a href="#addresses()"><code>addresses()</code></a> directly instead</div>
+</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a><wbr>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;&gt;</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#addresses()" class="member-name-link">addresses</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Returns the value of the <a href="#param-addresses"><code>addresses</code></a> record component.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="LogFilter.html" title="class in io.brane.rpc">LogFilter</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#byContract(io.brane.core.types.Address,java.util.List)" class="member-name-link">byContract</a><wbr>(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Hash.html" title="class in io.brane.core.types">Hash</a>&gt;&nbsp;topics)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a filter for a single contract address.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="LogFilter.html" title="class in io.brane.rpc">LogFilter</a></code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#byContract(io.brane.core.types.Address,java.util.List)" class="member-name-link">byContract</a><wbr>(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address,
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#byContracts(java.util.List,java.util.List)" class="member-name-link">byContracts</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;&nbsp;addresses,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Hash.html" title="class in io.brane.core.types">Hash</a>&gt;&nbsp;topics)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Creates a filter for multiple contract addresses.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final boolean</code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#equals(java.lang.Object)" class="member-name-link">equals</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;o)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
@@ -248,14 +261,14 @@ loadScripts(document, 'script');</script>
 <h3>LogFilter</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">LogFilter</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Long.html" title="class or interface in java.lang" class="external-link">Long</a>&gt;&nbsp;fromBlock,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Long.html" title="class or interface in java.lang" class="external-link">Long</a>&gt;&nbsp;toBlock,
- <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;&nbsp;address,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;&gt;&nbsp;addresses,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Hash.html" title="class in io.brane.core.types">Hash</a>&gt;&gt;&nbsp;topics)</span></div>
 <div class="block">Creates an instance of a <code>LogFilter</code> record class.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>fromBlock</code> - the value for the <a href="#param-fromBlock"><code>fromBlock</code></a> record component</dd>
 <dd><code>toBlock</code> - the value for the <a href="#param-toBlock"><code>toBlock</code></a> record component</dd>
-<dd><code>address</code> - the value for the <a href="#param-address"><code>address</code></a> record component</dd>
+<dd><code>addresses</code> - the value for the <a href="#param-addresses"><code>addresses</code></a> record component</dd>
 <dd><code>topics</code> - the value for the <a href="#param-topics"><code>topics</code></a> record component</dd>
 </dl>
 </section>
@@ -273,6 +286,53 @@ loadScripts(document, 'script');</script>
 <h3>byContract</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="LogFilter.html" title="class in io.brane.rpc">LogFilter</a></span>&nbsp;<span class="element-name">byContract</span><wbr><span class="parameters">(<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Hash.html" title="class in io.brane.core.types">Hash</a>&gt;&nbsp;topics)</span></div>
+<div class="block">Creates a filter for a single contract address.
+
+ <p>For filtering by multiple addresses, use <a href="#byContracts(java.util.List,java.util.List)"><code>byContracts(List, List)</code></a>.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>address</code> - the contract address to filter by</dd>
+<dd><code>topics</code> - the event topics to filter by (empty list for all events)</dd>
+<dt>Returns:</dt>
+<dd>a new LogFilter</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="byContracts(java.util.List,java.util.List)">
+<h3>byContracts</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="LogFilter.html" title="class in io.brane.rpc">LogFilter</a></span>&nbsp;<span class="element-name">byContracts</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;&nbsp;addresses,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Hash.html" title="class in io.brane.core.types">Hash</a>&gt;&nbsp;topics)</span></div>
+<div class="block">Creates a filter for multiple contract addresses.
+
+ <p>Logs from any of the specified addresses will be returned.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>addresses</code> - the contract addresses to filter by (must not be empty)</dd>
+<dd><code>topics</code> - the event topics to filter by (empty list for all events)</dd>
+<dt>Returns:</dt>
+<dd>a new LogFilter</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if addresses is empty</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="address()">
+<h3>address</h3>
+<div class="member-signature"><span class="annotations"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Deprecated.html" title="class or interface in java.lang" class="external-link">@Deprecated</a>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Deprecated.html#since()" title="class or interface in java.lang" class="external-link">since</a>="0.5.0",
+            <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Deprecated.html#forRemoval()" title="class or interface in java.lang" class="external-link">forRemoval</a>=true)
+</span><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;</span>&nbsp;<span class="element-name">address</span>()</div>
+<div class="deprecation-block"><span class="deprecated-label">Deprecated, for removal: This API element is subject to removal in a future version.</span>
+<div class="deprecation-comment">Access <a href="#addresses()"><code>addresses()</code></a> directly instead</div>
+</div>
+<div class="block">Returns the single address if exactly one is specified.
+
+ <p>This is a convenience method for backward compatibility.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>the single address, or empty if zero or multiple addresses</dd>
+</dl>
 </section>
 </li>
 <li>
@@ -339,13 +399,13 @@ loadScripts(document, 'script');</script>
 </section>
 </li>
 <li>
-<section class="detail" id="address()">
-<h3>address</h3>
-<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;</span>&nbsp;<span class="element-name">address</span>()</div>
-<div class="block">Returns the value of the <a href="#param-address"><code>address</code></a> record component.</div>
+<section class="detail" id="addresses()">
+<h3>addresses</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/Optional.html" title="class or interface in java.util" class="external-link">Optional</a>&lt;<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../core/types/Address.html" title="class in io.brane.core.types">Address</a>&gt;&gt;</span>&nbsp;<span class="element-name">addresses</span>()</div>
+<div class="block">Returns the value of the <a href="#param-addresses"><code>addresses</code></a> record component.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>the value of the <a href="#param-address"><code>address</code></a> record component</dd>
+<dd>the value of the <a href="#param-addresses"><code>addresses</code></a> record component</dd>
 </dl>
 </section>
 </li>

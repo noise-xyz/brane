@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -102,13 +103,30 @@ loadScripts(document, 'script');</script>
 </dl>
 <dl class="notes">
 <dt>Direct Known Subclasses:</dt>
-<dd><code><a href="ChainMismatchException.html" title="class in io.brane.core.error">ChainMismatchException</a></code>, <code><a href="InvalidSenderException.html" title="class in io.brane.core.error">InvalidSenderException</a></code></dd>
+<dd><code><a href="../builder/BraneTxBuilderException.html" title="class in io.brane.core.builder">BraneTxBuilderException</a></code>, <code><a href="ChainMismatchException.html" title="class in io.brane.core.error">ChainMismatchException</a></code>, <code><a href="InvalidSenderException.html" title="class in io.brane.core.error">InvalidSenderException</a></code></dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public non-sealed class </span><span class="element-name type-name-label">TxnException</span>
 <span class="extends-implements">extends <a href="BraneException.html" title="class in io.brane.core.error">BraneException</a></span></div>
-<div class="block">Base class for transaction-related failures (signing, validation, send).</div>
+<div class="block">Base class for transaction-related failures (signing, validation, send).
+ <p>
+ <strong>Design Note:</strong> This class is intentionally <code>non-sealed</code> to allow
+ users to define custom transaction exception types for application-specific error handling.
+ While this breaks exhaustive pattern matching at the <code>TxnException</code> level, it provides
+ an extension point for diverse transaction failure scenarios that the SDK cannot anticipate.
+ <p>
+ The sealed hierarchy on <a href="BraneException.html" title="class in io.brane.core.error"><code>BraneException</code></a> still provides exhaustiveness guarantees
+ at the top level, ensuring all Brane-specific errors can be caught and handled appropriately.
+ <p>
+ <strong>SDK-provided subclasses:</strong>
+ <ul>
+ <li><a href="../builder/BraneTxBuilderException.html" title="class in io.brane.core.builder"><code>BraneTxBuilderException</code></a> - Transaction building failures</li>
+ <li><a href="ChainMismatchException.html" title="class in io.brane.core.error"><code>ChainMismatchException</code></a> - Chain ID mismatch errors</li>
+ <li><a href="InvalidSenderException.html" title="class in io.brane.core.error"><code>InvalidSenderException</code></a> - Invalid sender address errors</li>
+ </ul></div>
 <dl class="notes">
+<dt>Since:</dt>
+<dd>0.1.0-alpha</dd>
 <dt>See Also:</dt>
 <dd>
 <ul class="tag-list">

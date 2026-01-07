@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../index-all.html">Index</a></li>
 <li><a href="../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -93,7 +94,7 @@ loadScripts(document, 'script');</script>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span></div>
 <div class="block">Modern, curated ANSI color palette for terminal output with automatic TTY
  detection.
- 
+
  <p>
  This class provides a sophisticated color scheme designed for modern terminal
  logging,
@@ -101,7 +102,7 @@ loadScripts(document, 'script');</script>
  are automatically
  disabled when not running in a TTY environment unless
  <code>FORCE_COLOR=true</code> is set.
- 
+
  <h2 id="color-philosophy-heading">Color Philosophy</h2>
  <ul>
  <li><b>TEAL</b> - Success indicators (instead of traditional green)
@@ -111,18 +112,18 @@ loadScripts(document, 'script');</script>
  <li><b>LAVENDER</b> - Transaction operations
  <li><b>SLATE</b> - Metadata and secondary information
  </ul>
- 
+
  <h2 id="usage-example-heading">Usage Example</h2>
- 
+
  <pre><code>
  // Manual coloring
  System.out.println(AnsiColors.TEAL + "Success!" + AnsiColors.RESET);
- 
+
  // Using helper methods
  System.out.println(AnsiColors.success("Operation completed"));
  System.out.println(AnsiColors.error("Operation failed"));
  </code></pre>
- 
+
  <p>
  All public constants in this class are safe to concatenate with strings for
  terminal output. Colors automatically no-op when not in a TTY environment.</div>
@@ -174,34 +175,39 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">
 <div class="block">Indigo color - used for informational messages (replaces traditional blue)</div>
 </div>
-<div class="col-first odd-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color"><code><a href="#LAVENDER" class="member-name-link">LAVENDER</a></code></div>
+<div class="col-first odd-row-color"><code>static final boolean</code></div>
+<div class="col-second odd-row-color"><code><a href="#IS_TTY" class="member-name-link">IS_TTY</a></code></div>
 <div class="col-last odd-row-color">
+<div class="block">Whether standard output is a TTY (terminal) environment.</div>
+</div>
+<div class="col-first even-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color"><code><a href="#LAVENDER" class="member-name-link">LAVENDER</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Soft lavender color - used for transaction-related operations</div>
 </div>
-<div class="col-first even-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color"><code><a href="#MINT" class="member-name-link">MINT</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#MINT" class="member-name-link">MINT</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Fresh mint color - used for highlights</div>
 </div>
-<div class="col-first odd-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color"><code><a href="#RESET" class="member-name-link">RESET</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color"><code><a href="#RESET" class="member-name-link">RESET</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">ANSI reset code - clears all formatting</div>
 </div>
-<div class="col-first even-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color"><code><a href="#SKY" class="member-name-link">SKY</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#SKY" class="member-name-link">SKY</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Sky blue color - used for accent elements like IDs</div>
 </div>
-<div class="col-first odd-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second odd-row-color"><code><a href="#SLATE" class="member-name-link">SLATE</a></code></div>
-<div class="col-last odd-row-color">
+<div class="col-first even-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color"><code><a href="#SLATE" class="member-name-link">SLATE</a></code></div>
+<div class="col-last even-row-color">
 <div class="block">Balanced slate gray - used for metadata and secondary information</div>
 </div>
-<div class="col-first even-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color"><code><a href="#TEAL" class="member-name-link">TEAL</a></code></div>
-<div class="col-last even-row-color">
+<div class="col-first odd-row-color"><code>static final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color"><code><a href="#TEAL" class="member-name-link">TEAL</a></code></div>
+<div class="col-last odd-row-color">
 <div class="block">Modern teal color - used for success indicators (replaces traditional green)</div>
 </div>
 </div>
@@ -231,7 +237,7 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#hash(java.lang.String)" class="member-name-link">hash</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;value)</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
-<div class="block">Returns the given hash value, possibly shortened for display.</div>
+<div class="block">Shortens a hash or address value for readable log display.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#kv(java.lang.String,java.lang.String)" class="member-name-link">kv</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;key,
@@ -266,6 +272,25 @@ loadScripts(document, 'script');</script>
 <section class="field-details" id="field-detail">
 <h2>Field Details</h2>
 <ul class="member-list">
+<li>
+<section class="detail" id="IS_TTY">
+<h3>IS_TTY</h3>
+<div class="member-signature"><span class="modifiers">public static final</span>&nbsp;<span class="return-type">boolean</span>&nbsp;<span class="element-name">IS_TTY</span></div>
+<div class="block">Whether standard output is a TTY (terminal) environment.
+
+ <p>This is determined in the following order:
+ <ol>
+   <li>If system property <code>brane.force.color=true</code> is set, colors are enabled
+       (useful for testing)</li>
+   <li>If environment variable <code>FORCE_COLOR=true</code> is set, colors are enabled
+       (for CI/CD pipelines)</li>
+   <li>If <code>System.console()</code> is non-null, colors are enabled (interactive terminal)</li>
+   <li>Otherwise, colors are disabled</li>
+ </ol>
+
+ <p>Other classes should use this constant instead of duplicating the TTY detection logic.</div>
+</section>
+</li>
 <li>
 <section class="detail" id="RESET">
 <h3>RESET</h3>
@@ -356,12 +381,16 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="hash(java.lang.String)">
 <h3>hash</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">hash</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;value)</span></div>
-<div class="block">Returns the given hash value, possibly shortened for display.</div>
+<div class="block">Shortens a hash or address value for readable log display.
+
+ <p>Values longer than 16 characters are shortened to show the first 10
+ characters (including "0x" prefix) followed by "..." and the last 4 characters.
+ For example, a 66-character hash becomes: <code>0x12345678...abcd</code></div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>value</code> - the hash or address value to format</dd>
 <dt>Returns:</dt>
-<dd>the formatted value</dd>
+<dd>the shortened value, or "null" if value is null</dd>
 </dl>
 </section>
 </li>
