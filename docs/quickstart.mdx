@@ -32,23 +32,23 @@ If you are contributing to Brane or have access to the source code, you can inst
 
 3.  Add `mavenLocal()` to your project's repositories:
 
-    <CodeGroup>
-    ```xml Maven
-    <repositories>
-        <repository>
-            <id>local-maven</id>
-            <url>file://${user.home}/.m2/repository</url>
-        </repository>
-    </repositories>
-    ```
+<CodeGroup>
+```xml Maven
+<repositories>
+    <repository>
+        <id>local-maven</id>
+        <url>file://${user.home}/.m2/repository</url>
+    </repository>
+</repositories>
+```
 
-    ```groovy Gradle
-    repositories {
-        mavenLocal()
-        mavenCentral()
-    }
-    ```
-    </CodeGroup>
+```groovy Gradle
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+```
+</CodeGroup>
 
 ### Dependencies
 
