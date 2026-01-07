@@ -23,21 +23,200 @@ import io.brane.core.types.HexData;
 /**
  * Unified entry point for interacting with Ethereum/EVM blockchains.
  *
+ * <p>{@code Brane} is the primary interface for all blockchain interactions in the Brane SDK.
+ * It provides a modern, type-safe API for querying blockchain state, executing read-only calls,
+ * subscribing to real-time events, and sending transactions.
+ *
+ * <h2>Client Hierarchy</h2>
+ *
  * <p>This sealed interface provides a type-safe hierarchy for blockchain clients:
  * <ul>
  *   <li>{@link Reader} - Read-only operations (queries, calls, subscriptions)</li>
  *   <li>{@link Signer} - Full operations including transaction signing and sending</li>
  * </ul>
  *
- * <p><strong>Usage with pattern matching:</strong>
+ * <p>The sealed hierarchy enables exhaustive pattern matching and compile-time type safety
+ * when working with different client capabilities.
+ *
+ * <h2>Creating Clients</h2>
+ *
+ * <p><strong>Simple read-only client:</strong>
  * <pre>{@code
- * Brane client = Brane.connect("https://eth.example.com");
+ * // Connect to any Ethereum RPC endpoint
+ * Brane client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY");
+ *
+ * // Query blockchain state
+ * BigInteger balance = client.getBalance(address);
+ * BlockHeader block = client.getLatestBlock();
+ * }</pre>
+ *
+ * <p><strong>Client with transaction signing:</strong>
+ * <pre>{@code
+ * // Create a signer from a private key
+ * Signer key = PrivateKey.fromHex("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
+ *
+ * // Connect with signing capability
+ * Brane.Signer client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY", key);
+ *
+ * // Send transactions
+ * TransactionRequest request = TransactionRequest.builder()
+ *     .to(recipient)
+ *     .value(Wei.fromEther("1.5"))
+ *     .build();
+ * Hash txHash = client.sendTransaction(request);
+ * }</pre>
+ *
+ * <p><strong>Advanced configuration with builder:</strong>
+ * <pre>{@code
+ * Brane client = Brane.builder()
+ *     .rpcUrl("https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY")
+ *     .chain(ChainProfiles.MAINNET)  // Network-specific optimizations
+ *     .retries(5)                     // Retry transient failures
+ *     .build();
+ * }</pre>
+ *
+ * <h2>Pattern Matching</h2>
+ *
+ * <p>The sealed hierarchy enables exhaustive pattern matching in Java 21+:
+ * <pre>{@code
+ * Brane client = getClientFromSomewhere();
  * switch (client) {
- *     case Brane.Reader r -> System.out.println("Read-only client");
- *     case Brane.Signer s -> System.out.println("Signing client");
+ *     case Brane.Reader r -> {
+ *         // Read-only operations only
+ *         System.out.println("Balance: " + r.getBalance(address));
+ *     }
+ *     case Brane.Signer s -> {
+ *         // Full operations including transactions
+ *         Hash hash = s.sendTransaction(request);
+ *     }
  * }
  * }</pre>
  *
+ * <p>Alternatively, use the {@link #canSign()} helper:
+ * <pre>{@code
+ * if (client.canSign()) {
+ *     Brane.Signer signer = (Brane.Signer) client;
+ *     signer.sendTransaction(request);
+ * }
+ * }</pre>
+ *
+ * <h2>Common Operations</h2>
+ *
+ * <p><strong>Reading blockchain state:</strong>
+ * <pre>{@code
+ * // Account balance
+ * BigInteger balance = client.getBalance(address);
+ *
+ * // Block information
+ * BlockHeader latest = client.getLatestBlock();
+ * BlockHeader specific = client.getBlockByNumber(12345678);
+ *
+ * // Transaction details
+ * Transaction tx = client.getTransactionByHash(txHash);
+ * TransactionReceipt receipt = client.getTransactionReceipt(txHash);
+ * }</pre>
+ *
+ * <p><strong>Executing contract calls:</strong>
+ * <pre>{@code
+ * // Build a call request
+ * CallRequest request = CallRequest.builder()
+ *     .to(contractAddress)
+ *     .data(encodedFunctionCall)
+ *     .build();
+ *
+ * // Execute at latest block
+ * HexData result = client.call(request);
+ *
+ * // Or at a specific block
+ * HexData historicalResult = client.call(request, BlockTag.number(12345678));
+ * }</pre>
+ *
+ * <p><strong>Querying event logs:</strong>
+ * <pre>{@code
+ * LogFilter filter = LogFilter.byContract(contractAddress, List.of(transferEventTopic))
+ *     .fromBlock(BlockTag.number(startBlock))
+ *     .toBlock(BlockTag.LATEST);
+ *
+ * List<LogEntry> logs = client.getLogs(filter);
+ * for (LogEntry log : logs) {
+ *     System.out.println("Transfer at block " + log.blockNumber());
+ * }
+ * }</pre>
+ *
+ * <p><strong>Batching multiple calls:</strong>
+ * <pre>{@code
+ * MulticallBatch batch = client.batch();
+ * ERC20 token = batch.bind(ERC20.class, tokenAddress, ERC20_ABI);
+ *
+ * BatchHandle<BigInteger> balance1 = batch.add(token.balanceOf(addr1));
+ * BatchHandle<BigInteger> balance2 = batch.add(token.balanceOf(addr2));
+ * BatchHandle<BigInteger> balance3 = batch.add(token.balanceOf(addr3));
+ *
+ * batch.execute();  // Single RPC call via Multicall3
+ *
+ * System.out.println("Balance 1: " + balance1.get().data());
+ * System.out.println("Balance 2: " + balance2.get().data());
+ * }</pre>
+ *
+ * <h2>Real-time Subscriptions</h2>
+ *
+ * <p>WebSocket-connected clients support real-time event subscriptions:
+ * <pre>{@code
+ * if (client.canSubscribe()) {
+ *     // Subscribe to new blocks
+ *     Subscription blockSub = client.onNewHeads(header -> {
+ *         System.out.println("New block: " + header.number());
+ *     });
+ *
+ *     // Subscribe to contract events
+ *     LogFilter filter = LogFilter.byContract(contractAddress, List.of(eventTopic));
+ *     Subscription logSub = client.onLogs(filter, log -> {
+ *         System.out.println("Event: " + log.data());
+ *     });
+ *
+ *     // Later, clean up
+ *     blockSub.unsubscribe();
+ *     logSub.unsubscribe();
+ * }
+ * }</pre>
+ *
+ * <h2>Thread Safety</h2>
+ *
+ * <p>All {@code Brane} implementations are thread-safe. Multiple threads can safely
+ * share a single client instance for concurrent operations. The underlying HTTP and
+ * WebSocket providers handle connection pooling and request multiplexing internally.
+ *
+ * <h2>Resource Management</h2>
+ *
+ * <p>{@code Brane} extends {@link AutoCloseable} for proper resource cleanup:
+ * <pre>{@code
+ * try (Brane client = Brane.connect("https://eth.example.com")) {
+ *     BigInteger balance = client.getBalance(address);
+ *     // ... use client
+ * }  // Automatically closes connections
+ * }</pre>
+ *
+ * <p>Calling methods on a closed client throws {@link IllegalStateException}.
+ *
+ * <h2>Error Handling</h2>
+ *
+ * <p>All methods may throw:
+ * <ul>
+ *   <li>{@link io.brane.core.exceptions.RpcException} - JSON-RPC communication failures</li>
+ *   <li>{@link io.brane.core.exceptions.RevertException} - EVM execution reverts (for calls)</li>
+ *   <li>{@link IllegalStateException} - If the client has been closed</li>
+ * </ul>
+ *
+ * <p>Transaction methods ({@link Signer#sendTransaction}, {@link Signer#sendTransactionAndWait})
+ * may additionally throw:
+ * <ul>
+ *   <li>{@link io.brane.core.exceptions.TxnException} - Transaction-specific failures</li>
+ * </ul>
+ *
+ * @see Brane.Reader
+ * @see Brane.Signer
+ * @see Brane.Builder
+ * @see BraneProvider
  * @since 0.1.0
  */
 public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.Signer {
@@ -414,8 +593,54 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
     /**
      * Read-only client for blockchain queries.
      *
-     * <p>Provides access to all read operations without transaction signing capability.
+     * <p>{@code Reader} provides access to all read operations without transaction signing
+     * capability. This is the appropriate client type when you only need to query blockchain
+     * state, execute read-only contract calls, or subscribe to events.
      *
+     * <h2>Read-Only Guarantee</h2>
+     *
+     * <p>A {@code Reader} instance guarantees that no state-modifying transactions can be
+     * sent. This makes it safe to use in contexts where you want to prevent accidental
+     * writes, such as:
+     * <ul>
+     *   <li>Analytics and monitoring applications</li>
+     *   <li>Block explorers and indexers</li>
+     *   <li>Read-only API endpoints</li>
+     *   <li>Testing and debugging tools</li>
+     * </ul>
+     *
+     * <h2>Creating a Reader</h2>
+     *
+     * <pre>{@code
+     * // Via static factory (simplest)
+     * Brane.Reader reader = Brane.connect("https://eth.example.com");
+     *
+     * // Via builder (with configuration)
+     * Brane.Reader reader = Brane.builder()
+     *     .rpcUrl("https://eth.example.com")
+     *     .chain(ChainProfiles.MAINNET)
+     *     .retries(5)
+     *     .buildReader();
+     * }</pre>
+     *
+     * <h2>Available Operations</h2>
+     *
+     * <p>All methods inherited from {@link Brane} are available:
+     * <ul>
+     *   <li>Balance queries: {@link #getBalance(Address)}</li>
+     *   <li>Block queries: {@link #getLatestBlock()}, {@link #getBlockByNumber(long)}</li>
+     *   <li>Transaction queries: {@link #getTransactionByHash(Hash)}, {@link #getTransactionReceipt(Hash)}</li>
+     *   <li>Contract calls: {@link #call(CallRequest)}, {@link #call(CallRequest, BlockTag)}</li>
+     *   <li>Log queries: {@link #getLogs(LogFilter)}</li>
+     *   <li>Gas estimation: {@link #estimateGas(TransactionRequest)}</li>
+     *   <li>Access list creation: {@link #createAccessList(TransactionRequest)}</li>
+     *   <li>Simulation: {@link #simulate(SimulateRequest)}</li>
+     *   <li>Batching: {@link #batch()}</li>
+     *   <li>Subscriptions: {@link #onNewHeads(Consumer)}, {@link #onLogs(LogFilter, Consumer)}</li>
+     * </ul>
+     *
+     * @see Brane
+     * @see Brane.Signer
      * @since 0.1.0
      */
     sealed interface Reader extends Brane permits DefaultReader {
@@ -424,8 +649,92 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
     /**
      * Full-featured client with transaction signing capability.
      *
-     * <p>Extends all read operations with the ability to sign and send transactions.
+     * <p>{@code Signer} extends all read operations with the ability to sign and send
+     * transactions to the blockchain. This is the client type to use when your application
+     * needs to modify blockchain state.
      *
+     * <h2>Signing Capability</h2>
+     *
+     * <p>A {@code Signer} client wraps a cryptographic signer (typically a
+     * {@link io.brane.core.crypto.PrivateKey}) that can sign transactions. The signing
+     * happens locally - private keys never leave your application.
+     *
+     * <h2>Creating a Signer</h2>
+     *
+     * <pre>{@code
+     * // Create the cryptographic signer
+     * Signer key = PrivateKey.fromHex("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
+     *
+     * // Via static factory (simplest)
+     * Brane.Signer client = Brane.connect("https://eth.example.com", key);
+     *
+     * // Via builder (with configuration)
+     * Brane.Signer client = Brane.builder()
+     *     .rpcUrl("https://eth.example.com")
+     *     .signer(key)
+     *     .chain(ChainProfiles.MAINNET)
+     *     .retries(5)
+     *     .buildSigner();
+     * }</pre>
+     *
+     * <h2>Sending Transactions</h2>
+     *
+     * <p><strong>Fire and forget:</strong>
+     * <pre>{@code
+     * TransactionRequest request = TransactionRequest.builder()
+     *     .to(recipient)
+     *     .value(Wei.fromEther("1.0"))
+     *     .build();
+     *
+     * // Returns immediately after broadcast
+     * Hash txHash = client.sendTransaction(request);
+     * System.out.println("Transaction submitted: " + txHash);
+     * }</pre>
+     *
+     * <p><strong>Wait for confirmation:</strong>
+     * <pre>{@code
+     * // Wait up to 60 seconds for confirmation (default)
+     * TransactionReceipt receipt = client.sendTransactionAndWait(request);
+     *
+     * // Or with custom timeout
+     * TransactionReceipt receipt = client.sendTransactionAndWait(request, 120_000, 2_000);
+     *
+     * if (receipt.status() == 1) {
+     *     System.out.println("Transaction succeeded in block " + receipt.blockNumber());
+     * }
+     * }</pre>
+     *
+     * <h2>Transaction Auto-Fill</h2>
+     *
+     * <p>When sending transactions, the client automatically fills in missing fields:
+     * <ul>
+     *   <li><strong>nonce</strong>: Fetched from {@code eth_getTransactionCount}</li>
+     *   <li><strong>gasLimit</strong>: Estimated via {@code eth_estimateGas}</li>
+     *   <li><strong>maxFeePerGas/maxPriorityFeePerGas</strong>: Calculated from current base fee</li>
+     *   <li><strong>chainId</strong>: Fetched from {@code eth_chainId}</li>
+     * </ul>
+     *
+     * <p>You can override any of these by setting them explicitly in the request.
+     *
+     * <h2>Contract Interactions</h2>
+     *
+     * <pre>{@code
+     * // Encode a contract call
+     * HexData data = Abi.encodeFunctionCall("transfer(address,uint256)",
+     *     recipient, Wei.fromEther("100").toBigInteger());
+     *
+     * TransactionRequest request = TransactionRequest.builder()
+     *     .to(tokenAddress)
+     *     .data(data)
+     *     .build();
+     *
+     * TransactionReceipt receipt = client.sendTransactionAndWait(request);
+     * }</pre>
+     *
+     * @see Brane
+     * @see Brane.Reader
+     * @see io.brane.core.crypto.Signer
+     * @see io.brane.core.crypto.PrivateKey
      * @since 0.1.0
      */
     sealed interface Signer extends Brane permits DefaultSigner {
@@ -514,26 +823,85 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
     /**
      * Builder for creating {@link Brane} client instances.
      *
-     * <p>The builder supports multiple configuration options:
+     * <p>The builder provides fine-grained control over client configuration, including
+     * transport selection, retry behavior, and chain-specific settings.
+     *
+     * <h2>Configuration Options</h2>
+     *
+     * <table border="1">
+     *   <caption>Builder Configuration Options</caption>
+     *   <tr><th>Method</th><th>Description</th><th>Required</th></tr>
+     *   <tr><td>{@link #rpcUrl(String)}</td><td>HTTP/HTTPS RPC endpoint URL</td><td>Yes (unless provider set)</td></tr>
+     *   <tr><td>{@link #wsUrl(String)}</td><td>WebSocket endpoint for subscriptions</td><td>No</td></tr>
+     *   <tr><td>{@link #provider(BraneProvider)}</td><td>Custom provider instance</td><td>Alternative to rpcUrl</td></tr>
+     *   <tr><td>{@link #signer(Signer)}</td><td>Transaction signer</td><td>Yes for Signer client</td></tr>
+     *   <tr><td>{@link #chain(ChainProfile)}</td><td>Chain-specific configuration</td><td>No</td></tr>
+     *   <tr><td>{@link #retries(int)}</td><td>Max retry attempts</td><td>No (default: 3)</td></tr>
+     *   <tr><td>{@link #retryConfig(RpcRetryConfig)}</td><td>Retry backoff settings</td><td>No</td></tr>
+     * </table>
+     *
+     * <h2>Terminal Methods</h2>
+     *
      * <ul>
-     *   <li>{@link #rpcUrl(String)} - HTTP/HTTPS RPC endpoint (required if no provider)</li>
-     *   <li>{@link #wsUrl(String)} - WebSocket endpoint for subscriptions (optional)</li>
-     *   <li>{@link #provider(BraneProvider)} - Custom provider (alternative to rpcUrl)</li>
+     *   <li>{@link #build()} - Returns {@link Signer} if signer configured, otherwise {@link Reader}</li>
+     *   <li>{@link #buildReader()} - Explicitly builds a read-only {@link Reader}</li>
+     *   <li>{@link #buildSigner()} - Explicitly builds a signing {@link Signer} (requires signer)</li>
      * </ul>
      *
-     * <p><strong>Example:</strong>
-     * <pre>{@code
-     * // Simple HTTP client
-     * Brane client = Brane.builder()
-     *     .rpcUrl("https://eth.example.com")
-     *     .build();
+     * <h2>Usage Examples</h2>
      *
-     * // With custom provider
+     * <p><strong>Simple HTTP client:</strong>
+     * <pre>{@code
      * Brane client = Brane.builder()
-     *     .provider(myProvider)
+     *     .rpcUrl("https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY")
      *     .build();
      * }</pre>
      *
+     * <p><strong>With chain profile and retries:</strong>
+     * <pre>{@code
+     * Brane client = Brane.builder()
+     *     .rpcUrl("https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY")
+     *     .chain(ChainProfiles.MAINNET)
+     *     .retries(5)
+     *     .build();
+     * }</pre>
+     *
+     * <p><strong>With transaction signing:</strong>
+     * <pre>{@code
+     * Signer key = PrivateKey.fromHex("0x...");
+     * Brane.Signer client = Brane.builder()
+     *     .rpcUrl("https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY")
+     *     .signer(key)
+     *     .chain(ChainProfiles.MAINNET)
+     *     .buildSigner();
+     * }</pre>
+     *
+     * <p><strong>With custom provider:</strong>
+     * <pre>{@code
+     * BraneProvider customProvider = new MyCustomProvider();
+     * Brane client = Brane.builder()
+     *     .provider(customProvider)
+     *     .build();
+     * }</pre>
+     *
+     * <p><strong>With custom retry configuration:</strong>
+     * <pre>{@code
+     * RpcRetryConfig retryConfig = RpcRetryConfig.builder()
+     *     .baseDelayMs(100)
+     *     .maxDelayMs(5000)
+     *     .jitterFactor(0.1)
+     *     .build();
+     *
+     * Brane client = Brane.builder()
+     *     .rpcUrl("https://eth.example.com")
+     *     .retries(10)
+     *     .retryConfig(retryConfig)
+     *     .build();
+     * }</pre>
+     *
+     * @see Brane#builder()
+     * @see Brane.Reader
+     * @see Brane.Signer
      * @since 0.1.0
      */
     final class Builder {
