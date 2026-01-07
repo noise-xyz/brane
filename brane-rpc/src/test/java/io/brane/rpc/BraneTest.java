@@ -3,11 +3,13 @@ package io.brane.rpc;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
+import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.brane.core.crypto.PrivateKeySigner;
@@ -314,5 +316,97 @@ class BraneTest {
 
         assertTrue(ex.getMessage().contains("signer"),
                 "Exception message should mention signer");
+    }
+
+    // ==================== WebSocket URL Builder Tests (P1-04) ====================
+
+    @Test
+    void wsUrlCreatesWebSocketBasedClient() {
+        // Mock WebSocketProvider.create() to avoid actual network connection
+        try (MockedStatic<WebSocketProvider> mockedStatic = mockStatic(WebSocketProvider.class)) {
+            WebSocketProvider mockWsProvider = org.mockito.Mockito.mock(WebSocketProvider.class);
+            mockedStatic.when(() -> WebSocketProvider.create("wss://eth.example.com"))
+                    .thenReturn(mockWsProvider);
+
+            // Build a client using wsUrl
+            Brane.Reader reader = Brane.builder()
+                    .wsUrl("wss://eth.example.com")
+                    .buildReader();
+
+            assertNotNull(reader);
+            // WebSocket clients should support subscriptions
+            assertTrue(reader.canSubscribe(),
+                    "Client created with wsUrl should support subscriptions (canSubscribe=true)");
+        }
+    }
+
+    @Test
+    void wsUrlWithSignerCreatesWebSocketBasedSigner() {
+        // Mock WebSocketProvider.create() to avoid actual network connection
+        try (MockedStatic<WebSocketProvider> mockedStatic = mockStatic(WebSocketProvider.class)) {
+            WebSocketProvider mockWsProvider = org.mockito.Mockito.mock(WebSocketProvider.class);
+            mockedStatic.when(() -> WebSocketProvider.create("wss://eth.example.com"))
+                    .thenReturn(mockWsProvider);
+
+            Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+            Brane.Signer client = Brane.builder()
+                    .wsUrl("wss://eth.example.com")
+                    .signer(signer)
+                    .buildSigner();
+
+            assertNotNull(client);
+            assertTrue(client.canSign());
+            assertTrue(client.canSubscribe(),
+                    "Signer created with wsUrl should support subscriptions");
+        }
+    }
+
+    @Test
+    void wsUrlAlonePassesValidation() {
+        // Verify that wsUrl alone (without rpcUrl or provider) passes validation
+        // We use MockedStatic to avoid actual connection
+        try (MockedStatic<WebSocketProvider> mockedStatic = mockStatic(WebSocketProvider.class)) {
+            WebSocketProvider mockWsProvider = org.mockito.Mockito.mock(WebSocketProvider.class);
+            mockedStatic.when(() -> WebSocketProvider.create("wss://eth.example.com"))
+                    .thenReturn(mockWsProvider);
+
+            // Should not throw - wsUrl alone is sufficient
+            assertDoesNotThrow(() -> Brane.builder()
+                    .wsUrl("wss://eth.example.com")
+                    .build());
+        }
+    }
+
+    @Test
+    void wsUrlHasPriorityOverRpcUrl() {
+        // When both wsUrl and rpcUrl are set, wsUrl should take precedence
+        try (MockedStatic<WebSocketProvider> mockedStatic = mockStatic(WebSocketProvider.class)) {
+            WebSocketProvider mockWsProvider = org.mockito.Mockito.mock(WebSocketProvider.class);
+            mockedStatic.when(() -> WebSocketProvider.create("wss://eth.example.com"))
+                    .thenReturn(mockWsProvider);
+
+            Brane.Reader reader = Brane.builder()
+                    .rpcUrl("http://eth.example.com")
+                    .wsUrl("wss://eth.example.com")
+                    .buildReader();
+
+            // Since wsUrl takes precedence, the provider should be WebSocket-based
+            assertTrue(reader.canSubscribe(),
+                    "wsUrl should have priority over rpcUrl, resulting in subscription-capable client");
+        }
+    }
+
+    @Test
+    void explicitProviderHasPriorityOverWsUrl() {
+        // When both provider and wsUrl are set, explicit provider should take precedence
+        // Use the mock HTTP provider (which doesn't support subscriptions)
+        Brane.Reader reader = Brane.builder()
+                .wsUrl("wss://eth.example.com")  // This should be ignored
+                .provider(provider)              // This should take precedence
+                .buildReader();
+
+        // Since explicit provider (mock) takes precedence, canSubscribe should be false
+        assertFalse(reader.canSubscribe(),
+                "Explicit provider should have priority over wsUrl");
     }
 }
