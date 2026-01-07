@@ -259,12 +259,20 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public HexData call(final CallRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return call(request, BlockTag.LATEST);
     }
 
     @Override
     public HexData call(final CallRequest request, final BlockTag blockTag) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        final JsonRpcResponse response = sendWithRetry(
+                "eth_call",
+                List.of(request.toMap(), blockTag.toRpcValue()));
+        final Object result = response.result();
+        if (result == null) {
+            return HexData.EMPTY;
+        }
+        return new HexData(result.toString());
     }
 
     @Override
