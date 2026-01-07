@@ -51,11 +51,10 @@ import io.brane.core.error.RpcException;
  * {@link WalletClient} which provide type-safe, documented methods for standard operations.
  * Use this class when you need direct access to custom or non-standard RPC methods.
  *
- * @see Client
  * @see BraneProvider
  * @see PublicClient
  */
-public final class RpcClient implements Client, AutoCloseable {
+public final class RpcClient implements AutoCloseable {
 
     private final BraneProvider provider;
     private final boolean ownsProvider;
@@ -90,15 +89,19 @@ public final class RpcClient implements Client, AutoCloseable {
     }
 
     /**
-     * {@inheritDoc}
+     * Executes a JSON-RPC call and returns the result deserialized to the specified type.
      *
      * <p>This implementation returns {@code null} when the JSON-RPC response contains a null
      * result field. This is intentional and follows the Ethereum JSON-RPC specification where
      * null indicates absence of data (e.g., non-existent transaction or block).
      *
-     * @see Client#call(String, Class, Object...) for full null-handling documentation
+     * @param method       the JSON-RPC method name (e.g., "eth_blockNumber")
+     * @param responseType the class to deserialize the result to
+     * @param params       the method parameters (may be empty)
+     * @param <T>          the response type
+     * @return the deserialized result, or {@code null} if the RPC result is null
+     * @throws RpcException if the RPC call fails or the result cannot be deserialized
      */
-    @Override
     public <T> @Nullable T call(final String method, final Class<T> responseType, final Object... params)
             throws RpcException {
         final List<?> safeParams =
