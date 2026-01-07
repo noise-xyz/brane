@@ -19,8 +19,8 @@ docs/
 │   ├── metrics.mdx       # Monitoring
 │   └── threading.mdx     # Concurrency
 │
-├── public-client/         # PublicClient API
-├── wallet-client/         # WalletClient API
+├── brane-reader/          # Brane.Reader API
+├── brane-signer/          # Brane.Signer API
 ├── contracts/             # Contract binding
 ├── providers/             # Provider setup
 └── chains/                # Chain profiles
