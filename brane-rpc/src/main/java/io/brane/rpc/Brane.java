@@ -1,12 +1,15 @@
 package io.brane.rpc;
 
 import java.math.BigInteger;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
 import io.brane.core.model.BlockHeader;
+import io.brane.core.model.LogEntry;
 import io.brane.core.model.Transaction;
 import io.brane.core.model.TransactionReceipt;
+import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
@@ -115,6 +118,46 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @since 0.1.0
      */
     HexData call(CallRequest request, BlockTag blockTag);
+
+    /**
+     * Retrieves logs matching the given filter.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * LogFilter filter = LogFilter.byContract(contractAddress, List.of(transferEventTopic));
+     * List<LogEntry> logs = client.getLogs(filter);
+     * for (LogEntry log : logs) {
+     *     System.out.println("Log from block " + log.blockNumber());
+     * }
+     * }</pre>
+     *
+     * @param filter the log filter criteria
+     * @return a list of matching logs
+     * @since 0.1.0
+     */
+    List<LogEntry> getLogs(LogFilter filter);
+
+    /**
+     * Estimates the gas required to execute a transaction.
+     *
+     * <p>The estimate may be higher than the actual gas used due to EVM execution
+     * variance and state changes between estimation and actual execution.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * TransactionRequest request = TransactionRequest.builder()
+     *     .from(senderAddress)
+     *     .to(contractAddress)
+     *     .data(encodedFunctionCall)
+     *     .build();
+     * BigInteger gasEstimate = client.estimateGas(request);
+     * }</pre>
+     *
+     * @param request the transaction request to estimate
+     * @return the estimated gas in Wei
+     * @since 0.1.0
+     */
+    BigInteger estimateGas(TransactionRequest request);
 
     /**
      * Read-only client for blockchain queries.

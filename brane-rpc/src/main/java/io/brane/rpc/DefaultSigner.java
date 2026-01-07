@@ -1,12 +1,15 @@
 package io.brane.rpc;
 
 import java.math.BigInteger;
+import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
 import io.brane.core.model.BlockHeader;
+import io.brane.core.model.LogEntry;
 import io.brane.core.model.Transaction;
 import io.brane.core.model.TransactionReceipt;
+import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
@@ -55,6 +58,16 @@ final class DefaultSigner implements Brane.Signer {
 
     @Override
     public HexData call(final CallRequest request, final BlockTag blockTag) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public List<LogEntry> getLogs(final LogFilter filter) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public BigInteger estimateGas(final TransactionRequest request) {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 
