@@ -345,6 +345,72 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      */
     boolean canSubscribe();
 
+    // ==================== Static Factory Methods ====================
+
+    /**
+     * Creates a read-only client connected to the specified RPC endpoint.
+     *
+     * <p>This is the simplest way to create a Brane client for read-only operations.
+     * The returned client supports all query operations but cannot send transactions.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Brane client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...");
+     * BigInteger balance = client.getBalance(address);
+     * }</pre>
+     *
+     * @param rpcUrl the HTTP/HTTPS RPC endpoint URL
+     * @return a new read-only {@link Reader} client
+     * @since 0.1.0
+     */
+    static Reader connect(String rpcUrl) {
+        return builder().rpcUrl(rpcUrl).buildReader();
+    }
+
+    /**
+     * Creates a signing-capable client connected to the specified RPC endpoint.
+     *
+     * <p>The returned client supports all read operations plus transaction signing
+     * and sending capabilities.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Signer signer = PrivateKey.fromHex("0x...");
+     * Brane.Signer client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...", signer);
+     * Hash txHash = client.sendTransaction(request);
+     * }</pre>
+     *
+     * @param rpcUrl the HTTP/HTTPS RPC endpoint URL
+     * @param signer the signer for transaction signing
+     * @return a new signing-capable {@link Signer} client
+     * @since 0.1.0
+     */
+    static Signer connect(String rpcUrl, io.brane.core.crypto.Signer signer) {
+        return builder().rpcUrl(rpcUrl).signer(signer).buildSigner();
+    }
+
+    /**
+     * Creates a new builder for configuring a Brane client.
+     *
+     * <p>Use the builder for advanced configuration such as custom providers,
+     * WebSocket endpoints, chain profiles, and retry settings.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Brane client = Brane.builder()
+     *     .rpcUrl("https://eth-mainnet.g.alchemy.com/v2/...")
+     *     .chain(ChainProfiles.MAINNET)
+     *     .retries(5)
+     *     .build();
+     * }</pre>
+     *
+     * @return a new builder instance
+     * @since 0.1.0
+     */
+    static Builder builder() {
+        return new Builder();
+    }
+
     /**
      * Read-only client for blockchain queries.
      *
@@ -445,7 +511,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
         private @Nullable String rpcUrl;
         private @Nullable String wsUrl;
         private @Nullable BraneProvider provider;
-        private @Nullable Signer signer;
+        private io.brane.core.crypto.@Nullable Signer signer;
         private @Nullable ChainProfile chain;
         private int retries = 3;
         private @Nullable RpcRetryConfig retryConfig;
@@ -512,7 +578,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @return this builder for chaining
          * @since 0.1.0
          */
-        public Builder signer(Signer signer) {
+        public Builder signer(io.brane.core.crypto.Signer signer) {
             this.signer = signer;
             return this;
         }
@@ -573,6 +639,99 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
         public Builder retryConfig(RpcRetryConfig retryConfig) {
             this.retryConfig = retryConfig;
             return this;
+        }
+
+        /**
+         * Builds a {@link Brane} client based on the configured options.
+         *
+         * <p>This method returns:
+         * <ul>
+         *   <li>A {@link Brane.Signer} if a signer was configured via {@link #signer(Signer)}</li>
+         *   <li>A {@link Brane.Reader} if no signer was configured</li>
+         * </ul>
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * // Returns Reader (no signer)
+         * Brane reader = Brane.builder()
+         *     .rpcUrl("https://eth.example.com")
+         *     .build();
+         *
+         * // Returns Signer (with signer)
+         * Brane signer = Brane.builder()
+         *     .rpcUrl("https://eth.example.com")
+         *     .signer(mySigner)
+         *     .build();
+         * }</pre>
+         *
+         * @return a new {@link Brane} client instance
+         * @throws IllegalStateException if neither rpcUrl nor provider is configured
+         * @since 0.1.0
+         */
+        public Brane build() {
+            if (signer != null) {
+                return buildSigner();
+            }
+            return buildReader();
+        }
+
+        /**
+         * Builds a read-only {@link Brane.Reader} client.
+         *
+         * <p>Use this method when you only need read operations and want to ensure
+         * the returned type is {@link Reader} at compile time.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * Brane.Reader reader = Brane.builder()
+         *     .rpcUrl("https://eth.example.com")
+         *     .chain(ChainProfiles.MAINNET)
+         *     .buildReader();
+         * }</pre>
+         *
+         * @return a new read-only {@link Brane.Reader} instance
+         * @throws IllegalStateException if neither rpcUrl nor provider is configured
+         * @since 0.1.0
+         */
+        public Reader buildReader() {
+            validateProviderConfig();
+            return new DefaultReader();
+        }
+
+        /**
+         * Builds a signing-capable {@link Brane.Signer} client.
+         *
+         * <p>Use this method when you need transaction signing capability and want
+         * to ensure the returned type is {@link Signer} at compile time.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * Brane.Signer signer = Brane.builder()
+         *     .rpcUrl("https://eth.example.com")
+         *     .signer(PrivateKey.fromHex("0x..."))
+         *     .chain(ChainProfiles.MAINNET)
+         *     .buildSigner();
+         * }</pre>
+         *
+         * @return a new signing-capable {@link Brane.Signer} instance
+         * @throws IllegalStateException if neither rpcUrl nor provider is configured
+         * @throws IllegalStateException if no signer is configured
+         * @since 0.1.0
+         */
+        public Signer buildSigner() {
+            validateProviderConfig();
+            if (signer == null) {
+                throw new IllegalStateException(
+                        "Cannot build Signer without a signer. Call signer() before buildSigner().");
+            }
+            return new DefaultSigner();
+        }
+
+        private void validateProviderConfig() {
+            if (provider == null && rpcUrl == null) {
+                throw new IllegalStateException(
+                        "Either rpcUrl or provider must be configured. Call rpcUrl() or provider().");
+            }
         }
     }
 }
