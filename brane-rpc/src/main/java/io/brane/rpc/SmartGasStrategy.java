@@ -82,7 +82,7 @@ import io.brane.rpc.internal.RpcUtils;
  * this strategy will NOT override it. Only fills {@code null} fields.
  *
  * @see TransactionRequest
- * @see WalletClient
+ * @see Brane.Signer
  * @see GasFilledRequest
  */
 final class SmartGasStrategy {
