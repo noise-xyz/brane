@@ -722,11 +722,14 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          */
         public Signer buildSigner() {
             validateProviderConfig();
-            if (signer == null) {
+            final io.brane.core.crypto.Signer resolvedSigner = signer;
+            if (resolvedSigner == null) {
                 throw new IllegalStateException(
                         "Cannot build Signer without a signer. Call signer() before buildSigner().");
             }
-            return new DefaultSigner();
+            BraneProvider resolvedProvider = provider != null ? provider : BraneProvider.http(rpcUrl);
+            RpcRetryConfig resolvedRetryConfig = retryConfig != null ? retryConfig : RpcRetryConfig.defaults();
+            return new DefaultSigner(resolvedProvider, resolvedSigner, chain, retries, resolvedRetryConfig);
         }
 
         private void validateProviderConfig() {

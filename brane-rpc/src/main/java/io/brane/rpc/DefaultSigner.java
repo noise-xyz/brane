@@ -8,7 +8,6 @@ import java.util.function.Consumer;
 import org.jspecify.annotations.Nullable;
 
 import io.brane.core.chain.ChainProfile;
-import io.brane.core.crypto.Signer;
 
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
@@ -32,17 +31,27 @@ import io.brane.core.types.HexData;
 final class DefaultSigner implements Brane.Signer {
 
     private final DefaultReader reader;
-    private final Signer signer;
+    private final io.brane.core.crypto.Signer signer;
     private final SmartGasStrategy gasStrategy;
 
     /**
-     * Package-private constructor placeholder.
-     * To be implemented by P3-02 with proper parameters.
+     * Creates a new DefaultSigner with the specified configuration.
+     *
+     * @param provider    the RPC provider for blockchain communication
+     * @param signer      the signer for transaction signing
+     * @param chain       the chain profile for network-specific settings (may be null)
+     * @param maxRetries  the maximum number of retry attempts for transient failures
+     * @param retryConfig the retry configuration for backoff timing
      */
-    DefaultSigner() {
-        // Temporary null assignments - P3-02 will add proper constructor
-        this.reader = null;
-        this.signer = null;
+    DefaultSigner(
+            final BraneProvider provider,
+            final io.brane.core.crypto.Signer signer,
+            final @Nullable ChainProfile chain,
+            final int maxRetries,
+            final RpcRetryConfig retryConfig) {
+        this.reader = new DefaultReader(provider, chain, maxRetries, retryConfig);
+        this.signer = signer;
+        // SmartGasStrategy will be initialized in P3-07 when sendTransaction is implemented
         this.gasStrategy = null;
     }
 
