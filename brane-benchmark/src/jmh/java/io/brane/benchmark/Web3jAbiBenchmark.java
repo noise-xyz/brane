@@ -12,6 +12,17 @@ import org.web3j.abi.datatypes.Utf8String;
 import org.web3j.abi.datatypes.generated.Bytes32;
 import org.web3j.abi.datatypes.generated.Uint256;
 
+/**
+ * JMH benchmark for web3j's ABI encoding performance (baseline comparison).
+ *
+ * <p>Measures throughput (ops/sec) for:
+ * <ul>
+ *   <li>{@code encodeConstructor} - simple uint256 encoding</li>
+ *   <li>{@code encodeComplex} - nested struct encoding (Outer with Inner[])</li>
+ * </ul>
+ *
+ * <p>Used as baseline for comparison with {@link AbiBenchmark}.
+ */
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)

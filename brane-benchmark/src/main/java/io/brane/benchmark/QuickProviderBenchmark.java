@@ -1,9 +1,15 @@
 package io.brane.benchmark;
 
-import java.util.*;
-import java.util.concurrent.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
-import io.brane.rpc.*;
+import io.brane.rpc.BraneProvider;
+import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.JsonRpcResponse;
+import io.brane.rpc.WebSocketProvider;
 
 /**
  * Quick benchmark to measure all provider types against local Anvil.

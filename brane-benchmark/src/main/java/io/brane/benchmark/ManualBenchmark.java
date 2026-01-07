@@ -3,6 +3,18 @@ package io.brane.benchmark;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WebSocketProvider;
 
+/**
+ * Manual (non-JMH) benchmark for quick WebSocket RPC performance testing.
+ *
+ * <p>Runs a simple warmup + measurement loop to measure:
+ * <ul>
+ *   <li>Latency (ops/sec) for eth_chainId calls</li>
+ *   <li>Sequential throughput (ops/sec) for eth_getBlockByNumber calls</li>
+ * </ul>
+ *
+ * <p>Requires Anvil running on ws://127.0.0.1:8545.
+ * Run via: {@code ./gradlew :brane-benchmark:runManualBenchmark}
+ */
 public class ManualBenchmark {
 
     private static final String WS_URL = "ws://127.0.0.1:8545";
