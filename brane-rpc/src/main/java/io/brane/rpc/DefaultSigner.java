@@ -115,4 +115,20 @@ final class DefaultSigner implements Brane.Signer {
     public void close() {
         // To be implemented
     }
+
+    @Override
+    public Hash sendTransaction(final TransactionRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public TransactionReceipt sendTransactionAndWait(
+            final TransactionRequest request, final long timeoutMillis, final long pollIntervalMillis) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public io.brane.core.crypto.Signer signer() {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
 }
