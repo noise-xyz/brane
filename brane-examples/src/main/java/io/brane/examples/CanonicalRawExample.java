@@ -16,9 +16,9 @@ import io.brane.core.error.RpcException;
  * Canonical "Low-Level" Example for Brane 0.1.0-alpha.
  * <p>
  * Demonstrates the idiomatic way to perform raw operations:
- * 1. Direct RPC calls via {@link PublicClient}.
+ * 1. Direct RPC calls via {@link Brane}.
  * 2. Building transactions via {@link TxBuilder}.
- * 3. Signing and sending via {@link WalletClient}.
+ * 3. Signing and sending via {@link Brane.Signer}.
  * <p>
  * Usage:
  * ./gradlew :brane-examples:run --no-daemon \
