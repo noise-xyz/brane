@@ -57,22 +57,22 @@ final class DefaultSigner implements Brane.Signer {
 
     @Override
     public BigInteger chainId() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.chainId();
     }
 
     @Override
     public BigInteger getBalance(final Address address) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.getBalance(address);
     }
 
     @Override
     public @Nullable BlockHeader getLatestBlock() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.getLatestBlock();
     }
 
     @Override
     public @Nullable BlockHeader getBlockByNumber(final long blockNumber) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.getBlockByNumber(blockNumber);
     }
 
     @Override
