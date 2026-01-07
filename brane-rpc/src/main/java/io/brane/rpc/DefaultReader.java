@@ -278,6 +278,11 @@ final class DefaultReader implements Brane.Reader {
         final JsonRpcResponse response = sendWithRetry(
                 "eth_call",
                 List.of(request.toMap(), blockTag.toRpcValue()));
+        if (response.hasError()) {
+            final JsonRpcError err = response.error();
+            throw new io.brane.core.error.RpcException(
+                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+        }
         final Object result = response.result();
         if (result == null) {
             return HexData.EMPTY;
@@ -445,6 +450,11 @@ final class DefaultReader implements Brane.Reader {
                 List.of(request.toMap(), blockTag.toRpcValue()));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
+            // Error code -32601 means "Method not found" - eth_simulateV1 not supported
+            if (err.code() == -32601) {
+                throw new io.brane.rpc.exception.SimulateNotSupportedException(
+                        "eth_simulateV1 is not supported by this node");
+            }
             throw new io.brane.core.error.RpcException(
                     err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
         }

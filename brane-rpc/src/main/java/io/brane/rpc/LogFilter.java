@@ -57,7 +57,7 @@ import io.brane.core.types.Hash;
  * @param toBlock   the ending block number (inclusive), or empty for latest
  * @param addresses the contract addresses to filter by, or empty for all contracts
  * @param topics    the event topic filters, or empty for all events
- * @see PublicClient#getLogs(LogFilter)
+ * @see Brane#getLogs(LogFilter)
  */
 public record LogFilter(
         Optional<Long> fromBlock,

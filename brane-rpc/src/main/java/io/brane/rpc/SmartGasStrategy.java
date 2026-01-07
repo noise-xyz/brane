@@ -158,7 +158,7 @@ final class SmartGasStrategy {
         FALLBACK_WARN
     }
 
-    private final PublicClient publicClient;
+    private final Brane brane;
     private final BraneProvider provider;
     private final ChainProfile profile;
     private final BigInteger gasLimitBufferNumerator;
@@ -166,9 +166,9 @@ final class SmartGasStrategy {
     private final Eip1559FallbackBehavior eip1559FallbackBehavior;
 
     SmartGasStrategy(
-            final PublicClient publicClient, final BraneProvider provider, final ChainProfile profile) {
+            final Brane brane, final BraneProvider provider, final ChainProfile profile) {
         this(
-                publicClient,
+                brane,
                 provider,
                 profile,
                 DEFAULT_GAS_LIMIT_BUFFER_NUMERATOR,
@@ -177,23 +177,23 @@ final class SmartGasStrategy {
     }
 
     SmartGasStrategy(
-            final PublicClient publicClient,
+            final Brane brane,
             final BraneProvider provider,
             final ChainProfile profile,
             final BigInteger gasLimitBufferNumerator,
             final BigInteger gasLimitBufferDenominator) {
-        this(publicClient, provider, profile, gasLimitBufferNumerator, gasLimitBufferDenominator,
+        this(brane, provider, profile, gasLimitBufferNumerator, gasLimitBufferDenominator,
                 Eip1559FallbackBehavior.FALLBACK_WARN);
     }
 
     SmartGasStrategy(
-            final PublicClient publicClient,
+            final Brane brane,
             final BraneProvider provider,
             final ChainProfile profile,
             final BigInteger gasLimitBufferNumerator,
             final BigInteger gasLimitBufferDenominator,
             final Eip1559FallbackBehavior eip1559FallbackBehavior) {
-        this.publicClient = Objects.requireNonNull(publicClient, "publicClient");
+        this.brane = Objects.requireNonNull(brane, "brane");
         this.provider = Objects.requireNonNull(provider, "provider");
         this.profile = Objects.requireNonNull(profile, "profile");
         this.gasLimitBufferNumerator = requirePositive(gasLimitBufferNumerator, "gasLimitBufferNumerator");
@@ -302,7 +302,7 @@ final class SmartGasStrategy {
             return request; // User provided both fees - don't override
         }
 
-        final BlockHeader latest = publicClient.getLatestBlock();
+        final BlockHeader latest = brane.getLatestBlock();
         if (latest != null && latest.baseFeePerGas() != null) {
             final Wei baseFee = latest.baseFeePerGas();
 

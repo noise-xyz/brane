@@ -66,10 +66,8 @@ final class DefaultSigner implements Brane.Signer {
         this.reader = new DefaultReader(provider, chain, maxRetries, retryConfig);
         this.provider = provider;
         this.signer = signer;
-        // Create SmartGasStrategy with an adapter for the PublicClient interface
         final ChainProfile resolvedChain = chain != null ? chain : defaultChainProfile();
-        this.gasStrategy = new SmartGasStrategy(
-                new PublicClientAdapter(reader), provider, resolvedChain);
+        this.gasStrategy = new SmartGasStrategy(reader, provider, resolvedChain);
     }
 
     /**
@@ -79,85 +77,6 @@ final class DefaultSigner implements Brane.Signer {
     private static ChainProfile defaultChainProfile() {
         // Use chain ID 1 as a placeholder; actual chain ID will be fetched lazily
         return ChainProfile.of(1L, null, true, Wei.of(1_000_000_000L));
-    }
-
-    /**
-     * Adapter to expose DefaultReader as a PublicClient for SmartGasStrategy.
-     * Only implements the methods actually used by SmartGasStrategy.
-     */
-    private static final class PublicClientAdapter implements PublicClient {
-        private final DefaultReader reader;
-
-        PublicClientAdapter(final DefaultReader reader) {
-            this.reader = reader;
-        }
-
-        @Override
-        public @Nullable BlockHeader getLatestBlock() {
-            return reader.getLatestBlock();
-        }
-
-        @Override
-        public @Nullable BlockHeader getBlockByNumber(final long blockNumber) {
-            return reader.getBlockByNumber(blockNumber);
-        }
-
-        @Override
-        public @Nullable Transaction getTransactionByHash(final Hash hash) {
-            return reader.getTransactionByHash(hash);
-        }
-
-        @Override
-        public HexData call(final CallRequest request, final BlockTag blockTag) {
-            return reader.call(request, blockTag);
-        }
-
-        @Override
-        public @Nullable String call(final Map<String, Object> callObject, final String blockTag) {
-            // Not used by SmartGasStrategy
-            throw new UnsupportedOperationException("Deprecated method not supported");
-        }
-
-        @Override
-        public List<LogEntry> getLogs(final LogFilter filter) {
-            return reader.getLogs(filter);
-        }
-
-        @Override
-        public BigInteger getChainId() {
-            return reader.chainId();
-        }
-
-        @Override
-        public BigInteger getBalance(final Address address) {
-            return reader.getBalance(address);
-        }
-
-        @Override
-        public Subscription subscribeToNewHeads(final java.util.function.Consumer<BlockHeader> callback) {
-            return reader.onNewHeads(callback);
-        }
-
-        @Override
-        public Subscription subscribeToLogs(final LogFilter filter,
-                final java.util.function.Consumer<LogEntry> callback) {
-            return reader.onLogs(filter, callback);
-        }
-
-        @Override
-        public AccessListWithGas createAccessList(final TransactionRequest request) {
-            return reader.createAccessList(request);
-        }
-
-        @Override
-        public MulticallBatch createBatch() {
-            return reader.batch();
-        }
-
-        @Override
-        public SimulateResult simulateCalls(final SimulateRequest request) {
-            return reader.simulate(request);
-        }
     }
 
     @Override

@@ -118,7 +118,6 @@ public final class MulticallBatch {
 
     /**
      * Functional interface for executing eth_call requests.
-     * This allows MulticallBatch to work with both PublicClient and Brane.
      */
     @FunctionalInterface
     interface CallExecutor {
@@ -137,17 +136,6 @@ public final class MulticallBatch {
     }
 
     /**
-     * Creates a new multicall batch.
-     *
-     * @param publicClient the public client to use for execution
-     * @return a new batch instance
-     */
-    static MulticallBatch create(final PublicClient publicClient) {
-        Objects.requireNonNull(publicClient, "publicClient");
-        return new MulticallBatch(publicClient::call);
-    }
-
-    /**
      * Creates a new multicall batch using a Brane client.
      *
      * @param brane the Brane client to use for execution
@@ -156,6 +144,16 @@ public final class MulticallBatch {
     static MulticallBatch create(final Brane brane) {
         Objects.requireNonNull(brane, "brane");
         return new MulticallBatch(brane::call);
+    }
+
+    /**
+     * Creates a new multicall batch using a custom call executor.
+     *
+     * @param executor the call executor to use for eth_call requests
+     * @return a new batch instance
+     */
+    static MulticallBatch create(final CallExecutor executor) {
+        return new MulticallBatch(executor);
     }
 
     /**

@@ -51,7 +51,7 @@ public class WebSocketIntegrationTest {
     private static boolean infrastructureAvailable;
 
     private WebSocketProvider wsProvider;
-    private PublicClient client;
+    private Brane client;
     private HttpClient httpClient;
 
     @BeforeAll
@@ -122,14 +122,14 @@ public class WebSocketIntegrationTest {
         Assumptions.assumeTrue(infrastructureAvailable,
                 "Skipping test: No Anvil node available (neither Docker nor local)");
         wsProvider = WebSocketProvider.create(wsUrl);
-        client = PublicClient.from(wsProvider);
+        client = Brane.builder().provider(wsProvider).buildReader();
         httpClient = HttpClient.newHttpClient();
     }
 
     @Test
     void testSubscribeToNewHeads() throws Exception {
         CompletableFuture<BlockHeader> received = new CompletableFuture<>();
-        Subscription sub = client.subscribeToNewHeads(header -> {
+        Subscription sub = client.onNewHeads(header -> {
             received.complete(header);
         });
 
@@ -151,7 +151,7 @@ public class WebSocketIntegrationTest {
         AtomicReference<String> callbackThreadName = new AtomicReference<>();
         CompletableFuture<String> received = new CompletableFuture<>();
 
-        Subscription sub = client.subscribeToNewHeads(header -> {
+        Subscription sub = client.onNewHeads(header -> {
             callbackThreadName.set(Thread.currentThread().getName());
             received.complete(Thread.currentThread().getName());
         });
@@ -184,15 +184,14 @@ public class WebSocketIntegrationTest {
         }
         Address contractAddress = new Address(contractAddrStr);
 
-        // Setup WalletClient for transfers
+        // Setup Brane.Signer for transfers via WebSocket
         io.brane.core.crypto.Signer signer = new io.brane.core.crypto.PrivateKeySigner(
                 "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
-        Address owner = new Address("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
-        io.brane.rpc.WalletClient wallet = io.brane.rpc.DefaultWalletClient.create(wsProvider, client, signer, owner);
+        Brane.Signer wallet = Brane.builder().provider(wsProvider).signer(signer).buildSigner();
 
         // Subscribe to logs from the token contract
         CompletableFuture<LogEntry> received = new CompletableFuture<>();
-        Subscription sub = client.subscribeToLogs(
+        Subscription sub = client.onLogs(
                 new io.brane.rpc.LogFilter(java.util.Optional.empty(), java.util.Optional.empty(),
                         java.util.Optional.of(java.util.List.of(contractAddress)), java.util.Optional.empty()),
                 log -> received.complete(log));
@@ -255,7 +254,7 @@ public class WebSocketIntegrationTest {
 
         CompletableFuture<String> received = new CompletableFuture<>();
 
-        Subscription sub = client.subscribeToNewHeads(header -> {
+        Subscription sub = client.onNewHeads(header -> {
             received.complete(Thread.currentThread().getName());
         });
 
