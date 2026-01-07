@@ -936,10 +936,34 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
         }
 
         /**
-         * Sets the WebSocket endpoint URL for subscriptions.
+         * Sets the WebSocket endpoint URL for the client.
          *
-         * <p>If provided, the client will use this endpoint for subscription methods
-         * like {@link Brane#onNewHeads} and {@link Brane#onLogs}.
+         * <p>When set, the client uses a WebSocket transport instead of HTTP. This enables
+         * real-time subscription methods like {@link Brane#onNewHeads} and {@link Brane#onLogs}.
+         *
+         * <p>Provider resolution priority: explicit {@link #provider(BraneProvider)} &gt;
+         * {@code wsUrl} &gt; {@link #rpcUrl(String)}.
+         *
+         * <p><strong>Example - WebSocket client:</strong>
+         * <pre>{@code
+         * // Create a WebSocket-based client with subscription support
+         * Brane client = Brane.builder()
+         *     .wsUrl("wss://eth-mainnet.g.alchemy.com/v2/YOUR_KEY")
+         *     .build();
+         *
+         * // Subscribe to new blocks (only works with WebSocket)
+         * client.onNewHeads(header -> {
+         *     System.out.println("New block: " + header.number());
+         * });
+         * }</pre>
+         *
+         * <p><strong>Example - WebSocket client with signing:</strong>
+         * <pre>{@code
+         * Brane.Signer client = Brane.builder()
+         *     .wsUrl("wss://eth-mainnet.g.alchemy.com/v2/YOUR_KEY")
+         *     .signer(PrivateKey.fromHex("0x..."))
+         *     .build();
+         * }</pre>
          *
          * @param wsUrl the WebSocket endpoint URL (e.g., "wss://eth.example.com/ws")
          * @return this builder for chaining
