@@ -133,7 +133,34 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public @Nullable Transaction getTransactionByHash(final Hash hash) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        final JsonRpcResponse response = sendWithRetry("eth_getTransactionByHash", List.of(hash.value()));
+        final Object result = response.result();
+        if (result == null) {
+            return null;
+        }
+
+        final Map<String, Object> map = MAPPER.convertValue(
+                result, new TypeReference<Map<String, Object>>() {}
+        );
+
+        final String txHash = RpcUtils.stringValue(map.get("hash"));
+        final String from = RpcUtils.stringValue(map.get("from"));
+        final String to = RpcUtils.stringValue(map.get("to"));
+        final String input = RpcUtils.stringValue(map.get("input"));
+        final String valueHex = RpcUtils.stringValue(map.get("value"));
+        final long nonce = RpcUtils.decodeHexLong(map.get("nonce"));
+        final Object blockNumberObj = map.get("blockNumber");
+        final Long blockNumber = blockNumberObj != null ? RpcUtils.decodeHexLong(blockNumberObj) : null;
+
+        return new Transaction(
+                new Hash(txHash),
+                new Address(from),
+                to != null ? new Address(to) : null,
+                input != null ? new HexData(input) : HexData.EMPTY,
+                new Wei(RpcUtils.decodeHexBigInteger(valueHex)),
+                nonce,
+                blockNumber);
     }
 
     @Override
