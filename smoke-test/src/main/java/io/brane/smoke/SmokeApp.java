@@ -31,6 +31,10 @@ import io.brane.rpc.WalletClient;
 
 public class SmokeApp {
 
+    // Timeout constants for transaction waiting
+    private static final long WAIT_TIMEOUT_MS = 30_000;
+    private static final long POLL_INTERVAL_MS = 1_000;
+
     // Minimal ERC-20 ABI for testing
     private static final String ABI_JSON = """
             [
@@ -195,7 +199,7 @@ public class SmokeApp {
 
         TransactionRequest deployRequest = BraneContract.deployRequest(ABI_JSON, bytecodeHex, initialSupply);
 
-        TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployRequest, 30_000, 1_000);
+        TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployRequest, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
 
         if (!receipt.status()) {
             throw new RuntimeException("Deployment failed!");
@@ -216,7 +220,7 @@ public class SmokeApp {
         BigInteger amount = new BigInteger("100");
         ReadWriteContract writeContract = ReadWriteContract.from(tokenAddress, abi, publicClient, walletClient);
 
-        TransactionReceipt transferReceipt = writeContract.sendAndWait("transfer", 30_000, 1_000, RECIPIENT, amount);
+        TransactionReceipt transferReceipt = writeContract.sendAndWait("transfer", WAIT_TIMEOUT_MS, POLL_INTERVAL_MS, RECIPIENT, amount);
 
         if (!transferReceipt.status()) {
             throw new RuntimeException("Transfer failed!");
@@ -239,7 +243,7 @@ public class SmokeApp {
 
         try {
             System.out.println("  Attempting to transfer excessive amount (expecting revert)...");
-            contract.sendAndWait("transfer", 30_000, 1_000, RECIPIENT, excessiveAmount);
+            contract.sendAndWait("transfer", WAIT_TIMEOUT_MS, POLL_INTERVAL_MS, RECIPIENT, excessiveAmount);
             throw new RuntimeException("Should have reverted!");
         } catch (RevertException e) {
             System.out.println("  ✓ Caught Expected Revert: " + e.revertReason());
@@ -329,7 +333,7 @@ public class SmokeApp {
                 .accessList(List.of(entry))
                 .build();
 
-        TransactionReceipt receipt = walletClient.sendTransactionAndWait(request, 30_000, 1_000);
+        TransactionReceipt receipt = walletClient.sendTransactionAndWait(request, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
 
         if (!receipt.status()) {
             throw new RuntimeException("EIP-1559 transfer failed!");
@@ -456,7 +460,7 @@ public class SmokeApp {
 
         // Deploy
         TransactionRequest deployReq = TxBuilder.legacy().data(new HexData(bytecode)).build();
-        TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployReq, 30_000, 1_000);
+        TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployReq, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
         if (!receipt.status()) {
             throw new RuntimeException("ComplexContract deployment failed");
         }
@@ -507,7 +511,7 @@ public class SmokeApp {
                 .value(Wei.of(1))
                 .build(); // No gas limit set, so it will estimate and apply buffer
 
-        TransactionReceipt receipt = bufferedClient.sendTransactionAndWait(req, 30_000, 1_000);
+        TransactionReceipt receipt = bufferedClient.sendTransactionAndWait(req, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
         if (!receipt.status()) {
             throw new RuntimeException("Buffered transaction failed");
         }
@@ -677,7 +681,7 @@ public class SmokeApp {
 
             // Trigger a transfer
             ReadWriteContract writeContract = ReadWriteContract.from(tokenAddress, abi, publicClient, walletClient);
-            writeContract.sendAndWait("transfer", 30_000, 1_000, RECIPIENT, BigInteger.ONE);
+            writeContract.sendAndWait("transfer", WAIT_TIMEOUT_MS, POLL_INTERVAL_MS, RECIPIENT, BigInteger.ONE);
 
             logFuture.get(10, java.util.concurrent.TimeUnit.SECONDS);
             logSub.unsubscribe();
