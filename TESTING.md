@@ -57,7 +57,7 @@ If you are an AI assistant (like Gemini) helping with this codebase, follow thes
 *   **Goal**: Verify interaction with a real EVM (Anvil).
 *   **Location**: `brane-examples/src/main/java/io/brane/examples/...` (as a standalone example) OR `brane-core/src/test/java/...` (with `@Tag("integration")`).
 *   **Pattern**:
-    *   Use `DefaultWalletClient` to connect to `http://127.0.0.1:8545`.
+    *   Use `Brane.connect(url, signer)` to connect to `http://127.0.0.1:8545`.
     *   Use the default Anvil private key: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`.
     *   Deploy a contract or send a transaction.
     *   Assert the on-chain result.
