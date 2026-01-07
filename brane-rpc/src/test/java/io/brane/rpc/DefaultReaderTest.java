@@ -724,6 +724,74 @@ class DefaultReaderTest {
         assertEquals(BigInteger.valueOf(200000), gasEstimate);
     }
 
+    // ==================== Lifecycle Tests ====================
+
+    @Test
+    void closeCallsProviderClose() {
+        // When
+        reader.close();
+
+        // Then
+        verify(provider).close();
+    }
+
+    @Test
+    void closeIsIdempotent() {
+        // When: close is called multiple times
+        reader.close();
+        reader.close();
+        reader.close();
+
+        // Then: provider.close() should only be called once
+        verify(provider, times(1)).close();
+    }
+
+    @Test
+    void isClosedReturnsFalseBeforeClose() {
+        // Given: reader is open
+        // When/Then
+        assertFalse(reader.isClosed());
+    }
+
+    @Test
+    void isClosedReturnsTrueAfterClose() {
+        // Given: reader is open
+        assertFalse(reader.isClosed());
+
+        // When
+        reader.close();
+
+        // Then
+        assertTrue(reader.isClosed());
+    }
+
+    @Test
+    void ensureOpenSucceedsWhenOpen() {
+        // Given: reader is open
+        // When/Then: no exception thrown
+        assertDoesNotThrow(() -> reader.ensureOpen());
+    }
+
+    @Test
+    void ensureOpenThrowsAfterClose() {
+        // Given: reader is closed
+        reader.close();
+
+        // When/Then
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> reader.ensureOpen());
+        assertTrue(ex.getMessage().contains("closed"));
+    }
+
+    @Test
+    void batchThrowsAfterClose() {
+        // Given: reader is closed
+        reader.close();
+
+        // When/Then
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> reader.batch());
+        assertTrue(ex.getMessage().contains("closed"));
+    }
+
     // ==================== Helper Methods ====================
 
     private Map<String, Object> createLogMap(
