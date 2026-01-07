@@ -10,6 +10,17 @@ import io.brane.primitives.rlp.Rlp;
 import io.brane.primitives.rlp.RlpList;
 import io.brane.primitives.rlp.RlpString;
 
+/**
+ * JMH benchmark for Brane SDK's RLP encoding performance.
+ *
+ * <p>Measures throughput (ops/sec) for RLP encoding:
+ * <ul>
+ *   <li>{@code encodeSimple} - small list with 2 string items</li>
+ *   <li>{@code encodeComplex} - nested list with 100+ items</li>
+ * </ul>
+ *
+ * <p>RLP encoding is used for transaction serialization before signing.
+ */
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)

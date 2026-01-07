@@ -7,6 +7,17 @@ import org.openjdk.jmh.annotations.*;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WebSocketProvider;
 
+/**
+ * JMH benchmark for Brane SDK's WebSocket RPC performance.
+ *
+ * <p>Measures throughput (ops/sec) for basic RPC calls over WebSocket:
+ * <ul>
+ *   <li>{@code latency_chainId} - eth_chainId call latency</li>
+ *   <li>{@code throughput_blockNumber} - eth_getBlockByNumber throughput</li>
+ * </ul>
+ *
+ * <p>Requires Anvil running on ws://127.0.0.1:8545.
+ */
 @State(Scope.Benchmark)
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)

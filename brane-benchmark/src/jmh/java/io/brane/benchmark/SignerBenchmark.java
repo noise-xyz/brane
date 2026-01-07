@@ -10,6 +10,18 @@ import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 
+/**
+ * JMH benchmark for Brane SDK's transaction signing performance.
+ *
+ * <p>Measures throughput (ops/sec) for ECDSA signing:
+ * <ul>
+ *   <li>{@code signLegacy} - legacy (type 0) transaction signing</li>
+ *   <li>{@code signEip1559} - EIP-1559 (type 2) transaction signing</li>
+ *   <li>{@code signLargePayload} - legacy tx with 10KB data payload</li>
+ * </ul>
+ *
+ * <p>Compare with {@link Web3jSignerBenchmark} for web3j baseline.
+ */
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)

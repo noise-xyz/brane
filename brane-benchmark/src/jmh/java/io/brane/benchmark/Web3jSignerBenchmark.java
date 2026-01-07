@@ -9,6 +9,18 @@ import org.web3j.crypto.RawTransaction;
 import org.web3j.crypto.TransactionEncoder;
 import org.web3j.utils.Numeric;
 
+/**
+ * JMH benchmark for web3j's transaction signing performance (baseline comparison).
+ *
+ * <p>Measures throughput (ops/sec) for ECDSA signing:
+ * <ul>
+ *   <li>{@code signLegacy} - legacy (type 0) transaction signing</li>
+ *   <li>{@code signEip1559} - EIP-1559 (type 2) transaction signing</li>
+ *   <li>{@code signLargePayload} - legacy tx with 10KB data payload</li>
+ * </ul>
+ *
+ * <p>Used as baseline for comparison with {@link SignerBenchmark}.
+ */
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)

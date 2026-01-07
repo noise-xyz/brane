@@ -8,6 +8,18 @@ import org.openjdk.jmh.annotations.*;
 import io.brane.core.abi.Abi;
 import io.brane.core.types.HexData;
 
+/**
+ * JMH benchmark for Brane SDK's ABI encoding and decoding performance.
+ *
+ * <p>Measures throughput (ops/sec) for:
+ * <ul>
+ *   <li>{@code encodeConstructor} - simple uint256 constructor encoding</li>
+ *   <li>{@code encodeComplex} - nested tuple/array encoding (struct with tuple[])</li>
+ *   <li>{@code decodeComplex} - decoding complex nested structures</li>
+ * </ul>
+ *
+ * <p>Compare with {@link Web3jAbiBenchmark} for web3j baseline.
+ */
 @State(Scope.Thread)
 @BenchmarkMode(Mode.Throughput)
 @OutputTimeUnit(TimeUnit.SECONDS)
