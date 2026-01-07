@@ -5,7 +5,10 @@ import java.math.BigInteger;
 import org.jspecify.annotations.Nullable;
 
 import io.brane.core.model.BlockHeader;
+import io.brane.core.model.Transaction;
+import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
 
 /**
  * Default implementation of {@link Brane.Reader} for read-only blockchain operations.
@@ -31,6 +34,16 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public @Nullable BlockHeader getBlockByNumber(final long blockNumber) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public @Nullable Transaction getTransactionByHash(final Hash hash) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public @Nullable TransactionReceipt getTransactionReceipt(final Hash hash) {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 

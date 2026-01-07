@@ -5,7 +5,10 @@ import java.math.BigInteger;
 import org.jspecify.annotations.Nullable;
 
 import io.brane.core.model.BlockHeader;
+import io.brane.core.model.Transaction;
+import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
 
 /**
  * Unified entry point for interacting with Ethereum/EVM blockchains.
@@ -62,6 +65,24 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @since 0.1.0
      */
     @Nullable BlockHeader getBlockByNumber(long blockNumber);
+
+    /**
+     * Retrieves a transaction by its hash.
+     *
+     * @param hash the transaction hash
+     * @return the transaction, or {@code null} if not found
+     * @since 0.1.0
+     */
+    @Nullable Transaction getTransactionByHash(Hash hash);
+
+    /**
+     * Retrieves a transaction receipt by the transaction hash.
+     *
+     * @param hash the transaction hash
+     * @return the transaction receipt, or {@code null} if not found or pending
+     * @since 0.1.0
+     */
+    @Nullable TransactionReceipt getTransactionReceipt(Hash hash);
 
     /**
      * Read-only client for blockchain queries.
