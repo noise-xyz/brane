@@ -137,7 +137,7 @@ Brane SDK follows a consistent naming convention for static factory methods:
 | `builder()` | Starts a builder pattern, returns a `Builder` with `.build()` | `HttpBraneProvider.builder(url).build()` |
 | `from()` | Conversion/adaptation from an existing object or explicit parameters | `Brane.connect(url)` |
 | `of()` | Static factory for value objects (records, immutable types) | `CallRequest.of(to, data)` |
-| `forChain()` | Domain-specific factory for chain configuration (returns builder) | `BranePublicClient.forChain(profile)` |
+| `forChain()` | Domain-specific factory for chain configuration (returns builder) | `Brane.builder().chain(profile)` |
 
 **Guidelines:**
 1. **`create()`** - Use when construction is straightforward and doesn't require many optional parameters.
