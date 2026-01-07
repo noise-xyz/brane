@@ -5,7 +5,7 @@ import java.util.concurrent.CompletableFuture;
 
 import io.brane.rpc.WebSocketProvider;
 
-public class WebSocketBenchmark {
+public class ManualWebSocketBenchmark {
 
     private static final String WS_URL = "ws://127.0.0.1:8545";
     private static final int ITERATIONS = 10000;
