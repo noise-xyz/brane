@@ -9,7 +9,6 @@ import org.jspecify.annotations.Nullable;
 
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.crypto.Signer;
-
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.LogEntry;

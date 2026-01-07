@@ -14,13 +14,13 @@ import io.brane.core.crypto.Keccak256;
 import io.brane.core.crypto.PrivateKey;
 import io.brane.core.crypto.Signature;
 import io.brane.core.crypto.Signer;
+import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.tx.UnsignedTransaction;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;
 import io.brane.rpc.Brane;
-import io.brane.core.error.RpcException;
 
 /**
  * Canonical Custom Signer Example.

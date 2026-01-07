@@ -6,6 +6,8 @@ import io.brane.core.AnsiColors;
 import io.brane.core.BraneDebug;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.crypto.PrivateKeySigner;
+import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
@@ -13,8 +15,6 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.Wei;
 import io.brane.rpc.Brane;
-import io.brane.core.error.RevertException;
-import io.brane.core.error.RpcException;
 
 /**
  * Canonical "Modern Transactions" Example for Brane 0.1.0-alpha.

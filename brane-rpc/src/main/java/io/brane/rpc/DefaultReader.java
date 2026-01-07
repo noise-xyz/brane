@@ -12,18 +12,14 @@ import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import org.jspecify.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import org.jspecify.annotations.Nullable;
-
-import com.fasterxml.jackson.core.type.TypeReference;
-
-import io.brane.core.chain.ChainProfile;
 import io.brane.core.RevertDecoder;
+import io.brane.core.chain.ChainProfile;
 import io.brane.core.error.RevertException;
-import io.brane.rpc.internal.LogParser;
-
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
@@ -35,6 +31,7 @@ import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import io.brane.rpc.internal.LogParser;
 import io.brane.rpc.internal.RpcUtils;
 
 /**

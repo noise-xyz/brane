@@ -5,12 +5,12 @@ import java.math.BigInteger;
 
 import io.brane.core.AnsiColors;
 import io.brane.core.builder.TxBuilder;
+import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;
 import io.brane.rpc.Brane;
-import io.brane.core.error.RpcException;
 
 /**
  * Canonical "Low-Level" Example for Brane 0.1.0-alpha.
