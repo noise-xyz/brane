@@ -122,27 +122,27 @@ final class DefaultSigner implements Brane.Signer {
 
     @Override
     public Subscription onNewHeads(final Consumer<BlockHeader> callback) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.onNewHeads(callback);
     }
 
     @Override
     public Subscription onLogs(final LogFilter filter, final Consumer<LogEntry> callback) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.onLogs(filter, callback);
     }
 
     @Override
     public Optional<ChainProfile> chain() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.chain();
     }
 
     @Override
     public boolean canSubscribe() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.canSubscribe();
     }
 
     @Override
     public void close() {
-        // To be implemented
+        reader.close();
     }
 
     @Override
