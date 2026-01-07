@@ -32,8 +32,7 @@ import io.brane.rpc.internal.LogParser;
 import io.brane.rpc.internal.RpcUtils;
 
 /**
- * Default implementation of {@link WalletClient} with automatic transaction
- * preparation.
+ * Default wallet client with automatic transaction preparation.
  *
  * <p>
  * This class implements the complete transaction lifecycle:
@@ -58,11 +57,13 @@ import io.brane.rpc.internal.RpcUtils;
  * <strong>Usage:</strong> Typically created via a builder pattern, not
  * instantiated directly.
  *
- * @see WalletClient
  * @see SmartGasStrategy
  * @see io.brane.core.crypto.Signer
+ * @deprecated Use {@link Brane.Signer} via {@link Brane#connect(String, io.brane.core.crypto.Signer)} instead.
+ *             This class will be removed in a future version.
  */
-public final class DefaultWalletClient implements WalletClient {
+@Deprecated(forRemoval = true)
+public final class DefaultWalletClient {
 
     private final BraneProvider provider;
 
@@ -198,7 +199,6 @@ public final class DefaultWalletClient implements WalletClient {
                 gasLimitBufferDenominator);
     }
 
-    @Override
     public Hash sendTransaction(final TransactionRequest request) {
         final long chainId = enforceChainId();
 
@@ -285,7 +285,6 @@ public final class DefaultWalletClient implements WalletClient {
     /** Maximum poll interval for exponential backoff (10 seconds). */
     private static final long MAX_POLL_INTERVAL_MILLIS = 10_000L;
 
-    @Override
     public TransactionReceipt sendTransactionAndWait(
             final TransactionRequest request, final long timeoutMillis, final long pollIntervalMillis) {
         final Hash txHash = sendTransaction(request);

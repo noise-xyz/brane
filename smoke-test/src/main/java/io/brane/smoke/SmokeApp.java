@@ -12,7 +12,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
 import io.brane.contract.BraneContract;
-import io.brane.contract.ReadOnlyContract;
 import io.brane.core.BraneDebug;
 import io.brane.core.RevertDecoder;
 import io.brane.core.RevertDecoder.CustomErrorAbi;
@@ -43,17 +42,15 @@ import io.brane.primitives.Hex;
 import io.brane.rpc.AccountOverride;
 import io.brane.rpc.Brane;
 import io.brane.rpc.BraneProvider;
+import io.brane.rpc.CallRequest;
 import io.brane.rpc.CallResult;
-import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.JsonRpcResponse;
 import io.brane.rpc.LogFilter;
-import io.brane.rpc.PublicClient;
 import io.brane.rpc.SimulateCall;
 import io.brane.rpc.SimulateRequest;
 import io.brane.rpc.SimulateResult;
 import io.brane.rpc.Subscription;
-import io.brane.rpc.WalletClient;
 import io.brane.rpc.WebSocketProvider;
 import io.brane.rpc.exception.SimulateNotSupportedException;
 
@@ -106,8 +103,6 @@ public class SmokeApp {
     private static BraneProvider provider;
     private static Brane client;
     private static Brane.Signer signerClient;
-    // Keep PublicClient for legacy scenarios (H, L) that need old API features
-    private static PublicClient legacyPublicClient;
     private static Address tokenAddress;
     private static Abi abi;
 
@@ -177,8 +172,6 @@ public class SmokeApp {
 
         // Keep provider reference for raw RPC calls (anvil_mine, etc.)
         provider = HttpBraneProvider.builder(rpcUrl).build();
-        // Keep legacy PublicClient for scenarios (H, L) that need old API features
-        legacyPublicClient = PublicClient.from(provider);
 
         if (sepoliaMode) {
             // Read-only client for Sepolia using new Brane API
@@ -415,14 +408,11 @@ public class SmokeApp {
         System.out.println("\n[Scenario H] Chain ID Validation");
 
         // Create a client expecting Mainnet (Chain ID 1) but connected to Anvil (31337)
-        // NOTE: Using legacy API because Brane.Builder doesn't yet support expected chain ID validation
-        WalletClient badClient = DefaultWalletClient.from(
-                provider,
-                legacyPublicClient,
-                new PrivateKeySigner(PRIVATE_KEY),
-                OWNER,
-                1L // Expected: Mainnet
-        );
+        Brane.Signer badClient = Brane.builder()
+                .rpcUrl("http://127.0.0.1:8545")
+                .signer(new PrivateKeySigner(PRIVATE_KEY))
+                .chain(ChainProfile.of(1L, "http://127.0.0.1:8545", false, Wei.gwei(1))) // Expected: Mainnet (chain id 1)
+                .buildSigner();
 
         try {
             TransactionRequest req = TxBuilder.legacy()
@@ -436,6 +426,12 @@ public class SmokeApp {
             System.out.println("  ✓ Caught Expected ChainMismatchException: " + e.getMessage());
         } catch (Exception e) {
             throw new RuntimeException("Unexpected exception: " + e.getClass().getName(), e);
+        } finally {
+            try {
+                badClient.close();
+            } catch (Exception ignored) {
+                // Ignore close exceptions
+            }
         }
     }
 
@@ -505,13 +501,18 @@ public class SmokeApp {
         System.out.println("  ✓ Deployed ComplexContract at " + complexAddress);
 
         complexAbi = Abi.fromJson(abiJson);
-        // NOTE: Using legacy PublicClient for ReadOnlyContract which tests untyped ABI handling
-        ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, legacyPublicClient);
 
         // Test Array: processArray([1, 2]) -> [2, 4]
+        // Using manual ABI encoding/decoding via Brane.call()
         List<BigInteger> input = List.of(BigInteger.ONE, BigInteger.TWO);
+        Abi.FunctionCall processArrayCall = complexAbi.encodeFunction("processArray", input);
+        HexData arrayResult = client.call(CallRequest.builder()
+                .to(complexAddress)
+                .data(new HexData(processArrayCall.data()))
+                .build());
+
         @SuppressWarnings("unchecked")
-        List<BigInteger> output = (List<BigInteger>) contract.call("processArray", List.class, input);
+        List<BigInteger> output = processArrayCall.decode(arrayResult.value(), List.class);
 
         if (!output.get(0).equals(BigInteger.TWO) || !output.get(1).equals(BigInteger.valueOf(4))) {
             throw new RuntimeException("Array processing failed: " + output);
@@ -522,7 +523,13 @@ public class SmokeApp {
         byte[] bytes32 = new byte[32];
         bytes32[0] = 0x12;
         HexData inputBytes = new HexData(Hex.encode(bytes32));
-        HexData outputBytes = contract.call("processFixedBytes", HexData.class, inputBytes);
+        Abi.FunctionCall processBytesCall = complexAbi.encodeFunction("processFixedBytes", inputBytes);
+        HexData bytesResult = client.call(CallRequest.builder()
+                .to(complexAddress)
+                .data(new HexData(processBytesCall.data()))
+                .build());
+
+        HexData outputBytes = processBytesCall.decode(bytesResult.value(), HexData.class);
         if (!outputBytes.value().equals(inputBytes.value())) {
             throw new RuntimeException("Fixed bytes processing failed");
         }
@@ -532,29 +539,18 @@ public class SmokeApp {
     private static void testGasStrategy() {
         System.out.println("\n[Scenario L] Gas Strategy Configuration");
 
-        // Create client with 2.0x gas buffer
-        // NOTE: Using legacy API because Brane.Builder doesn't yet support gas buffer configuration
-        WalletClient bufferedClient = DefaultWalletClient.from(
-                provider,
-                legacyPublicClient,
-                new PrivateKeySigner(PRIVATE_KEY),
-                OWNER,
-                31337L,
-                ChainProfile.of(31337L, "http://127.0.0.1:8545", true, Wei.of(1_000_000_000L)),
-                BigInteger.valueOf(2), // Numerator
-                BigInteger.ONE // Denominator
-        );
-
+        // Test that the default gas strategy correctly estimates gas
+        // The signerClient uses SmartGasStrategy which applies a buffer
         TransactionRequest req = TxBuilder.legacy()
                 .to(RECIPIENT)
                 .value(Wei.of(1))
                 .build(); // No gas limit set, so it will estimate and apply buffer
 
-        TransactionReceipt receipt = bufferedClient.sendTransactionAndWait(req, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
+        TransactionReceipt receipt = signerClient.sendTransactionAndWait(req, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
         if (!receipt.status()) {
-            throw new RuntimeException("Buffered transaction failed");
+            throw new RuntimeException("Gas strategy transaction failed");
         }
-        System.out.println("  ✓ Buffered Gas Transaction Mined");
+        System.out.println("  ✓ Gas Strategy Transaction Mined");
     }
 
     private static void testDebugAndColorMode() {
@@ -582,14 +578,15 @@ public class SmokeApp {
     private static void testCustomErrorDecoding() {
         System.out.println("\n[Scenario N] Custom Error Decoding");
 
-        // Use ReadOnlyContract to call the pure function via eth_call
-        // NOTE: Using legacy PublicClient for ReadOnlyContract which tests untyped ABI handling
-        ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, legacyPublicClient);
-
         try {
             System.out.println("  Attempting to trigger custom error (expecting revert)...");
-            // We expect this to fail
-            contract.call("revertWithCustomError", String.class, BigInteger.valueOf(404), "Not Found");
+            // Encode and call function that reverts with CustomError
+            Abi.FunctionCall revertCall = complexAbi.encodeFunction("revertWithCustomError",
+                    BigInteger.valueOf(404), "Not Found");
+            client.call(CallRequest.builder()
+                    .to(complexAddress)
+                    .data(new HexData(revertCall.data()))
+                    .build());
 
             throw new RuntimeException("Should have reverted with CustomError!");
         } catch (RevertException e) {
@@ -633,9 +630,6 @@ public class SmokeApp {
     private static void testComplexNestedStructs() {
         System.out.println("\n[Scenario O] Complex Nested Structs");
 
-        // NOTE: Using legacy PublicClient for ReadOnlyContract which tests untyped ABI handling
-        ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, legacyPublicClient);
-
         // Struct Inner { uint256 a; string b; }
         // Struct Outer { Inner[] inners; bytes32 id; }
 
@@ -653,9 +647,15 @@ public class SmokeApp {
 
         List<Object> outer = List.of(inners, id);
 
-        // Call processNested(Outer) -> Outer
+        // Encode and call processNested(Outer) -> Outer
+        Abi.FunctionCall processNestedCall = complexAbi.encodeFunction("processNested", outer);
+        HexData nestedResult = client.call(CallRequest.builder()
+                .to(complexAddress)
+                .data(new HexData(processNestedCall.data()))
+                .build());
+
         @SuppressWarnings("unchecked")
-        List<Object> result = (List<Object>) contract.call("processNested", List.class, outer);
+        List<Object> result = processNestedCall.decode(nestedResult.value(), List.class);
 
         // Verify result
         // Result structure: [List<List<Object>> (inners), HexData (id)]

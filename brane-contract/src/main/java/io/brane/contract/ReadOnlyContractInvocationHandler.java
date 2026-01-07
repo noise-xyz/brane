@@ -54,7 +54,7 @@ final class ReadOnlyContractInvocationHandler implements InvocationHandler {
             throw new UnsupportedOperationException(
                     "Cannot invoke non-view function '"
                             + method.getName()
-                            + "' on read-only contract binding. Use BraneContract.bind() with a WalletClient for write operations.");
+                            + "' on read-only contract binding. Use BraneContract.bind() with a Brane.Signer for write operations.");
         }
 
         final Abi.FunctionCall functionCall = abi.encodeFunction(metadata.name(), invocationArgs);
