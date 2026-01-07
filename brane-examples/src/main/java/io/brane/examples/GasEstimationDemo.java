@@ -11,6 +11,7 @@ import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.Wei;
+import io.brane.core.error.RpcException;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
@@ -32,76 +33,85 @@ import io.brane.rpc.WalletClient;
  * ./gradlew :brane-examples:run -PmainClass=io.brane.examples.GasEstimationDemo
  * </pre>
  */
-public class GasEstimationDemo {
+public final class GasEstimationDemo {
 
-        public static void main(String[] args) throws Exception {
-                System.out.println("=== Gas Estimation Configuration Demo ===\n");
+        private GasEstimationDemo() {
+                // Prevent instantiation
+        }
 
-                // Enable debug mode to see gas estimation logs
-                BraneDebug.setEnabled(true);
+        public static void main(String[] args) {
+                try {
+                        System.out.println("=== Gas Estimation Configuration Demo ===\n");
 
-                final String rpcUrl = System.getProperty("brane.examples.rpc", "http://127.0.0.1:8545");
-                // Default Anvil Account 0
-                final String privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
+                        // Enable debug mode to see gas estimation logs
+                        BraneDebug.setEnabled(true);
 
-                final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-                final PublicClient publicClient = PublicClient.from(provider);
+                        final String rpcUrl = System.getProperty("brane.examples.rpc", "http://127.0.0.1:8545");
+                        // Default Anvil Account 0
+                        final String privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 
-                // Get chain ID
-                final long chainId = Long.parseLong(provider.send("eth_chainId", null).result().toString().substring(2),
-                                16);
+                        final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
+                        final PublicClient publicClient = PublicClient.from(provider);
 
-                // Setup signer using brane-crypto
-                final Signer signer = new PrivateKeySigner(privateKey);
-                final Address signerAddress = signer.address();
+                        // Get chain ID
+                        final long chainId = Long.parseLong(provider.send("eth_chainId", null).result().toString().substring(2),
+                                        16);
 
-                System.out.println("Sender: " + signerAddress.value());
-                System.out.println("RPC: " + rpcUrl + "\n");
+                        // Setup signer using brane-crypto
+                        final Signer signer = new PrivateKeySigner(privateKey);
+                        final Address signerAddress = signer.address();
 
-                // Chain profile
-                final ChainProfile profile = ChainProfile.of(chainId, rpcUrl, true, Wei.of(1_000_000_000L));
+                        System.out.println("Sender: " + signerAddress.value());
+                        System.out.println("RPC: " + rpcUrl + "\n");
 
-                // Test 1: Default 20% buffer
-                System.out.println("--- Test 1: Default Buffer (20%) ---");
-                final WalletClient defaultWallet = DefaultWalletClient.create(
-                                provider, publicClient, signer, signerAddress, profile);
+                        // Chain profile
+                        final ChainProfile profile = ChainProfile.of(chainId, rpcUrl, true, Wei.of(1_000_000_000L));
 
-                final TransactionRequest tx1 = TxBuilder.eip1559()
-                                .to(new Address("0x0000000000000000000000000000000000000001"))
-                                .value(Wei.of(100))
-                                .build();
+                        // Test 1: Default 20% buffer
+                        System.out.println("--- Test 1: Default Buffer (20%) ---");
+                        final WalletClient defaultWallet = DefaultWalletClient.create(
+                                        provider, publicClient, signer, signerAddress, profile);
 
-                System.out.println("Sending transaction with default buffer...");
-                final Hash txHash1 = defaultWallet.sendTransaction(tx1);
-                System.out.println("✓ Transaction sent: " + txHash1.value() + "\n");
+                        final TransactionRequest tx1 = TxBuilder.eip1559()
+                                        .to(new Address("0x0000000000000000000000000000000000000001"))
+                                        .value(Wei.of(100))
+                                        .build();
 
-                // Test 2: Custom 50% buffer
-                System.out.println("--- Test 2: Custom Buffer (50%) ---");
-                final WalletClient customWallet = DefaultWalletClient.create(
-                                provider,
-                                publicClient,
-                                signer,
-                                signerAddress,
-                                profile,
-                                BigInteger.valueOf(150), // 150/100 = 50% buffer
-                                BigInteger.valueOf(100));
+                        System.out.println("Sending transaction with default buffer...");
+                        final Hash txHash1 = defaultWallet.sendTransaction(tx1);
+                        System.out.println("✓ Transaction sent: " + txHash1.value() + "\n");
 
-                final TransactionRequest tx2 = TxBuilder.eip1559()
-                                .to(new Address("0x0000000000000000000000000000000000000002"))
-                                .value(Wei.of(200))
-                                .build();
+                        // Test 2: Custom 50% buffer
+                        System.out.println("--- Test 2: Custom Buffer (50%) ---");
+                        final WalletClient customWallet = DefaultWalletClient.create(
+                                        provider,
+                                        publicClient,
+                                        signer,
+                                        signerAddress,
+                                        profile,
+                                        BigInteger.valueOf(150), // 150/100 = 50% buffer
+                                        BigInteger.valueOf(100));
 
-                System.out.println("Sending transaction with 50% buffer...");
-                final Hash txHash2 = customWallet.sendTransaction(tx2);
-                System.out.println("✓ Transaction sent: " + txHash2.value() + "\n");
+                        final TransactionRequest tx2 = TxBuilder.eip1559()
+                                        .to(new Address("0x0000000000000000000000000000000000000002"))
+                                        .value(Wei.of(200))
+                                        .build();
 
-                System.out.println("=== Demo Complete ===");
-                System.out.println("\nNote: With debug mode enabled, you can see the [RPC] logs showing:");
-                System.out.println("  - eth_estimateGas calls");
-                System.out.println("  - Gas limit calculations with buffers");
-                System.out.println("  - Final transaction parameters");
-                System.out.println("\nLook for logs like:");
-                System.out.println("  [RPC] method=eth_estimateGas ... (shows base estimate)");
-                System.out.println("  [TX-SEND] gasLimit=<value> ... (shows buffered gas limit)");
+                        System.out.println("Sending transaction with 50% buffer...");
+                        final Hash txHash2 = customWallet.sendTransaction(tx2);
+                        System.out.println("✓ Transaction sent: " + txHash2.value() + "\n");
+
+                        System.out.println("=== Demo Complete ===");
+                        System.out.println("\nNote: With debug mode enabled, you can see the [RPC] logs showing:");
+                        System.out.println("  - eth_estimateGas calls");
+                        System.out.println("  - Gas limit calculations with buffers");
+                        System.out.println("  - Final transaction parameters");
+                        System.out.println("\nLook for logs like:");
+                        System.out.println("  [RPC] method=eth_estimateGas ... (shows base estimate)");
+                        System.out.println("  [TX-SEND] gasLimit=<value> ... (shows buffered gas limit)");
+                } catch (final RpcException e) {
+                        System.err.println("RPC error: " + e.getMessage());
+                        System.exit(1);
+                }
         }
 }

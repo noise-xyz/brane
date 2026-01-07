@@ -69,7 +69,7 @@ public final class TransactionSanityCheck {
                 0L, // nonce
                 Wei.gwei(20), // gasPrice (20 gwei)
                 21000L, // gasLimit
-                Address.fromBytes(hexToBytes("70997970c51812dc3a010c7d01b50e0d17dc79c8")),
+                Address.fromBytes(Hex.decode("70997970c51812dc3a010c7d01b50e0d17dc79c8")),
                 Wei.of(1000000000000000000L), // 1 ether
                 HexData.EMPTY);
 
@@ -106,7 +106,7 @@ public final class TransactionSanityCheck {
                 Wei.gwei(2), // maxPriorityFeePerGas (tip)
                 Wei.gwei(100), // maxFeePerGas
                 21000L, // gasLimit
-                Address.fromBytes(hexToBytes("70997970c51812dc3a010c7d01b50e0d17dc79c8")),
+                Address.fromBytes(Hex.decode("70997970c51812dc3a010c7d01b50e0d17dc79c8")),
                 Wei.of(1000000000000000000L), // 1 ether
                 HexData.EMPTY,
                 List.of() // empty access list
@@ -138,8 +138,8 @@ public final class TransactionSanityCheck {
 
         // Legacy request
         final TransactionRequest legacyRequest = new TransactionRequest(
-                Address.fromBytes(hexToBytes("2c7536e3605d9c16a7a3d7b1898e529396a65c23")),
-                Address.fromBytes(hexToBytes("70997970c51812dc3a010c7d01b50e0d17dc79c8")),
+                Address.fromBytes(Hex.decode("2c7536e3605d9c16a7a3d7b1898e529396a65c23")),
+                Address.fromBytes(Hex.decode("70997970c51812dc3a010c7d01b50e0d17dc79c8")),
                 Wei.of(1000000000000000000L),
                 21000L,
                 Wei.gwei(20),
@@ -158,8 +158,8 @@ public final class TransactionSanityCheck {
 
         // EIP-1559 request
         final TransactionRequest eip1559Request = new TransactionRequest(
-                Address.fromBytes(hexToBytes("2c7536e3605d9c16a7a3d7b1898e529396a65c23")),
-                Address.fromBytes(hexToBytes("70997970c51812dc3a010c7d01b50e0d17dc79c8")),
+                Address.fromBytes(Hex.decode("2c7536e3605d9c16a7a3d7b1898e529396a65c23")),
+                Address.fromBytes(Hex.decode("70997970c51812dc3a010c7d01b50e0d17dc79c8")),
                 Wei.of(1000000000000000000L),
                 21000L,
                 null,
@@ -186,7 +186,7 @@ public final class TransactionSanityCheck {
         // Legacy transaction should NOT have type byte prefix
         final LegacyTransaction legacyTx = new LegacyTransaction(
                 0L, Wei.gwei(20), 21000L,
-                Address.fromBytes(hexToBytes("70997970c51812dc3a010c7d01b50e0d17dc79c8")),
+                Address.fromBytes(Hex.decode("70997970c51812dc3a010c7d01b50e0d17dc79c8")),
                 Wei.of(1000000000000000000L),
                 HexData.EMPTY);
 
@@ -205,7 +205,7 @@ public final class TransactionSanityCheck {
         // EIP-1559 transaction MUST have 0x02 type byte
         final Eip1559Transaction eip1559Tx = new Eip1559Transaction(
                 CHAIN_ID, 0L, Wei.gwei(2), Wei.gwei(100), 21000L,
-                Address.fromBytes(hexToBytes("70997970c51812dc3a010c7d01b50e0d17dc79c8")),
+                Address.fromBytes(Hex.decode("70997970c51812dc3a010c7d01b50e0d17dc79c8")),
                 Wei.of(1000000000000000000L),
                 HexData.EMPTY,
                 List.of());
@@ -224,15 +224,5 @@ public final class TransactionSanityCheck {
         }
         System.out.println("   ✓ EIP-1559 transaction has 0x02 type byte");
         System.out.println("   ✓ Type bytes are correct per EIP-2718\n");
-    }
-
-    private static byte[] hexToBytes(String hex) {
-        final int len = hex.length();
-        final byte[] data = new byte[len / 2];
-        for (int i = 0; i < len; i += 2) {
-            data[i / 2] = (byte) ((Character.digit(hex.charAt(i), 16) << 4)
-                    + Character.digit(hex.charAt(i + 1), 16));
-        }
-        return data;
     }
 }

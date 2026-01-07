@@ -20,7 +20,11 @@ import io.brane.rpc.WebSocketProvider;
  * <li>High-throughput request handling</li>
  * </ul>
  */
-public class HighPerformanceExample {
+public final class HighPerformanceExample {
+
+    private HighPerformanceExample() {
+        // Prevent instantiation
+    }
 
     public static void main(String[] args) throws ExecutionException, InterruptedException {
         // Create high-performance provider (optimized for high throughput)

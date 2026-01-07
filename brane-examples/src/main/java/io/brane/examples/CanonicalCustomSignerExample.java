@@ -23,6 +23,7 @@ import io.brane.rpc.BraneProvider;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
+import io.brane.core.error.RpcException;
 
 /**
  * Canonical Custom Signer Example.
@@ -49,7 +50,8 @@ public final class CanonicalCustomSignerExample {
             runKmsScenario();
             System.out.println("\n--------------------------------------------------\n");
             runMpcScenario();
-        } catch (Exception e) {
+        } catch (final RpcException e) {
+            System.err.println("❌ RPC error: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }
@@ -57,7 +59,7 @@ public final class CanonicalCustomSignerExample {
         System.exit(0);
     }
 
-    private static void runKmsScenario() throws Exception {
+    private static void runKmsScenario() throws RpcException {
         System.out.println("[Scenario 1] Cloud KMS Signer");
 
         // 1. Initialize the "Cloud KMS" (Simulation)
@@ -74,7 +76,7 @@ public final class CanonicalCustomSignerExample {
         sendTransaction(signer, "KMS");
     }
 
-    private static void runMpcScenario() throws Exception {
+    private static void runMpcScenario() throws RpcException {
         System.out.println("[Scenario 2] MPC (Threshold) Signer");
 
         // 1. Setup the MPC Cluster (Simulation)
@@ -97,22 +99,33 @@ public final class CanonicalCustomSignerExample {
         });
 
         // 4. Simulate Approvals
-        Thread.sleep(1000);
-        System.out.println("\n  [MPC Coordinator] Requesting approvals...");
+        try {
+            Thread.sleep(1000);
+            System.out.println("\n  [MPC Coordinator] Requesting approvals...");
 
-        Thread.sleep(500);
-        System.out.println("    > Alice approving...");
-        mpcCluster.approve("Alice");
+            Thread.sleep(500);
+            System.out.println("    > Alice approving...");
+            mpcCluster.approve("Alice");
 
-        Thread.sleep(500);
-        System.out.println("    > Bob approving...");
-        mpcCluster.approve("Bob");
+            Thread.sleep(500);
+            System.out.println("    > Bob approving...");
+            mpcCluster.approve("Bob");
 
-        // Wait for completion
-        txFuture.get(10, TimeUnit.SECONDS);
+            // Wait for completion
+            txFuture.get(10, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("MPC operation interrupted", e);
+        } catch (java.util.concurrent.ExecutionException | java.util.concurrent.TimeoutException e) {
+            Throwable cause = e.getCause();
+            if (cause instanceof RpcException rpcEx) {
+                throw rpcEx;
+            }
+            throw new RuntimeException("MPC operation failed", e);
+        }
     }
 
-    private static void sendTransaction(Signer signer, String label) throws Exception {
+    private static void sendTransaction(Signer signer, String label) throws RpcException {
         BraneProvider provider = HttpBraneProvider.builder(RPC_URL).build();
         PublicClient publicClient = PublicClient.from(provider);
         WalletClient walletClient = io.brane.rpc.DefaultWalletClient.create(

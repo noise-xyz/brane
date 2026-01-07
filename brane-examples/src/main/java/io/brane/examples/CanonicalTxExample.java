@@ -17,6 +17,8 @@ import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
+import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
 
 /**
  * Canonical "Modern Transactions" Example for Brane 0.1.0-alpha.
@@ -111,8 +113,12 @@ public final class CanonicalTxExample {
             final TransactionReceipt receipt3 = wallet.sendTransactionAndWait(explicitTx, 30_000, 1_000);
             System.out.println(AnsiColors.success("Tx 3 Success: " + receipt3.transactionHash().value()));
 
-        } catch (Exception e) {
-            System.err.println("❌ Error: " + e.getMessage());
+        } catch (final RpcException e) {
+            System.err.println("❌ RPC error: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        } catch (final RevertException e) {
+            System.err.println("❌ Revert error: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }

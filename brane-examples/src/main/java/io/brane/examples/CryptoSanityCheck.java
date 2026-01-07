@@ -3,6 +3,7 @@ package io.brane.examples;
 import java.nio.charset.StandardCharsets;
 
 import io.brane.core.crypto.Keccak256;
+import io.brane.primitives.Hex;
 import io.brane.core.crypto.PrivateKey;
 import io.brane.core.crypto.Signature;
 import io.brane.core.types.Address;
@@ -60,7 +61,7 @@ public final class CryptoSanityCheck {
         System.out.println("   Input: empty byte array");
 
         final byte[] hash = Keccak256.hash(new byte[0]);
-        final String hashHex = bytesToHex(hash);
+        final String hashHex = Hex.encodeNoPrefix(hash);
         final String expected = "c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470";
 
         System.out.println("   Output: " + hashHex);
@@ -101,12 +102,12 @@ public final class CryptoSanityCheck {
         System.out.println("   Message: \"" + message + "\"");
 
         final byte[] messageHash = Keccak256.hash(message.getBytes(StandardCharsets.UTF_8));
-        System.out.println("   Message hash: " + bytesToHex(messageHash).substring(0, 16) + "...");
+        System.out.println("   Message hash: " + Hex.encodeNoPrefix(messageHash).substring(0, 16) + "...");
 
         final Signature signature = privateKey.sign(messageHash);
         System.out.println("   Signature:");
-        System.out.println("     r: " + bytesToHex(signature.r()).substring(0, 16) + "...");
-        System.out.println("     s: " + bytesToHex(signature.s()).substring(0, 16) + "...");
+        System.out.println("     r: " + Hex.encodeNoPrefix(signature.r()).substring(0, 16) + "...");
+        System.out.println("     s: " + Hex.encodeNoPrefix(signature.s()).substring(0, 16) + "...");
         System.out.println("     v: " + signature.v());
 
         // Recover address
@@ -137,17 +138,10 @@ public final class CryptoSanityCheck {
             throw new AssertionError("Signatures are not deterministic!");
         }
 
-        System.out.println("   Signature 1: " + bytesToHex(sig1.r()).substring(0, 16) + "...");
-        System.out.println("   Signature 2: " + bytesToHex(sig2.r()).substring(0, 16) + "...");
-        System.out.println("   Signature 3: " + bytesToHex(sig3.r()).substring(0, 16) + "...");
+        System.out.println("   Signature 1: " + Hex.encodeNoPrefix(sig1.r()).substring(0, 16) + "...");
+        System.out.println("   Signature 2: " + Hex.encodeNoPrefix(sig2.r()).substring(0, 16) + "...");
+        System.out.println("   Signature 3: " + Hex.encodeNoPrefix(sig3.r()).substring(0, 16) + "...");
         System.out.println("   ✓ All signatures identical (deterministic)\n");
     }
 
-    private static String bytesToHex(byte[] bytes) {
-        final StringBuilder sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
-    }
 }
