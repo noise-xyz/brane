@@ -7,11 +7,7 @@ import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.DefaultWalletClient;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
+import io.brane.rpc.Brane;
 
 /**
  * Integration test for TxBuilder verifying:
@@ -43,20 +39,18 @@ public final class TxBuilderIntegrationTest {
             System.exit(1);
         }
 
-        final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-        final PublicClient publicClient = PublicClient.from(provider);
         final PrivateKeySigner signer = new PrivateKeySigner(privateKey);
-        final WalletClient wallet = DefaultWalletClient.create(provider, publicClient, signer);
+        final Brane.Signer client = Brane.connect(rpcUrl, signer);
 
         System.out.println("Running TxBuilder Integration Tests...");
 
-        testEip1559Transfer(wallet, signer.address());
-        testContractDeployment(wallet);
+        testEip1559Transfer(client, signer.address());
+        testContractDeployment(client);
 
         System.out.println("TxBuilder Integration Tests Passed!");
     }
 
-    private static void testEip1559Transfer(final WalletClient wallet, final Address self) {
+    private static void testEip1559Transfer(final Brane.Signer client, final Address self) {
         System.out.println("[Test] EIP-1559 Transfer (Self-send)...");
 
         // 1. Auto-filled fees
@@ -65,7 +59,7 @@ public final class TxBuilderIntegrationTest {
                 .value(Wei.of(100))
                 .build();
 
-        TransactionReceipt autoReceipt = wallet.sendTransactionAndWait(autoRequest, 10000, 500);
+        TransactionReceipt autoReceipt = client.sendTransactionAndWait(autoRequest, 10000, 500);
         System.out.println("  Auto-fill tx: " + autoReceipt.transactionHash().value() + " (Block: "
                 + autoReceipt.blockNumber() + ")");
 
@@ -77,19 +71,19 @@ public final class TxBuilderIntegrationTest {
                 .maxPriorityFeePerGas(Wei.of(2_000_000_000L))
                 .build();
 
-        TransactionReceipt explicitReceipt = wallet.sendTransactionAndWait(explicitRequest, 10000, 500);
+        TransactionReceipt explicitReceipt = client.sendTransactionAndWait(explicitRequest, 10000, 500);
         System.out.println("  Explicit fees tx: " + explicitReceipt.transactionHash().value() + " (Block: "
                 + explicitReceipt.blockNumber() + ")");
     }
 
-    private static void testContractDeployment(final WalletClient wallet) {
+    private static void testContractDeployment(final Brane.Signer client) {
         System.out.println("[Test] Contract Deployment via Builder...");
 
         TransactionRequest deployRequest = TxBuilder.legacy()
                 .data(new HexData(BYTECODE))
                 .build();
 
-        TransactionReceipt receipt = wallet.sendTransactionAndWait(deployRequest, 10000, 500);
+        TransactionReceipt receipt = client.sendTransactionAndWait(deployRequest, 10000, 500);
 
         if (receipt.contractAddress().value().isEmpty()) {
             throw new RuntimeException("Contract deployment failed: No contract address in receipt");

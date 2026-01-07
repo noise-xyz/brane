@@ -10,11 +10,7 @@ import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.Wei;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.DefaultWalletClient;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
+import io.brane.rpc.Brane;
 
 /**
  * Sends an EIP-1559 transaction with a small access list and prints the result.
@@ -32,11 +28,8 @@ public final class AccessListExample {
             System.exit(1);
         }
 
-        final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-        final PublicClient publicClient = PublicClient.from(provider);
         final PrivateKeySigner signer = new PrivateKeySigner(privateKey);
-        final WalletClient wallet =
-                DefaultWalletClient.create(provider, publicClient, signer, signer.address());
+        final Brane.Signer client = Brane.connect(rpcUrl, signer);
 
         final Address target = signer.address();
         final List<AccessListEntry> accessList =
@@ -50,7 +43,7 @@ public final class AccessListExample {
                         .build();
 
         System.out.println("Sending EIP-1559 transaction with access list...");
-        final TransactionReceipt receipt = wallet.sendTransactionAndWait(request, 15_000, 1_000);
+        final TransactionReceipt receipt = client.sendTransactionAndWait(request, 15_000, 1_000);
         System.out.println("Tx hash: " + receipt.transactionHash().value());
         System.out.println("Access list set: " + !request.accessListOrEmpty().isEmpty());
     }

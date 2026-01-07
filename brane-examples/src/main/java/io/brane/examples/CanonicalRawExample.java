@@ -9,10 +9,7 @@ import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
+import io.brane.rpc.Brane;
 import io.brane.core.error.RpcException;
 
 /**
@@ -46,34 +43,29 @@ public final class CanonicalRawExample {
         }
 
         try {
-            // 1. Initialize Clients
-            final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-            final PublicClient publicClient = PublicClient.from(provider);
+            // 1. Initialize Client
             final var signer = new io.brane.core.crypto.PrivateKeySigner(privateKey);
-            final WalletClient walletClient = io.brane.rpc.DefaultWalletClient.create(
-                    provider, publicClient, signer);
+            final Brane.Signer client = Brane.connect(rpcUrl, signer);
 
             System.out.println("=== Canonical Low-Level Example ===");
             System.out.println("Signer: " + signer.address().value());
 
-            // 2. Direct RPC Calls (PublicClient)
+            // 2. Direct RPC Calls (Brane client)
             System.out.println("\n[1] Reading Chain State...");
 
-            final BigInteger blockNumber = BigInteger.valueOf(publicClient.getLatestBlock().number());
+            final BigInteger blockNumber = BigInteger.valueOf(client.getLatestBlock().number());
             System.out.println(AnsiColors.success("Current Block: " + blockNumber));
 
-            // Note: PublicClient is strictly for reading block/tx data.
-            // For chainId or balance, one would typically use specific RPC methods
-            // or the higher-level abstractions.
+            // Note: Brane client provides both read and write operations.
 
-            // 3. Build & Send Transaction (WalletClient + TxBuilder)
+            // 3. Build & Send Transaction (Brane.Signer + TxBuilder)
             System.out.println("\n[2] Sending Native ETH Transfer...");
 
             final Address recipient = new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
             final Wei value = Wei.fromEther(new BigDecimal("0.001")); // 0.001 ETH
 
             // Build EIP-1559 Transaction
-            // Note: Gas limit and fees are auto-filled by WalletClient if omitted
+            // Note: Gas limit and fees are auto-filled by Brane.Signer if omitted
             final TransactionRequest tx = TxBuilder.eip1559()
                     .to(recipient)
                     .value(value)
@@ -83,7 +75,7 @@ public final class CanonicalRawExample {
 
             // Send and wait for receipt
             // We wait up to 60 seconds, polling every 1 second
-            final TransactionReceipt receipt = walletClient.sendTransactionAndWait(tx, 60_000, 1_000);
+            final TransactionReceipt receipt = client.sendTransactionAndWait(tx, 60_000, 1_000);
 
             System.out.println(AnsiColors.success("Tx Hash: " + receipt.transactionHash().value()));
             System.out.println(AnsiColors.success("Status:  " + (receipt.status() ? "SUCCESS" : "FAILED")));

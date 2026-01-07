@@ -78,6 +78,7 @@ public final class Erc20TransferExample {
     final Address recipient = new Address(recipientAddress);
     final BigInteger amount = new BigInteger(amountStr);
 
+    // ReadWriteContract doesn't support the new Brane.Signer API yet
     final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
     final PublicClient publicClient = PublicClient.from(provider);
     final PrivateKeySigner signer = new PrivateKeySigner(privateKey);

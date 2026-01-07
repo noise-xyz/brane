@@ -19,10 +19,7 @@ import io.brane.core.model.TransactionRequest;
 import io.brane.core.tx.UnsignedTransaction;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
+import io.brane.rpc.Brane;
 import io.brane.core.error.RpcException;
 
 /**
@@ -126,10 +123,7 @@ public final class CanonicalCustomSignerExample {
     }
 
     private static void sendTransaction(Signer signer, String label) throws RpcException {
-        BraneProvider provider = HttpBraneProvider.builder(RPC_URL).build();
-        PublicClient publicClient = PublicClient.from(provider);
-        WalletClient walletClient = io.brane.rpc.DefaultWalletClient.create(
-                provider, publicClient, signer);
+        Brane.Signer client = Brane.connect(RPC_URL, signer);
 
         System.out.println("  Sending transaction...");
 
@@ -138,7 +132,7 @@ public final class CanonicalCustomSignerExample {
                 .value(Wei.fromEther(new BigDecimal("0.01")))
                 .build();
 
-        TransactionReceipt receipt = walletClient.sendTransactionAndWait(tx, 60_000, 1_000);
+        TransactionReceipt receipt = client.sendTransactionAndWait(tx, 60_000, 1_000);
 
         if (receipt.status()) {
             System.out.println(

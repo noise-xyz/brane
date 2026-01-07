@@ -12,11 +12,7 @@ import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.Wei;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.DefaultWalletClient;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
+import io.brane.rpc.Brane;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 
@@ -53,10 +49,8 @@ public final class CanonicalTxExample {
         final String privateKey = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
         final Address recipient = new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
 
-        final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-        final PublicClient publicClient = PublicClient.from(provider);
         final PrivateKeySigner signer = new PrivateKeySigner(privateKey);
-        final WalletClient wallet = DefaultWalletClient.create(provider, publicClient, signer);
+        final Brane.Signer client = Brane.connect(rpcUrl, signer);
 
         try {
             // ---------------------------------------------------------
@@ -71,7 +65,7 @@ public final class CanonicalTxExample {
                     .value(Wei.of(100))
                     .build();
 
-            final TransactionReceipt receipt1 = wallet.sendTransactionAndWait(defaultTx, 30_000, 1_000);
+            final TransactionReceipt receipt1 = client.sendTransactionAndWait(defaultTx, 30_000, 1_000);
             System.out.println(AnsiColors.success("Tx 1 Success: " + receipt1.transactionHash().value()));
             System.out.println("  Gas Used: " + receipt1.cumulativeGasUsed().value());
 
@@ -92,7 +86,7 @@ public final class CanonicalTxExample {
                     .accessList(accessList)
                     .build();
 
-            final TransactionReceipt receipt2 = wallet.sendTransactionAndWait(accessListTx, 30_000, 1_000);
+            final TransactionReceipt receipt2 = client.sendTransactionAndWait(accessListTx, 30_000, 1_000);
             System.out.println(AnsiColors.success("Tx 2 Success: " + receipt2.transactionHash().value()));
             System.out.println("  Gas Used: " + receipt2.cumulativeGasUsed().value());
 
@@ -110,7 +104,7 @@ public final class CanonicalTxExample {
                     .maxPriorityFeePerGas(Wei.gwei(2)) // Explicit priority fee
                     .build();
 
-            final TransactionReceipt receipt3 = wallet.sendTransactionAndWait(explicitTx, 30_000, 1_000);
+            final TransactionReceipt receipt3 = client.sendTransactionAndWait(explicitTx, 30_000, 1_000);
             System.out.println(AnsiColors.success("Tx 3 Success: " + receipt3.transactionHash().value()));
 
         } catch (final RpcException e) {

@@ -5,16 +5,11 @@ import java.io.PrintStream;
 
 import io.brane.core.BraneDebug;
 import io.brane.core.builder.TxBuilder;
-import io.brane.core.chain.ChainProfiles;
 import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.DefaultWalletClient;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
+import io.brane.rpc.Brane;
 
 /**
  * Integration test for Debug Mode logging.
@@ -67,15 +62,12 @@ public final class DebugIntegrationTest {
         // Use a random key for demo
         final String privateKey = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
 
-        final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-        final PublicClient publicClient = PublicClient.from(provider);
         final PrivateKeySigner signer = new PrivateKeySigner(privateKey);
-        final WalletClient wallet = DefaultWalletClient.create(
-                provider, publicClient, signer, ChainProfiles.ANVIL_LOCAL);
+        final Brane.Signer client = Brane.connect(rpcUrl, signer);
 
         try {
             // Trigger RPC logs
-            publicClient.getLatestBlock();
+            client.getLatestBlock();
 
             // Trigger Tx Logs
             TransactionRequest tx = TxBuilder.eip1559()
@@ -83,7 +75,7 @@ public final class DebugIntegrationTest {
                     .value(Wei.of(100))
                     .build();
 
-            wallet.sendTransaction(tx);
+            client.sendTransaction(tx);
         } catch (Exception e) {
             // Ignore expected errors (insufficient funds etc)
         }

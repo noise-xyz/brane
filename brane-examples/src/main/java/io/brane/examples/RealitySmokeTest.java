@@ -48,16 +48,11 @@ public final class RealitySmokeTest {
             System.out.println("Target: " + TX_COUNT + " transactions with " + CONCURRENCY + " threads.");
 
             // 1. Initialize Clients
+            // Note: This example requires direct nonce management, so uses the legacy client API
             final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
             final PublicClient publicClient = PublicClient.from(provider);
             final Signer signer = new PrivateKeySigner(privateKey);
 
-            // Note: We create a single WalletClient. In a real app, this might be shared.
-            // The nonce management in DefaultWalletClient handles concurrency via a
-            // mutex/lock if implemented correctly,
-            // or we might need to manage nonces manually for extreme concurrency.
-            // For this test, we'll let WalletClient handle it (or fail if it can't, which
-            // is a good test).
             final WalletClient walletClient = io.brane.rpc.DefaultWalletClient.create(
                     provider, publicClient, signer);
 
@@ -101,8 +96,6 @@ public final class RealitySmokeTest {
                                 .build();
 
                         // Send and wait
-                        // Note: In a high-concurrency real scenario, we might just send and wait later,
-                        // but here we want to stress the full cycle.
                         return walletClient.sendTransactionAndWait(tx, 60_000, 500);
                     } catch (Exception e) {
                         throw new RuntimeException("Tx " + index + " failed", e);
