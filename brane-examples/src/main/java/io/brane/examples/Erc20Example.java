@@ -145,6 +145,6 @@ public final class Erc20Example {
     }
 
     private static boolean isBlank(final String value) {
-        return value == null || value.trim().isEmpty();
+        return value == null || value.isBlank();
     }
 }
