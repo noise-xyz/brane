@@ -257,4 +257,62 @@ class BraneTest {
         assertInstanceOf(Brane.Reader.class, reader);
         assertFalse(reader.canSign());
     }
+
+    // ==================== Builder Validation Tests (P5-03) ====================
+
+    @Test
+    void buildReaderWithoutRpcUrlOrProviderThrows() {
+        // buildReader() without rpcUrl or provider should throw IllegalStateException
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> Brane.builder().buildReader());
+
+        assertTrue(ex.getMessage().contains("rpcUrl") || ex.getMessage().contains("provider"),
+                "Exception message should mention rpcUrl or provider");
+    }
+
+    @Test
+    void buildSignerWithoutRpcUrlOrProviderThrows() {
+        // buildSigner() without rpcUrl or provider should throw IllegalStateException
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> Brane.builder().signer(signer).buildSigner());
+
+        assertTrue(ex.getMessage().contains("rpcUrl") || ex.getMessage().contains("provider"),
+                "Exception message should mention rpcUrl or provider");
+    }
+
+    @Test
+    void buildWithoutRpcUrlOrProviderThrows() {
+        // build() without rpcUrl or provider should throw IllegalStateException
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> Brane.builder().build());
+
+        assertTrue(ex.getMessage().contains("rpcUrl") || ex.getMessage().contains("provider"),
+                "Exception message should mention rpcUrl or provider");
+    }
+
+    @Test
+    void buildSignerWithoutSignerThrows() {
+        // buildSigner() without signer should throw IllegalStateException
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> Brane.builder().provider(provider).buildSigner());
+
+        assertTrue(ex.getMessage().contains("signer"),
+                "Exception message should mention signer");
+    }
+
+    @Test
+    void buildSignerWithoutSignerAndWithRpcUrlThrows() {
+        // buildSigner() with rpcUrl but without signer should throw IllegalStateException
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> Brane.builder().rpcUrl("http://localhost:8545").buildSigner());
+
+        assertTrue(ex.getMessage().contains("signer"),
+                "Exception message should mention signer");
+    }
 }
