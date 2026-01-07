@@ -414,4 +414,87 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          */
         io.brane.core.crypto.Signer signer();
     }
+
+    /**
+     * Builder for creating {@link Brane} client instances.
+     *
+     * <p>The builder supports multiple configuration options:
+     * <ul>
+     *   <li>{@link #rpcUrl(String)} - HTTP/HTTPS RPC endpoint (required if no provider)</li>
+     *   <li>{@link #wsUrl(String)} - WebSocket endpoint for subscriptions (optional)</li>
+     *   <li>{@link #provider(BraneProvider)} - Custom provider (alternative to rpcUrl)</li>
+     * </ul>
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * // Simple HTTP client
+     * Brane client = Brane.builder()
+     *     .rpcUrl("https://eth.example.com")
+     *     .build();
+     *
+     * // With custom provider
+     * Brane client = Brane.builder()
+     *     .provider(myProvider)
+     *     .build();
+     * }</pre>
+     *
+     * @since 0.1.0
+     */
+    final class Builder {
+
+        private @Nullable String rpcUrl;
+        private @Nullable String wsUrl;
+        private @Nullable BraneProvider provider;
+
+        /**
+         * Creates a new builder instance.
+         */
+        Builder() {
+        }
+
+        /**
+         * Sets the HTTP/HTTPS RPC endpoint URL.
+         *
+         * <p>This is mutually exclusive with {@link #provider(BraneProvider)}.
+         * If both are set, the explicit provider takes precedence.
+         *
+         * @param rpcUrl the RPC endpoint URL (e.g., "https://eth.example.com")
+         * @return this builder for chaining
+         * @since 0.1.0
+         */
+        public Builder rpcUrl(String rpcUrl) {
+            this.rpcUrl = rpcUrl;
+            return this;
+        }
+
+        /**
+         * Sets the WebSocket endpoint URL for subscriptions.
+         *
+         * <p>If provided, the client will use this endpoint for subscription methods
+         * like {@link Brane#onNewHeads} and {@link Brane#onLogs}.
+         *
+         * @param wsUrl the WebSocket endpoint URL (e.g., "wss://eth.example.com/ws")
+         * @return this builder for chaining
+         * @since 0.1.0
+         */
+        public Builder wsUrl(String wsUrl) {
+            this.wsUrl = wsUrl;
+            return this;
+        }
+
+        /**
+         * Sets a custom provider for RPC communication.
+         *
+         * <p>This is mutually exclusive with {@link #rpcUrl(String)}.
+         * If both are set, the explicit provider takes precedence.
+         *
+         * @param provider the custom provider instance
+         * @return this builder for chaining
+         * @since 0.1.0
+         */
+        public Builder provider(BraneProvider provider) {
+            this.provider = provider;
+            return this;
+        }
+    }
 }
