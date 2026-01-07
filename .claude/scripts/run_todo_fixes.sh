@@ -9,6 +9,16 @@ TASKS_FILE="${1:-tasks.txt}"
 LOG_DIR="fix_logs"
 TODO_FILE="TODO.md"
 
+# Auto-detect claude command (claude-tty for antigravity, claude otherwise)
+if command -v claude-tty &> /dev/null; then
+    CLAUDE_CMD="claude-tty"
+elif command -v claude &> /dev/null; then
+    CLAUDE_CMD="claude"
+else
+    echo "Error: Neither claude-tty nor claude found in PATH"
+    exit 1
+fi
+
 mkdir -p "$LOG_DIR"
 
 # Detect module from current branch name (e.g., fix/brane-rpc -> rpc)
@@ -102,6 +112,7 @@ echo "========================================"
 echo "Tasks file: $TASKS_FILE"
 echo "Total tasks: $TOTAL"
 echo "Module: ${MODULE:-auto-detect}"
+echo "Claude cmd: $CLAUDE_CMD"
 echo "Logs: $LOG_DIR/"
 echo "========================================"
 echo ""
@@ -123,7 +134,7 @@ while IFS=':' read -r task_id task_desc || [[ -n "$task_id" ]]; do
 
     prompt=$(build_prompt "$task_id" "$task_desc")
 
-    if claude -p "$prompt" --dangerously-skip-permissions 2>&1 | tee "$log_file"; then
+    if $CLAUDE_CMD -p "$prompt" --dangerously-skip-permissions 2>&1 | tee "$log_file"; then
         echo ""
         echo "[$task_id] Completed"
         mark_done "$task_id"
@@ -143,7 +154,7 @@ echo "All tasks processed. Running final verification..."
 echo "========================================"
 
 # Final verification - run full test suite once
-claude -p "Run ./gradlew test to verify all fixes. If any tests fail, fix them." --dangerously-skip-permissions 2>&1 | tee "$LOG_DIR/final_verification.log"
+$CLAUDE_CMD -p "Run ./gradlew test to verify all fixes. If any tests fail, fix them." --dangerously-skip-permissions 2>&1 | tee "$LOG_DIR/final_verification.log"
 
 echo "========================================"
 echo "Run complete: $TASK_NUM tasks processed"
