@@ -97,27 +97,27 @@ final class DefaultSigner implements Brane.Signer {
 
     @Override
     public List<LogEntry> getLogs(final LogFilter filter) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.getLogs(filter);
     }
 
     @Override
     public BigInteger estimateGas(final TransactionRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.estimateGas(request);
     }
 
     @Override
     public AccessListWithGas createAccessList(final TransactionRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.createAccessList(request);
     }
 
     @Override
     public SimulateResult simulate(final SimulateRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.simulate(request);
     }
 
     @Override
     public MulticallBatch batch() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.batch();
     }
 
     @Override
