@@ -88,18 +88,16 @@ dependencies {
 
 ### 1. Connect to a Chain
 
-Create a `PublicClient` to read from the blockchain.
+Create a `Brane` client to read from the blockchain.
 
 ```java
-import io.brane.rpc.BranePublicClient;
-import io.brane.core.chain.ChainProfiles;
+import io.brane.rpc.Brane;
 
 public class Example {
     public static void main(String[] args) {
-        // Connect to Mainnet
-        var client = BranePublicClient.forChain(ChainProfiles.ETH_MAINNET)
-            .build();
-        
+        // Connect to an RPC endpoint
+        var client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY");
+
         // Get the latest block number
         var block = client.getLatestBlock();
         System.out.println("Current Block: " + block.number());
