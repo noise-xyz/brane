@@ -13,7 +13,6 @@ import java.util.concurrent.TimeUnit;
 
 import io.brane.contract.BraneContract;
 import io.brane.contract.ReadOnlyContract;
-import io.brane.contract.ReadWriteContract;
 import io.brane.core.BraneDebug;
 import io.brane.core.RevertDecoder;
 import io.brane.core.RevertDecoder.CustomErrorAbi;
@@ -42,6 +41,7 @@ import io.brane.core.types.Wei;
 import io.brane.core.util.Topics;
 import io.brane.primitives.Hex;
 import io.brane.rpc.AccountOverride;
+import io.brane.rpc.Brane;
 import io.brane.rpc.BraneProvider;
 import io.brane.rpc.CallResult;
 import io.brane.rpc.DefaultWalletClient;
@@ -104,8 +104,10 @@ public class SmokeApp {
     private static final Address RECIPIENT = new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
 
     private static BraneProvider provider;
-    private static PublicClient publicClient;
-    private static WalletClient walletClient;
+    private static Brane client;
+    private static Brane.Signer signerClient;
+    // Keep PublicClient for legacy scenarios (H, L) that need old API features
+    private static PublicClient legacyPublicClient;
     private static Address tokenAddress;
     private static Abi abi;
 
@@ -173,15 +175,18 @@ public class SmokeApp {
             rpcUrl = System.getenv().getOrDefault("BRANE_SEPOLIA_RPC", "https://ethereum-sepolia-rpc.publicnode.com");
         }
 
+        // Keep provider reference for raw RPC calls (anvil_mine, etc.)
         provider = HttpBraneProvider.builder(rpcUrl).build();
-        publicClient = PublicClient.from(provider);
+        // Keep legacy PublicClient for scenarios (H, L) that need old API features
+        legacyPublicClient = PublicClient.from(provider);
 
-        if (!sepoliaMode) {
-            walletClient = DefaultWalletClient.create(
-                    provider,
-                    publicClient,
-                    new PrivateKeySigner(PRIVATE_KEY),
-                    OWNER);
+        if (sepoliaMode) {
+            // Read-only client for Sepolia using new Brane API
+            client = Brane.connect(rpcUrl);
+        } else {
+            // Signing client for Anvil using new Brane API
+            signerClient = Brane.connect(rpcUrl, new PrivateKeySigner(PRIVATE_KEY));
+            client = signerClient;
         }
 
         abi = Abi.fromJson(ABI_JSON);
@@ -192,7 +197,7 @@ public class SmokeApp {
     private static void testSepoliaSpecifics() {
         System.out.println("\n[Sepolia Specifics]");
         runSepoliaTask(() -> {
-            BigInteger chainId = publicClient.getChainId();
+            BigInteger chainId = client.chainId();
             if (!chainId.equals(new BigInteger("11155111"))) {
                 throw new RuntimeException("Sepolia Chain ID mismatch. Expected 11155111, got " + chainId);
             }
@@ -200,7 +205,7 @@ public class SmokeApp {
 
             // Check balance of zero address (should be > 0 usually, or just check it
             // doesn't crash)
-            BigInteger balance = publicClient.getBalance(new Address("0x0000000000000000000000000000000000000000"));
+            BigInteger balance = client.getBalance(new Address("0x0000000000000000000000000000000000000000"));
             System.out.println("  ✓ Zero Address Balance: " + balance);
             System.out.println("  ✓ Balance Check Successful");
         });
@@ -227,7 +232,7 @@ public class SmokeApp {
 
         TransactionRequest deployRequest = BraneContract.deployRequest(ABI_JSON, bytecodeHex, initialSupply);
 
-        TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployRequest, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
+        TransactionReceipt receipt = signerClient.sendTransactionAndWait(deployRequest, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
 
         if (!receipt.status()) {
             throw new RuntimeException("Deployment failed!");
@@ -235,20 +240,19 @@ public class SmokeApp {
         tokenAddress = new Address(receipt.contractAddress().value()); // Convert HexData to Address
         System.out.println("  ✓ Deployed at: " + tokenAddress);
 
-        // 3. Check Balance
-        ReadOnlyContract contract = ReadOnlyContract.from(tokenAddress, abi, publicClient);
-        BigInteger balance = contract.call("balanceOf", BigInteger.class, OWNER);
+        // 3. Check Balance using new Brane API
+        Erc20 token = BraneContract.bind(tokenAddress, ABI_JSON, signerClient, Erc20.class);
+        BigInteger balance = token.balanceOf(OWNER);
         if (!balance.equals(initialSupply)) {
             throw new RuntimeException("Balance mismatch! Expected " + initialSupply + ", got " + balance);
         }
         System.out.println("  ✓ Initial Balance Verified: " + balance);
 
-        // 4. Transfer
+        // 4. Transfer using new Brane API
         System.out.println("  Transferring 100 tokens...");
         BigInteger amount = new BigInteger("100");
-        ReadWriteContract writeContract = ReadWriteContract.from(tokenAddress, abi, publicClient, walletClient);
 
-        TransactionReceipt transferReceipt = writeContract.sendAndWait("transfer", WAIT_TIMEOUT_MS, POLL_INTERVAL_MS, RECIPIENT, amount);
+        TransactionReceipt transferReceipt = token.transfer(RECIPIENT, amount);
 
         if (!transferReceipt.status()) {
             throw new RuntimeException("Transfer failed!");
@@ -256,7 +260,7 @@ public class SmokeApp {
         System.out.println("  ✓ Transfer Mined: " + transferReceipt.transactionHash());
 
         // 5. Verify Recipient Balance
-        BigInteger recipientBalance = contract.call("balanceOf", BigInteger.class, RECIPIENT);
+        BigInteger recipientBalance = token.balanceOf(RECIPIENT);
         if (!recipientBalance.equals(amount)) {
             throw new RuntimeException("Recipient balance mismatch!");
         }
@@ -266,12 +270,13 @@ public class SmokeApp {
     private static void testErrorHandling() {
         System.out.println("\n[Scenario B] Error Handling (Resilience)");
 
-        ReadWriteContract contract = ReadWriteContract.from(tokenAddress, abi, publicClient, walletClient);
+        // Use new Brane API for contract binding
+        Erc20 token = BraneContract.bind(tokenAddress, ABI_JSON, signerClient, Erc20.class);
         BigInteger excessiveAmount = new BigInteger("9999999999999999999999999999"); // More than supply
 
         try {
             System.out.println("  Attempting to transfer excessive amount (expecting revert)...");
-            contract.sendAndWait("transfer", WAIT_TIMEOUT_MS, POLL_INTERVAL_MS, RECIPIENT, excessiveAmount);
+            token.transfer(RECIPIENT, excessiveAmount);
             throw new RuntimeException("Should have reverted!");
         } catch (RevertException e) {
             System.out.println("  ✓ Caught Expected Revert: " + e.revertReason());
@@ -286,7 +291,8 @@ public class SmokeApp {
         System.out.println("\n[Scenario C] Event Logs (Observability)");
 
         // Specify fromBlock=0 to query all blocks, not just "latest"
-        List<LogEntry> logs = publicClient.getLogs(
+        // Use new Brane API
+        List<LogEntry> logs = client.getLogs(
                 new LogFilter(
                         Optional.of(0L),
                         Optional.empty(),
@@ -320,8 +326,8 @@ public class SmokeApp {
     private static void testAbiWrapper() {
         System.out.println("\n[Scenario D] ABI Wrapper (Usability)");
 
-        // Bind the interface
-        Erc20 token = BraneContract.bind(tokenAddress, ABI_JSON, publicClient, walletClient, Erc20.class);
+        // Bind the interface using new Brane API
+        Erc20 token = BraneContract.bind(tokenAddress, ABI_JSON, signerClient, Erc20.class);
 
         // Read
         BigInteger balance = token.balanceOf(RECIPIENT);
@@ -361,7 +367,8 @@ public class SmokeApp {
                 .accessList(List.of(entry))
                 .build();
 
-        TransactionReceipt receipt = walletClient.sendTransactionAndWait(request, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
+        // Use new Brane API
+        TransactionReceipt receipt = signerClient.sendTransactionAndWait(request, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
 
         if (!receipt.status()) {
             throw new RuntimeException("EIP-1559 transfer failed!");
@@ -408,9 +415,10 @@ public class SmokeApp {
         System.out.println("\n[Scenario H] Chain ID Validation");
 
         // Create a client expecting Mainnet (Chain ID 1) but connected to Anvil (31337)
+        // NOTE: Using legacy API because Brane.Builder doesn't yet support expected chain ID validation
         WalletClient badClient = DefaultWalletClient.from(
                 provider,
-                publicClient,
+                legacyPublicClient,
                 new PrivateKeySigner(PRIVATE_KEY),
                 OWNER,
                 1L // Expected: Mainnet
@@ -432,17 +440,18 @@ public class SmokeApp {
     }
 
     private static void testPublicClientReads() {
-        System.out.println("\n[Scenario I] Public Client Read Ops");
+        System.out.println("\n[Scenario I] Brane Client Read Ops");
 
         runSepoliaTask(() -> {
-            BlockHeader block = publicClient.getLatestBlock();
+            // Use new Brane API
+            BlockHeader block = client.getLatestBlock();
             if (block == null) {
                 throw new RuntimeException("Failed to get latest block");
             }
             System.out.println("  ✓ Latest Block: " + block.number());
 
             if (block.number() > 0) {
-                BlockHeader parent = publicClient.getBlockByNumber(block.number() - 1);
+                BlockHeader parent = client.getBlockByNumber(block.number() - 1);
                 if (!parent.hash().equals(block.parentHash())) {
                     throw new RuntimeException("Parent hash mismatch");
                 }
@@ -486,9 +495,9 @@ public class SmokeApp {
             bytecode = "0x" + bytecode;
         }
 
-        // Deploy
+        // Deploy using new Brane API
         TransactionRequest deployReq = TxBuilder.legacy().data(new HexData(bytecode)).build();
-        TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployReq, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
+        TransactionReceipt receipt = signerClient.sendTransactionAndWait(deployReq, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
         if (!receipt.status()) {
             throw new RuntimeException("ComplexContract deployment failed");
         }
@@ -496,7 +505,8 @@ public class SmokeApp {
         System.out.println("  ✓ Deployed ComplexContract at " + complexAddress);
 
         complexAbi = Abi.fromJson(abiJson);
-        ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, publicClient);
+        // NOTE: Using legacy PublicClient for ReadOnlyContract which tests untyped ABI handling
+        ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, legacyPublicClient);
 
         // Test Array: processArray([1, 2]) -> [2, 4]
         List<BigInteger> input = List.of(BigInteger.ONE, BigInteger.TWO);
@@ -523,9 +533,10 @@ public class SmokeApp {
         System.out.println("\n[Scenario L] Gas Strategy Configuration");
 
         // Create client with 2.0x gas buffer
+        // NOTE: Using legacy API because Brane.Builder doesn't yet support gas buffer configuration
         WalletClient bufferedClient = DefaultWalletClient.from(
                 provider,
-                publicClient,
+                legacyPublicClient,
                 new PrivateKeySigner(PRIVATE_KEY),
                 OWNER,
                 31337L,
@@ -559,8 +570,8 @@ public class SmokeApp {
         System.out.println("  (Debug logging enabled - check stdout for cyan/teal logs)");
 
         runSepoliaTask(() -> {
-            // Make a simple call to trigger logs
-            publicClient.getChainId();
+            // Make a simple call to trigger logs using new Brane API
+            client.chainId();
         });
 
         // Disable debug to keep subsequent output clean
@@ -572,7 +583,8 @@ public class SmokeApp {
         System.out.println("\n[Scenario N] Custom Error Decoding");
 
         // Use ReadOnlyContract to call the pure function via eth_call
-        ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, publicClient);
+        // NOTE: Using legacy PublicClient for ReadOnlyContract which tests untyped ABI handling
+        ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, legacyPublicClient);
 
         try {
             System.out.println("  Attempting to trigger custom error (expecting revert)...");
@@ -621,7 +633,8 @@ public class SmokeApp {
     private static void testComplexNestedStructs() {
         System.out.println("\n[Scenario O] Complex Nested Structs");
 
-        ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, publicClient);
+        // NOTE: Using legacy PublicClient for ReadOnlyContract which tests untyped ABI handling
+        ReadOnlyContract contract = ReadOnlyContract.from(complexAddress, complexAbi, legacyPublicClient);
 
         // Struct Inner { uint256 a; string b; }
         // Struct Outer { Inner[] inners; bytes32 id; }
@@ -676,18 +689,18 @@ public class SmokeApp {
         String wsUrl = "ws://127.0.0.1:8545";
         // Use WebSocketProvider for high performance and better subscription support
         try (WebSocketProvider wsProvider = WebSocketProvider.create(wsUrl)) {
-            // 0. Verify Standard RPC calls work over WebSocket
+            // 0. Verify Standard RPC calls work over WebSocket using new Brane API
             System.out.println("  Checking standard RPC over WebSocket...");
-            PublicClient wsClient = PublicClient.from(wsProvider);
-            BigInteger chainId = wsClient.getChainId();
+            Brane wsClient = Brane.builder().provider(wsProvider).build();
+            BigInteger chainId = wsClient.chainId();
             if (!chainId.equals(new BigInteger("31337"))) {
-                throw new RuntimeException("WebSocket RPC getChainId failed. Expected 31337, got " + chainId);
+                throw new RuntimeException("WebSocket RPC chainId failed. Expected 31337, got " + chainId);
             }
-            System.out.println("  ✓ [WS] getChainId success: " + chainId);
+            System.out.println("  ✓ [WS] chainId success: " + chainId);
 
-            // 1. Subscribe to New Heads
+            // 1. Subscribe to New Heads using new Brane API
             CompletableFuture<BlockHeader> headFuture = new CompletableFuture<>();
-            Subscription headSub = wsClient.subscribeToNewHeads(head -> {
+            Subscription headSub = wsClient.onNewHeads(head -> {
                 System.out.println("  ✓ [WS] New Head: " + head.number());
                 headFuture.complete(head);
             });
@@ -698,18 +711,18 @@ public class SmokeApp {
             headFuture.get(5, TimeUnit.SECONDS);
             headSub.unsubscribe();
 
-            // 2. Subscribe to Logs (Transfer event)
+            // 2. Subscribe to Logs (Transfer event) using new Brane API
             CompletableFuture<LogEntry> logFuture = new CompletableFuture<>();
-            Subscription logSub = wsClient.subscribeToLogs(
+            Subscription logSub = wsClient.onLogs(
                     new LogFilter(Optional.empty(), Optional.empty(), Optional.of(List.of(tokenAddress)), Optional.empty()),
                     log -> {
                         System.out.println("  ✓ [WS] Log Received: " + log.transactionHash());
                         logFuture.complete(log);
                     });
 
-            // Trigger a transfer
-            ReadWriteContract writeContract = ReadWriteContract.from(tokenAddress, abi, publicClient, walletClient);
-            writeContract.sendAndWait("transfer", WAIT_TIMEOUT_MS, POLL_INTERVAL_MS, RECIPIENT, BigInteger.ONE);
+            // Trigger a transfer using new Brane API
+            Erc20 token = BraneContract.bind(tokenAddress, ABI_JSON, signerClient, Erc20.class);
+            token.transfer(RECIPIENT, BigInteger.ONE);
 
             logFuture.get(10, TimeUnit.SECONDS);
             logSub.unsubscribe();
@@ -758,7 +771,8 @@ public class SmokeApp {
                             .build())
                     .build();
 
-            SimulateResult result1 = publicClient.simulateCalls(request1);
+            // Use new Brane API
+            SimulateResult result1 = client.simulate(request1);
             if (result1.results().size() != 1) {
                 throw new RuntimeException("Expected 1 result, got " + result1.results().size());
             }
@@ -777,7 +791,7 @@ public class SmokeApp {
                             .build())
                     .build();
 
-            SimulateResult result2 = publicClient.simulateCalls(request2);
+            SimulateResult result2 = client.simulate(request2);
             if (!(result2.results().get(0) instanceof CallResult.Success)) {
                 throw new RuntimeException("balanceOf call should succeed");
             }
@@ -802,7 +816,7 @@ public class SmokeApp {
                             .build())
                     .build();
 
-            SimulateResult result3 = publicClient.simulateCalls(request3);
+            SimulateResult result3 = client.simulate(request3);
             if (result3.results().size() != 2) {
                 throw new RuntimeException("Expected 2 results");
             }
@@ -822,7 +836,7 @@ public class SmokeApp {
                     .stateOverride(OWNER, override)
                     .build();
 
-            SimulateResult result4 = publicClient.simulateCalls(request4);
+            SimulateResult result4 = client.simulate(request4);
             if (!(result4.results().get(0) instanceof CallResult.Success)) {
                 throw new RuntimeException("Call with state override should succeed");
             }
@@ -849,7 +863,7 @@ public class SmokeApp {
                             .build())
                     .build();
 
-            SimulateResult result6 = publicClient.simulateCalls(request6);
+            SimulateResult result6 = client.simulate(request6);
             if (!(result6.results().get(0) instanceof CallResult.Failure)) {
                 throw new RuntimeException("Transfer with insufficient balance should fail");
             }
