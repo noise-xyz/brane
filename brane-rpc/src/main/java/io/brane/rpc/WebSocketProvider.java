@@ -312,6 +312,28 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         return connectionState.get();
     }
 
+    /**
+     * Returns the current number of pending requests awaiting responses.
+     *
+     * <p>This metric is useful for monitoring backpressure and connection health.
+     * A consistently high pending request count may indicate:
+     * <ul>
+     *   <li>Network latency issues</li>
+     *   <li>Server-side processing delays</li>
+     *   <li>Request rate exceeding response throughput</li>
+     * </ul>
+     *
+     * <p><b>Thread safety:</b> This method returns a snapshot of the current count.
+     * The count may change immediately after this method returns due to concurrent
+     * request submission or response processing.
+     *
+     * @return the number of pending requests
+     * @since 0.6.0
+     */
+    public int getPendingRequestCount() {
+        return pendingRequests.size();
+    }
+
     // Lock-free ID generator
     private final AtomicLong idGenerator = new AtomicLong(1);
 
