@@ -331,7 +331,50 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public BigInteger estimateGas(final TransactionRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        final Map<String, Object> params = buildEstimateGasParams(request);
+        final JsonRpcResponse response = sendWithRetry("eth_estimateGas", List.of(params));
+        final Object result = response.result();
+        if (result == null) {
+            throw new io.brane.core.error.RpcException(
+                    0, "eth_estimateGas returned null", (String) null, (Throwable) null);
+        }
+        return RpcUtils.decodeHexBigInteger(result.toString());
+    }
+
+    /**
+     * Builds the JSON-RPC parameters map for eth_estimateGas.
+     *
+     * @param request the transaction request
+     * @return the parameters map
+     */
+    private Map<String, Object> buildEstimateGasParams(final TransactionRequest request) {
+        final Map<String, Object> params = new LinkedHashMap<>();
+        if (request.from() != null) {
+            params.put("from", request.from().value());
+        }
+        if (request.to() != null) {
+            params.put("to", request.to().value());
+        }
+        if (request.value() != null) {
+            params.put("value", "0x" + request.value().value().toString(16));
+        }
+        if (request.data() != null && request.data().byteLength() > 0) {
+            params.put("data", request.data().value());
+        }
+        if (request.gasLimit() != null) {
+            params.put("gas", "0x" + Long.toHexString(request.gasLimit()));
+        }
+        if (request.gasPrice() != null) {
+            params.put("gasPrice", "0x" + request.gasPrice().value().toString(16));
+        }
+        if (request.maxFeePerGas() != null) {
+            params.put("maxFeePerGas", "0x" + request.maxFeePerGas().value().toString(16));
+        }
+        if (request.maxPriorityFeePerGas() != null) {
+            params.put("maxPriorityFeePerGas", "0x" + request.maxPriorityFeePerGas().value().toString(16));
+        }
+        return params;
     }
 
     @Override
