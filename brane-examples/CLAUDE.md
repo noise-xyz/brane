@@ -59,9 +59,8 @@ anvil  # In separate terminal
 2. Add `public static void main(String[] args)`
 3. Use standard Anvil setup:
    ```java
-   var provider = HttpBraneProvider.create("http://127.0.0.1:8545");
-   var key = PrivateKey.from("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
-   var client = DefaultWalletClient.create(provider, key);
+   var signer = new PrivateKeySigner("0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
+   var client = Brane.connect("http://127.0.0.1:8545", signer);
    ```
 4. Print results clearly
 5. Throw on failure (no silent failures)
