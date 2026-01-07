@@ -2,34 +2,66 @@ package io.brane.smoke;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
+import java.net.http.HttpTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
 import io.brane.contract.BraneContract;
 import io.brane.contract.ReadOnlyContract;
 import io.brane.contract.ReadWriteContract;
+import io.brane.core.BraneDebug;
+import io.brane.core.RevertDecoder;
+import io.brane.core.RevertDecoder.CustomErrorAbi;
+import io.brane.core.RevertDecoder.Decoded;
+import io.brane.core.RevertDecoder.RevertKind;
 import io.brane.core.abi.Abi;
+import io.brane.core.abi.TypeSchema.StringSchema;
+import io.brane.core.abi.TypeSchema.UIntSchema;
 import io.brane.core.builder.TxBuilder;
+import io.brane.core.chain.ChainProfile;
 import io.brane.core.crypto.PrivateKeySigner;
+import io.brane.core.crypto.Signature;
 import io.brane.core.crypto.Signer;
+import io.brane.core.error.ChainMismatchException;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
+import io.brane.core.model.AccessListEntry;
+import io.brane.core.model.BlockHeader;
 import io.brane.core.model.LogEntry;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
+import io.brane.core.tx.LegacyTransaction;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
+import io.brane.core.util.Topics;
+import io.brane.primitives.Hex;
+import io.brane.rpc.AccountOverride;
 import io.brane.rpc.BraneProvider;
+import io.brane.rpc.CallResult;
 import io.brane.rpc.DefaultWalletClient;
 import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.JsonRpcResponse;
 import io.brane.rpc.LogFilter;
 import io.brane.rpc.PublicClient;
+import io.brane.rpc.SimulateCall;
+import io.brane.rpc.SimulateRequest;
+import io.brane.rpc.SimulateResult;
+import io.brane.rpc.Subscription;
 import io.brane.rpc.WalletClient;
+import io.brane.rpc.WebSocketProvider;
+import io.brane.rpc.exception.SimulateNotSupportedException;
 
 public class SmokeApp {
+
+    // Timeout constants for transaction waiting
+    private static final long WAIT_TIMEOUT_MS = 30_000;
+    private static final long POLL_INTERVAL_MS = 1_000;
 
     // Minimal ERC-20 ABI for testing
     private static final String ABI_JSON = """
@@ -178,8 +210,11 @@ public class SmokeApp {
         System.out.println("\n[Scenario A] End-to-End Token Transfer");
 
         // 1. Load Bytecode
-        String bytecodeHex = new String(Objects.requireNonNull(
-                SmokeApp.class.getResourceAsStream("/BraneToken.bin")).readAllBytes(), StandardCharsets.UTF_8).trim();
+        String bytecodeHex;
+        try (var resourceStream = Objects.requireNonNull(
+                SmokeApp.class.getResourceAsStream("/BraneToken.bin"))) {
+            bytecodeHex = new String(resourceStream.readAllBytes(), StandardCharsets.UTF_8).trim();
+        }
 
         // Ensure bytecode starts with 0x
         if (!bytecodeHex.startsWith("0x")) {
@@ -192,7 +227,7 @@ public class SmokeApp {
 
         TransactionRequest deployRequest = BraneContract.deployRequest(ABI_JSON, bytecodeHex, initialSupply);
 
-        TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployRequest, 30_000, 1_000);
+        TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployRequest, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
 
         if (!receipt.status()) {
             throw new RuntimeException("Deployment failed!");
@@ -213,7 +248,7 @@ public class SmokeApp {
         BigInteger amount = new BigInteger("100");
         ReadWriteContract writeContract = ReadWriteContract.from(tokenAddress, abi, publicClient, walletClient);
 
-        TransactionReceipt transferReceipt = writeContract.sendAndWait("transfer", 30_000, 1_000, RECIPIENT, amount);
+        TransactionReceipt transferReceipt = writeContract.sendAndWait("transfer", WAIT_TIMEOUT_MS, POLL_INTERVAL_MS, RECIPIENT, amount);
 
         if (!transferReceipt.status()) {
             throw new RuntimeException("Transfer failed!");
@@ -236,7 +271,7 @@ public class SmokeApp {
 
         try {
             System.out.println("  Attempting to transfer excessive amount (expecting revert)...");
-            contract.sendAndWait("transfer", 30_000, 1_000, RECIPIENT, excessiveAmount);
+            contract.sendAndWait("transfer", WAIT_TIMEOUT_MS, POLL_INTERVAL_MS, RECIPIENT, excessiveAmount);
             throw new RuntimeException("Should have reverted!");
         } catch (RevertException e) {
             System.out.println("  ✓ Caught Expected Revert: " + e.revertReason());
@@ -265,7 +300,7 @@ public class SmokeApp {
 
         // Check for Transfer to Recipient
         // Topic 2 is 'to' (indexed)
-        String recipientTopic = io.brane.core.util.Topics.fromAddress(RECIPIENT).value();
+        String recipientTopic = Topics.fromAddress(RECIPIENT).value();
 
         boolean foundTransfer = logs.stream().anyMatch(log -> log.topics().size() >= 3 &&
                 log.topics().get(2).value().equalsIgnoreCase(recipientTopic));
@@ -315,7 +350,7 @@ public class SmokeApp {
     private static void testEip1559() {
         System.out.println("\n[Scenario E] EIP-1559 & Access Lists");
 
-        io.brane.core.model.AccessListEntry entry = new io.brane.core.model.AccessListEntry(
+        AccessListEntry entry = new AccessListEntry(
                 tokenAddress,
                 List.of() // No storage keys, just warming the address
         );
@@ -326,7 +361,7 @@ public class SmokeApp {
                 .accessList(List.of(entry))
                 .build();
 
-        TransactionReceipt receipt = walletClient.sendTransactionAndWait(request, 30_000, 1_000);
+        TransactionReceipt receipt = walletClient.sendTransactionAndWait(request, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
 
         if (!receipt.status()) {
             throw new RuntimeException("EIP-1559 transfer failed!");
@@ -340,7 +375,7 @@ public class SmokeApp {
         Signer signer = new PrivateKeySigner(PRIVATE_KEY);
 
         // Create a dummy legacy transaction
-        io.brane.core.tx.LegacyTransaction tx = new io.brane.core.tx.LegacyTransaction(
+        LegacyTransaction tx = new LegacyTransaction(
                 0, // nonce
                 Wei.of(1000000000), // gasPrice
                 21000, // gasLimit
@@ -349,19 +384,19 @@ public class SmokeApp {
                 HexData.EMPTY // data
         );
 
-        io.brane.core.crypto.Signature signature = signer.signTransaction(tx, 31337);
+        Signature signature = signer.signTransaction(tx, 31337);
 
         if (signature == null) {
             throw new RuntimeException("Invalid signature generated: null");
         }
-        System.out.println("  ✓ Generated Valid Signature: r=" + io.brane.primitives.Hex.encode(signature.r()) + "...");
+        System.out.println("  ✓ Generated Valid Signature: r=" + Hex.encode(signature.r()) + "...");
     }
 
     private static void testCustomRpc() {
         System.out.println("\n[Scenario G] Custom RPC (anvil_mine)");
 
         // Mine a block manually
-        io.brane.rpc.JsonRpcResponse response = provider.send("anvil_mine", List.of());
+        JsonRpcResponse response = provider.send("anvil_mine", List.of());
 
         if (response.hasError()) {
             throw new RuntimeException("Custom RPC call failed: " + response.error().message());
@@ -389,7 +424,7 @@ public class SmokeApp {
 
             badClient.sendTransaction(req);
             throw new RuntimeException("Should have thrown ChainMismatchException!");
-        } catch (io.brane.core.error.ChainMismatchException e) {
+        } catch (ChainMismatchException e) {
             System.out.println("  ✓ Caught Expected ChainMismatchException: " + e.getMessage());
         } catch (Exception e) {
             throw new RuntimeException("Unexpected exception: " + e.getClass().getName(), e);
@@ -400,14 +435,14 @@ public class SmokeApp {
         System.out.println("\n[Scenario I] Public Client Read Ops");
 
         runSepoliaTask(() -> {
-            io.brane.core.model.BlockHeader block = publicClient.getLatestBlock();
+            BlockHeader block = publicClient.getLatestBlock();
             if (block == null) {
                 throw new RuntimeException("Failed to get latest block");
             }
             System.out.println("  ✓ Latest Block: " + block.number());
 
             if (block.number() > 0) {
-                io.brane.core.model.BlockHeader parent = publicClient.getBlockByNumber(block.number() - 1);
+                BlockHeader parent = publicClient.getBlockByNumber(block.number() - 1);
                 if (!parent.hash().equals(block.parentHash())) {
                     throw new RuntimeException("Parent hash mismatch");
                 }
@@ -419,7 +454,7 @@ public class SmokeApp {
     private static void testWeiUtilities() {
         System.out.println("\n[Scenario J] Wei Utilities");
 
-        Wei oneEther = Wei.fromEther(java.math.BigDecimal.ONE);
+        Wei oneEther = Wei.fromEther(BigDecimal.ONE);
         if (!oneEther.value().equals(new BigInteger("1000000000000000000"))) {
             throw new RuntimeException("Wei.fromEther(1) failed");
         }
@@ -436,12 +471,16 @@ public class SmokeApp {
         System.out.println("\n[Scenario K] Complex ABI (Arrays/Tuples)");
 
         // Load artifacts
-        String bytecode = new String(Objects.requireNonNull(
-                SmokeApp.class.getResourceAsStream("/ComplexContract.bin")).readAllBytes(), StandardCharsets.UTF_8)
-                .trim();
-        String abiJson = new String(Objects.requireNonNull(
-                SmokeApp.class.getResourceAsStream("/ComplexContract.json")).readAllBytes(), StandardCharsets.UTF_8)
-                .trim();
+        String bytecode;
+        try (var binStream = Objects.requireNonNull(
+                SmokeApp.class.getResourceAsStream("/ComplexContract.bin"))) {
+            bytecode = new String(binStream.readAllBytes(), StandardCharsets.UTF_8).trim();
+        }
+        String abiJson;
+        try (var jsonStream = Objects.requireNonNull(
+                SmokeApp.class.getResourceAsStream("/ComplexContract.json"))) {
+            abiJson = new String(jsonStream.readAllBytes(), StandardCharsets.UTF_8).trim();
+        }
 
         if (!bytecode.startsWith("0x")) {
             bytecode = "0x" + bytecode;
@@ -449,7 +488,7 @@ public class SmokeApp {
 
         // Deploy
         TransactionRequest deployReq = TxBuilder.legacy().data(new HexData(bytecode)).build();
-        TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployReq, 30_000, 1_000);
+        TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployReq, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
         if (!receipt.status()) {
             throw new RuntimeException("ComplexContract deployment failed");
         }
@@ -472,7 +511,7 @@ public class SmokeApp {
         // Test Fixed Bytes: processFixedBytes(bytes32)
         byte[] bytes32 = new byte[32];
         bytes32[0] = 0x12;
-        HexData inputBytes = new HexData(io.brane.primitives.Hex.encode(bytes32));
+        HexData inputBytes = new HexData(Hex.encode(bytes32));
         HexData outputBytes = contract.call("processFixedBytes", HexData.class, inputBytes);
         if (!outputBytes.value().equals(inputBytes.value())) {
             throw new RuntimeException("Fixed bytes processing failed");
@@ -490,7 +529,7 @@ public class SmokeApp {
                 new PrivateKeySigner(PRIVATE_KEY),
                 OWNER,
                 31337L,
-                io.brane.core.chain.ChainProfile.of(31337L, "http://127.0.0.1:8545", true, Wei.of(1_000_000_000L)),
+                ChainProfile.of(31337L, "http://127.0.0.1:8545", true, Wei.of(1_000_000_000L)),
                 BigInteger.valueOf(2), // Numerator
                 BigInteger.ONE // Denominator
         );
@@ -500,7 +539,7 @@ public class SmokeApp {
                 .value(Wei.of(1))
                 .build(); // No gas limit set, so it will estimate and apply buffer
 
-        TransactionReceipt receipt = bufferedClient.sendTransactionAndWait(req, 30_000, 1_000);
+        TransactionReceipt receipt = bufferedClient.sendTransactionAndWait(req, WAIT_TIMEOUT_MS, POLL_INTERVAL_MS);
         if (!receipt.status()) {
             throw new RuntimeException("Buffered transaction failed");
         }
@@ -511,7 +550,7 @@ public class SmokeApp {
         System.out.println("\n[Scenario M] Debug & Color Mode");
 
         // Enable debug and color
-        io.brane.core.BraneDebug.setEnabled(true);
+        BraneDebug.setEnabled(true);
         // Force color (simulated) - usually controlled by env var, but we can check if
         // logs appear
         // We can't easily capture stdout here without redirecting, but we can ensure it
@@ -525,7 +564,7 @@ public class SmokeApp {
         });
 
         // Disable debug to keep subsequent output clean
-        io.brane.core.BraneDebug.setEnabled(false);
+        BraneDebug.setEnabled(false);
         System.out.println("  ✓ Debug mode toggled and executed without error");
     }
 
@@ -549,20 +588,20 @@ public class SmokeApp {
             }
 
             // Define the custom error ABI
-            io.brane.core.RevertDecoder.CustomErrorAbi customError = new io.brane.core.RevertDecoder.CustomErrorAbi(
+            CustomErrorAbi customError = new CustomErrorAbi(
                     "CustomError",
-                    List.of(new io.brane.core.abi.TypeSchema.UIntSchema(256),
-                            new io.brane.core.abi.TypeSchema.StringSchema()));
+                    List.of(new UIntSchema(256),
+                            new StringSchema()));
 
             // "CustomError(uint256,string)" selector is needed.
             // keccak256("CustomError(uint256,string)") = 0x97ea5a2f
             String selector = Abi.getSelector("CustomError(uint256,string)");
 
-            io.brane.core.RevertDecoder.Decoded decoded = io.brane.core.RevertDecoder.decode(
+            Decoded decoded = RevertDecoder.decode(
                     data,
-                    java.util.Map.of(selector, customError));
+                    Map.of(selector, customError));
 
-            if (decoded.kind() != io.brane.core.RevertDecoder.RevertKind.CUSTOM) {
+            if (decoded.kind() != RevertKind.CUSTOM) {
                 throw new RuntimeException("Failed to decode custom error. Got: " + decoded.kind());
             }
 
@@ -597,7 +636,7 @@ public class SmokeApp {
         byte[] idBytes = new byte[32];
         idBytes[0] = (byte) 0xAB;
         idBytes[31] = (byte) 0xCD;
-        HexData id = new HexData(io.brane.primitives.Hex.encode(idBytes));
+        HexData id = new HexData(Hex.encode(idBytes));
 
         List<Object> outer = List.of(inners, id);
 
@@ -636,7 +675,7 @@ public class SmokeApp {
 
         String wsUrl = "ws://127.0.0.1:8545";
         // Use WebSocketProvider for high performance and better subscription support
-        try (io.brane.rpc.WebSocketProvider wsProvider = io.brane.rpc.WebSocketProvider.create(wsUrl)) {
+        try (WebSocketProvider wsProvider = WebSocketProvider.create(wsUrl)) {
             // 0. Verify Standard RPC calls work over WebSocket
             System.out.println("  Checking standard RPC over WebSocket...");
             PublicClient wsClient = PublicClient.from(wsProvider);
@@ -647,8 +686,8 @@ public class SmokeApp {
             System.out.println("  ✓ [WS] getChainId success: " + chainId);
 
             // 1. Subscribe to New Heads
-            java.util.concurrent.CompletableFuture<io.brane.core.model.BlockHeader> headFuture = new java.util.concurrent.CompletableFuture<>();
-            io.brane.rpc.Subscription headSub = wsClient.subscribeToNewHeads(head -> {
+            CompletableFuture<BlockHeader> headFuture = new CompletableFuture<>();
+            Subscription headSub = wsClient.subscribeToNewHeads(head -> {
                 System.out.println("  ✓ [WS] New Head: " + head.number());
                 headFuture.complete(head);
             });
@@ -656,12 +695,12 @@ public class SmokeApp {
             // Trigger a block
             provider.send("evm_mine", List.of());
 
-            headFuture.get(5, java.util.concurrent.TimeUnit.SECONDS);
+            headFuture.get(5, TimeUnit.SECONDS);
             headSub.unsubscribe();
 
             // 2. Subscribe to Logs (Transfer event)
-            java.util.concurrent.CompletableFuture<LogEntry> logFuture = new java.util.concurrent.CompletableFuture<>();
-            io.brane.rpc.Subscription logSub = wsClient.subscribeToLogs(
+            CompletableFuture<LogEntry> logFuture = new CompletableFuture<>();
+            Subscription logSub = wsClient.subscribeToLogs(
                     new LogFilter(Optional.empty(), Optional.empty(), Optional.of(List.of(tokenAddress)), Optional.empty()),
                     log -> {
                         System.out.println("  ✓ [WS] Log Received: " + log.transactionHash());
@@ -670,9 +709,9 @@ public class SmokeApp {
 
             // Trigger a transfer
             ReadWriteContract writeContract = ReadWriteContract.from(tokenAddress, abi, publicClient, walletClient);
-            writeContract.sendAndWait("transfer", 30_000, 1_000, RECIPIENT, BigInteger.ONE);
+            writeContract.sendAndWait("transfer", WAIT_TIMEOUT_MS, POLL_INTERVAL_MS, RECIPIENT, BigInteger.ONE);
 
-            logFuture.get(10, java.util.concurrent.TimeUnit.SECONDS);
+            logFuture.get(10, TimeUnit.SECONDS);
             logSub.unsubscribe();
 
             System.out.println("  ✓ WebSocket subscriptions verified");
@@ -689,12 +728,11 @@ public class SmokeApp {
             task.run();
         } catch (Exception e) {
             if (sepoliaMode
-                    && (e instanceof RpcException || e.getCause() instanceof java.net.http.HttpTimeoutException)) {
+                    && (e instanceof RpcException || e.getCause() instanceof HttpTimeoutException)) {
                 System.out.println("  ⚠️ Sepolia Network Error (Expected on public RPC): " + e.getMessage());
+            } else if (e instanceof RuntimeException re) {
+                throw re;
             } else {
-                if (e instanceof RuntimeException) {
-                    throw (RuntimeException) e;
-                }
                 throw new RuntimeException(e);
             }
         }
@@ -712,19 +750,19 @@ public class SmokeApp {
         try {
             // Test 1: Simple value transfer simulation
             System.out.println("  Testing simple value transfer simulation");
-            io.brane.rpc.SimulateRequest request1 = io.brane.rpc.SimulateRequest.builder()
+            SimulateRequest request1 = SimulateRequest.builder()
                     .account(OWNER)
-                    .call(io.brane.rpc.SimulateCall.builder()
+                    .call(SimulateCall.builder()
                             .to(RECIPIENT)
                             .value(Wei.fromEther(new BigDecimal("1.0")))
                             .build())
                     .build();
 
-            io.brane.rpc.SimulateResult result1 = publicClient.simulateCalls(request1);
+            SimulateResult result1 = publicClient.simulateCalls(request1);
             if (result1.results().size() != 1) {
                 throw new RuntimeException("Expected 1 result, got " + result1.results().size());
             }
-            if (!(result1.results().get(0) instanceof io.brane.rpc.CallResult.Success)) {
+            if (!(result1.results().get(0) instanceof CallResult.Success)) {
                 throw new RuntimeException("Simple transfer should succeed");
             }
             System.out.println("    ✓ Simple value transfer simulation works");
@@ -732,18 +770,18 @@ public class SmokeApp {
             // Test 2: Contract call simulation (balanceOf)
             System.out.println("  Testing contract call simulation");
             HexData balanceOfData = new HexData(abi.encodeFunction("balanceOf", OWNER).data());
-            io.brane.rpc.SimulateRequest request2 = io.brane.rpc.SimulateRequest.builder()
-                    .call(io.brane.rpc.SimulateCall.builder()
+            SimulateRequest request2 = SimulateRequest.builder()
+                    .call(SimulateCall.builder()
                             .to(tokenAddress)
                             .data(balanceOfData)
                             .build())
                     .build();
 
-            io.brane.rpc.SimulateResult result2 = publicClient.simulateCalls(request2);
-            if (!(result2.results().get(0) instanceof io.brane.rpc.CallResult.Success)) {
+            SimulateResult result2 = publicClient.simulateCalls(request2);
+            if (!(result2.results().get(0) instanceof CallResult.Success)) {
                 throw new RuntimeException("balanceOf call should succeed");
             }
-            io.brane.rpc.CallResult.Success success = (io.brane.rpc.CallResult.Success) result2.results().get(0);
+            CallResult.Success success = (CallResult.Success) result2.results().get(0);
             if (success.returnData() == null) {
                 throw new RuntimeException("balanceOf should return data");
             }
@@ -752,19 +790,19 @@ public class SmokeApp {
             // Test 3: Multiple calls in sequence
             System.out.println("  Testing multiple calls simulation");
             HexData transferData = new HexData(abi.encodeFunction("transfer", RECIPIENT, BigInteger.valueOf(100)).data());
-            io.brane.rpc.SimulateRequest request3 = io.brane.rpc.SimulateRequest.builder()
+            SimulateRequest request3 = SimulateRequest.builder()
                     .account(OWNER)
-                    .call(io.brane.rpc.SimulateCall.builder()
+                    .call(SimulateCall.builder()
                             .to(tokenAddress)
                             .data(transferData)
                             .build())
-                    .call(io.brane.rpc.SimulateCall.builder()
+                    .call(SimulateCall.builder()
                             .to(tokenAddress)
                             .data(balanceOfData)
                             .build())
                     .build();
 
-            io.brane.rpc.SimulateResult result3 = publicClient.simulateCalls(request3);
+            SimulateResult result3 = publicClient.simulateCalls(request3);
             if (result3.results().size() != 2) {
                 throw new RuntimeException("Expected 2 results");
             }
@@ -772,27 +810,27 @@ public class SmokeApp {
 
             // Test 4: State override
             System.out.println("  Testing state override");
-            io.brane.rpc.AccountOverride override = io.brane.rpc.AccountOverride.builder()
+            AccountOverride override = AccountOverride.builder()
                     .balance(Wei.fromEther(new BigDecimal("10000")))
                     .build();
 
-            io.brane.rpc.SimulateRequest request4 = io.brane.rpc.SimulateRequest.builder()
-                    .call(io.brane.rpc.SimulateCall.builder()
+            SimulateRequest request4 = SimulateRequest.builder()
+                    .call(SimulateCall.builder()
                             .to(tokenAddress)
                             .data(balanceOfData)
                             .build())
                     .stateOverride(OWNER, override)
                     .build();
 
-            io.brane.rpc.SimulateResult result4 = publicClient.simulateCalls(request4);
-            if (!(result4.results().get(0) instanceof io.brane.rpc.CallResult.Success)) {
+            SimulateResult result4 = publicClient.simulateCalls(request4);
+            if (!(result4.results().get(0) instanceof CallResult.Success)) {
                 throw new RuntimeException("Call with state override should succeed");
             }
             System.out.println("    ✓ State override works");
 
             // Test 5: Gas estimation via simulation
             System.out.println("  Testing gas estimation");
-            io.brane.rpc.CallResult.Success transferResult = (io.brane.rpc.CallResult.Success) result3.results().get(0);
+            CallResult.Success transferResult = (CallResult.Success) result3.results().get(0);
             BigInteger gasUsed = transferResult.gasUsed();
             if (gasUsed == null || gasUsed.compareTo(BigInteger.ZERO) <= 0) {
                 throw new RuntimeException("Gas used should be > 0");
@@ -803,19 +841,19 @@ public class SmokeApp {
             System.out.println("  Testing failed call simulation");
             BigInteger tooMuch = new BigInteger("999999999999999999999999");
             HexData failTransfer = new HexData(abi.encodeFunction("transfer", RECIPIENT, tooMuch).data());
-            io.brane.rpc.SimulateRequest request6 = io.brane.rpc.SimulateRequest.builder()
+            SimulateRequest request6 = SimulateRequest.builder()
                     .account(OWNER)
-                    .call(io.brane.rpc.SimulateCall.builder()
+                    .call(SimulateCall.builder()
                             .to(tokenAddress)
                             .data(failTransfer)
                             .build())
                     .build();
 
-            io.brane.rpc.SimulateResult result6 = publicClient.simulateCalls(request6);
-            if (!(result6.results().get(0) instanceof io.brane.rpc.CallResult.Failure)) {
+            SimulateResult result6 = publicClient.simulateCalls(request6);
+            if (!(result6.results().get(0) instanceof CallResult.Failure)) {
                 throw new RuntimeException("Transfer with insufficient balance should fail");
             }
-            io.brane.rpc.CallResult.Failure failure = (io.brane.rpc.CallResult.Failure) result6.results().get(0);
+            CallResult.Failure failure = (CallResult.Failure) result6.results().get(0);
             if (failure.errorMessage() == null) {
                 throw new RuntimeException("Failure should have error message");
             }
@@ -823,7 +861,7 @@ public class SmokeApp {
 
             System.out.println("  ✅ Scenario Q: Transaction Simulation PASSED");
 
-        } catch (io.brane.rpc.exception.SimulateNotSupportedException e) {
+        } catch (SimulateNotSupportedException e) {
             System.out.println("  ⚠️ eth_simulateV1 not supported by this node (skipping test)");
             System.out.println("    This is expected on older Anvil versions or some RPC providers");
         } catch (Exception e) {
