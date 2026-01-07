@@ -3,6 +3,8 @@ package io.brane.rpc;
 import static io.brane.rpc.internal.RpcUtils.MAPPER;
 
 import java.math.BigInteger;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -14,6 +16,7 @@ import org.jspecify.annotations.Nullable;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import io.brane.core.chain.ChainProfile;
+import io.brane.rpc.internal.LogParser;
 
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
@@ -277,7 +280,53 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public List<LogEntry> getLogs(final LogFilter filter) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        final Map<String, Object> params = buildLogParams(filter);
+        final JsonRpcResponse response = sendWithRetry("eth_getLogs", List.of(params));
+        final Object result = response.result();
+        return LogParser.parseLogs(result, true);
+    }
+
+    /**
+     * Builds the JSON-RPC parameters map for eth_getLogs.
+     *
+     * @param filter the log filter criteria
+     * @return the parameters map
+     */
+    private Map<String, Object> buildLogParams(final LogFilter filter) {
+        final Map<String, Object> params = new LinkedHashMap<>();
+        filter.fromBlock().ifPresent(v -> {
+            final String hex = RpcUtils.toHexBlock(v);
+            if (hex != null) {
+                params.put("fromBlock", hex);
+            }
+        });
+        filter.toBlock().ifPresent(v -> {
+            final String hex = RpcUtils.toHexBlock(v);
+            if (hex != null) {
+                params.put("toBlock", hex);
+            }
+        });
+        // Serialize addresses: single address as string, multiple as array (per eth_getLogs spec)
+        filter.addresses().ifPresent(addrs -> {
+            if (addrs.size() == 1) {
+                params.put("address", addrs.get(0).value());
+            } else {
+                params.put("address", addrs.stream().map(Address::value).toList());
+            }
+        });
+        filter.topics().ifPresent(topics -> {
+            final List<String> topicHex = new ArrayList<>();
+            for (Hash h : topics) {
+                if (h != null) {
+                    topicHex.add(h.value());
+                }
+            }
+            if (!topicHex.isEmpty()) {
+                params.put("topics", topicHex);
+            }
+        });
+        return params;
     }
 
     @Override
