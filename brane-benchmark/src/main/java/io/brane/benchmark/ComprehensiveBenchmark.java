@@ -72,48 +72,48 @@ public class ComprehensiveBenchmark {
 
     private static void runBenchmarkSuite(String url, String networkName, StringBuilder results) throws Exception {
         // Connect both providers
-        WebSocketProvider brane = WebSocketProvider.create(url);
-        WebSocketService wsService = new WebSocketService(url, false);
-        wsService.connect();
-        Web3j web3j = Web3j.build(wsService);
+        try (WebSocketProvider brane = WebSocketProvider.create(url)) {
+            WebSocketService wsService = new WebSocketService(url, false);
+            wsService.connect();
+            Web3j web3j = Web3j.build(wsService);
 
-        try {
-            // Warmup
-            System.out.println("\n  ⏳ Warming up...");
-            warmup(brane, web3j);
+            try {
+                // Warmup
+                System.out.println("\n  ⏳ Warming up...");
+                warmup(brane, web3j);
 
-            // Test 1: Single Request Latency
-            System.out.println("\n  📊 Test 1: Single Request Latency");
-            LatencyResult braneLatency = measureLatency(brane);
-            LatencyResult web3jLatency = measureLatency(web3j);
-            printLatencyComparison(braneLatency, web3jLatency);
-            addLatencyResults(results, networkName, braneLatency, web3jLatency);
+                // Test 1: Single Request Latency
+                System.out.println("\n  📊 Test 1: Single Request Latency");
+                LatencyResult braneLatency = measureLatency(brane);
+                LatencyResult web3jLatency = measureLatency(web3j);
+                printLatencyComparison(braneLatency, web3jLatency);
+                addLatencyResults(results, networkName, braneLatency, web3jLatency);
 
-            Thread.sleep(1000);
+                Thread.sleep(1000);
 
-            // Test 2: Burst Throughput
-            System.out.println("\n  📊 Test 2: Burst Throughput");
-            for (int burstSize : BURST_SIZES) {
-                double braneTps = measureBurstThroughput(brane, burstSize);
-                double web3jTps = measureBurstThroughput(web3j, burstSize);
-                printBurstComparison(burstSize, braneTps, web3jTps);
-                addBurstResult(results, networkName, burstSize, braneTps, web3jTps);
-                Thread.sleep(500);
+                // Test 2: Burst Throughput
+                System.out.println("\n  📊 Test 2: Burst Throughput");
+                for (int burstSize : BURST_SIZES) {
+                    double braneTps = measureBurstThroughput(brane, burstSize);
+                    double web3jTps = measureBurstThroughput(web3j, burstSize);
+                    printBurstComparison(burstSize, braneTps, web3jTps);
+                    addBurstResult(results, networkName, burstSize, braneTps, web3jTps);
+                    Thread.sleep(500);
+                }
+
+                Thread.sleep(1000);
+
+                // Test 3: Sustained Throughput
+                System.out.println("\n  📊 Test 3: Sustained Throughput (" + SUSTAINED_DURATION_SECONDS + "s)");
+                double braneSustained = measureSustainedThroughput(brane);
+                Thread.sleep(2000);
+                double web3jSustained = measureSustainedThroughput(web3j);
+                printSustainedComparison(braneSustained, web3jSustained);
+                addSustainedResult(results, networkName, braneSustained, web3jSustained);
+
+            } finally {
+                wsService.close();
             }
-
-            Thread.sleep(1000);
-
-            // Test 3: Sustained Throughput
-            System.out.println("\n  📊 Test 3: Sustained Throughput (" + SUSTAINED_DURATION_SECONDS + "s)");
-            double braneSustained = measureSustainedThroughput(brane);
-            Thread.sleep(2000);
-            double web3jSustained = measureSustainedThroughput(web3j);
-            printSustainedComparison(braneSustained, web3jSustained);
-            addSustainedResult(results, networkName, braneSustained, web3jSustained);
-
-        } finally {
-            brane.close();
-            wsService.close();
         }
     }
 
