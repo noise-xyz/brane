@@ -186,7 +186,7 @@ Hash txHash = signer.sendTransaction(request);
 HTTP transport errors are wrapped in `RpcException`:
 
 ```java
-import io.brane.core.exceptions.RpcException;
+import io.brane.core.error.RpcException;
 
 try {
     var block = client.getLatestBlock();
