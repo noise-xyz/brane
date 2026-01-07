@@ -1,12 +1,17 @@
 package io.brane.rpc;
 
+import static io.brane.rpc.internal.RpcUtils.MAPPER;
+
 import java.math.BigInteger;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
+
+import com.fasterxml.jackson.core.type.TypeReference;
 
 import io.brane.core.chain.ChainProfile;
 
@@ -19,6 +24,8 @@ import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
+import io.brane.core.types.Wei;
+import io.brane.rpc.internal.RpcUtils;
 
 /**
  * Default implementation of {@link Brane.Reader} for read-only blockchain operations.
@@ -83,7 +90,39 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public @Nullable BlockHeader getLatestBlock() {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        return getBlockByTag(BlockTag.LATEST.toRpcValue());
+    }
+
+    /**
+     * Retrieves a block by its tag string.
+     *
+     * @param tag the block tag (e.g., "latest", "0x1234")
+     * @return the block header, or null if not found
+     */
+    private @Nullable BlockHeader getBlockByTag(final String tag) {
+        final JsonRpcResponse response = sendWithRetry("eth_getBlockByNumber", List.of(tag, Boolean.FALSE));
+        final Object result = response.result();
+        if (result == null) {
+            return null;
+        }
+
+        final Map<String, Object> map = MAPPER.convertValue(
+                result, new TypeReference<Map<String, Object>>() {}
+        );
+
+        final String hash = RpcUtils.stringValue(map.get("hash"));
+        final String parentHash = RpcUtils.stringValue(map.get("parentHash"));
+        final Long number = RpcUtils.decodeHexLong(map.get("number"));
+        final Long timestamp = RpcUtils.decodeHexLong(map.get("timestamp"));
+        final String baseFeeHex = RpcUtils.stringValue(map.get("baseFeePerGas"));
+
+        return new BlockHeader(
+                hash != null ? new Hash(hash) : null,
+                number,
+                parentHash != null ? new Hash(parentHash) : null,
+                timestamp,
+                baseFeeHex != null ? new Wei(RpcUtils.decodeHexBigInteger(baseFeeHex)) : null);
     }
 
     @Override
