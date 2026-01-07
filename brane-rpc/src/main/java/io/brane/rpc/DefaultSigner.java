@@ -77,22 +77,22 @@ final class DefaultSigner implements Brane.Signer {
 
     @Override
     public @Nullable Transaction getTransactionByHash(final Hash hash) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.getTransactionByHash(hash);
     }
 
     @Override
     public @Nullable TransactionReceipt getTransactionReceipt(final Hash hash) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.getTransactionReceipt(hash);
     }
 
     @Override
     public HexData call(final CallRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.call(request);
     }
 
     @Override
     public HexData call(final CallRequest request, final BlockTag blockTag) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        return reader.call(request, blockTag);
     }
 
     @Override
