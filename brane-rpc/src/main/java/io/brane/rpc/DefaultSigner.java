@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.LogEntry;
 import io.brane.core.model.Transaction;
@@ -68,6 +69,21 @@ final class DefaultSigner implements Brane.Signer {
 
     @Override
     public BigInteger estimateGas(final TransactionRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public AccessListWithGas createAccessList(final TransactionRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public SimulateResult simulate(final SimulateRequest request) {
+        throw new UnsupportedOperationException("Not implemented yet");
+    }
+
+    @Override
+    public MulticallBatch batch() {
         throw new UnsupportedOperationException("Not implemented yet");
     }
 

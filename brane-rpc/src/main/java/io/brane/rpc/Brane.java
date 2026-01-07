@@ -5,6 +5,7 @@ import java.util.List;
 
 import org.jspecify.annotations.Nullable;
 
+import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.LogEntry;
 import io.brane.core.model.Transaction;
@@ -158,6 +159,79 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @since 0.1.0
      */
     BigInteger estimateGas(TransactionRequest request);
+
+    /**
+     * Creates an access list for a transaction.
+     *
+     * <p>An access list specifies the addresses and storage keys a transaction will access,
+     * allowing for gas savings on EIP-2930/EIP-1559 transactions.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * TransactionRequest request = TransactionRequest.builder()
+     *     .from(senderAddress)
+     *     .to(contractAddress)
+     *     .data(encodedFunctionCall)
+     *     .build();
+     * AccessListWithGas result = client.createAccessList(request);
+     * System.out.println("Gas estimate: " + result.gasUsed());
+     * }</pre>
+     *
+     * @param request the transaction request to analyze
+     * @return the access list and estimated gas
+     * @since 0.1.0
+     */
+    AccessListWithGas createAccessList(TransactionRequest request);
+
+    /**
+     * Simulates a batch of transactions using {@code eth_simulateV1}.
+     *
+     * <p>This allows simulating multiple transactions in sequence with state overrides,
+     * making it useful for gas estimation, dry-run validation, and debugging.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * SimulateRequest request = SimulateRequest.builder()
+     *     .account(senderAddress)
+     *     .call(SimulateCall.builder()
+     *         .to(contractAddress)
+     *         .data(encodedFunctionCall)
+     *         .build())
+     *     .traceAssetChanges(true)
+     *     .build();
+     * SimulateResult result = client.simulate(request);
+     * for (CallResult callResult : result.results()) {
+     *     System.out.println("Success: " + callResult.success());
+     * }
+     * }</pre>
+     *
+     * @param request the simulation request
+     * @return the simulation result containing per-call results and optional asset changes
+     * @since 0.1.0
+     */
+    SimulateResult simulate(SimulateRequest request);
+
+    /**
+     * Creates a new batch for executing multiple calls in a single RPC request.
+     *
+     * <p>The returned {@link MulticallBatch} collects multiple contract calls and executes
+     * them together using the Multicall3 contract, reducing network overhead.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * MulticallBatch batch = client.batch();
+     * ERC20 token = batch.bind(ERC20.class, tokenAddress, ERC20_ABI);
+     * BatchHandle<BigInteger> balance1 = batch.add(token.balanceOf(addr1));
+     * BatchHandle<BigInteger> balance2 = batch.add(token.balanceOf(addr2));
+     * batch.execute();
+     * System.out.println("Balance 1: " + balance1.get().data());
+     * System.out.println("Balance 2: " + balance2.get().data());
+     * }</pre>
+     *
+     * @return a new batch instance
+     * @since 0.1.0
+     */
+    MulticallBatch batch();
 
     /**
      * Read-only client for blockchain queries.
