@@ -178,8 +178,11 @@ public class SmokeApp {
         System.out.println("\n[Scenario A] End-to-End Token Transfer");
 
         // 1. Load Bytecode
-        String bytecodeHex = new String(Objects.requireNonNull(
-                SmokeApp.class.getResourceAsStream("/BraneToken.bin")).readAllBytes(), StandardCharsets.UTF_8).trim();
+        String bytecodeHex;
+        try (var resourceStream = Objects.requireNonNull(
+                SmokeApp.class.getResourceAsStream("/BraneToken.bin"))) {
+            bytecodeHex = new String(resourceStream.readAllBytes(), StandardCharsets.UTF_8).trim();
+        }
 
         // Ensure bytecode starts with 0x
         if (!bytecodeHex.startsWith("0x")) {
@@ -436,12 +439,16 @@ public class SmokeApp {
         System.out.println("\n[Scenario K] Complex ABI (Arrays/Tuples)");
 
         // Load artifacts
-        String bytecode = new String(Objects.requireNonNull(
-                SmokeApp.class.getResourceAsStream("/ComplexContract.bin")).readAllBytes(), StandardCharsets.UTF_8)
-                .trim();
-        String abiJson = new String(Objects.requireNonNull(
-                SmokeApp.class.getResourceAsStream("/ComplexContract.json")).readAllBytes(), StandardCharsets.UTF_8)
-                .trim();
+        String bytecode;
+        try (var binStream = Objects.requireNonNull(
+                SmokeApp.class.getResourceAsStream("/ComplexContract.bin"))) {
+            bytecode = new String(binStream.readAllBytes(), StandardCharsets.UTF_8).trim();
+        }
+        String abiJson;
+        try (var jsonStream = Objects.requireNonNull(
+                SmokeApp.class.getResourceAsStream("/ComplexContract.json"))) {
+            abiJson = new String(jsonStream.readAllBytes(), StandardCharsets.UTF_8).trim();
+        }
 
         if (!bytecode.startsWith("0x")) {
             bytecode = "0x" + bytecode;
