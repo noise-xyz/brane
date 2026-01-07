@@ -158,4 +158,103 @@ class BraneTest {
 
         assertEquals(java.math.BigInteger.ONE, client.chainId());
     }
+
+    // ==================== Builder Pattern Tests (P5-02) ====================
+
+    @Test
+    void buildReaderReturnsReaderInstance() {
+        // buildReader() should always return a Reader
+        Brane.Reader reader = Brane.builder()
+                .provider(provider)
+                .buildReader();
+
+        assertNotNull(reader);
+        assertInstanceOf(Brane.Reader.class, reader);
+        assertFalse(reader.canSign());
+    }
+
+    @Test
+    void buildSignerReturnsSignerInstance() {
+        // buildSigner() should return a Signer when signer is provided
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Signer client = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildSigner();
+
+        assertNotNull(client);
+        assertInstanceOf(Brane.Signer.class, client);
+        assertTrue(client.canSign());
+        assertEquals(signer, client.signer());
+    }
+
+    @Test
+    void buildWithoutSignerReturnsReader() {
+        // build() without a signer should return a Reader
+        Brane client = Brane.builder()
+                .provider(provider)
+                .build();
+
+        assertNotNull(client);
+        assertInstanceOf(Brane.Reader.class, client);
+        assertFalse(client.canSign());
+    }
+
+    @Test
+    void buildWithSignerReturnsSigner() {
+        // build() with a signer should return a Signer
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane client = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .build();
+
+        assertNotNull(client);
+        assertInstanceOf(Brane.Signer.class, client);
+        assertTrue(client.canSign());
+    }
+
+    @Test
+    void builderWithChainProfilePropagates() {
+        // Verify chain profile is set correctly
+        io.brane.core.chain.ChainProfile chainProfile = io.brane.core.chain.ChainProfiles.ETH_MAINNET;
+        Brane.Reader reader = Brane.builder()
+                .provider(provider)
+                .chain(chainProfile)
+                .buildReader();
+
+        assertTrue(reader.chain().isPresent());
+        assertEquals(chainProfile, reader.chain().get());
+    }
+
+    @Test
+    void builderWithRetryConfigPropagates() {
+        // Verify retry config can be set (no exception thrown)
+        RpcRetryConfig customConfig = RpcRetryConfig.builder()
+                .backoffBaseMs(100)
+                .backoffMaxMs(5000)
+                .build();
+
+        Brane.Reader reader = Brane.builder()
+                .provider(provider)
+                .retries(5)
+                .retryConfig(customConfig)
+                .buildReader();
+
+        assertNotNull(reader);
+    }
+
+    @Test
+    void buildReaderIgnoresSigner() {
+        // buildReader() should return Reader even if signer is set
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Reader reader = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildReader();
+
+        assertNotNull(reader);
+        assertInstanceOf(Brane.Reader.class, reader);
+        assertFalse(reader.canSign());
+    }
 }
