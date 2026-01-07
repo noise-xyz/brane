@@ -165,7 +165,96 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public @Nullable TransactionReceipt getTransactionReceipt(final Hash hash) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        final JsonRpcResponse response = sendWithRetry("eth_getTransactionReceipt", List.of(hash.value()));
+        final Object result = response.result();
+        if (result == null) {
+            return null;
+        }
+
+        final Map<String, Object> map = MAPPER.convertValue(
+                result, new TypeReference<Map<String, Object>>() {}
+        );
+
+        final String txHash = RpcUtils.stringValue(map.get("transactionHash"));
+        final String blockHash = RpcUtils.stringValue(map.get("blockHash"));
+        final long blockNumber = RpcUtils.decodeHexLong(map.get("blockNumber"));
+        final String from = RpcUtils.stringValue(map.get("from"));
+        final String to = RpcUtils.stringValue(map.get("to"));
+        final String contractAddress = RpcUtils.stringValue(map.get("contractAddress"));
+        final String statusHex = RpcUtils.stringValue(map.get("status"));
+        final boolean status = statusHex != null && !"0x0".equals(statusHex) && !"0x".equals(statusHex);
+        final String cumulativeGasUsedHex = RpcUtils.stringValue(map.get("cumulativeGasUsed"));
+
+        // Parse logs
+        final List<LogEntry> logs = parseLogs(map.get("logs"));
+
+        return new TransactionReceipt(
+                new Hash(txHash),
+                new Hash(blockHash),
+                blockNumber,
+                new Address(from),
+                to != null ? new Address(to) : null,
+                contractAddress != null ? new Address(contractAddress) : null,
+                logs,
+                status,
+                new Wei(RpcUtils.decodeHexBigInteger(cumulativeGasUsedHex)));
+    }
+
+    /**
+     * Parses a list of log entries from the RPC response.
+     *
+     * @param logsObject the raw logs array from the RPC response
+     * @return a list of parsed log entries
+     */
+    @SuppressWarnings("unchecked")
+    private List<LogEntry> parseLogs(final Object logsObject) {
+        if (logsObject == null) {
+            return List.of();
+        }
+
+        final List<Map<String, Object>> logsList = MAPPER.convertValue(
+                logsObject, new TypeReference<List<Map<String, Object>>>() {}
+        );
+
+        return logsList.stream().map(this::parseLogEntry).toList();
+    }
+
+    /**
+     * Parses a single log entry from a map.
+     *
+     * @param logMap the log entry map from the RPC response
+     * @return the parsed log entry
+     */
+    @SuppressWarnings("unchecked")
+    private LogEntry parseLogEntry(final Map<String, Object> logMap) {
+        final String address = RpcUtils.stringValue(logMap.get("address"));
+        final String data = RpcUtils.stringValue(logMap.get("data"));
+        final String blockHash = RpcUtils.stringValue(logMap.get("blockHash"));
+        final String transactionHash = RpcUtils.stringValue(logMap.get("transactionHash"));
+        final long logIndex = RpcUtils.decodeHexLong(logMap.get("logIndex"));
+        final Object removedObj = logMap.get("removed");
+        final boolean removed = removedObj != null && Boolean.TRUE.equals(removedObj);
+
+        // Parse topics
+        final Object topicsObj = logMap.get("topics");
+        final List<Hash> topics;
+        if (topicsObj instanceof List<?> topicsList) {
+            topics = topicsList.stream()
+                    .map(t -> new Hash(RpcUtils.stringValue(t)))
+                    .toList();
+        } else {
+            topics = List.of();
+        }
+
+        return new LogEntry(
+                new Address(address),
+                data != null ? new HexData(data) : HexData.EMPTY,
+                topics,
+                blockHash != null ? new Hash(blockHash) : null,
+                new Hash(transactionHash),
+                logIndex,
+                removed);
     }
 
     @Override
