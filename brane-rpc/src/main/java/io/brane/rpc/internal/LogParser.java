@@ -17,8 +17,8 @@ import io.brane.core.types.HexData;
 /**
  * Utility class for parsing Ethereum log entries from JSON-RPC responses.
  * <p>
- * This class consolidates log parsing logic used by both PublicClient (eth_getLogs)
- * and WalletClient (transaction receipt logs).
+ * This class consolidates log parsing logic used by both {@link io.brane.rpc.Brane.Reader} (eth_getLogs)
+ * and {@link io.brane.rpc.Brane.Signer} (transaction receipt logs).
  * <p>
  * <strong>Internal Use Only:</strong> This class is package-private and not part
  * of the public API.
