@@ -19,7 +19,7 @@
             ]
         },
         {
-            "group": "Public Client",
+            "group": "Read Operations",
             "pages": [
                 "public-client/api",
                 "public-client/simulate",
@@ -27,7 +27,7 @@
             ]
         },
         {
-            "group": "Wallet Client",
+            "group": "Write Operations",
             "pages": [
                 "wallet-client/api",
                 "wallet-client/signers",
