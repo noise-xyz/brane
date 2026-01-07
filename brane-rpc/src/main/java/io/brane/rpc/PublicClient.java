@@ -57,6 +57,7 @@ public interface PublicClient {
      *
      * @param provider the JSON-RPC provider
      * @return a new PublicClient instance
+     * @since 0.1.0
      */
     static PublicClient from(final BraneProvider provider) {
         return new DefaultPublicClient(provider);
@@ -66,6 +67,7 @@ public interface PublicClient {
      * Retrieves the latest block header.
      *
      * @return the latest block header, or {@code null} if not found
+     * @since 0.1.0
      */
     @Nullable BlockHeader getLatestBlock();
 
@@ -74,6 +76,7 @@ public interface PublicClient {
      *
      * @param blockNumber the block number
      * @return the block header, or {@code null} if not found
+     * @since 0.1.0
      */
     @Nullable BlockHeader getBlockByNumber(long blockNumber);
 
@@ -82,6 +85,7 @@ public interface PublicClient {
      *
      * @param hash the transaction hash
      * @return the transaction, or {@code null} if not found
+     * @since 0.1.0
      */
     @Nullable Transaction getTransactionByHash(Hash hash);
 
@@ -120,6 +124,7 @@ public interface PublicClient {
      *
      * @param filter the log filter criteria
      * @return a list of matching logs
+     * @since 0.1.0
      */
     List<io.brane.core.model.LogEntry> getLogs(LogFilter filter);
 
@@ -127,6 +132,7 @@ public interface PublicClient {
      * Retrieves the chain ID.
      *
      * @return the chain ID
+     * @since 0.1.0
      */
     java.math.BigInteger getChainId();
 
@@ -135,6 +141,7 @@ public interface PublicClient {
      *
      * @param address the account address
      * @return the balance in Wei
+     * @since 0.1.0
      */
     java.math.BigInteger getBalance(io.brane.core.types.Address address);
 
@@ -143,6 +150,7 @@ public interface PublicClient {
      *
      * @param callback the callback to invoke when a new block header is received
      * @return the subscription handle
+     * @since 0.1.0
      */
     Subscription subscribeToNewHeads(java.util.function.Consumer<BlockHeader> callback);
 
@@ -152,6 +160,7 @@ public interface PublicClient {
      * @param filter   the log filter criteria
      * @param callback the callback to invoke when a log is received
      * @return the subscription handle
+     * @since 0.1.0
      */
     Subscription subscribeToLogs(LogFilter filter, java.util.function.Consumer<io.brane.core.model.LogEntry> callback);
 
@@ -187,6 +196,7 @@ public interface PublicClient {
      *
      * @param request the transaction request to analyze
      * @return the access list and gas used
+     * @since 0.1.0
      */
     AccessListWithGas createAccessList(TransactionRequest request);
 
@@ -194,6 +204,7 @@ public interface PublicClient {
      * Creates a new multicall batch for bundling multiple read operations.
      *
      * @return a new MulticallBatch instance
+     * @since 0.1.0
      */
     MulticallBatch createBatch();
 
@@ -214,6 +225,7 @@ public interface PublicClient {
      * @return the simulation results for each call
      * @throws io.brane.rpc.exception.SimulateNotSupportedException if eth_simulateV1 is not supported
      * @see <a href="https://ethereum.github.io/execution-apis/api-documentation/">eth_simulateV1 Specification</a>
+     * @since 0.1.0
      */
     SimulateResult simulateCalls(SimulateRequest request);
 }

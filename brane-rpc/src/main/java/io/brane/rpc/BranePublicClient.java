@@ -93,6 +93,19 @@ public final class BranePublicClient implements PublicClient, AutoCloseable {
     }
 
     /**
+     * Returns whether this client has been closed.
+     *
+     * <p>A closed client cannot be used for any operations and will throw
+     * {@link IllegalStateException} if any method is called.
+     *
+     * @return {@code true} if this client has been closed, {@code false} otherwise
+     * @since 0.6.0
+     */
+    public boolean isClosed() {
+        return closed.get();
+    }
+
+    /**
      * Returns the chain profile for this client.
      *
      * @return the chain configuration
