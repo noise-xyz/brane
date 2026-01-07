@@ -25,7 +25,7 @@ import io.brane.core.types.Wei;
  * <li><strong>Required for signing:</strong> {@code from} (sender address) - may be null during
  * construction but must be non-null when calling {@link #toUnsignedTransaction(long)}</li>
  * <li><strong>Optional:</strong> All other fields can be null and will be
- * auto-filled by {@code WalletClient}:
+ * auto-filled by {@code Brane.Signer}:
  * <ul>
  * <li>{@code gasLimit} - estimated via {@code eth_estimateGas} if null</li>
  * <li>{@code nonce} - fetched from {@code eth_getTransactionCount} if null</li>
@@ -137,7 +137,7 @@ public record TransactionRequest(
      * <p>
      * All fields must be populated (no nulls except {@code to} for contract
      * creation).
-     * Use {@code WalletClient} to auto-fill missing fields before calling this
+     * Use {@code Brane.Signer} to auto-fill missing fields before calling this
      * method.
      *
      * @param chainId the chain ID for the transaction
