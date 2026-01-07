@@ -1,0 +1,83 @@
+---
+title: Architecture
+description: 'Understanding the Brane SDK structure.'
+---
+
+## Overview
+
+Brane provides a layered architecture separating client APIs from transport providers.
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│                        USER APPLICATION                        │
+└────────────────────────────────────────────────────────────────┘
+                                │
+                                ▼
+┌────────────────────────────────────────────────────────────────┐
+│                    Brane (sealed interface)                    │
+│                                                                │
+│   ┌────────────────────┐         ┌────────────────────┐        │
+│   │    Brane.Reader    │         │    Brane.Signer    │        │
+│   │   (read-only ops)  │         │ (read + write ops) │        │
+│   └─────────┬──────────┘         └──────────┬─────────┘        │
+│             │ implements                    │ implements       │
+│             ▼                               ▼                  │
+│   ┌────────────────────┐  has-a  ┌────────────────────┐        │
+│   │   DefaultReader    │◄────────│   DefaultSigner    │        │
+│   └─────────┬──────────┘         └──────────┬─────────┘        │
+└─────────────┼───────────────────────────────┼──────────────────┘
+              │                               │
+              └───────────────┬───────────────┘
+                              │ uses
+                              ▼
+┌────────────────────────────────────────────────────────────────┐
+│                   BraneProvider (interface)                    │
+│                                                                │
+│   ┌────────────────────┐         ┌────────────────────┐        │
+│   │  HttpBraneProvider │         │  WebSocketProvider │        │
+│   │                    │         │                    │        │
+│   │  • HttpClient      │         │  • Netty           │        │
+│   │  • Stateless       │         │  • Disruptor       │        │
+│   │                    │         │  • Subscriptions   │        │
+│   └─────────┬──────────┘         └──────────┬─────────┘        │
+└─────────────┼───────────────────────────────┼──────────────────┘
+              │                               │
+              └───────────────┬───────────────┘
+                              ▼
+┌────────────────────────────────────────────────────────────────┐
+│                    ETHEREUM NODE (JSON-RPC)                    │
+└────────────────────────────────────────────────────────────────┘
+```
+
+## Client Layer
+
+The `Brane` sealed interface is the main entry point:
+
+- **`Brane.Reader`** - Read-only operations: balance queries, block fetching, `eth_call`, event logs
+- **`Brane.Signer`** - All Reader operations plus transaction signing and sending
+
+`DefaultSigner` delegates read operations to an internal `DefaultReader` instance.
+
+## Provider Layer
+
+`BraneProvider` abstracts the transport mechanism:
+
+| Provider | Use Case |
+|----------|----------|
+| `HttpBraneProvider` | Standard request/response, stateless, serverless-friendly |
+| `WebSocketProvider` | Real-time subscriptions, persistent connection |
+
+## Module Dependencies
+
+```
+brane-primitives (no dependencies)
+         │
+         ▼
+     brane-core (BouncyCastle, Jackson)
+         │
+         ▼
+      brane-rpc (Netty, Disruptor)
+         │
+         ▼
+    brane-contract
+```

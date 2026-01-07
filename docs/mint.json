@@ -15,6 +15,7 @@
             "group": "Get Started",
             "pages": [
                 "quickstart",
+                "architecture",
                 "performance"
             ]
         },
