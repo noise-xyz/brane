@@ -431,8 +431,30 @@ final class DefaultReader implements Brane.Reader {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public SimulateResult simulate(final SimulateRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        final BlockTag blockTag = request.blockTag() != null ? request.blockTag() : BlockTag.LATEST;
+        final JsonRpcResponse response = sendWithRetry(
+                "eth_simulateV1",
+                List.of(request.toMap(), blockTag.toRpcValue()));
+        if (response.hasError()) {
+            final JsonRpcError err = response.error();
+            throw new io.brane.core.error.RpcException(
+                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+        }
+        final Object result = response.result();
+        if (result == null) {
+            return new SimulateResult(List.of(), null);
+        }
+
+        // eth_simulateV1 returns an array of block results (one per simulated block)
+        if (result instanceof List<?> listResult) {
+            return SimulateResult.fromList((List<Map<String, Object>>) listResult);
+        }
+        // Fallback for implementations returning a single object
+        return SimulateResult.fromMap(MAPPER.convertValue(
+                result, new TypeReference<Map<String, Object>>() {}));
     }
 
     @Override
