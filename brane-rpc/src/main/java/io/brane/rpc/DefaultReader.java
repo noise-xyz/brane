@@ -71,7 +71,14 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public BigInteger getBalance(final Address address) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        final JsonRpcResponse response = sendWithRetry("eth_getBalance", List.of(address.value(), "latest"));
+        final Object result = response.result();
+        if (result == null) {
+            throw new io.brane.core.error.RpcException(
+                    0, "eth_getBalance returned null", (String) null, (Throwable) null);
+        }
+        return io.brane.rpc.internal.RpcUtils.decodeHexBigInteger(result.toString());
     }
 
     @Override
