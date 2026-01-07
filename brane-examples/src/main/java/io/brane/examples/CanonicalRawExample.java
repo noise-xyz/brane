@@ -13,6 +13,7 @@ import io.brane.rpc.BraneProvider;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
+import io.brane.core.error.RpcException;
 
 /**
  * Canonical "Low-Level" Example for Brane 0.1.0-alpha.
@@ -89,8 +90,8 @@ public final class CanonicalRawExample {
             System.out.println(AnsiColors.success("Block:   " + receipt.blockNumber()));
             System.out.println(AnsiColors.success("Gas Used:" + receipt.cumulativeGasUsed().value()));
 
-        } catch (Exception e) {
-            System.err.println("❌ Error: " + e.getMessage());
+        } catch (final RpcException e) {
+            System.err.println("❌ RPC error: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }

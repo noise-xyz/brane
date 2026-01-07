@@ -16,6 +16,10 @@ import io.brane.rpc.BraneProvider;
 import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.PublicClient;
 import io.brane.rpc.WalletClient;
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.error.AbiEncodingException;
+import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
 
 /**
  * Canonical example of Brane's "Minimal but Solid" ABI Wrapper.
@@ -157,8 +161,16 @@ public final class CanonicalAbiExample {
 
             System.out.println("\n✅ Canonical ABI Example Completed Successfully.");
 
-        } catch (Exception e) {
-            System.err.println("❌ Example Failed: " + e.getMessage());
+        } catch (final RpcException e) {
+            System.err.println("❌ RPC error: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        } catch (final RevertException e) {
+            System.err.println("❌ Revert error: " + e.getMessage());
+            e.printStackTrace();
+            System.exit(1);
+        } catch (final AbiEncodingException | AbiDecodingException e) {
+            System.err.println("❌ ABI error: " + e.getMessage());
             e.printStackTrace();
             System.exit(1);
         }
