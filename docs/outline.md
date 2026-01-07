@@ -26,7 +26,7 @@
 
 ## 6. Advanced Signing (External Signers)
 - **`Signer` Interface**: Implementing custom signers (e.g., Privy, AWS KMS, HSM).
-- **Example**: How to inject a custom signer into `WalletClient`.
+- **Example**: How to inject a custom signer into `Brane.Signer`.
 
 ## 7. Utilities & Types
 - **Primitives**: `Address`, `Wei`, `HexData`.
