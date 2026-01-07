@@ -8,39 +8,32 @@ description: 'Understanding the Brane SDK structure.'
 Brane provides a layered architecture separating client APIs from transport providers.
 
 ```mermaid
+%%{init: {'flowchart': {'nodeSpacing': 30, 'rankSpacing': 50}}}%%
 flowchart TD
     APP["🖥️ USER APPLICATION"]
-    
-    APP --> READER
-    APP --> SIGNER
 
     subgraph BRANE["Brane (sealed interface)"]
         direction LR
-        READER["Brane.Reader<br/><i>read-only ops</i>"]
-        SIGNER["Brane.Signer<br/><i>read + write ops</i>"]
+        READER["Brane.Reader<br/><i>read-only ops</i>"] ~~~ SIGNER["Brane.Signer<br/><i>read + write ops</i>"]
     end
-
-    READER --> DEFAULT_READER
-    SIGNER --> DEFAULT_SIGNER
 
     subgraph IMPLS["Implementations"]
         direction LR
-        DEFAULT_READER["DefaultReader"]
-        DEFAULT_SIGNER["DefaultSigner"]
+        DEFAULT_READER["DefaultReader"] ~~~ DEFAULT_SIGNER["DefaultSigner"]
     end
-
-    DEFAULT_SIGNER -.->|delegates to| DEFAULT_READER
-    
-    DEFAULT_READER --> PROVIDER
-    DEFAULT_SIGNER --> PROVIDER
 
     subgraph PROVIDER["BraneProvider (interface)"]
         direction LR
-        HTTP["HttpBraneProvider<br/>• HttpClient<br/>• Stateless"]
-        WS["WebSocketProvider<br/>• Netty<br/>• Disruptor<br/>• Subscriptions"]
+        HTTP["HttpBraneProvider<br/>• HttpClient<br/>• Stateless"] ~~~ WS["WebSocketProvider<br/>• Netty<br/>• Disruptor<br/>• Subscriptions"]
     end
 
-    PROVIDER --> NODE["⛓️ ETHEREUM NODE<br/>(JSON-RPC)"]
+    NODE["⛓️ ETHEREUM NODE (JSON-RPC)"]
+
+    APP --> BRANE
+    BRANE --> IMPLS
+    DEFAULT_SIGNER -.->|delegates to| DEFAULT_READER
+    IMPLS --> PROVIDER
+    PROVIDER --> NODE
 ```
 
 ## Client Layer
