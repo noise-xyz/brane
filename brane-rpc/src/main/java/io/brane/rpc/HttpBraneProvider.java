@@ -22,6 +22,8 @@ import org.slf4j.LoggerFactory;
 
 import io.brane.core.DebugLogger;
 import io.brane.core.LogFormatter;
+import io.brane.core.RevertDecoder;
+import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.rpc.internal.RpcUtils;
 
@@ -157,7 +159,13 @@ public final class HttpBraneProvider implements BraneProvider {
             final JsonRpcError err = rpcResponse.error();
             DebugLogger.logRpc(
                     LogFormatter.formatRpcError(method, err.code(), err.message(), durationMicros));
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), requestId);
+            final String data = RpcUtils.extractErrorData(err.data());
+            // Check if this is a revert error with data
+            if (data != null && data.startsWith("0x") && data.length() > 10) {
+                final RevertDecoder.Decoded decoded = RevertDecoder.decode(data);
+                throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), null);
+            }
+            throw new RpcException(err.code(), err.message(), data, requestId);
         }
 
         DebugLogger.logRpc(LogFormatter.formatRpc(method, durationMicros));

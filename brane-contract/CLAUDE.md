@@ -27,7 +27,7 @@ ERC20 token = BraneContract.bind(
     ERC20.class,
     abi,
     contractAddress,
-    walletClient
+    signerClient
 );
 
 // Use like a regular Java object
@@ -52,7 +52,7 @@ interface WETH {
 ### Low-Level Facade
 ```java
 // When you don't want interface binding
-var contract = new ReadWriteContract(abi, address, walletClient);
+var contract = new ReadWriteContract(abi, address, signerClient);
 
 // Call view function
 BigInteger balance = contract.call("balanceOf", BigInteger.class, owner);
@@ -70,8 +70,8 @@ List<Transfer> events = contract.decodeEvents("Transfer", Transfer.class, receip
 2. Method calls are intercepted by `ContractInvocationHandler`
 3. Method signature is validated against ABI
 4. Parameters are ABI-encoded via `brane-core`
-5. View functions → `PublicClient.call()`
-6. Write functions → `WalletClient.sendTransaction()`
+5. View functions → `Brane.call()`
+6. Write functions → `Brane.Signer.sendTransaction()`
 7. Return values are ABI-decoded and returned
 
 ## Gotchas

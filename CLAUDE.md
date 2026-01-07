@@ -8,7 +8,7 @@ Modern, type-safe Java 21 SDK for Ethereum/EVM. Inspired by viem (TS) and alloy 
 |--------|---------|-------------|
 | `brane-primitives` | Hex/RLP utilities (zero deps) | `Hex`, `Rlp` |
 | `brane-core` | Types, ABI, crypto, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `TxBuilder` |
-| `brane-rpc` | JSON-RPC client layer | `PublicClient`, `WalletClient`, `BraneProvider` |
+| `brane-rpc` | JSON-RPC client layer | `Brane`, `Brane.Reader`, `Brane.Signer`, `BraneProvider` |
 | `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `ReadOnlyContract` |
 | `brane-examples` | Usage examples & integration tests | Various `*Example.java` |
 | `brane-benchmark` | JMH performance benchmarks | `*Benchmark.java` |
@@ -62,7 +62,7 @@ interface MyToken {
     BigInteger balanceOf(Address owner);
     Hash transfer(Address to, BigInteger amount);
 }
-MyToken token = BraneContract.bind(MyToken.class, abi, address, walletClient);
+MyToken token = BraneContract.bind(MyToken.class, abi, address, client);
 ```
 
 ### Transaction Building
@@ -71,7 +71,7 @@ Eip1559Builder.create()
     .to(recipient)
     .value(Wei.fromEther("0.1"))
     .data(calldata)
-    .build(signer, publicClient);
+    .build(signer, client);
 ```
 
 ## Error Hierarchy

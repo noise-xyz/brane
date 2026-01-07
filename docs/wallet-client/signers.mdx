@@ -94,7 +94,7 @@ All `PrivateKey` operations are thread-safe. Concurrent signing and destruction 
 
 ### Signing Transactions
 
-When using `WalletClient`, the signer is handled automatically. However, you can also sign directly:
+When using `Brane.connect(url, signer)` to create a `Brane.Signer` client, the signer is handled automatically. However, you can also sign directly:
 
 ```java
 import io.brane.core.tx.LegacyTransaction;

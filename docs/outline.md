@@ -4,13 +4,13 @@
 - **Installation**: Maven/Gradle dependencies.
 - **Quickstart**: Connect, read block, send transaction.
 
-## 2. Public Client (Read)
+## 2. Read Operations (Brane)
 - **Overview**: Reading from the blockchain.
 - **API**: `getBalance`, `getChainId`, `getBlock`, `call`.
 - **Events**: `getLogs` (Filtering & Topics).
 - **Simulation**: `simulateCalls` (`eth_simulateV1`).
 
-## 3. Wallet Client (Write)
+## 3. Write Operations (Brane.Signer)
 - **Overview**: Managing accounts and transactions.
 - **Transactions**: `sendTransaction` vs `sendTransactionAndWait`.
 - **Gas Management**: Automatic estimation & EIP-1559.
@@ -26,7 +26,7 @@
 
 ## 6. Advanced Signing (External Signers)
 - **`Signer` Interface**: Implementing custom signers (e.g., Privy, AWS KMS, HSM).
-- **Example**: How to inject a custom signer into `WalletClient`.
+- **Example**: How to inject a custom signer into `Brane.Signer`.
 
 ## 7. Utilities & Types
 - **Primitives**: `Address`, `Wei`, `HexData`.

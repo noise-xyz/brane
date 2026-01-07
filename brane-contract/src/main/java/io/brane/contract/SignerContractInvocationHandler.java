@@ -3,8 +3,6 @@ package io.brane.contract;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Arrays;
-import java.util.LinkedHashMap;
-import java.util.Map;
 import java.util.Objects;
 
 import io.brane.core.RevertDecoder;
@@ -19,30 +17,34 @@ import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.core.util.MethodUtils;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
+import io.brane.rpc.BlockTag;
+import io.brane.rpc.Brane;
+import io.brane.rpc.CallRequest;
 
-final class ContractInvocationHandler implements InvocationHandler {
+/**
+ * Invocation handler for read-write contract proxies using the Brane.Signer API.
+ *
+ * <p>This handler supports both view/pure functions (via eth_call) and state-changing
+ * functions (via sendTransactionAndWait).
+ */
+final class SignerContractInvocationHandler implements InvocationHandler {
 
     private final Address address;
     private final Abi abi;
     private final AbiBinding binding;
-    private final PublicClient publicClient;
-    private final WalletClient walletClient;
+    private final Brane.Signer signer;
     private final ContractOptions options;
 
-    ContractInvocationHandler(
+    SignerContractInvocationHandler(
             final Address address,
             final Abi abi,
             final AbiBinding binding,
-            final PublicClient publicClient,
-            final WalletClient walletClient,
+            final Brane.Signer signer,
             final ContractOptions options) {
         this.address = Objects.requireNonNull(address, "address");
         this.abi = Objects.requireNonNull(abi, "abi");
         this.binding = Objects.requireNonNull(binding, "binding");
-        this.publicClient = Objects.requireNonNull(publicClient, "publicClient");
-        this.walletClient = Objects.requireNonNull(walletClient, "walletClient");
+        this.signer = Objects.requireNonNull(signer, "signer");
         this.options = Objects.requireNonNull(options, "options");
     }
 
@@ -82,20 +84,22 @@ final class ContractInvocationHandler implements InvocationHandler {
     }
 
     private Object invokeView(final Method method, final Abi.FunctionCall call) {
-        final Map<String, Object> callObject = new LinkedHashMap<>();
-        callObject.put("to", address.value());
-        callObject.put("data", call.data());
+        final CallRequest request = CallRequest.builder()
+                .to(address)
+                .data(new HexData(call.data()))
+                .build();
 
         try {
-            final String output = publicClient.call(callObject, "latest");
-            if (output == null || output.isBlank()) {
+            final HexData output = signer.call(request, BlockTag.LATEST);
+            final String outputValue = output != null ? output.value() : null;
+            if (outputValue == null || outputValue.isBlank() || "0x".equals(outputValue)) {
                 throw new AbiDecodingException(
                         "eth_call returned empty result for function call");
             }
             if (method.getReturnType() == void.class || method.getReturnType() == Void.class) {
                 return null;
             }
-            return call.decode(output, method.getReturnType());
+            return call.decode(outputValue, method.getReturnType());
         } catch (RpcException e) {
             RevertDecoder.throwIfRevert(e);
             throw e;
@@ -106,7 +110,7 @@ final class ContractInvocationHandler implements InvocationHandler {
         final TransactionRequest request = buildTransactionRequest(call, value);
 
         final TransactionReceipt receipt =
-                walletClient.sendTransactionAndWait(
+                signer.sendTransactionAndWait(
                         request, options.timeoutMillis(), options.pollIntervalMillis());
         if (method.getReturnType() == void.class || method.getReturnType() == Void.class) {
             return null;
@@ -135,7 +139,7 @@ final class ContractInvocationHandler implements InvocationHandler {
     private Object handleObjectMethod(
             final Object proxy, final Method method, final Object[] args) {
         return switch (method.getName()) {
-        case "toString" ->
+            case "toString" ->
                     "BraneContractProxy{" + "address=" + address.value() + "}";
             case "hashCode" -> System.identityHashCode(proxy);
             case "equals" -> proxy == (args == null || args.length == 0 ? null : args[0]);

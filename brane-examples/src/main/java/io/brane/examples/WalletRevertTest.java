@@ -8,16 +8,12 @@ import io.brane.core.error.RevertException;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.DefaultWalletClient;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
+import io.brane.rpc.Brane;
 
 /**
- * Integration test for WalletClient revert handling.
+ * Integration test for Brane.Signer revert handling.
  *
- * Verifies that WalletClient.sendTransaction() throws RevertException
+ * Verifies that Brane.Signer#sendTransaction() throws RevertException
  * when the node rejects a transaction with revert data.
  *
  * Usage:
@@ -53,22 +49,20 @@ public final class WalletRevertTest {
             System.exit(1);
         }
 
-        System.out.println("Running WalletClient Revert Test...");
+        System.out.println("Running Brane.Signer Revert Test...");
         System.out.println("RPC: " + rpcUrl);
         System.out.println("Contract: " + contractAddr);
 
-        final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-        final PublicClient publicClient = PublicClient.from(provider);
         final PrivateKeySigner signer = new PrivateKeySigner(privateKey);
-        final WalletClient wallet = DefaultWalletClient.create(provider, publicClient, signer);
+        final Brane.Signer client = Brane.connect(rpcUrl, signer);
 
-        testWalletRevert(wallet, new Address(contractAddr));
+        testRevert(client, new Address(contractAddr));
 
-        System.out.println("WalletClient Revert Test Passed!");
+        System.out.println("Brane.Signer Revert Test Passed!");
     }
 
-    private static void testWalletRevert(WalletClient wallet, Address contractAddr) {
-        System.out.println("[Test] WalletClient sends transaction that will revert...");
+    private static void testRevert(Brane.Signer client, Address contractAddr) {
+        System.out.println("[Test] Brane.Signer sends transaction that will revert...");
 
         // Encode call to alwaysRevert()
         final Abi abi = Abi.fromJson(ABI_JSON);
@@ -80,7 +74,7 @@ public final class WalletRevertTest {
                 .build();
 
         try {
-            wallet.sendTransaction(request);
+            client.sendTransaction(request);
             throw new RuntimeException("Expected RevertException but transaction was accepted");
         } catch (RevertException e) {
             // Expected - some nodes may pre-validate and reject with revert data

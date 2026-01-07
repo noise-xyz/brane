@@ -307,7 +307,7 @@ public final class RpcUtils {
     /**
      * Executes an {@code eth_estimateGas} call with consistent debug logging and timing.
      *
-     * <p>This method extracts the common pattern used by both {@code DefaultWalletClient}
+     * <p>This method extracts the common pattern used by {@code DefaultSigner}
      * and {@code SmartGasStrategy} for gas estimation:
      * <ol>
      *   <li>Logs the estimate gas request (from, to, data)</li>

@@ -32,23 +32,23 @@ If you are contributing to Brane or have access to the source code, you can inst
 
 3.  Add `mavenLocal()` to your project's repositories:
 
-    <CodeGroup>
-    ```xml Maven
-    <repositories>
-        <repository>
-            <id>local-maven</id>
-            <url>file://${user.home}/.m2/repository</url>
-        </repository>
-    </repositories>
-    ```
+<CodeGroup>
+```xml Maven
+<repositories>
+    <repository>
+        <id>local-maven</id>
+        <url>file://${user.home}/.m2/repository</url>
+    </repository>
+</repositories>
+```
 
-    ```groovy Gradle
-    repositories {
-        mavenLocal()
-        mavenCentral()
-    }
-    ```
-    </CodeGroup>
+```groovy Gradle
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+```
+</CodeGroup>
 
 ### Dependencies
 
@@ -88,18 +88,16 @@ dependencies {
 
 ### 1. Connect to a Chain
 
-Create a `PublicClient` to read from the blockchain.
+Create a `Brane` client to read from the blockchain.
 
 ```java
-import io.brane.rpc.BranePublicClient;
-import io.brane.core.chain.ChainProfiles;
+import io.brane.rpc.Brane;
 
 public class Example {
     public static void main(String[] args) {
-        // Connect to Mainnet
-        var client = BranePublicClient.forChain(ChainProfiles.ETH_MAINNET)
-            .build();
-        
+        // Connect to an RPC endpoint
+        var client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY");
+
         // Get the latest block number
         var block = client.getLatestBlock();
         System.out.println("Current Block: " + block.number());
@@ -109,44 +107,30 @@ public class Example {
 
 ### 2. Send a Transaction
 
-Create a `WalletClient` to sign and send transactions.
+Create a `Brane.Signer` client to sign and send transactions.
 
 ```java
-import io.brane.rpc.DefaultWalletClient;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.core.chain.ChainProfiles;
-import io.brane.core.crypto.PrivateKeySigner;
+import io.brane.rpc.Brane;
+import io.brane.core.crypto.PrivateKey;
+import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Wei;
 import io.brane.core.types.Address;
 
 // ...
 
-// 1. Create dependencies
-var provider = HttpBraneProvider.builder("https://rpc.sepolia.org").build();
-var publicClient = PublicClient.from(provider);
-var signer = new PrivateKeySigner(System.getenv("SEPOLIA_PRIVATE_KEY"));
+// 1. Create a signer from a private key
+var signer = PrivateKey.fromHex(System.getenv("SEPOLIA_PRIVATE_KEY"));
 
-// 2. Create Wallet
-var wallet = DefaultWalletClient.create(
-    provider,
-    publicClient,
-    signer,
-    ChainProfiles.ETH_SEPOLIA
-);
+// 2. Connect with signing capability
+var client = Brane.connect("https://rpc.sepolia.org", signer);
 
-import io.brane.core.builder.TxBuilder;
-
-var request = TxBuilder.eip1559()
-    .to(new Address("0x..."))
-    .value(Wei.fromEther(new java.math.BigDecimal("0.01")))
+// 3. Build and send a transaction
+var request = TransactionRequest.builder()
+    .to(Address.from("0x..."))
+    .value(Wei.fromEther("0.01"))
     .build();
 
-var receipt = wallet.sendTransactionAndWait(
-    request,
-    60_000, // timeout (ms)
-    1_000   // poll interval (ms)
-);
+var receipt = client.sendTransactionAndWait(request);
 
 System.out.println("Tx Hash: " + receipt.transactionHash());
 ```

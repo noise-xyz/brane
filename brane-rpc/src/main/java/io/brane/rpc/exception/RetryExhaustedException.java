@@ -1,4 +1,4 @@
-package io.brane.rpc;
+package io.brane.rpc.exception;
 
 import org.jspecify.annotations.Nullable;
 

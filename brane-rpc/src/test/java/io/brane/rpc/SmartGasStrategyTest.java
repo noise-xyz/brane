@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
 
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.model.AccessListEntry;
+import io.brane.core.model.BlockHeader;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
@@ -20,10 +22,38 @@ import io.brane.core.types.Wei;
 
 class SmartGasStrategyTest {
 
-    private final PublicClient unusedPublicClient = new NoopPublicClient();
-    private final BraneProvider unusedProvider = (method, params) -> null;
     private final ChainProfile profile = ChainProfile.of(1L, null, true, Wei.of(1_000_000_000L));
-    private final SmartGasStrategy strategy = new SmartGasStrategy(unusedPublicClient, unusedProvider, profile);
+
+    // Create a Brane.Reader using DefaultReader with a mock provider that returns a null block
+    private final Brane unusedBrane = createBraneWithBlock(null);
+    private final BraneProvider unusedProvider = (method, params) -> null;
+    private final SmartGasStrategy strategy = new SmartGasStrategy(unusedBrane, unusedProvider, profile);
+
+    /**
+     * Creates a Brane.Reader that returns the specified block for getLatestBlock().
+     * Uses DefaultReader internally with a mock provider.
+     */
+    private static Brane createBraneWithBlock(BlockHeader block) {
+        BraneProvider mockProvider = (method, params) -> {
+            if ("eth_getBlockByNumber".equals(method)) {
+                if (block == null) {
+                    return new JsonRpcResponse("2.0", null, null, "1");
+                }
+                // Return a mock block JSON - use HashMap to allow null values
+                var blockMap = new java.util.HashMap<String, Object>();
+                blockMap.put("hash", block.hash().value());
+                blockMap.put("number", "0x" + Long.toHexString(block.number()));
+                blockMap.put("parentHash", block.parentHash().value());
+                blockMap.put("timestamp", "0x" + Long.toHexString(block.timestamp()));
+                if (block.baseFeePerGas() != null) {
+                    blockMap.put("baseFeePerGas", "0x" + block.baseFeePerGas().value().toString(16));
+                }
+                return new JsonRpcResponse("2.0", blockMap, null, "1");
+            }
+            return new JsonRpcResponse("2.0", null, null, "1");
+        };
+        return new DefaultReader(mockProvider, null, 0, RpcRetryConfig.defaults());
+    }
 
     // ========== EIP-1559 Fee Tests ==========
 
@@ -39,12 +69,12 @@ class SmartGasStrategyTest {
             return null;
         };
 
-        final PublicClient mockClient = createMockPublicClient(
-                new io.brane.core.model.BlockHeader(
+        final Brane mockBrane = createBraneWithBlock(
+                new BlockHeader(
                         new Hash("0x" + "0".repeat(64)), 1L, new Hash("0x" + "1".repeat(64)),
                         System.currentTimeMillis() / 1000, mockBaseFee));
 
-        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockClient, mockProvider, profile);
+        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockBrane, mockProvider, profile);
 
         final TransactionRequest request = new TransactionRequest(
                 new Address("0x" + "f".repeat(40)),
@@ -64,8 +94,8 @@ class SmartGasStrategyTest {
         assertEquals(defaultPriority.value(), filled.maxPriorityFeePerGas().value());
 
         // maxFee should be (baseFee * 2) + priority = (30 * 2) + 1 = 61 Gwei
-        java.math.BigInteger expectedMaxFee = mockBaseFee.value()
-                .multiply(java.math.BigInteger.valueOf(2))
+        BigInteger expectedMaxFee = mockBaseFee.value()
+                .multiply(BigInteger.valueOf(2))
                 .add(defaultPriority.value());
         assertEquals(expectedMaxFee, filled.maxFeePerGas().value());
     }
@@ -84,12 +114,12 @@ class SmartGasStrategyTest {
         };
 
         // Block WITHOUT baseFeePerGas (pre-London fork)
-        final PublicClient mockClient = createMockPublicClient(
-                new io.brane.core.model.BlockHeader(
+        final Brane mockBrane = createBraneWithBlock(
+                new BlockHeader(
                         new Hash("0x" + "0".repeat(64)), 1L, new Hash("0x" + "1".repeat(64)),
                         System.currentTimeMillis() / 1000, null));
 
-        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockClient, mockProvider, profile);
+        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockBrane, mockProvider, profile);
 
         // Request EIP-1559 but should fall back to legacy
         final TransactionRequest request = new TransactionRequest(
@@ -125,9 +155,9 @@ class SmartGasStrategyTest {
         };
 
         // Null block simulates node not responding
-        final PublicClient mockClient = createMockPublicClient(null);
+        final Brane mockBrane = createBraneWithBlock(null);
 
-        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockClient, mockProvider, profile);
+        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockBrane, mockProvider, profile);
 
         final TransactionRequest request = new TransactionRequest(
                 new Address("0x" + "f".repeat(40)),
@@ -157,12 +187,12 @@ class SmartGasStrategyTest {
             return null;
         };
 
-        final PublicClient mockClient = createMockPublicClient(
-                new io.brane.core.model.BlockHeader(
+        final Brane mockBrane = createBraneWithBlock(
+                new BlockHeader(
                         new Hash("0x" + "0".repeat(64)), 1L, new Hash("0x" + "1".repeat(64)),
                         System.currentTimeMillis() / 1000, Wei.of(30_000_000_000L)));
 
-        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockClient, mockProvider, profile);
+        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockBrane, mockProvider, profile);
 
         // User provides their own fees
         final TransactionRequest request = new TransactionRequest(
@@ -191,14 +221,14 @@ class SmartGasStrategyTest {
             return null;
         };
 
-        final PublicClient mockClient = createMockPublicClient(
-                new io.brane.core.model.BlockHeader(
+        final Brane mockBrane = createBraneWithBlock(
+                new BlockHeader(
                         new Hash("0x" + "0".repeat(64)), 1L, new Hash("0x" + "1".repeat(64)),
                         System.currentTimeMillis() / 1000, Wei.of(30_000_000_000L)));
 
         // Chain that doesn't support EIP-1559 to avoid additional RPC calls
         final ChainProfile legacyProfile = ChainProfile.of(1L, null, false, Wei.of(1_000_000_000L));
-        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockClient, mockProvider, legacyProfile);
+        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockBrane, mockProvider, legacyProfile);
 
         final TransactionRequest request = new TransactionRequest(
                 new Address("0x" + "f".repeat(40)),
@@ -224,12 +254,12 @@ class SmartGasStrategyTest {
         };
 
         // Create a profile that supports EIP-1559 but we'll request legacy
-        final PublicClient mockClient = createMockPublicClient(
-                new io.brane.core.model.BlockHeader(
+        final Brane mockBrane = createBraneWithBlock(
+                new BlockHeader(
                         new Hash("0x" + "0".repeat(64)), 1L, new Hash("0x" + "1".repeat(64)),
                         System.currentTimeMillis() / 1000, Wei.of(30_000_000_000L)));
 
-        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockClient, mockProvider, profile);
+        final SmartGasStrategy testStrategy = new SmartGasStrategy(mockBrane, mockProvider, profile);
 
         // Request LEGACY transaction (isEip1559 = false)
         final TransactionRequest request = new TransactionRequest(
@@ -245,86 +275,6 @@ class SmartGasStrategyTest {
         assertFalse(result.fellBackToLegacy(), "Legacy request fulfilled as legacy is NOT a fallback");
         assertFalse(result.requestedEip1559(), "Should record that legacy was requested");
         assertFalse(result.actualEip1559(), "Should record that actual tx is legacy");
-    }
-
-    /** Creates a mock PublicClient that returns the given block for getLatestBlock() */
-    private static PublicClient createMockPublicClient(io.brane.core.model.BlockHeader block) {
-        return new MockPublicClient(block);
-    }
-
-    /** Non-final mock implementation for testing */
-    private static class MockPublicClient implements PublicClient {
-        private final io.brane.core.model.BlockHeader block;
-
-        MockPublicClient(io.brane.core.model.BlockHeader block) {
-            this.block = block;
-        }
-
-        @Override
-        public io.brane.core.model.BlockHeader getLatestBlock() {
-            return block;
-        }
-
-        @Override
-        public io.brane.core.model.BlockHeader getBlockByNumber(long blockNumber) {
-            return null;
-        }
-
-        @Override
-        public io.brane.core.model.Transaction getTransactionByHash(Hash hash) {
-            return null;
-        }
-
-        @Override
-        public io.brane.core.types.HexData call(CallRequest request, BlockTag blockTag) {
-            return io.brane.core.types.HexData.EMPTY;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public String call(Map<String, Object> callObject, String blockTag) {
-            return null;
-        }
-
-        @Override
-        public List<io.brane.core.model.LogEntry> getLogs(LogFilter filter) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public java.math.BigInteger getChainId() {
-            return java.math.BigInteger.ONE;
-        }
-
-        @Override
-        public java.math.BigInteger getBalance(Address address) {
-            return java.math.BigInteger.ZERO;
-        }
-
-        @Override
-        public Subscription subscribeToNewHeads(java.util.function.Consumer<io.brane.core.model.BlockHeader> callback) {
-            return null;
-        }
-
-        @Override
-        public Subscription subscribeToLogs(LogFilter filter, java.util.function.Consumer<io.brane.core.model.LogEntry> callback) {
-            return null;
-        }
-
-        @Override
-        public io.brane.core.model.AccessListWithGas createAccessList(io.brane.core.model.TransactionRequest request) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public MulticallBatch createBatch() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public SimulateResult simulateCalls(SimulateRequest request) {
-            throw new UnsupportedOperationException();
-        }
     }
 
     @Test
@@ -361,76 +311,5 @@ class SmartGasStrategyTest {
 
         assertFalse(strategy.toTxObject(nullAccessList).containsKey("accessList"));
         assertFalse(strategy.toTxObject(emptyAccessList).containsKey("accessList"));
-    }
-
-    private static final class NoopPublicClient implements PublicClient {
-
-        @Override
-        public io.brane.core.model.BlockHeader getLatestBlock() {
-            return null;
-        }
-
-        @Override
-        public io.brane.core.model.BlockHeader getBlockByNumber(final long blockNumber) {
-            return null;
-        }
-
-        @Override
-        public io.brane.core.model.Transaction getTransactionByHash(final io.brane.core.types.Hash hash) {
-            return null;
-        }
-
-        @Override
-        public io.brane.core.types.HexData call(CallRequest request, BlockTag blockTag) {
-            return io.brane.core.types.HexData.EMPTY;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public String call(final Map<String, Object> callObject, final String blockTag) {
-            return null;
-        }
-
-        @Override
-        public java.util.List<io.brane.core.model.LogEntry> getLogs(io.brane.rpc.LogFilter filter) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public java.math.BigInteger getChainId() {
-            return java.math.BigInteger.ONE;
-        }
-
-        @Override
-        public java.math.BigInteger getBalance(io.brane.core.types.Address address) {
-            return java.math.BigInteger.ZERO;
-        }
-
-        @Override
-        public io.brane.rpc.Subscription subscribeToNewHeads(
-                java.util.function.Consumer<io.brane.core.model.BlockHeader> callback) {
-            return null;
-        }
-
-        @Override
-        public io.brane.rpc.Subscription subscribeToLogs(io.brane.rpc.LogFilter filter,
-                java.util.function.Consumer<io.brane.core.model.LogEntry> callback) {
-            return null;
-        }
-
-        @Override
-        public io.brane.core.model.AccessListWithGas createAccessList(io.brane.core.model.TransactionRequest request) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public io.brane.rpc.MulticallBatch createBatch() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public io.brane.rpc.SimulateResult simulateCalls(io.brane.rpc.SimulateRequest request) {
-            throw new UnsupportedOperationException();
-        }
     }
 }

@@ -7,19 +7,16 @@ import io.brane.core.AnsiColors;
 import io.brane.core.BraneDebug;
 import io.brane.core.abi.Abi;
 import io.brane.core.builder.TxBuilder;
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.error.AbiEncodingException;
+import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
-import io.brane.core.error.AbiDecodingException;
-import io.brane.core.error.AbiEncodingException;
-import io.brane.core.error.RevertException;
-import io.brane.core.error.RpcException;
+import io.brane.rpc.Brane;
 
 /**
  * Canonical example of Brane's "Minimal but Solid" ABI Wrapper.
@@ -93,19 +90,16 @@ public final class CanonicalAbiExample {
         String contractAddr = System.getProperty("brane.examples.contract");
 
         try {
-            // Setup Clients
-            final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-            final PublicClient publicClient = PublicClient.from(provider);
+            // Setup Client
             final var signer = new io.brane.core.crypto.PrivateKeySigner(privateKey);
-            final WalletClient walletClient = io.brane.rpc.DefaultWalletClient.create(
-                    provider, publicClient, signer, signer.address());
+            final Brane.Signer client = Brane.connect(rpcUrl, signer);
 
             // Deploy if needed
             if (contractAddr == null || contractAddr.isBlank()
                     || "0x0000000000000000000000000000000000000000".equals(contractAddr)) {
                 System.out.println("[0] Deploying ERC-20 Contract...");
                 final BigInteger initialSupply = BigInteger.valueOf(1_000_000);
-                contractAddr = deployErc20(walletClient, initialSupply);
+                contractAddr = deployErc20(client, initialSupply);
                 System.out.println("    " + AnsiColors.success("Deployed at: " + contractAddr));
             }
 
@@ -117,8 +111,7 @@ public final class CanonicalAbiExample {
             final Erc20 token = BraneContract.bind(
                     tokenAddress,
                     ERC20_ABI,
-                    publicClient,
-                    walletClient,
+                    client,
                     Erc20.class);
             System.out.println("    Bound " + Erc20.class.getSimpleName() + " to " + tokenAddress.value());
 
@@ -152,8 +145,7 @@ public final class CanonicalAbiExample {
                 BraneContract.bind(
                         tokenAddress,
                         ERC20_ABI,
-                        publicClient,
-                        walletClient,
+                        client,
                         InvalidErc20.class);
             } catch (IllegalArgumentException e) {
                 System.out.println("    " + AnsiColors.success("Caught expected error: " + e.getMessage()));
@@ -176,7 +168,7 @@ public final class CanonicalAbiExample {
         }
     }
 
-    private static String deployErc20(final WalletClient wallet, final BigInteger initialSupply) {
+    private static String deployErc20(final Brane.Signer client, final BigInteger initialSupply) {
         // Use Abi helper to encode constructor arguments
         final Abi abi = Abi.fromJson(ERC20_ABI);
         final HexData encodedArgs = abi.encodeConstructor(initialSupply);
@@ -188,7 +180,7 @@ public final class CanonicalAbiExample {
                 .build();
 
         // Wait for deployment
-        final TransactionReceipt receipt = wallet.sendTransactionAndWait(request, 20_000, 500);
+        final TransactionReceipt receipt = client.sendTransactionAndWait(request, 20_000, 500);
 
         if (receipt.contractAddress().value().isEmpty()) {
             throw new RuntimeException("Deployment failed: No contract address returned");

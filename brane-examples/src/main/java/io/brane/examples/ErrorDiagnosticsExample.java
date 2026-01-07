@@ -1,33 +1,34 @@
 package io.brane.examples;
 
-import io.brane.core.chain.ChainProfiles;
 import io.brane.core.error.RpcException;
 import io.brane.core.error.TxnException;
-import io.brane.rpc.BranePublicClient;
+import io.brane.rpc.Brane;
 
 /**
  * Demonstrates Brane's error handling &amp; diagnostics.
  *
- * Usage:
+ * <p>Usage:
  *
- * 1) Real RPC error (bad URL):
- *
+ * <p>1) Real RPC error (bad URL):
+ * <pre>
  * ./gradlew :brane-examples:run --no-daemon \
- * -PmainClass=io.brane.examples.ErrorDiagnosticsExample \
- * -Pbrane.examples.mode=rpc-error
+ *   -PmainClass=io.brane.examples.ErrorDiagnosticsExample \
+ *   -Pbrane.examples.mode=rpc-error
+ * </pre>
  *
- * 2) Diagnostics helpers demo (no network needed):
- *
+ * <p>2) Diagnostics helpers demo (no network needed):
+ * <pre>
  * ./gradlew :brane-examples:run --no-daemon \
- * -PmainClass=io.brane.examples.ErrorDiagnosticsExample \
- * -Pbrane.examples.mode=helpers
+ *   -PmainClass=io.brane.examples.ErrorDiagnosticsExample \
+ *   -Pbrane.examples.mode=helpers
+ * </pre>
  */
 public final class ErrorDiagnosticsExample {
 
         private ErrorDiagnosticsExample() {
         }
 
-        public static void main(String[] args) {
+        public static void main(String[] args) throws Exception {
                 final String mode = System.getProperty("brane.examples.mode", "helpers");
                 switch (mode) {
                         case "rpc-error" -> runRpcErrorDemo();
@@ -39,16 +40,12 @@ public final class ErrorDiagnosticsExample {
                 }
         }
 
-        private static void runRpcErrorDemo() {
+        private static void runRpcErrorDemo() throws Exception {
                 System.out.println("=== RPC error demo ===");
                 final String badUrl = "http://127.0.0.1:9999"; // assume no node here
 
+                Brane client = Brane.connect(badUrl);
                 try {
-                        var client = BranePublicClient
-                                        .forChain(ChainProfiles.ANVIL_LOCAL)
-                                        .withRpcUrl(badUrl)
-                                        .build();
-
                         // This should fail with a network/connection error wrapped in RpcException
                         client.getLatestBlock();
                         System.out.println("Unexpected success: getLatestBlock() returned without error");
@@ -62,6 +59,8 @@ public final class ErrorDiagnosticsExample {
                 } catch (Exception e) {
                         System.out.println("Caught unexpected exception type: " + e.getClass().getName());
                         e.printStackTrace(System.out);
+                } finally {
+                        client.close();
                 }
         }
 

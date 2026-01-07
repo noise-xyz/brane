@@ -6,31 +6,27 @@ import java.util.List;
 import java.util.Optional;
 
 import io.brane.contract.BraneContract;
-import io.brane.contract.ReadOnlyContract;
 import io.brane.core.AnsiColors;
 import io.brane.core.abi.Abi;
 import io.brane.core.builder.TxBuilder;
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.error.AbiEncodingException;
+import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.HttpBraneProvider;
+import io.brane.rpc.Brane;
 import io.brane.rpc.LogFilter;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
-import io.brane.core.error.AbiDecodingException;
-import io.brane.core.error.AbiEncodingException;
-import io.brane.core.error.RevertException;
-import io.brane.core.error.RpcException;
 
 /**
  * Canonical "High-Level" Example for Brane 0.1.0-alpha.
  * <p>
  * Demonstrates the idiomatic way to interact with a smart contract using
- * {@link BraneContract#bind(Address, String, PublicClient, WalletClient, Class)}.
+ * {@link BraneContract#bind(Address, String, Brane.Signer, Class)}.
  * <p>
  * Steps:
  * 1. Bind a Java interface to an ERC-20 contract.
@@ -118,14 +114,9 @@ public final class CanonicalErc20Example {
     }
 
     try {
-      // 1. Initialize Clients
-      final BraneProvider provider = rpcUrl.startsWith("ws")
-          ? io.brane.rpc.WebSocketProvider.create(rpcUrl)
-          : HttpBraneProvider.builder(rpcUrl).build();
-      final PublicClient publicClient = PublicClient.from(provider);
+      // 1. Initialize Client
       final var signer = new io.brane.core.crypto.PrivateKeySigner(privateKey);
-      final WalletClient walletClient = io.brane.rpc.DefaultWalletClient.create(
-          provider, publicClient, signer);
+      final Brane.Signer client = Brane.connect(rpcUrl, signer);
 
       System.out.println("=== Canonical High-Level Example ===");
       System.out.println("Signer:   " + signer.address().value());
@@ -134,7 +125,7 @@ public final class CanonicalErc20Example {
       if (isBlank(contractAddr) || "0x0000000000000000000000000000000000000000".equals(contractAddr)) {
         System.out.println("\n[0] Deploying ERC-20 Contract...");
         final BigInteger initialSupply = BigInteger.valueOf(1_000_000);
-        contractAddr = deployErc20(walletClient, initialSupply);
+        contractAddr = deployErc20(client, initialSupply);
         System.out.println(AnsiColors.success("Deployed at: " + contractAddr));
       }
 
@@ -146,8 +137,7 @@ public final class CanonicalErc20Example {
       final Erc20 token = BraneContract.bind(
           tokenAddress,
           ERC20_ABI,
-          publicClient,
-          walletClient,
+          client,
           Erc20.class);
       System.out.println(AnsiColors.success("Bound " + Erc20.class.getSimpleName()));
 
@@ -180,12 +170,11 @@ public final class CanonicalErc20Example {
           Optional.of(List.of(tokenAddress)),
           Optional.of(topics));
 
-      final var logs = publicClient.getLogs(filter);
+      final var logs = client.getLogs(filter);
 
-      // Use ReadOnlyContract helper to decode events
+      // Use Abi helper to decode events directly
       final Abi abi = Abi.fromJson(ERC20_ABI);
-      final ReadOnlyContract helper = ReadOnlyContract.from(tokenAddress, abi, publicClient);
-      final List<TransferEvent> events = helper.decodeEvents("Transfer", logs, TransferEvent.class);
+      final List<TransferEvent> events = abi.decodeEvents("Transfer", logs, TransferEvent.class);
 
       for (TransferEvent event : events) {
         System.out
@@ -208,7 +197,7 @@ public final class CanonicalErc20Example {
     }
   }
 
-  private static String deployErc20(final WalletClient wallet, final BigInteger initialSupply) {
+  private static String deployErc20(final Brane.Signer client, final BigInteger initialSupply) {
     // Manually encode uint256 constructor argument (32 bytes big-endian)
     final String encodedArgs = String.format("%064x", initialSupply);
     final String data = ERC20_BYTECODE + encodedArgs;
@@ -220,7 +209,7 @@ public final class CanonicalErc20Example {
         .build();
 
     // Wait for deployment
-    final TransactionReceipt receipt = wallet.sendTransactionAndWait(request, 20_000, 500);
+    final TransactionReceipt receipt = client.sendTransactionAndWait(request, 20_000, 500);
 
     if (receipt.contractAddress().value().isEmpty()) {
       throw new RuntimeException("Deployment failed: No contract address returned");

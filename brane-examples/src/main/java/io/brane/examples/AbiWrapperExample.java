@@ -5,10 +5,7 @@ import java.math.BigInteger;
 import io.brane.contract.BraneContract;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
+import io.brane.rpc.Brane;
 
 /**
  * Demo of Runtime ABI Wrapper Binding with ERC20.
@@ -72,11 +69,8 @@ public final class AbiWrapperExample {
     }
 
     try {
-      final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-      final PublicClient publicClient = PublicClient.from(provider);
       final var signer = new io.brane.core.crypto.PrivateKeySigner(privateKey);
-      final WalletClient walletClient = io.brane.rpc.DefaultWalletClient.create(
-          provider, publicClient, signer, signer.address());
+      final Brane.Signer client = Brane.connect(rpcUrl, signer);
 
       System.out.println("=== Runtime ABI Wrapper Demo ===\n");
 
@@ -86,8 +80,7 @@ public final class AbiWrapperExample {
       final Erc20Contract token = BraneContract.bind(
           tokenAddress,
           ERC20_ABI,
-          publicClient,
-          walletClient,
+          client,
           Erc20Contract.class);
       System.out.println("   Bound to contract: " + tokenAddress.value());
       System.out.println("   Interface: " + Erc20Contract.class.getSimpleName() + "\n");
@@ -119,8 +112,8 @@ public final class AbiWrapperExample {
 
       System.out.println("=== Demo Complete ===");
       System.out.println("✓ Successfully bound Java interface to smart contract");
-      System.out.println("✓ Called view method (balanceOf) via PublicClient");
-      System.out.println("✓ Called write method (transfer) via WalletClient");
+      System.out.println("✓ Called view method (balanceOf) via Brane.Signer");
+      System.out.println("✓ Called write method (transfer) via Brane.Signer");
       System.out.println("✓ Verified state changes");
 
     } catch (Exception e) {

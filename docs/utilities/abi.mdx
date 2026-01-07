@@ -34,11 +34,11 @@ Hash topic = Abi.eventTopic("Transfer(address,address,uint256)");
 Decode raw logs into Java objects using `Abi.decodeEvents`.
 
 ```java
-import io.brane.rpc.PublicClient;
+import io.brane.rpc.Brane;
 import io.brane.rpc.LogFilter;
 import io.brane.core.abi.Abi;
 
-PublicClient client = ...;
+Brane client = Brane.connect("https://eth-mainnet.example.com");
 LogFilter filter = ...;
 Abi abi = ...;
 

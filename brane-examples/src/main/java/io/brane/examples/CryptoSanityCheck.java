@@ -3,10 +3,10 @@ package io.brane.examples;
 import java.nio.charset.StandardCharsets;
 
 import io.brane.core.crypto.Keccak256;
-import io.brane.primitives.Hex;
 import io.brane.core.crypto.PrivateKey;
 import io.brane.core.crypto.Signature;
 import io.brane.core.types.Address;
+import io.brane.primitives.Hex;
 
 /**
  * Sanity check for Milestone 1 crypto primitives.

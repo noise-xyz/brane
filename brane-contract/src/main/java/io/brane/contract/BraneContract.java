@@ -13,8 +13,7 @@ import io.brane.core.abi.AbiBinding;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
+import io.brane.rpc.Brane;
 
 /**
  * Dynamic proxy-based contract binding system that maps Java interfaces to
@@ -22,17 +21,14 @@ import io.brane.rpc.WalletClient;
  *
  * <p>
  * This class enables type-safe smart contract interaction by binding a Java
- * interface
- * to a contract's ABI. At runtime, it creates a dynamic proxy that:
+ * interface to a contract's ABI. At runtime, it creates a dynamic proxy that:
  * <ul>
  * <li>Encodes method calls to contract function calls (ABI encoding)</li>
  * <li>Routes view/pure functions to {@code eth_call} (read-only)</li>
- * <li>Routes state-changing functions to {@code eth_sendTransaction}
- * (write)</li>
+ * <li>Routes state-changing functions to {@code sendTransactionAndWait} (write)</li>
  * <li>Decodes return values from hex to Java types (ABI decoding)</li>
  * </ul>
  *
- * <p>
  * <p>
  * <strong>Supported Type Mappings:</strong>
  * <ul>
@@ -50,8 +46,7 @@ import io.brane.rpc.WalletClient;
  * <li><strong>Tuple/Struct return types:</strong> Functions returning Solidity structs
  * or tuples are not currently supported. The proxy binding will fail at bind time
  * with "Unsupported return type" for methods that return Java record types or custom
- * classes. Use {@link ReadOnlyContract} or {@link ReadWriteContract} for contracts
- * with tuple returns, and manually decode the results.</li>
+ * classes.</li>
  * </ul>
  *
  * <p>
@@ -82,26 +77,28 @@ import io.brane.rpc.WalletClient;
  * // 2. Load contract ABI JSON
  * String abiJson = Files.readString(Path.of("erc20-abi.json"));
  *
- * // 3. Bind interface to deployed contract
+ * // 3. Connect to network with signing capability
+ * Brane.Signer client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...", signer);
+ *
+ * // 4. Bind interface to deployed contract
  * Erc20Contract usdc = BraneContract.bind(
- *         new Address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"), // USDC address
+ *         Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"), // USDC address
  *         abiJson,
- *         publicClient,
- *         walletClient,
+ *         client,
  *         Erc20Contract.class);
  *
- * // 4. Call view functions (no gas, instant)
+ * // 5. Call view functions (no gas, instant)
  * BigInteger balance = usdc.balanceOf(myAddress);
  * System.out.println("Balance: " + balance);
  *
- * // 5. Call state-changing functions (costs gas, returns receipt)
+ * // 6. Call state-changing functions (costs gas, returns receipt)
  * TransactionReceipt receipt = usdc.transfer(
  *         recipientAddress,
  *         new BigInteger("1000000") // 1 USDC (6 decimals)
  * );
  *
  * if (receipt.status()) {
- *     System.out.println("✓ Transfer confirmed in block " + receipt.blockNumber());
+ *     System.out.println("Transfer confirmed in block " + receipt.blockNumber());
  * }
  * }</pre>
  *
@@ -110,14 +107,12 @@ import io.brane.rpc.WalletClient;
  * <ul>
  * <li>All interface methods exist in the ABI</li>
  * <li>Parameter counts and types match</li>
- * <li>Return types are compatible with function mutability (view vs
- * non-view)</li>
+ * <li>Return types are compatible with function mutability (view vs non-view)</li>
  * </ul>
  *
  * <p>
  * <strong>Implementation:</strong> Uses Java's {@link Proxy} API with
- * {@link ContractInvocationHandler}
- * to intercept method calls and translate them to RPC calls.
+ * invocation handlers to intercept method calls and translate them to RPC calls.
  *
  * <p>
  * <strong>Runtime Exceptions from Proxy Methods:</strong>
@@ -125,23 +120,22 @@ import io.brane.rpc.WalletClient;
  * <ul>
  * <li><strong>View/Pure functions:</strong>
  *   <ul>
- *   <li>{@link io.brane.rpc.RpcException} - RPC communication failures</li>
- *   <li>{@link io.brane.core.RevertException} - Contract reverted (includes revert reason if available)</li>
+ *   <li>{@link io.brane.core.error.RpcException} - RPC communication failures</li>
+ *   <li>{@link io.brane.core.error.RevertException} - Contract reverted (includes revert reason if available)</li>
  *   <li>{@link io.brane.core.error.AbiDecodingException} - Failed to decode return value</li>
  *   </ul>
  * </li>
  * <li><strong>State-changing functions:</strong>
  *   <ul>
- *   <li>{@link io.brane.rpc.RpcException} - RPC communication failures or transaction rejection</li>
+ *   <li>{@link io.brane.core.error.RpcException} - RPC communication failures or transaction rejection</li>
  *   <li>{@link io.brane.core.error.AbiEncodingException} - Failed to encode function parameters</li>
  *   </ul>
  * </li>
  * </ul>
  *
  * @see Abi
- * @see ContractInvocationHandler
- * @see PublicClient
- * @see WalletClient
+ * @see Brane
+ * @see Brane.Signer
  */
 public final class BraneContract {
 
@@ -152,15 +146,90 @@ public final class BraneContract {
     }
 
     /**
-     * Binds a Java interface to a deployed smart contract using dynamic proxy with default options.
+     * Binds a Java interface to a deployed smart contract for read-only operations.
+     *
+     * <p>
+     * Creates a type-safe proxy instance that implements the specified interface.
+     * This method only supports view/pure functions - attempting to call state-changing
+     * functions will throw {@link UnsupportedOperationException}.
+     *
+     * <p>
+     * <strong>Interface Requirements:</strong>
+     * <ul>
+     * <li>Must be an interface (not a class)</li>
+     * <li>Method names must exactly match ABI function names</li>
+     * <li>All methods must be view or pure functions</li>
+     * <li>Parameter types must match Solidity types</li>
+     * <li>Return types must be compatible with function mutability</li>
+     * </ul>
+     *
+     * <p>
+     * <strong>Example:</strong>
+     * <pre>{@code
+     * // Define read-only interface
+     * public interface Erc20View {
+     *     BigInteger balanceOf(Address owner);
+     *     String name();
+     *     String symbol();
+     *     BigInteger decimals();
+     * }
+     *
+     * // Bind using Brane
+     * Brane client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...");
+     * Erc20View token = BraneContract.bindReadOnly(
+     *         Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+     *         abiJson,
+     *         client,
+     *         Erc20View.class);
+     *
+     * BigInteger balance = token.balanceOf(myAddress);
+     * }</pre>
+     *
+     * @param <T>               the contract interface type
+     * @param address           the deployed contract address
+     * @param abiJson           the contract ABI in JSON format
+     * @param client            the Brane client for read operations
+     * @param contractInterface the Java interface class representing the contract
+     * @return a proxy instance implementing the contract interface (read-only)
+     * @throws IllegalArgumentException if validation fails or interface contains non-view functions
+     * @throws NullPointerException     if any parameter is null
+     * @since 0.1.0
+     */
+    public static <T> T bindReadOnly(
+            final Address address,
+            final String abiJson,
+            final Brane client,
+            final Class<T> contractInterface) {
+        Objects.requireNonNull(address, "address");
+        Objects.requireNonNull(abiJson, "abiJson");
+        Objects.requireNonNull(client, "client");
+        Objects.requireNonNull(contractInterface, "contractInterface");
+
+        if (!contractInterface.isInterface()) {
+            throw new IllegalArgumentException("contractInterface must be an interface");
+        }
+
+        final Abi abi = Abi.fromJson(abiJson);
+        validateReadOnlyMethods(contractInterface, abi);
+
+        final AbiBinding binding = new AbiBinding(abi, contractInterface);
+        final ReadOnlyContractInvocationHandler handler = new ReadOnlyContractInvocationHandler(
+                address, abi, binding, client);
+        final Object proxy = Proxy.newProxyInstance(
+                contractInterface.getClassLoader(), new Class<?>[] { contractInterface }, handler);
+        return contractInterface.cast(proxy);
+    }
+
+    /**
+     * Binds a Java interface to a deployed smart contract for read-write operations using the new Brane.Signer API.
      *
      * <p>
      * Creates a type-safe proxy instance that implements the specified interface.
      * Method calls on the proxy are translated to contract function calls:
      * <ul>
-     * <li>View/pure functions → {@code eth_call} via {@link PublicClient}</li>
-     * <li>State-changing functions → {@code eth_sendTransaction} via
-     * {@link WalletClient}</li>
+     * <li>View/pure functions → {@code eth_call} via {@link Brane.Signer}</li>
+     * <li>State-changing functions → {@code sendTransactionAndWait} via
+     * {@link Brane.Signer}</li>
      * </ul>
      *
      * <p>
@@ -172,46 +241,56 @@ public final class BraneContract {
      * <li>Return types must be compatible with function mutability</li>
      * </ul>
      *
+     * <p>
+     * <strong>Example:</strong>
+     * <pre>{@code
+     * // Define contract interface
+     * public interface Erc20Contract {
+     *     BigInteger balanceOf(Address owner);
+     *     TransactionReceipt transfer(Address to, BigInteger amount);
+     * }
+     *
+     * // Bind using Brane.Signer
+     * Brane.Signer client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...", signer);
+     * Erc20Contract token = BraneContract.bind(
+     *         Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+     *         abiJson,
+     *         client,
+     *         Erc20Contract.class);
+     *
+     * BigInteger balance = token.balanceOf(myAddress);
+     * TransactionReceipt receipt = token.transfer(recipient, amount);
+     * }</pre>
+     *
      * @param <T>               the contract interface type
      * @param address           the deployed contract address
-     * @param abiJson           the contract ABI in JSON format (array of
-     *                          function/event definitions)
-     * @param publicClient      the client for view function calls
-     * @param walletClient      the client for state-changing function calls
+     * @param abiJson           the contract ABI in JSON format
+     * @param client            the Brane.Signer client for read and write operations
      * @param contractInterface the Java interface class representing the contract
      * @return a proxy instance implementing the contract interface
-     * @throws IllegalArgumentException if validation fails (method not in ABI, type
-     *                                  mismatch, etc.)
+     * @throws IllegalArgumentException if validation fails (method not in ABI, type mismatch, etc.)
      * @throws NullPointerException     if any parameter is null
+     * @since 0.1.0
      */
     public static <T> T bind(
             final Address address,
             final String abiJson,
-            final PublicClient publicClient,
-            final WalletClient walletClient,
+            final Brane.Signer client,
             final Class<T> contractInterface) {
-        return bind(address, abiJson, publicClient, walletClient, contractInterface, ContractOptions.defaults());
+        return bind(address, abiJson, client, contractInterface, ContractOptions.defaults());
     }
 
     /**
-     * Binds a Java interface to a deployed smart contract using dynamic proxy with custom options.
+     * Binds a Java interface to a deployed smart contract for read-write operations using the new Brane.Signer API
+     * with custom options.
      *
      * <p>
      * Creates a type-safe proxy instance that implements the specified interface.
      * Method calls on the proxy are translated to contract function calls:
      * <ul>
-     * <li>View/pure functions → {@code eth_call} via {@link PublicClient}</li>
-     * <li>State-changing functions → {@code eth_sendTransaction} via
-     * {@link WalletClient}</li>
-     * </ul>
-     *
-     * <p>
-     * <strong>Interface Requirements:</strong>
-     * <ul>
-     * <li>Must be an interface (not a class)</li>
-     * <li>Method names must exactly match ABI function names</li>
-     * <li>Parameter types must match Solidity types</li>
-     * <li>Return types must be compatible with function mutability</li>
+     * <li>View/pure functions → {@code eth_call} via {@link Brane.Signer}</li>
+     * <li>State-changing functions → {@code sendTransactionAndWait} via
+     * {@link Brane.Signer}</li>
      * </ul>
      *
      * <p>
@@ -224,33 +303,29 @@ public final class BraneContract {
      *     .build();
      *
      * Erc20Contract usdc = BraneContract.bind(
-     *         address, abiJson, publicClient, walletClient, Erc20Contract.class, options);
+     *         address, abiJson, client, Erc20Contract.class, options);
      * }</pre>
      *
      * @param <T>               the contract interface type
      * @param address           the deployed contract address
-     * @param abiJson           the contract ABI in JSON format (array of
-     *                          function/event definitions)
-     * @param publicClient      the client for view function calls
-     * @param walletClient      the client for state-changing function calls
+     * @param abiJson           the contract ABI in JSON format
+     * @param client            the Brane.Signer client for read and write operations
      * @param contractInterface the Java interface class representing the contract
      * @param options           the contract options for gas limit, timeouts, etc.
      * @return a proxy instance implementing the contract interface
-     * @throws IllegalArgumentException if validation fails (method not in ABI, type
-     *                                  mismatch, etc.)
+     * @throws IllegalArgumentException if validation fails (method not in ABI, type mismatch, etc.)
      * @throws NullPointerException     if any parameter is null
+     * @since 0.1.0
      */
     public static <T> T bind(
             final Address address,
             final String abiJson,
-            final PublicClient publicClient,
-            final WalletClient walletClient,
+            final Brane.Signer client,
             final Class<T> contractInterface,
             final ContractOptions options) {
         Objects.requireNonNull(address, "address");
         Objects.requireNonNull(abiJson, "abiJson");
-        Objects.requireNonNull(publicClient, "publicClient");
-        Objects.requireNonNull(walletClient, "walletClient");
+        Objects.requireNonNull(client, "client");
         Objects.requireNonNull(contractInterface, "contractInterface");
         Objects.requireNonNull(options, "options");
 
@@ -262,8 +337,8 @@ public final class BraneContract {
         validateMethods(contractInterface, abi);
 
         final AbiBinding binding = new AbiBinding(abi, contractInterface);
-        final ContractInvocationHandler handler = new ContractInvocationHandler(
-                address, abi, binding, publicClient, walletClient, options);
+        final SignerContractInvocationHandler handler = new SignerContractInvocationHandler(
+                address, abi, binding, client, options);
         final Object proxy = Proxy.newProxyInstance(
                 contractInterface.getClassLoader(), new Class<?>[] { contractInterface }, handler);
         return contractInterface.cast(proxy);
@@ -312,6 +387,32 @@ public final class BraneContract {
                     .orElseThrow(
                             () -> new IllegalArgumentException(
                                     "No ABI function named '" + method.getName() + "'"));
+            validateParameters(method, metadata);
+            validateReturnType(method, metadata);
+        }
+    }
+
+    private static void validateReadOnlyMethods(final Class<?> contractInterface, final Abi abi) {
+        for (Method method : contractInterface.getMethods()) {
+            if (method.getDeclaringClass() == Object.class) {
+                continue;
+            }
+
+            final Abi.FunctionMetadata metadata = abi.getFunction(method.getName())
+                    .orElseThrow(
+                            () -> new IllegalArgumentException(
+                                    "No ABI function named '" + method.getName() + "'"));
+
+            // Ensure all methods are view/pure for read-only binding
+            if (!metadata.isView()) {
+                throw new IllegalArgumentException(
+                        "bindReadOnly only supports view/pure functions, but '"
+                                + method.getName()
+                                + "' has stateMutability '"
+                                + metadata.stateMutability()
+                                + "'");
+            }
+
             validateParameters(method, metadata);
             validateReturnType(method, metadata);
         }

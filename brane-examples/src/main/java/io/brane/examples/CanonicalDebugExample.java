@@ -9,11 +9,7 @@ import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.DefaultWalletClient;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
+import io.brane.rpc.Brane;
 
 /**
  * Canonical "Debug and Error Handling" Example for Brane 0.1.0-alpha.
@@ -52,15 +48,13 @@ public final class CanonicalDebugExample {
         // missing.
         final String privateKey = "0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef";
 
-        final BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-        final PublicClient publicClient = PublicClient.from(provider);
         final PrivateKeySigner signer = new PrivateKeySigner(privateKey);
-        final WalletClient wallet = DefaultWalletClient.create(provider, publicClient, signer);
+        final Brane.Signer client = Brane.connect(rpcUrl, signer);
 
         try {
             // 2. Trigger RPC logs (eth_blockNumber)
             System.out.println("\n[1] Triggering RPC Logs (getLatestBlock)...");
-            publicClient.getLatestBlock();
+            client.getLatestBlock();
             // Check console for: [RPC] id=... method=eth_getBlockByNumber ...
 
             // 3. Trigger Tx Lifecycle logs (sendTransaction)
@@ -76,7 +70,7 @@ public final class CanonicalDebugExample {
 
             // This might fail if the random account has no funds, which is perfect for
             // demonstrating RpcException
-            wallet.sendTransactionAndWait(tx, 30_000, 1_000);
+            client.sendTransactionAndWait(tx, 30_000, 1_000);
 
         } catch (RevertException e) {
             System.err.println("\n❌ Caught RevertException:");

@@ -29,14 +29,14 @@ class SimulateCallsTest {
     @Mock
     private BraneProvider provider;
 
-    private PublicClient client;
+    private Brane client;
 
     private static final Address FROM = new Address("0x1111111111111111111111111111111111111111");
     private static final Address TO = new Address("0x2222222222222222222222222222222222222222");
 
     @BeforeEach
     void setUp() {
-        client = PublicClient.from(provider);
+        client = new DefaultReader(provider, null, 0, RpcRetryConfig.defaults());
     }
 
     @Test
@@ -60,7 +60,7 @@ class SimulateCallsTest {
         JsonRpcResponse response = new JsonRpcResponse("2.0", mockResult, null, "1");
         when(provider.send(eq("eth_simulateV1"), any())).thenReturn(response);
 
-        client.simulateCalls(request);
+        client.simulate(request);
 
         ArgumentCaptor<List<Object>> captor = ArgumentCaptor.forClass(List.class);
         verify(provider).send(eq("eth_simulateV1"), captor.capture());
@@ -106,7 +106,7 @@ class SimulateCallsTest {
         JsonRpcResponse response = new JsonRpcResponse("2.0", mockResult, null, "1");
         when(provider.send(eq("eth_simulateV1"), any())).thenReturn(response);
 
-        SimulateResult result = client.simulateCalls(request);
+        SimulateResult result = client.simulate(request);
 
         assertEquals(1, result.results().size());
         assertTrue(result.results().get(0) instanceof CallResult.Success);
@@ -137,7 +137,7 @@ class SimulateCallsTest {
         JsonRpcResponse response = new JsonRpcResponse("2.0", mockResult, null, "1");
         when(provider.send(eq("eth_simulateV1"), any())).thenReturn(response);
 
-        SimulateResult result = client.simulateCalls(request);
+        SimulateResult result = client.simulate(request);
 
         assertEquals(1, result.results().size());
         assertTrue(result.results().get(0) instanceof CallResult.Failure);
@@ -171,7 +171,7 @@ class SimulateCallsTest {
         JsonRpcResponse response = new JsonRpcResponse("2.0", mockResult, null, "1");
         when(provider.send(eq("eth_simulateV1"), any())).thenReturn(response);
 
-        SimulateResult result = client.simulateCalls(request);
+        SimulateResult result = client.simulate(request);
 
         assertNotNull(result.assetChanges());
         assertEquals(1, result.assetChanges().size());
@@ -191,7 +191,7 @@ class SimulateCallsTest {
 
         when(provider.send(eq("eth_simulateV1"), any())).thenReturn(response);
 
-        assertThrows(SimulateNotSupportedException.class, () -> client.simulateCalls(request));
+        assertThrows(SimulateNotSupportedException.class, () -> client.simulate(request));
     }
 
     @Test
@@ -215,7 +215,7 @@ class SimulateCallsTest {
         JsonRpcResponse response = new JsonRpcResponse("2.0", mockResult, null, "1");
         when(provider.send(eq("eth_simulateV1"), any())).thenReturn(response);
 
-        client.simulateCalls(request);
+        client.simulate(request);
 
         ArgumentCaptor<List<Object>> captor = ArgumentCaptor.forClass(List.class);
         verify(provider).send(eq("eth_simulateV1"), captor.capture());
@@ -261,7 +261,7 @@ class SimulateCallsTest {
         JsonRpcResponse response = new JsonRpcResponse("2.0", mockResult, null, "1");
         when(provider.send(eq("eth_simulateV1"), any())).thenReturn(response);
 
-        SimulateResult result = client.simulateCalls(request);
+        SimulateResult result = client.simulate(request);
 
         assertEquals(1, result.results().size());
         assertTrue(result.results().get(0) instanceof CallResult.Failure,
@@ -288,7 +288,7 @@ class SimulateCallsTest {
         JsonRpcResponse response = new JsonRpcResponse("2.0", mockResult, null, "1");
         when(provider.send(eq("eth_simulateV1"), any())).thenReturn(response);
 
-        client.simulateCalls(request);
+        client.simulate(request);
 
         ArgumentCaptor<List<Object>> captor = ArgumentCaptor.forClass(List.class);
         verify(provider).send(eq("eth_simulateV1"), captor.capture());

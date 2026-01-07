@@ -9,11 +9,7 @@ import io.brane.core.model.TransactionReceipt;
 import io.brane.core.tx.UnsignedTransaction;
 import io.brane.core.types.Address;
 import io.brane.core.types.Wei;
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.DefaultWalletClient;
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
+import io.brane.rpc.Brane;
 
 /**
  * Demonstrates how to implement a custom Signer that could delegate to a remote
@@ -100,21 +96,14 @@ public final class RemoteSignerExample {
 
         System.out.println("=== Custom Remote Signer Example ===");
 
-        // Setup
-        BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-        PublicClient publicClient = PublicClient.from(provider);
-
         // Initialize our "Remote" Signer
         RemoteKeyManagementService mockKms = new MockKmsService(remoteKey);
         Signer customSigner = new KmsSigner(mockKms, "alias/my-eth-key");
 
         System.out.println("Signer Address (from KMS): " + customSigner.address().value());
 
-        // Create WalletClient with custom signer
-        WalletClient wallet = DefaultWalletClient.create(
-                provider,
-                publicClient,
-                customSigner);
+        // Create Brane.Signer with custom signer
+        Brane.Signer client = Brane.connect(rpcUrl, customSigner);
 
         // Send a transaction
         try {
@@ -124,7 +113,7 @@ public final class RemoteSignerExample {
                     .build();
 
             System.out.println("Sending transaction via KmsSigner...");
-            TransactionReceipt receipt = wallet.sendTransactionAndWait(tx, 10_000, 1_000);
+            TransactionReceipt receipt = client.sendTransactionAndWait(tx, 10_000, 1_000);
 
             System.out.println("✓ Transaction confirmed: " + receipt.transactionHash().value());
             System.out.println("✓ Block: " + receipt.blockNumber());

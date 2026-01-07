@@ -8,6 +8,7 @@ import java.util.function.Supplier;
 
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
+import io.brane.rpc.exception.RetryExhaustedException;
 
 /**
  * Internal utility for retrying RPC calls with exponential backoff.

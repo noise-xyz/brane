@@ -14,9 +14,13 @@ import io.brane.core.abi.Abi;
 import io.brane.core.abi.AbiBinding;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.types.Address;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.WalletClient;
 
+/**
+ * Tests for AbiBinding class which handles method-to-ABI function resolution.
+ *
+ * Note: BraneContract.bind() validation tests are now performed in integration tests
+ * since Brane.Signer is a sealed interface.
+ */
 class AbiBindingTest {
 
     @Test
@@ -69,38 +73,6 @@ class AbiBindingTest {
     }
 
     @Test
-    void throwsOnParameterCountMismatch() {
-        String json = """
-                [
-                    {
-                        "type": "function",
-                        "name": "foo",
-                        "stateMutability": "view",
-                        "inputs": [{"name": "a", "type": "uint256"}],
-                        "outputs": []
-                    }
-                ]
-                """;
-
-        interface TestContract {
-            void foo();
-        }
-
-        PublicClient fakePublic = new FakePublicClient() {};
-        WalletClient fakeWallet = new FakeWalletClient() {};
-
-        IllegalArgumentException e = assertThrows(
-                IllegalArgumentException.class,
-                () -> BraneContract.bind(
-                        new Address("0x" + "1".repeat(40)),
-                        json,
-                        fakePublic,
-                        fakeWallet,
-                        TestContract.class));
-        assertTrue(e.getMessage().contains("expects 1 parameters"));
-    }
-
-    @Test
     void cachesResolvedMethods() throws Exception {
         String json = """
                 [
@@ -129,68 +101,6 @@ class AbiBindingTest {
     }
 
     @Test
-    void validatesViewReturnTypes() {
-        String json = """
-                [
-                    {
-                        "type": "function",
-                        "name": "badReturn",
-                        "stateMutability": "view",
-                        "inputs": [],
-                        "outputs": [{"name": "", "type": "uint256"}]
-                    }
-                ]
-                """;
-
-        interface TestContract {
-            String badReturn(); // Wrong return type for uint256
-        }
-
-        PublicClient fakePublic = new FakePublicClient() {
-        };
-        WalletClient fakeWallet = new FakeWalletClient() {
-        };
-
-        assertThrows(IllegalArgumentException.class, () -> BraneContract.bind(
-                new Address("0x" + "1".repeat(40)),
-                json,
-                fakePublic,
-                fakeWallet,
-                TestContract.class));
-    }
-
-    @Test
-    void validatesWriteReturnTypes() {
-        String json = """
-                [
-                    {
-                        "type": "function",
-                        "name": "write",
-                        "stateMutability": "nonpayable",
-                        "inputs": [],
-                        "outputs": []
-                    }
-                ]
-                """;
-
-        interface BadContract {
-            String write(); // Write functions must return void or TransactionReceipt
-        }
-
-        PublicClient fakePublic = new FakePublicClient() {
-        };
-        WalletClient fakeWallet = new FakeWalletClient() {
-        };
-
-        assertThrows(IllegalArgumentException.class, () -> BraneContract.bind(
-                new Address("0x" + "1".repeat(40)),
-                json,
-                fakePublic,
-                fakeWallet,
-                BadContract.class));
-    }
-
-    @Test
     void allowsStringReturnTypeForStringOutput() {
         String json = """
                 [
@@ -213,35 +123,6 @@ class AbiBindingTest {
     }
 
     @Test
-    void rejectsStringReturnTypeForNonStringOutput() {
-        String json = """
-                [
-                    {
-                        "type": "function",
-                        "name": "getValue",
-                        "stateMutability": "view",
-                        "inputs": [],
-                        "outputs": [{"name": "", "type": "uint256"}]
-                    }
-                ]
-                """;
-
-        interface TestContract {
-            String getValue();  // Wrong - should be BigInteger for uint256
-        }
-
-        PublicClient fakePublic = new FakePublicClient() {};
-        WalletClient fakeWallet = new FakeWalletClient() {};
-
-        assertThrows(IllegalArgumentException.class, () -> BraneContract.bind(
-                new Address("0x" + "1".repeat(40)),
-                json,
-                fakePublic,
-                fakeWallet,
-                TestContract.class));
-    }
-
-    @Test
     void allowsBytesReturnTypeForBytesOutput() {
         String json = """
                 [
@@ -261,193 +142,6 @@ class AbiBindingTest {
 
         Abi abi = Abi.fromJson(json);
         assertDoesNotThrow(() -> new AbiBinding(abi, TestContract.class));
-    }
-
-    @Test
-    void allowsHexDataReturnTypeForBytes32Output() {
-        String json = """
-                [
-                    {
-                        "type": "function",
-                        "name": "getHash",
-                        "stateMutability": "view",
-                        "inputs": [],
-                        "outputs": [{"name": "", "type": "bytes32"}]
-                    }
-                ]
-                """;
-
-        interface TestContract {
-            io.brane.core.types.HexData getHash();
-        }
-
-        PublicClient fakePublic = new FakePublicClient() {};
-        WalletClient fakeWallet = new FakeWalletClient() {};
-
-        assertDoesNotThrow(() -> BraneContract.bind(
-                new Address("0x" + "1".repeat(40)),
-                json,
-                fakePublic,
-                fakeWallet,
-                TestContract.class));
-    }
-
-    @Test
-    void allowsListReturnTypeForDynamicArrayOutput() {
-        String json = """
-                [
-                    {
-                        "type": "function",
-                        "name": "getOwners",
-                        "stateMutability": "view",
-                        "inputs": [],
-                        "outputs": [{"name": "", "type": "address[]"}]
-                    }
-                ]
-                """;
-
-        interface TestContract {
-            java.util.List<Address> getOwners();
-        }
-
-        PublicClient fakePublic = new FakePublicClient() {};
-        WalletClient fakeWallet = new FakeWalletClient() {};
-
-        assertDoesNotThrow(() -> BraneContract.bind(
-                new Address("0x" + "1".repeat(40)),
-                json,
-                fakePublic,
-                fakeWallet,
-                TestContract.class));
-    }
-
-    @Test
-    void rejectsPayableAnnotationOnNonPayableFunction() {
-        String json = """
-                [
-                    {
-                        "type": "function",
-                        "name": "transfer",
-                        "stateMutability": "nonpayable",
-                        "inputs": [{"name": "to", "type": "address"}],
-                        "outputs": []
-                    }
-                ]
-                """;
-
-        interface TestContract {
-            @Payable
-            void transfer(io.brane.core.types.Wei value, Address to);
-        }
-
-        PublicClient fakePublic = new FakePublicClient() {};
-        WalletClient fakeWallet = new FakeWalletClient() {};
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                BraneContract.bind(
-                        new Address("0x" + "1".repeat(40)),
-                        json,
-                        fakePublic,
-                        fakeWallet,
-                        TestContract.class));
-
-        assertTrue(ex.getMessage().contains("does not map to a payable ABI function"));
-    }
-
-    @Test
-    void allowsPayableAnnotationOnPayableFunction() {
-        String json = """
-                [
-                    {
-                        "type": "function",
-                        "name": "deposit",
-                        "stateMutability": "payable",
-                        "inputs": [],
-                        "outputs": []
-                    }
-                ]
-                """;
-
-        interface TestContract {
-            @Payable
-            void deposit(io.brane.core.types.Wei value);
-        }
-
-        PublicClient fakePublic = new FakePublicClient() {};
-        WalletClient fakeWallet = new FakeWalletClient() {};
-
-        assertDoesNotThrow(() -> BraneContract.bind(
-                new Address("0x" + "1".repeat(40)),
-                json,
-                fakePublic,
-                fakeWallet,
-                TestContract.class));
-    }
-
-    @Test
-    void rejectsPayableMethodWithoutWeiParameter() {
-        String json = """
-                [
-                    {
-                        "type": "function",
-                        "name": "deposit",
-                        "stateMutability": "payable",
-                        "inputs": [],
-                        "outputs": []
-                    }
-                ]
-                """;
-
-        interface TestContract {
-            @Payable
-            void deposit();  // Missing Wei parameter
-        }
-
-        PublicClient fakePublic = new FakePublicClient() {};
-        WalletClient fakeWallet = new FakeWalletClient() {};
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                BraneContract.bind(
-                        new Address("0x" + "1".repeat(40)),
-                        json,
-                        fakePublic,
-                        fakeWallet,
-                        TestContract.class));
-
-        assertTrue(ex.getMessage().contains("must have Wei as first parameter"));
-    }
-
-    @Test
-    void rejectsPayableMethodWithWrongFirstParameter() {
-        String json = """
-                [
-                    {
-                        "type": "function",
-                        "name": "deposit",
-                        "stateMutability": "payable",
-                        "inputs": [{"name": "amount", "type": "uint256"}],
-                        "outputs": []
-                    }
-                ]
-                """;
-
-        interface TestContract {
-            @Payable
-            void deposit(BigInteger amount);  // Wei must be first, not BigInteger
-        }
-
-        PublicClient fakePublic = new FakePublicClient() {};
-        WalletClient fakeWallet = new FakeWalletClient() {};
-
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
-                BraneContract.bind(
-                        new Address("0x" + "1".repeat(40)),
-                        json,
-                        fakePublic,
-                        fakeWallet,
-                        TestContract.class));
-
-        assertTrue(ex.getMessage().contains("must have Wei as first parameter"));
     }
 
     @Test
@@ -536,91 +230,5 @@ class AbiBindingTest {
         assertEquals(0, errorCount.get(), "No errors should occur during concurrent access");
         assertEquals(threadCount * iterationsPerThread, successCount.get(),
                 "All reads should succeed");
-    }
-
-    // Minimal fake implementations
-    private static abstract class FakePublicClient implements io.brane.rpc.PublicClient {
-        @Override
-        public io.brane.core.model.BlockHeader getLatestBlock() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public io.brane.core.model.BlockHeader getBlockByNumber(long blockNumber) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public io.brane.core.model.Transaction getTransactionByHash(io.brane.core.types.Hash hash) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public io.brane.core.types.HexData call(io.brane.rpc.CallRequest request, io.brane.rpc.BlockTag blockTag) {
-            return io.brane.core.types.HexData.EMPTY;
-        }
-
-        @SuppressWarnings("deprecation")
-        @Override
-        public String call(java.util.Map<String, Object> callObject, String blockTag) {
-            return "0x";
-        }
-
-        @Override
-        public java.util.List<io.brane.core.model.LogEntry> getLogs(io.brane.rpc.LogFilter filter) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public java.math.BigInteger getChainId() {
-            return java.math.BigInteger.ONE;
-        }
-
-        @Override
-        public java.math.BigInteger getBalance(io.brane.core.types.Address address) {
-            return null;
-        }
-
-        @Override
-        public io.brane.rpc.Subscription subscribeToNewHeads(
-                java.util.function.Consumer<io.brane.core.model.BlockHeader> callback) {
-            return null;
-        }
-
-        @Override
-        public io.brane.rpc.Subscription subscribeToLogs(io.brane.rpc.LogFilter filter,
-                java.util.function.Consumer<io.brane.core.model.LogEntry> callback) {
-            return null;
-        }
-
-        @Override
-        public io.brane.core.model.AccessListWithGas createAccessList(io.brane.core.model.TransactionRequest request) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public io.brane.rpc.MulticallBatch createBatch() {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public io.brane.rpc.SimulateResult simulateCalls(io.brane.rpc.SimulateRequest request) {
-            throw new UnsupportedOperationException();
-        }
-    }
-
-    private static abstract class FakeWalletClient implements io.brane.rpc.WalletClient {
-        @Override
-        public io.brane.core.types.Hash sendTransaction(io.brane.core.model.TransactionRequest request) {
-            throw new UnsupportedOperationException();
-        }
-
-        @Override
-        public TransactionReceipt sendTransactionAndWait(
-                io.brane.core.model.TransactionRequest request,
-                long timeoutMillis,
-                long pollIntervalMillis) {
-            throw new UnsupportedOperationException();
-        }
     }
 }

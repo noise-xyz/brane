@@ -35,12 +35,14 @@ var local = ChainProfiles.ANVIL_LOCAL;
 Override the default RPC for any built-in chain:
 
 ```java
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
+import io.brane.rpc.Brane;
 import io.brane.core.chain.ChainProfiles;
 
-var provider = HttpBraneProvider.builder("https://eth-mainnet.g.alchemy.com/v2/YOUR-API-KEY").build();
-var client = PublicClient.from(provider);
+// Connect with a custom RPC URL and chain profile
+var client = Brane.builder()
+    .rpcUrl("https://eth-mainnet.g.alchemy.com/v2/YOUR-API-KEY")
+    .chain(ChainProfiles.ETH_MAINNET)
+    .build();
 ```
 
 <Tip>
@@ -54,6 +56,7 @@ For production, always use a dedicated RPC provider (Alchemy, Infura, QuickNode,
 Define your own chain profile for private networks or L2s:
 
 ```java
+import io.brane.rpc.Brane;
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.types.Wei;
 
@@ -64,8 +67,11 @@ ChainProfile myChain = ChainProfile.of(
     Wei.gwei(1)                        // Default gas price (fallback)
 );
 
-var provider = HttpBraneProvider.builder("https://arb1.arbitrum.io/rpc").build();
-var client = PublicClient.from(provider);
+// Use custom chain profile with builder
+var client = Brane.builder()
+    .rpcUrl("https://arb1.arbitrum.io/rpc")
+    .chain(myChain)
+    .build();
 ```
 
 ### ChainProfile Parameters
@@ -113,26 +119,26 @@ Some L2s have different transaction types or gas mechanics. Test thoroughly befo
 
 ## Using with Clients
 
-Chain profiles integrate with all Brane clients:
+Chain profiles integrate with the Brane client API:
 
 ```java
-import io.brane.rpc.HttpBraneProvider;
-import io.brane.rpc.PublicClient;
-import io.brane.rpc.DefaultWalletClient;
-import io.brane.core.crypto.PrivateKeySigner;
+import io.brane.rpc.Brane;
+import io.brane.core.crypto.PrivateKey;
 import io.brane.core.chain.ChainProfiles;
 
-// Create provider and clients
-var provider = HttpBraneProvider.builder("https://...").build();
-var publicClient = PublicClient.from(provider);
+// Read-only client with chain profile
+Brane.Reader reader = Brane.builder()
+    .rpcUrl("https://eth-mainnet.g.alchemy.com/v2/YOUR-API-KEY")
+    .chain(ChainProfiles.ETH_MAINNET)
+    .buildReader();
 
-// WalletClient uses provider + publicClient + signer + chain
-var wallet = DefaultWalletClient.create(
-    provider,
-    publicClient,
-    new PrivateKeySigner("0x..."),
-    ChainProfiles.ETH_MAINNET  // Used for chain ID in signatures
-);
+// Full client with signer and chain profile
+var signer = PrivateKey.from("0x...");
+Brane.Signer client = Brane.builder()
+    .rpcUrl("https://eth-mainnet.g.alchemy.com/v2/YOUR-API-KEY")
+    .chain(ChainProfiles.ETH_MAINNET)  // Used for chain ID in signatures
+    .signer(signer)
+    .buildSigner();
 ```
 
 ---
@@ -142,16 +148,15 @@ var wallet = DefaultWalletClient.create(
 Brane verifies the chain ID matches when signing transactions:
 
 ```java
-// The wallet uses the chain profile's ID for EIP-155 replay protection
-var wallet = DefaultWalletClient.create(
-    provider,
-    publicClient,
-    signer,
-    ChainProfiles.ETH_MAINNET  // chainId = 1
-);
+// The client uses the chain profile's ID for EIP-155 replay protection
+Brane.Signer client = Brane.builder()
+    .rpcUrl("https://eth-mainnet.g.alchemy.com/v2/YOUR-API-KEY")
+    .chain(ChainProfiles.ETH_MAINNET)  // chainId = 1
+    .signer(signer)
+    .buildSigner();
 
 // This transaction will be signed with chainId = 1
-wallet.sendTransaction(request);
+client.sendTransaction(request);
 ```
 
 <Tip>

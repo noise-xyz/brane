@@ -70,8 +70,7 @@ class MulticallIntegrationTest {
     private static final Address MULTICALL3_ADDRESS = new Address("0xcA11bde05977b3631167028862bE2a173976CA11");
 
     private static BraneProvider provider;
-    private static PublicClient publicClient;
-    private static WalletClient walletClient;
+    private static Brane.Signer braneClient;
     private static Address deployer;
     private static Address tokenAddress;
 
@@ -88,9 +87,8 @@ class MulticallIntegrationTest {
         String pk = "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80"; // Anvil account #0
 
         provider = HttpBraneProvider.builder(rpcUrl).build();
-        publicClient = PublicClient.from(provider);
         var signer = new PrivateKeySigner(pk);
-        walletClient = DefaultWalletClient.create(provider, publicClient, signer, signer.address());
+        braneClient = Brane.connect(rpcUrl, signer);
         deployer = signer.address();
 
         // Check if Multicall3 is deployed (required for these tests)
@@ -109,7 +107,7 @@ class MulticallIntegrationTest {
 
     @Test
     void batchesMultipleViewCalls() {
-        MulticallBatch batch = publicClient.createBatch();
+        MulticallBatch batch = braneClient.batch();
         Erc20 token = batch.bind(Erc20.class, tokenAddress, ERC20_ABI);
 
         // Batch multiple calls
@@ -146,7 +144,7 @@ class MulticallIntegrationTest {
             BigInteger getBlockNumber();
         }
 
-        MulticallBatch batch = publicClient.createBatch();
+        MulticallBatch batch = braneClient.batch();
         Multicall3 mc3 = batch.bind(Multicall3.class, MULTICALL3_ADDRESS, multicall3Abi);
         BatchHandle<BigInteger> blockHandle = batch.add(mc3.getBlockNumber());
 
@@ -162,7 +160,7 @@ class MulticallIntegrationTest {
         // Deploy a second token with different initial supply
         Address token2Address = deployErc20(BigInteger.valueOf(500_000));
 
-        MulticallBatch batch = publicClient.createBatch();
+        MulticallBatch batch = braneClient.batch();
         Erc20 token1 = batch.bind(Erc20.class, tokenAddress, ERC20_ABI);
         Erc20 token2 = batch.bind(Erc20.class, token2Address, ERC20_ABI);
 
@@ -187,7 +185,7 @@ class MulticallIntegrationTest {
 
     @Test
     void handlesLargeBatchWithChunking() {
-        MulticallBatch batch = publicClient.createBatch();
+        MulticallBatch batch = braneClient.batch();
         batch.chunkSize(5); // Small chunk size to force multiple RPC calls
 
         Erc20 token = batch.bind(Erc20.class, tokenAddress, ERC20_ABI);
@@ -213,7 +211,7 @@ class MulticallIntegrationTest {
         // Call balanceOf on an address that has no code (EOA) - should fail
         Address nonExistentContract = new Address("0x0000000000000000000000000000000000000001");
 
-        MulticallBatch batch = publicClient.createBatch();
+        MulticallBatch batch = braneClient.batch();
         batch.allowFailure(true); // Allow individual failures
 
         Erc20 token = batch.bind(Erc20.class, nonExistentContract, ERC20_ABI);
@@ -235,7 +233,7 @@ class MulticallIntegrationTest {
                 .value(Wei.of(0))
                 .build();
 
-        TransactionReceipt receipt = walletClient.sendTransactionAndWait(request, 10_000, 500);
+        TransactionReceipt receipt = braneClient.sendTransactionAndWait(request, 10_000, 500);
         assertNotNull(receipt.contractAddress(), "Contract deployment should return address");
         return new Address(receipt.contractAddress().value());
     }

@@ -4,78 +4,102 @@ description: 'Reading and writing to smart contracts.'
 ---
 
 
-Brane provides two primary classes for interacting with smart contracts: `ReadOnlyContract` and `ReadWriteContract`.
+Brane provides type-safe contract bindings through `BraneContract.bindReadOnly()` for read-only operations and `BraneContract.bind()` for read-write operations.
 
-## ReadOnlyContract
+## Read-Only Binding
 
-Used for calling `pure` and `view` functions. It requires a `PublicClient`.
+Used for calling `pure` and `view` functions. Requires a `Brane` client (read-only).
 
 ```java
-import io.brane.contract.ReadOnlyContract;
-import io.brane.core.abi.Abi;
+import io.brane.contract.BraneContract;
+import io.brane.rpc.Brane;
+import io.brane.core.types.Address;
+import java.math.BigInteger;
 
-// 1. Load ABI
-Abi abi = Abi.fromJson(jsonString);
+// 1. Define interface matching contract ABI
+public interface Erc20View {
+    BigInteger balanceOf(Address owner);
+    String name();
+    String symbol();
+    BigInteger decimals();
+}
 
-// 2. Create Contract
-ReadOnlyContract contract = ReadOnlyContract.from(
-    new Address("0x..."), 
-    abi, 
-    publicClient
+// 2. Connect to network
+Brane client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...");
+
+// 3. Bind interface to deployed contract
+Erc20View token = BraneContract.bindReadOnly(
+    Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+    abiJson,
+    client,
+    Erc20View.class
 );
 
-// 3. Call Function
-// call(methodName, ReturnType.class, args...)
-Address ownerAddress = new Address("0x...");
-BigInteger balance = contract.call("balanceOf", BigInteger.class, ownerAddress);
+// 4. Call view functions (no gas, instant)
+BigInteger balance = token.balanceOf(myAddress);
+String tokenName = token.name();
 ```
 
-## ReadWriteContract
+## Read-Write Binding
 
-Used for state-changing transactions. It requires both a `PublicClient` and a `WalletClient`.
+Used for state-changing transactions. Requires a `Brane.Signer` client.
 
 ```java
-import io.brane.contract.ReadWriteContract;
+import io.brane.contract.BraneContract;
+import io.brane.rpc.Brane;
+import io.brane.core.types.Address;
+import io.brane.core.model.TransactionReceipt;
+import java.math.BigInteger;
 
-ReadWriteContract contract = ReadWriteContract.from(
-    new Address("0x..."), 
-    abi, 
-    publicClient, 
-    walletClient
+// 1. Define interface with view and state-changing methods
+public interface Erc20Contract {
+    BigInteger balanceOf(Address owner);
+    TransactionReceipt transfer(Address to, BigInteger amount);
+    TransactionReceipt approve(Address spender, BigInteger amount);
+}
+
+// 2. Connect with a signer
+Brane.Signer client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...", signer);
+
+// 3. Bind interface to deployed contract
+Erc20Contract token = BraneContract.bind(
+    Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+    abiJson,
+    client,
+    Erc20Contract.class
 );
 
-// Send Transaction and Wait
-// sendAndWait(methodName, timeoutMs, pollIntervalMs, args...)
-Address recipientAddress = new Address("0x...");
-BigInteger amount = BigInteger.valueOf(1000);
-
-TransactionReceipt receipt = contract.sendAndWait(
-    "transfer",
-    60_000,
-    1_000,
+// 4. Call state-changing functions (costs gas, returns receipt)
+TransactionReceipt receipt = token.transfer(
     recipientAddress,
-    amount
+    new BigInteger("1000000") // 1 USDC (6 decimals)
 );
+
+if (receipt.status()) {
+    System.out.println("Transfer confirmed in block " + receipt.blockNumber());
+}
 ```
 
-### Sending ETH with Transactions
+### Sending ETH with Payable Functions
 
-Use `send` or `sendAndWait` with a `Wei` value parameter for payable functions:
+Use the `@Payable` annotation for functions that accept ETH:
 
 ```java
+import io.brane.contract.Payable;
 import io.brane.core.types.Wei;
+import java.math.BigDecimal;
 
-// Fire-and-forget with ETH value
-Hash txHash = contract.send("deposit", Wei.fromEther(new BigDecimal("1.0")));
+// Define interface with payable function
+public interface WethContract {
+    @Payable
+    TransactionReceipt deposit(Wei value);
 
-// Send and wait with ETH value
-TransactionReceipt receipt = contract.sendAndWait(
-    "deposit",
-    Wei.fromEther(new BigDecimal("0.5")),
-    60_000,  // timeout
-    1_000,   // poll interval
-    // ... other args
-);
+    TransactionReceipt withdraw(BigInteger amount);
+}
+
+// Bind and call payable function
+WethContract weth = BraneContract.bind(wethAddress, abiJson, client, WethContract.class);
+TransactionReceipt receipt = weth.deposit(Wei.fromEther(new BigDecimal("1.0")));
 ```
 
 ### Contract Options
@@ -95,12 +119,13 @@ ContractOptions options = ContractOptions.builder()
     .maxPriorityFee(Wei.gwei(2))
     .build();
 
-ReadWriteContract contract = ReadWriteContract.from(
+// Pass options when binding
+Erc20Contract token = BraneContract.bind(
     address,
-    abi,
-    publicClient,
-    walletClient,
-    options  // Pass custom options
+    abiJson,
+    client,       // Brane.Signer
+    Erc20Contract.class,
+    options
 );
 ```
 
@@ -114,16 +139,21 @@ ReadWriteContract contract = ReadWriteContract.from(
 
 ## Deploying Contracts
 
-You can deploy contracts using `BraneContract.deployRequest`.
+Deploy contracts using `BraneContract.deployRequest`:
 
 ```java
 import io.brane.contract.BraneContract;
+import io.brane.rpc.Brane;
+import io.brane.core.model.TransactionRequest;
+import io.brane.core.model.TransactionReceipt;
+import io.brane.core.types.Address;
 
 String abiJson = "[...]";
 String bytecodeHex = "0x...";
 String constructorArg1 = "MyToken";
 String constructorArg2 = "MTK";
 
+// Create deployment request
 TransactionRequest deployRequest = BraneContract.deployRequest(
     abiJson,
     bytecodeHex,
@@ -131,6 +161,8 @@ TransactionRequest deployRequest = BraneContract.deployRequest(
     constructorArg2
 );
 
-TransactionReceipt receipt = walletClient.sendTransactionAndWait(deployRequest, 60_000, 1_000);
-Address newContractAddress = new Address(receipt.contractAddress().value());
+// Deploy with Brane.Signer
+Brane.Signer client = Brane.connect("https://eth.example.com", signer);
+TransactionReceipt receipt = client.sendTransactionAndWait(deployRequest, 60_000, 1_000);
+Address newContractAddress = receipt.contractAddress();
 ```

@@ -37,8 +37,8 @@ anvil  # In separate terminal
 public class SmokeApp {
     public static void main(String[] args) {
         // Setup
-        var provider = HttpBraneProvider.create("http://127.0.0.1:8545");
-        var client = DefaultWalletClient.create(provider, signer);
+        var signer = new PrivateKeySigner("0x...");
+        var client = Brane.connect("http://127.0.0.1:8545", signer);
 
         // Run all tests
         testContractBinding();

@@ -60,12 +60,12 @@ try {
 Thrown when the JSON-RPC node returns an error (e.g., rate limiting, invalid request).
 
 ```java
-import io.brane.rpc.PublicClient;
+import io.brane.rpc.Brane;
 import io.brane.core.types.Address;
 import io.brane.core.error.RpcException;
 
-PublicClient client = ...; // Your PublicClient instance
-Address address = new Address("0x...");
+Brane client = Brane.connect("https://eth.example.com");
+Address address = Address.from("0x...");
 
 try {
     client.getBalance(address);
@@ -80,13 +80,15 @@ try {
 Thrown when a smart contract execution reverts.
 
 ```java
-import io.brane.contract.ReadWriteContract;
+import io.brane.rpc.Brane;
+import io.brane.contract.BraneContract;
 import io.brane.core.error.RevertException;
 
-ReadWriteContract contract = ...; // Your contract instance
+Brane.Signer client = Brane.connect("https://eth.example.com", signer);
+MyToken token = BraneContract.bind(MyToken.class, abi, tokenAddress, client);
 
 try {
-    contract.sendAndWait("transfer", ...);
+    token.transfer(recipient, amount);
 } catch (RevertException e) {
     System.err.println("Transaction Reverted: " + e.revertReason());
     // e.revertReason() automatically decodes standard string reverts
@@ -167,6 +169,52 @@ try {
 }
 ```
 
+## RPC-Layer Exceptions
+
+The `io.brane.rpc.exception` package contains RPC-specific exceptions that are separate from the core `BraneException` hierarchy.
+
+### RetryExhaustedException
+
+Thrown when all retry attempts have been exhausted for transient RPC failures.
+
+```java
+import io.brane.rpc.exception.RetryExhaustedException;
+import io.brane.core.error.RpcException;
+
+try {
+    client.getLatestBlock();
+} catch (RetryExhaustedException e) {
+    System.err.println("Failed after " + e.getAttemptCount() + " attempts");
+    System.err.println("Total retry time: " + e.getTotalRetryDurationMs() + "ms");
+
+    // Access all failed attempts
+    for (Throwable suppressed : e.getSuppressed()) {
+        System.err.println("  - " + suppressed.getMessage());
+    }
+
+    // Access original RPC error if available
+    if (e.getCause() instanceof RpcException rpc) {
+        System.err.println("RPC Error: " + rpc.code() + " - " + rpc.getMessage());
+    }
+}
+```
+
+### SimulateNotSupportedException
+
+Thrown when `eth_simulateV1` is not supported by the RPC node. See [Transaction Simulation](/public-client/simulate) for details.
+
+```java
+import io.brane.rpc.exception.SimulateNotSupportedException;
+
+try {
+    client.simulate(request);
+} catch (SimulateNotSupportedException e) {
+    // Node does not support eth_simulateV1
+    // Consider falling back to eth_call
+    System.err.println(e.getMessage());
+}
+```
+
 ## Decoding Custom Errors
 
 If your contract throws a custom error (e.g., `error InsufficientFunds(uint256 available, uint256 required)`), you can decode it using `RevertDecoder`.
@@ -175,10 +223,12 @@ If your contract throws a custom error (e.g., `error InsufficientFunds(uint256 a
 import io.brane.core.RevertDecoder;
 import io.brane.core.abi.TypeSchema;
 import io.brane.core.abi.Abi;
-import io.brane.contract.ReadWriteContract;
+import io.brane.rpc.Brane;
+import io.brane.contract.BraneContract;
 import io.brane.core.error.RevertException;
 
-ReadWriteContract contract = ...; // Your contract instance
+Brane client = Brane.connect("https://eth.example.com");
+MyToken token = BraneContract.bind(MyToken.class, abi, tokenAddress, client);
 
 // 1. Define the Error Schema
 var customError = new RevertDecoder.CustomErrorAbi(
@@ -191,7 +241,7 @@ var customError = new RevertDecoder.CustomErrorAbi(
 
 // 2. Decode
 try {
-    contract.call(...);
+    token.balanceOf(address);
 } catch (RevertException e) {
     String data = e.rawDataHex();
     String selector = Abi.getSelector("InsufficientFunds(uint256,uint256)");

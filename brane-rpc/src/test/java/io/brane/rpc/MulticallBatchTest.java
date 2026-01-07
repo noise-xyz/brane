@@ -19,7 +19,7 @@ import io.brane.core.types.Address;
 class MulticallBatchTest {
 
     private BraneProvider provider;
-    private PublicClient publicClient;
+    private Brane braneClient;
     private MulticallBatch batch;
     private final Address contractAddress = new Address("0x" + "1".repeat(40));
     private final String abiJson = """
@@ -68,9 +68,9 @@ class MulticallBatchTest {
     @BeforeEach
     void setUp() {
         provider = mock(BraneProvider.class);
-        publicClient = new DefaultPublicClient(provider);
+        braneClient = new DefaultReader(provider, null, 0, RpcRetryConfig.defaults());
         // Using the official API to get our batch
-        batch = publicClient.createBatch();
+        batch = braneClient.batch();
     }
 
     @Test

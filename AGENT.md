@@ -25,7 +25,7 @@ This document is the **System Prompt** for any AI agent (LLM) working on the Bra
 
 ## 3. Architecture Overview
 *   **`brane-core`**: The heart. Types, ABI encoding (`io.brane.core.abi`), Crypto (`Signer`), Models.
-*   **`brane-rpc`**: JSON-RPC client. `PublicClient` (Read), `WalletClient` (Write).
+*   **`brane-rpc`**: JSON-RPC client. `Brane.Reader` (Read), `Brane.Signer` (Write).
 *   **`brane-contract`**: High-level runtime binding (`BraneContract.bind`). **NO CODEGEN**.
 *   **`brane-primitives`**: Low-level Hex/RLP utils.
 
@@ -135,9 +135,9 @@ Brane SDK follows a consistent naming convention for static factory methods:
 |-------------|---------|---------|
 | `create()` | Simple factory that constructs an instance directly | `WebSocketProvider.create(url)` |
 | `builder()` | Starts a builder pattern, returns a `Builder` with `.build()` | `HttpBraneProvider.builder(url).build()` |
-| `from()` | Conversion/adaptation from an existing object or explicit parameters | `PublicClient.from(provider)` |
+| `from()` | Conversion/adaptation from an existing object or explicit parameters | `Brane.connect(url)` |
 | `of()` | Static factory for value objects (records, immutable types) | `CallRequest.of(to, data)` |
-| `forChain()` | Domain-specific factory for chain configuration (returns builder) | `BranePublicClient.forChain(profile)` |
+| `forChain()` | Domain-specific factory for chain configuration (returns builder) | `Brane.builder().chain(profile)` |
 
 **Guidelines:**
 1. **`create()`** - Use when construction is straightforward and doesn't require many optional parameters.
@@ -232,7 +232,7 @@ For a Pull Request to be merged, it must:
 *   **Goal**: Verify interaction with a real EVM (Anvil).
 *   **Location**: `brane-examples/src/main/java/io/brane/examples/...` (as a standalone example) OR `brane-core/src/test/java/...` (with `@Tag("integration")`).
 *   **Pattern**:
-    *   Use `DefaultWalletClient` to connect to `http://127.0.0.1:8545`.
+    *   Use `Brane.connect(url, signer)` to connect to `http://127.0.0.1:8545`.
     *   Use the default Anvil private key: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`.
     *   Deploy a contract or send a transaction.
     *   Assert the on-chain result.
