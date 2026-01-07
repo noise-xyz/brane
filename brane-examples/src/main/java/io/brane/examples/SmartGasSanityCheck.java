@@ -55,7 +55,7 @@ public final class SmartGasSanityCheck {
 
                         // 4. Send and Wait
                         System.out.println("Sending transaction...");
-                        final TransactionReceipt receipt = wallet.sendTransactionAndWait(request, 1000, 30);
+                        final TransactionReceipt receipt = wallet.sendTransactionAndWait(request, 30_000, 1_000);
 
                         // 5. Verify and Print
                         System.out.println("Transaction Mined!");
