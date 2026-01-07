@@ -346,6 +346,130 @@ public final class BraneContract {
     }
 
     /**
+     * Binds a Java interface to a deployed smart contract for read-write operations using the new Brane.Signer API.
+     *
+     * <p>
+     * Creates a type-safe proxy instance that implements the specified interface.
+     * Method calls on the proxy are translated to contract function calls:
+     * <ul>
+     * <li>View/pure functions → {@code eth_call} via {@link Brane.Signer}</li>
+     * <li>State-changing functions → {@code sendTransactionAndWait} via
+     * {@link Brane.Signer}</li>
+     * </ul>
+     *
+     * <p>
+     * <strong>Interface Requirements:</strong>
+     * <ul>
+     * <li>Must be an interface (not a class)</li>
+     * <li>Method names must exactly match ABI function names</li>
+     * <li>Parameter types must match Solidity types</li>
+     * <li>Return types must be compatible with function mutability</li>
+     * </ul>
+     *
+     * <p>
+     * <strong>Example:</strong>
+     * <pre>{@code
+     * // Define contract interface
+     * public interface Erc20Contract {
+     *     BigInteger balanceOf(Address owner);
+     *     TransactionReceipt transfer(Address to, BigInteger amount);
+     * }
+     *
+     * // Bind using Brane.Signer
+     * Brane.Signer client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...", signer);
+     * Erc20Contract token = BraneContract.bind(
+     *         Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+     *         abiJson,
+     *         client,
+     *         Erc20Contract.class);
+     *
+     * BigInteger balance = token.balanceOf(myAddress);
+     * TransactionReceipt receipt = token.transfer(recipient, amount);
+     * }</pre>
+     *
+     * @param <T>               the contract interface type
+     * @param address           the deployed contract address
+     * @param abiJson           the contract ABI in JSON format
+     * @param client            the Brane.Signer client for read and write operations
+     * @param contractInterface the Java interface class representing the contract
+     * @return a proxy instance implementing the contract interface
+     * @throws IllegalArgumentException if validation fails (method not in ABI, type mismatch, etc.)
+     * @throws NullPointerException     if any parameter is null
+     * @since 0.1.0
+     */
+    public static <T> T bind(
+            final Address address,
+            final String abiJson,
+            final Brane.Signer client,
+            final Class<T> contractInterface) {
+        return bind(address, abiJson, client, contractInterface, ContractOptions.defaults());
+    }
+
+    /**
+     * Binds a Java interface to a deployed smart contract for read-write operations using the new Brane.Signer API
+     * with custom options.
+     *
+     * <p>
+     * Creates a type-safe proxy instance that implements the specified interface.
+     * Method calls on the proxy are translated to contract function calls:
+     * <ul>
+     * <li>View/pure functions → {@code eth_call} via {@link Brane.Signer}</li>
+     * <li>State-changing functions → {@code sendTransactionAndWait} via
+     * {@link Brane.Signer}</li>
+     * </ul>
+     *
+     * <p>
+     * <strong>Example with custom options:</strong>
+     * <pre>{@code
+     * var options = ContractOptions.builder()
+     *     .gasLimit(500_000L)
+     *     .timeout(Duration.ofSeconds(30))
+     *     .pollInterval(Duration.ofMillis(100))
+     *     .build();
+     *
+     * Erc20Contract usdc = BraneContract.bind(
+     *         address, abiJson, client, Erc20Contract.class, options);
+     * }</pre>
+     *
+     * @param <T>               the contract interface type
+     * @param address           the deployed contract address
+     * @param abiJson           the contract ABI in JSON format
+     * @param client            the Brane.Signer client for read and write operations
+     * @param contractInterface the Java interface class representing the contract
+     * @param options           the contract options for gas limit, timeouts, etc.
+     * @return a proxy instance implementing the contract interface
+     * @throws IllegalArgumentException if validation fails (method not in ABI, type mismatch, etc.)
+     * @throws NullPointerException     if any parameter is null
+     * @since 0.1.0
+     */
+    public static <T> T bind(
+            final Address address,
+            final String abiJson,
+            final Brane.Signer client,
+            final Class<T> contractInterface,
+            final ContractOptions options) {
+        Objects.requireNonNull(address, "address");
+        Objects.requireNonNull(abiJson, "abiJson");
+        Objects.requireNonNull(client, "client");
+        Objects.requireNonNull(contractInterface, "contractInterface");
+        Objects.requireNonNull(options, "options");
+
+        if (!contractInterface.isInterface()) {
+            throw new IllegalArgumentException("contractInterface must be an interface");
+        }
+
+        final Abi abi = Abi.fromJson(abiJson);
+        validateMethods(contractInterface, abi);
+
+        final AbiBinding binding = new AbiBinding(abi, contractInterface);
+        final SignerContractInvocationHandler handler = new SignerContractInvocationHandler(
+                address, abi, binding, client, options);
+        final Object proxy = Proxy.newProxyInstance(
+                contractInterface.getClassLoader(), new Class<?>[] { contractInterface }, handler);
+        return contractInterface.cast(proxy);
+    }
+
+    /**
      * Creates a deployment transaction request for a contract.
      *
      * @param abiJson  the contract ABI JSON
