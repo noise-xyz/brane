@@ -25,7 +25,7 @@ This document is the **System Prompt** for any AI agent (LLM) working on the Bra
 
 ## 3. Architecture Overview
 *   **`brane-core`**: The heart. Types, ABI encoding (`io.brane.core.abi`), Crypto (`Signer`), Models.
-*   **`brane-rpc`**: JSON-RPC client. `PublicClient` (Read), `WalletClient` (Write).
+*   **`brane-rpc`**: JSON-RPC client. `Brane.Reader` (Read), `Brane.Signer` (Write).
 *   **`brane-contract`**: High-level runtime binding (`BraneContract.bind`). **NO CODEGEN**.
 *   **`brane-primitives`**: Low-level Hex/RLP utils.
 
