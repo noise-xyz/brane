@@ -7,6 +7,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
@@ -18,6 +19,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import io.brane.core.chain.ChainProfile;
 import io.brane.rpc.internal.LogParser;
 
+import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.LogEntry;
@@ -379,7 +381,53 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public AccessListWithGas createAccessList(final TransactionRequest request) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        final Map<String, Object> params = buildEstimateGasParams(request);
+        final JsonRpcResponse response = sendWithRetry(
+                "eth_createAccessList",
+                List.of(params, BlockTag.LATEST.toRpcValue()));
+        if (response.hasError()) {
+            final JsonRpcError err = response.error();
+            throw new io.brane.core.error.RpcException(
+                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+        }
+        final Object result = response.result();
+        if (result == null) {
+            throw new io.brane.core.error.RpcException(
+                    0, "eth_createAccessList returned null", (String) null, (Throwable) null);
+        }
+
+        final Map<String, Object> map = MAPPER.convertValue(
+                result, new TypeReference<Map<String, Object>>() {});
+
+        final String gasUsedHex = RpcUtils.stringValue(map.get("gasUsed"));
+        final BigInteger gasUsed = gasUsedHex != null
+                ? RpcUtils.decodeHexBigInteger(gasUsedHex)
+                : BigInteger.ZERO;
+
+        final List<Map<String, Object>> accessListRaw = MAPPER.convertValue(
+                map.get("accessList"),
+                new TypeReference<List<Map<String, Object>>>() {});
+        final List<AccessListEntry> accessList = new ArrayList<>();
+        if (accessListRaw != null) {
+            for (final Map<String, Object> entryMap : accessListRaw) {
+                final String addressHex = RpcUtils.stringValue(entryMap.get("address"));
+                final List<String> storageKeysHex = MAPPER.convertValue(
+                        entryMap.get("storageKeys"),
+                        new TypeReference<List<String>>() {});
+                final List<Hash> storageKeys = (storageKeysHex == null)
+                        ? List.of()
+                        : storageKeysHex.stream()
+                                .filter(Objects::nonNull)
+                                .map(Hash::new)
+                                .toList();
+                if (addressHex != null) {
+                    accessList.add(new AccessListEntry(new Address(addressHex), storageKeys));
+                }
+            }
+        }
+
+        return new AccessListWithGas(accessList, gasUsed);
     }
 
     @Override
