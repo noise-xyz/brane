@@ -20,6 +20,8 @@ import org.jspecify.annotations.Nullable;
 import com.fasterxml.jackson.core.type.TypeReference;
 
 import io.brane.core.chain.ChainProfile;
+import io.brane.core.RevertDecoder;
+import io.brane.core.error.RevertException;
 import io.brane.rpc.internal.LogParser;
 
 import io.brane.core.model.AccessListEntry;
@@ -280,8 +282,14 @@ final class DefaultReader implements Brane.Reader {
                 List.of(request.toMap(), blockTag.toRpcValue()));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
+            final String data = RpcUtils.extractErrorData(err.data());
+            // Check if this is a revert error with data
+            if (data != null && data.startsWith("0x") && data.length() > 10) {
+                final RevertDecoder.Decoded decoded = RevertDecoder.decode(data);
+                throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), null);
+            }
             throw new io.brane.core.error.RpcException(
-                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+                    err.code(), err.message(), data, (Long) null);
         }
         final Object result = response.result();
         if (result == null) {

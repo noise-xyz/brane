@@ -15,6 +15,7 @@ import io.brane.core.DebugLogger;
 import io.brane.core.LogFormatter;
 import io.brane.core.RevertDecoder;
 import io.brane.core.chain.ChainProfile;
+import io.brane.core.error.ChainMismatchException;
 import io.brane.core.error.InvalidSenderException;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
@@ -290,7 +291,9 @@ final class DefaultSigner implements Brane.Signer {
     }
 
     /**
-     * Fetches and caches the chain ID.
+     * Fetches and caches the chain ID, validating it against the configured chain profile.
+     *
+     * @throws ChainMismatchException if the actual chain ID doesn't match the expected one
      */
     private long fetchAndCacheChainId() {
         final Long cached = cachedChainId.get();
@@ -298,6 +301,15 @@ final class DefaultSigner implements Brane.Signer {
             return cached;
         }
         final long actual = reader.chainId().longValue();
+
+        // Validate chain ID against configured chain profile (if present)
+        reader.chain().ifPresent(profile -> {
+            final long expected = profile.chainId();
+            if (expected != actual) {
+                throw new ChainMismatchException(expected, actual);
+            }
+        });
+
         final Long witness = cachedChainId.compareAndExchange(null, actual);
         return witness != null ? witness : actual;
     }
