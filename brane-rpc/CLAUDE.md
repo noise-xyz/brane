@@ -7,6 +7,7 @@ JSON-RPC client layer with HTTP and WebSocket transports.
 | Package | Purpose |
 |---------|---------|
 | `io.brane.rpc` | Clients and providers |
+| `io.brane.rpc.exception` | RPC-specific exceptions (`RetryExhaustedException`, `SimulateNotSupportedException`) |
 | `io.brane.rpc.internal` | Internal utilities |
 
 ## Key Classes
