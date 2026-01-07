@@ -60,12 +60,12 @@ try {
 Thrown when the JSON-RPC node returns an error (e.g., rate limiting, invalid request).
 
 ```java
-import io.brane.rpc.PublicClient;
+import io.brane.rpc.Brane;
 import io.brane.core.types.Address;
 import io.brane.core.error.RpcException;
 
-PublicClient client = ...; // Your PublicClient instance
-Address address = new Address("0x...");
+Brane client = Brane.connect("https://eth.example.com");
+Address address = Address.from("0x...");
 
 try {
     client.getBalance(address);
@@ -80,13 +80,15 @@ try {
 Thrown when a smart contract execution reverts.
 
 ```java
-import io.brane.contract.ReadWriteContract;
+import io.brane.rpc.Brane;
+import io.brane.contract.BraneContract;
 import io.brane.core.error.RevertException;
 
-ReadWriteContract contract = ...; // Your contract instance
+Brane.Signer client = Brane.connect("https://eth.example.com", signer);
+MyToken token = BraneContract.bind(MyToken.class, abi, tokenAddress, client);
 
 try {
-    contract.sendAndWait("transfer", ...);
+    token.transfer(recipient, amount);
 } catch (RevertException e) {
     System.err.println("Transaction Reverted: " + e.revertReason());
     // e.revertReason() automatically decodes standard string reverts
@@ -175,10 +177,12 @@ If your contract throws a custom error (e.g., `error InsufficientFunds(uint256 a
 import io.brane.core.RevertDecoder;
 import io.brane.core.abi.TypeSchema;
 import io.brane.core.abi.Abi;
-import io.brane.contract.ReadWriteContract;
+import io.brane.rpc.Brane;
+import io.brane.contract.BraneContract;
 import io.brane.core.error.RevertException;
 
-ReadWriteContract contract = ...; // Your contract instance
+Brane client = Brane.connect("https://eth.example.com");
+MyToken token = BraneContract.bind(MyToken.class, abi, tokenAddress, client);
 
 // 1. Define the Error Schema
 var customError = new RevertDecoder.CustomErrorAbi(
@@ -191,7 +195,7 @@ var customError = new RevertDecoder.CustomErrorAbi(
 
 // 2. Decode
 try {
-    contract.call(...);
+    token.balanceOf(address);
 } catch (RevertException e) {
     String data = e.rawDataHex();
     String selector = Abi.getSelector("InsufficientFunds(uint256,uint256)");
