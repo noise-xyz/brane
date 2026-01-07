@@ -22,7 +22,7 @@ import io.brane.rpc.WalletClient;
  * but the structure
  * mimics a real remote signer integration.
  */
-public class RemoteSignerExample {
+public final class RemoteSignerExample {
 
     // 1. Define a "Remote Service" interface
     interface RemoteKeyManagementService {

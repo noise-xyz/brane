@@ -32,7 +32,7 @@ import io.brane.rpc.WalletClient;
  * ./gradlew :brane-examples:run -PmainClass=io.brane.examples.GasEstimationDemo
  * </pre>
  */
-public class GasEstimationDemo {
+public final class GasEstimationDemo {
 
         public static void main(String[] args) throws Exception {
                 System.out.println("=== Gas Estimation Configuration Demo ===\n");
