@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -306,11 +307,15 @@ loadScripts(document, 'script');</script>
 <h3>encodeInt256</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">encodeInt256</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/math/BigInteger.html" title="class or interface in java.math" class="external-link">BigInteger</a>&nbsp;value,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/nio/ByteBuffer.html" title="class or interface in java.nio" class="external-link">ByteBuffer</a>&nbsp;buffer)</span></div>
-<div class="block">Encodes an int256 value directly into the buffer.</div>
+<div class="block">Encodes an int256 value directly into the buffer.
+
+ <p>Valid range for int256: <code>-2^255</code> to <code>2^255 - 1</code> (inclusive).</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>value</code> - the value to encode</dd>
+<dd><code>value</code> - the value to encode (must be in int256 range)</dd>
 <dd><code>buffer</code> - the destination buffer</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/IllegalArgumentException.html" title="class or interface in java.lang" class="external-link">IllegalArgumentException</a></code> - if value is outside int256 range</dd>
 </dl>
 </section>
 </li>

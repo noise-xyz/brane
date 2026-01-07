@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -92,20 +93,35 @@ loadScripts(document, 'script');</script>
 <section class="class-description" id="class-description">
 <dl class="notes">
 <dt>Record Components:</dt>
-<dd><code><span id="param-address">address</span></code> - the address of the contract that emitted the log</dd>
-<dd><code><span id="param-data">data</span></code> - the non-indexed log data</dd>
-<dd><code><span id="param-topics">topics</span></code> - the indexed log topics (topic[0] is usually the event
-                        signature)</dd>
-<dd><code><span id="param-blockHash">blockHash</span></code> - the hash of the block containing this log</dd>
-<dd><code><span id="param-transactionHash">transactionHash</span></code> - the hash of the transaction that generated this log</dd>
+<dd><code><span id="param-address">address</span></code> - the address of the contract that emitted the log (required)</dd>
+<dd><code><span id="param-data">data</span></code> - the non-indexed log data (required, may be empty)</dd>
+<dd><code><span id="param-topics">topics</span></code> - the indexed log topics (required, may be empty; topic[0]
+                        is usually the event signature)</dd>
+<dd><code><span id="param-blockHash">blockHash</span></code> - the hash of the block containing this log (<code>null</code>
+                        for pending logs)</dd>
+<dd><code><span id="param-transactionHash">transactionHash</span></code> - the hash of the transaction that generated this log (required)</dd>
 <dd><code><span id="param-logIndex">logIndex</span></code> - the index of this log within the block</dd>
-<dd><code><span id="param-removed">removed</span></code> - true if this log was removed due to a chain
-                        reorganization</dd>
+<dd><code><span id="param-removed">removed</span></code> - true if this log was removed due to a chain reorganization</dd>
 </dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public record </span><span class="element-name type-name-label">LogEntry</span>(<a href="../types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address, <a href="../types/HexData.html" title="class in io.brane.core.types">HexData</a>&nbsp;data, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="../types/Hash.html" title="class in io.brane.core.types">Hash</a>&gt;&nbsp;topics, <a href="../types/Hash.html" title="class in io.brane.core.types">Hash</a>&nbsp;blockHash, <a href="../types/Hash.html" title="class in io.brane.core.types">Hash</a>&nbsp;transactionHash, long&nbsp;logIndex, boolean&nbsp;removed)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a></span></div>
-<div class="block">Represents an event log entry emitted by a smart contract.</div>
+<div class="block">Represents an event log entry emitted by a smart contract.
+
+ <p>
+ Log entries are produced when smart contracts emit events. Each entry contains
+ the emitting contract's address, event data, and indexed topics for filtering.
+
+ <p>
+ <strong>Nullability:</strong>
+ <ul>
+ <li><code>blockHash</code> - can be <code>null</code> for logs from pending transactions</li>
+ <li>All other fields are required and cannot be null</li>
+ </ul></div>
+<dl class="notes">
+<dt>Since:</dt>
+<dd>0.1.0-alpha</dd>
+</dl>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -125,7 +141,7 @@ loadScripts(document, 'script');</script>
  long&nbsp;logIndex,
  boolean&nbsp;removed)</code></div>
 <div class="col-last even-row-color">
-<div class="block">Creates an instance of a <code>LogEntry</code> record class.</div>
+<div class="block">Validates required fields and makes defensive copy of topics.</div>
 </div>
 </div>
 </section>
@@ -218,16 +234,10 @@ loadScripts(document, 'script');</script>
  <a href="../types/Hash.html" title="class in io.brane.core.types">Hash</a>&nbsp;transactionHash,
  long&nbsp;logIndex,
  boolean&nbsp;removed)</span></div>
-<div class="block">Creates an instance of a <code>LogEntry</code> record class.</div>
+<div class="block">Validates required fields and makes defensive copy of topics.</div>
 <dl class="notes">
-<dt>Parameters:</dt>
-<dd><code>address</code> - the value for the <a href="#param-address"><code>address</code></a> record component</dd>
-<dd><code>data</code> - the value for the <a href="#param-data"><code>data</code></a> record component</dd>
-<dd><code>topics</code> - the value for the <a href="#param-topics"><code>topics</code></a> record component</dd>
-<dd><code>blockHash</code> - the value for the <a href="#param-blockHash"><code>blockHash</code></a> record component</dd>
-<dd><code>transactionHash</code> - the value for the <a href="#param-transactionHash"><code>transactionHash</code></a> record component</dd>
-<dd><code>logIndex</code> - the value for the <a href="#param-logIndex"><code>logIndex</code></a> record component</dd>
-<dd><code>removed</code> - the value for the <a href="#param-removed"><code>removed</code></a> record component</dd>
+<dt>Throws:</dt>
+<dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if address, data, topics, or transactionHash is null</dd>
 </dl>
 </section>
 </li>

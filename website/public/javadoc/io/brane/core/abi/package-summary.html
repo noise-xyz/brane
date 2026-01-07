@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li class="nav-bar-cell1-rev">Package</li>
 <li>Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#package">Help</a></li>
 </ul>
@@ -88,6 +89,19 @@ loadScripts(document, 'script');</script>
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Class</div>
 <div class="table-header col-last">Description</div>
+<div class="col-first even-row-color class-summary class-summary-tab1"><a href="Abi.html" title="interface in io.brane.core.abi">Abi</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab1">
+<div class="block">Application Binary Interface (ABI) for encoding/decoding smart contract
+ function calls and events.</div>
+</div>
+<div class="col-first odd-row-color class-summary class-summary-tab1"><a href="Abi.FunctionCall.html" title="interface in io.brane.core.abi">Abi.FunctionCall</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab1">&nbsp;</div>
+<div class="col-first even-row-color class-summary class-summary-tab4"><a href="Abi.FunctionMetadata.html" title="class in io.brane.core.abi">Abi.FunctionMetadata</a></div>
+<div class="col-last even-row-color class-summary class-summary-tab4">&nbsp;</div>
+<div class="col-first odd-row-color class-summary class-summary-tab2"><a href="AbiBinding.html" title="class in io.brane.core.abi">AbiBinding</a></div>
+<div class="col-last odd-row-color class-summary class-summary-tab2">
+<div class="block">Binds Java interface methods to ABI function metadata for type-safe contract interactions.</div>
+</div>
 <div class="col-first even-row-color class-summary class-summary-tab2"><a href="AbiDecoder.html" title="class in io.brane.core.abi">AbiDecoder</a></div>
 <div class="col-last even-row-color class-summary class-summary-tab2">
 <div class="block">Decodes byte arrays into ABI types according to the Ethereum Contract ABI
@@ -104,7 +118,7 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first odd-row-color class-summary class-summary-tab4"><a href="AddressType.html" title="class in io.brane.core.abi">AddressType</a></div>
 <div class="col-last odd-row-color class-summary class-summary-tab4">
-<div class="block">Represents a Solidity address (20 bytes).</div>
+<div class="block">Represents a Solidity <code>address</code> type for ABI encoding/decoding.</div>
 </div>
 <div class="col-first even-row-color class-summary class-summary-tab4"><a href="Array.html" title="class in io.brane.core.abi">Array</a>&lt;T extends <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType</a>&gt;</div>
 <div class="col-last even-row-color class-summary class-summary-tab4">
@@ -112,7 +126,7 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first odd-row-color class-summary class-summary-tab4"><a href="Bool.html" title="class in io.brane.core.abi">Bool</a></div>
 <div class="col-last odd-row-color class-summary class-summary-tab4">
-<div class="block">Represents a Solidity boolean (bool).</div>
+<div class="block">Represents a Solidity boolean (<code>bool</code>) type for ABI encoding/decoding.</div>
 </div>
 <div class="col-first even-row-color class-summary class-summary-tab4"><a href="Bytes.html" title="class in io.brane.core.abi">Bytes</a></div>
 <div class="col-last even-row-color class-summary class-summary-tab4">
@@ -128,8 +142,7 @@ loadScripts(document, 'script');</script>
 </div>
 <div class="col-first odd-row-color class-summary class-summary-tab2"><a href="PackedSizeCalculator.html" title="class in io.brane.core.abi">PackedSizeCalculator</a></div>
 <div class="col-last odd-row-color class-summary class-summary-tab2">
-<div class="block">Calculates the exact byte size of encoded ABI types without performing the
- encoding.</div>
+<div class="block">Calculates the exact byte size of encoded ABI types without performing the encoding.</div>
 </div>
 <div class="col-first even-row-color class-summary class-summary-tab4"><a href="Tuple.html" title="class in io.brane.core.abi">Tuple</a></div>
 <div class="col-last even-row-color class-summary class-summary-tab4">
@@ -142,11 +155,15 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color class-summary class-summary-tab4"><a href="TypeSchema.AddressSchema.html" title="class in io.brane.core.abi">TypeSchema.AddressSchema</a></div>
 <div class="col-last even-row-color class-summary class-summary-tab4">&nbsp;</div>
 <div class="col-first odd-row-color class-summary class-summary-tab4"><a href="TypeSchema.ArraySchema.html" title="class in io.brane.core.abi">TypeSchema.ArraySchema</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab4">&nbsp;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab4">
+<div class="block">Schema for Solidity array types (both fixed-size and dynamic).</div>
+</div>
 <div class="col-first even-row-color class-summary class-summary-tab4"><a href="TypeSchema.BoolSchema.html" title="class in io.brane.core.abi">TypeSchema.BoolSchema</a></div>
 <div class="col-last even-row-color class-summary class-summary-tab4">&nbsp;</div>
 <div class="col-first odd-row-color class-summary class-summary-tab4"><a href="TypeSchema.BytesSchema.html" title="class in io.brane.core.abi">TypeSchema.BytesSchema</a></div>
-<div class="col-last odd-row-color class-summary class-summary-tab4">&nbsp;</div>
+<div class="col-last odd-row-color class-summary class-summary-tab4">
+<div class="block">Schema for Solidity bytes or bytesN types.</div>
+</div>
 <div class="col-first even-row-color class-summary class-summary-tab4"><a href="TypeSchema.IntSchema.html" title="class in io.brane.core.abi">TypeSchema.IntSchema</a></div>
 <div class="col-last even-row-color class-summary class-summary-tab4">&nbsp;</div>
 <div class="col-first odd-row-color class-summary class-summary-tab4"><a href="TypeSchema.StringSchema.html" title="class in io.brane.core.abi">TypeSchema.StringSchema</a></div>

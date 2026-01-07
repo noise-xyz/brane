@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -113,33 +114,33 @@ loadScripts(document, 'script');</script>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a>
 implements <a href="UnsignedTransaction.html" title="interface in io.brane.core.tx">UnsignedTransaction</a></span></div>
 <div class="block">EIP-1559 transaction with dynamic fee market.
- 
+
  <p>
  This transaction type uses the EIP-1559 fee market with separate
  <code>maxFeePerGas</code> and <code>maxPriorityFeePerGas</code> fields. It is encoded
  using EIP-2718 typed transaction envelopes with type byte <code>0x02</code>.
- 
+
  <h2 id="eip-2718-1559-encoding-heading">EIP-2718/1559 Encoding</h2>
  <p>
  Signing preimage:
- 
+
  <pre>
  0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList])
  </pre>
- 
+
  <p>
  Signed envelope:
- 
+
  <pre>
  0x02 || RLP([chainId, nonce, maxPriorityFeePerGas, maxFeePerGas, gasLimit, to, value, data, accessList, yParity, r, s])
  </pre>
- 
+
  <p>
  Note: The <code>v</code> value in the signature is just the yParity (0 or 1), not
  EIP-155 encoded.
- 
+
  <h2 id="usage-example-heading">Usage Example</h2>
- 
+
  <pre><code>
  Eip1559Transaction tx = new Eip1559Transaction(
          1L, // chainId
@@ -152,7 +153,7 @@ implements <a href="UnsignedTransaction.html" title="interface in io.brane.core.
          HexData.EMPTY, // data
          List.of() // accessList
  );
- 
+
  byte[] preimage = tx.encodeForSigning(1);
  Signature sig = privateKey.sign(Keccak256.hash(preimage));
  byte[] envelope = tx.encodeAsEnvelope(sig);
@@ -326,7 +327,7 @@ implements <a href="UnsignedTransaction.html" title="interface in io.brane.core.
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="element-name">encodeForSigning</span><wbr><span class="parameters">(long&nbsp;chainId)</span></div>
 <div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="UnsignedTransaction.html#encodeForSigning(long)">UnsignedTransaction</a></code></span></div>
 <div class="block">Encodes the transaction for signing (pre-signature RLP encoding).
- 
+
  <p>
  For EIP-155 (legacy): RLP([nonce, gasPrice, gasLimit, to, value, data,
  chainId, 0, 0])
@@ -349,7 +350,7 @@ implements <a href="UnsignedTransaction.html" title="interface in io.brane.core.
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="element-name">encodeAsEnvelope</span><wbr><span class="parameters">(<a href="../crypto/Signature.html" title="class in io.brane.core.crypto">Signature</a>&nbsp;signature)</span></div>
 <div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="UnsignedTransaction.html#encodeAsEnvelope(io.brane.core.crypto.Signature)">UnsignedTransaction</a></code></span></div>
 <div class="block">Encodes the signed transaction as a network-ready envelope.
- 
+
  <p>
  For EIP-155 (legacy): RLP([nonce, gasPrice, gasLimit, to, value, data, v, r,
  s])

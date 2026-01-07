@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -93,16 +94,16 @@ loadScripts(document, 'script');</script>
 <div class="type-signature"><span class="modifiers">public sealed interface </span><span class="element-name type-name-label">TypeSchema</span>
 <span class="permits">permits <a href="TypeSchema.UIntSchema.html" title="class in io.brane.core.abi">TypeSchema.UIntSchema</a>, <a href="TypeSchema.IntSchema.html" title="class in io.brane.core.abi">TypeSchema.IntSchema</a>, <a href="TypeSchema.AddressSchema.html" title="class in io.brane.core.abi">TypeSchema.AddressSchema</a>, <a href="TypeSchema.BoolSchema.html" title="class in io.brane.core.abi">TypeSchema.BoolSchema</a>, <a href="TypeSchema.BytesSchema.html" title="class in io.brane.core.abi">TypeSchema.BytesSchema</a>, <a href="TypeSchema.StringSchema.html" title="class in io.brane.core.abi">TypeSchema.StringSchema</a>, <a href="TypeSchema.ArraySchema.html" title="class in io.brane.core.abi">TypeSchema.ArraySchema</a>, <a href="TypeSchema.TupleSchema.html" title="class in io.brane.core.abi">TypeSchema.TupleSchema</a></span></div>
 <div class="block">Defines the schema (expected type structure) for ABI decoding.
- 
+
  <p>
  Unlike <a href="AbiType.html" title="interface in io.brane.core.abi"><code>AbiType</code></a>, which represents a concrete value, <code>TypeSchema</code>
  represents the <em>type</em> of a value. This is necessary for decoding because
  the ABI encoding format is ambiguous without a schema (e.g., dynamic arrays
  look like tuples, and static types are just 32 bytes).
- 
+
  <p>
  Schemas are used by <a href="AbiDecoder.html" title="class in io.brane.core.abi"><code>AbiDecoder</code></a> to interpret byte arrays.
- 
+
  <h2 id="example-heading">Example</h2>
  <pre><code>
  // Schema for: (uint256, string[])
@@ -128,13 +129,17 @@ loadScripts(document, 'script');</script>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>static final record&nbsp;</code></div>
 <div class="col-second odd-row-color"><code><a href="TypeSchema.ArraySchema.html" class="type-name-link" title="class in io.brane.core.abi">TypeSchema.ArraySchema</a></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">Schema for Solidity array types (both fixed-size and dynamic).</div>
+</div>
 <div class="col-first even-row-color"><code>static final record&nbsp;</code></div>
 <div class="col-second even-row-color"><code><a href="TypeSchema.BoolSchema.html" class="type-name-link" title="class in io.brane.core.abi">TypeSchema.BoolSchema</a></code></div>
 <div class="col-last even-row-color">&nbsp;</div>
 <div class="col-first odd-row-color"><code>static final record&nbsp;</code></div>
 <div class="col-second odd-row-color"><code><a href="TypeSchema.BytesSchema.html" class="type-name-link" title="class in io.brane.core.abi">TypeSchema.BytesSchema</a></code></div>
-<div class="col-last odd-row-color">&nbsp;</div>
+<div class="col-last odd-row-color">
+<div class="block">Schema for Solidity bytes or bytesN types.</div>
+</div>
 <div class="col-first even-row-color"><code>static final record&nbsp;</code></div>
 <div class="col-second even-row-color"><code><a href="TypeSchema.IntSchema.html" class="type-name-link" title="class in io.brane.core.abi">TypeSchema.IntSchema</a></code></div>
 <div class="col-last even-row-color">&nbsp;</div>
@@ -167,6 +172,11 @@ loadScripts(document, 'script');</script>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code>boolean</code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#isDynamic()" class="member-name-link">isDynamic</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">&nbsp;</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3"><code><a href="#typeName()" class="member-name-link">typeName</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab3">
+<div class="block">Returns the Solidity type name for this schema.</div>
+</div>
 </div>
 </div>
 </div>
@@ -185,6 +195,17 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="isDynamic()">
 <h3>isDynamic</h3>
 <div class="member-signature"><span class="return-type">boolean</span>&nbsp;<span class="element-name">isDynamic</span>()</div>
+</section>
+</li>
+<li>
+<section class="detail" id="typeName()">
+<h3>typeName</h3>
+<div class="member-signature"><span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">typeName</span>()</div>
+<div class="block">Returns the Solidity type name for this schema.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>the type name (e.g., "uint256", "address", "bytes32[]")</dd>
+</dl>
 </section>
 </li>
 <li>

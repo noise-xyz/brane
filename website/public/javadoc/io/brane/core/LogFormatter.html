@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../index-all.html">Index</a></li>
 <li><a href="../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -92,7 +93,7 @@ loadScripts(document, 'script');</script>
 <div class="type-signature"><span class="modifiers">public final class </span><span class="element-name type-name-label">LogFormatter</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span></div>
 <div class="block">Modern log formatter for Brane SDK with colored, structured output.
- 
+
  <p>
  This class provides formatted logging methods that produce consistent,
  visually
@@ -101,7 +102,7 @@ loadScripts(document, 'script');</script>
  use the modern color palette from <a href="AnsiColors.html" title="class in io.brane.core"><code>AnsiColors</code></a> and status symbols (✓ ✗
  ○)
  to indicate success, failure, and pending states.
- 
+
  <h2 id="design-philosophy-heading">Design Philosophy</h2>
  <ul>
  <li><b>Status symbols only</b> - Symbols (✓ ✗ ○) indicate status, not
@@ -115,7 +116,7 @@ loadScripts(document, 'script');</script>
  <li><b>Multi-line for complexity</b> - Complex data (like CALL requests)
  formatted across lines
  </ul>
- 
+
  <h2 id="log-types-heading">Log Types</h2>
  <table border="1">
  <tr>
@@ -167,27 +168,27 @@ loadScripts(document, 'script');</script>
  <td>Transaction reverts</td>
  </tr>
  </table>
- 
+
  <h2 id="usage-example-heading">Usage Example</h2>
- 
+
  <pre><code>
  // RPC call logging
  DebugLogger.log(LogFormatter.formatCall("latest", callObject));
  // Output: [CALL] tag=latest
  // to=0x1234...5678
  // data=0xabcd...ef01
- 
+
  // Transaction logging
  DebugLogger.logTx(LogFormatter.formatTxSend(from, to, nonce, gasLimit, value));
  // Output: [TX-SEND] from=0x1234...5678 to=0xabcd...ef01 nonce=0
  // gasLimit=25200 value=100
- 
+
  // Error logging
  DebugLogger.logRpc(LogFormatter.formatRpcError(method, code, message, duration));
  // Output: ✗ [RPC-ERROR] method=eth_call code=-32000 message=execution
  // reverted duration=1.5ms
  </code></pre>
- 
+
  <p>
  All methods in this class are thread-safe and purely functional (no side
  effects).

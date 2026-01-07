@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -92,18 +93,63 @@ loadScripts(document, 'script');</script>
 <div class="type-signature"><span class="modifiers">public final class </span><span class="element-name type-name-label">Keccak256</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span></div>
 <div class="block">Keccak-256 hashing utility for Ethereum.
- 
+
  <p>
  Ethereum uses Keccak-256 (not SHA3-256) for hashing. This class provides
  a simple interface to BouncyCastle's Keccak.Digest256 implementation.
- 
+
  <h2 id="usage-example-heading">Usage Example</h2>
- 
+
  <pre><code>
  byte[] data = "hello".getBytes(StandardCharsets.UTF_8);
  byte[] hash = Keccak256.hash(data);
  String hashHex = Hex.encode(hash);
- </code></pre></div>
+ </code></pre>
+
+ <h2 id="-important-threadlocal-memory-management-heading">⚠️ IMPORTANT: ThreadLocal Memory Management</h2>
+
+ <p>
+ <b>Memory Leak Warning:</b> This class uses <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ThreadLocal.html" title="class or interface in java.lang" class="external-link"><code>ThreadLocal</code></a> to cache digest
+ instances for performance. In thread pool environments (servlet containers,
+ application servers, executors), failure to call <a href="#cleanup()"><code>cleanup()</code></a> can cause
+ memory leaks and classloader leaks during hot redeployment.
+
+ <h3 id="when-to-call-cleanup--heading">When to Call cleanup()</h3>
+ <ul>
+ <li><b>Servlet/Web Applications:</b> In a filter's <code>finally</code> block or
+     <code>ServletContextListener.contextDestroyed()</code></li>
+ <li><b>Custom Thread Pools:</b> When returning threads to the pool or shutting down</li>
+ <li><b>Application Shutdown:</b> In shutdown hooks or lifecycle callbacks</li>
+ </ul>
+
+ <h3 id="example-servlet-filter-heading">Example: Servlet Filter</h3>
+ <pre><code>
+ public class BraneCleanupFilter implements Filter {
+     public void doFilter(ServletRequest req, ServletResponse res, FilterChain chain)
+             throws IOException, ServletException {
+         try {
+             chain.doFilter(req, res);
+         } finally {
+             Keccak256.cleanup();  // Prevent memory leak
+         }
+     }
+ }
+ </code></pre>
+
+ <h3 id="example-executorservice-heading">Example: ExecutorService</h3>
+ <pre><code>
+ executor.submit(() -&gt; {
+     try {
+         // ... use Keccak256.hash() ...
+     } finally {
+         Keccak256.cleanup();
+     }
+ });
+ </code></pre>
+
+ <p>
+ <b>Note:</b> For simple CLI applications or short-lived processes, cleanup is
+ not strictly necessary as ThreadLocal values are released when the JVM exits.</div>
 <dl class="notes">
 <dt>Since:</dt>
 <dd>0.2.0</dd>
@@ -122,14 +168,19 @@ loadScripts(document, 'script');</script>
 <div class="table-header col-first">Modifier and Type</div>
 <div class="table-header col-second">Method</div>
 <div class="table-header col-last">Description</div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static byte[]</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#hash(byte%5B%5D)" class="member-name-link">hash</a><wbr>(byte[]&nbsp;input)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static void</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#cleanup()" class="member-name-link">cleanup</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
-<div class="block">Computes the Keccak-256 hash of the input bytes.</div>
+<div class="block">Removes the cached digest instance from the current thread.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static byte[]</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#hash(byte%5B%5D...)" class="member-name-link">hash</a><wbr>(byte[]...&nbsp;inputs)</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#hash(byte%5B%5D)" class="member-name-link">hash</a><wbr>(byte[]&nbsp;input)</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
+<div class="block">Computes the Keccak-256 hash of the input bytes.</div>
+</div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code>static byte[]</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4"><code><a href="#hash(byte%5B%5D...)" class="member-name-link">hash</a><wbr>(byte[]...&nbsp;inputs)</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab1 method-summary-table-tab4">
 <div class="block">Computes the Keccak-256 hash of multiple input arrays concatenated.</div>
 </div>
 </div>
@@ -169,7 +220,7 @@ loadScripts(document, 'script');</script>
 <h3>hash</h3>
 <div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">byte[]</span>&nbsp;<span class="element-name">hash</span><wbr><span class="parameters">(byte[]...&nbsp;inputs)</span></div>
 <div class="block">Computes the Keccak-256 hash of multiple input arrays concatenated.
- 
+
  <p>
  This is useful for hashing composed data without creating intermediate
  byte arrays.</div>
@@ -180,6 +231,30 @@ loadScripts(document, 'script');</script>
 <dd>32-byte hash</dd>
 <dt>Throws:</dt>
 <dd><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/NullPointerException.html" title="class or interface in java.lang" class="external-link">NullPointerException</a></code> - if inputs or any element is null</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="cleanup()">
+<h3>cleanup</h3>
+<div class="member-signature"><span class="modifiers">public static</span>&nbsp;<span class="return-type">void</span>&nbsp;<span class="element-name">cleanup</span>()</div>
+<div class="block">Removes the cached digest instance from the current thread.
+
+ <p>
+ Call this method to prevent memory leaks in thread pool environments
+ where threads are reused across different application contexts or
+ class loaders.
+
+ <p>
+ This is safe to call even if the thread has never called <a href="#hash(byte%5B%5D)"><code>hash(byte[])</code></a>;
+ it will simply be a no-op.</div>
+<dl class="notes">
+<dt>See Also:</dt>
+<dd>
+<ul class="tag-list">
+<li><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/ThreadLocal.html#remove()" title="class or interface in java.lang" class="external-link"><code>ThreadLocal.remove()</code></a></li>
+</ul>
+</dd>
 </dl>
 </section>
 </li>

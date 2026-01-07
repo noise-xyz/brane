@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -96,6 +97,35 @@ loadScripts(document, 'script');</script>
 <div class="type-signature"><span class="modifiers">public final class </span><span class="element-name type-name-label">LegacyBuilder</span>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>
 implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a>&gt;</span></div>
+<div class="block">Builder for legacy (pre-EIP-1559) transactions with a single gas price.
+
+ <p>Legacy transactions use a single <code>gasPrice</code> field instead of
+ the EIP-1559 <code>maxFeePerGas</code> and <code>maxPriorityFeePerGas</code> fields.
+
+ <p><strong>Example:</strong>
+ <pre><code>
+ TransactionRequest tx = TxBuilder.legacy()
+     .from(sender)
+     .to(recipient)
+     .value(Wei.ether("1"))
+     .gasPrice(Wei.gwei(50))
+     .gasLimit(21000)
+     .build();
+ </code></pre>
+
+ <p><strong>Thread Safety:</strong> This builder is <em>not</em> thread-safe. Each thread
+ should use its own builder instance. The <a href="#build()"><code>build()</code></a> method creates an immutable
+ <a href="../model/TransactionRequest.html" title="class in io.brane.core.model"><code>TransactionRequest</code></a> that is safe to share across threads.</div>
+<dl class="notes">
+<dt>Since:</dt>
+<dd>0.1.0-alpha</dd>
+<dt>See Also:</dt>
+<dd>
+<ul class="tag-list">
+<li><a href="TxBuilder.html#legacy()"><code>TxBuilder.legacy()</code></a></li>
+</ul>
+</dd>
+</dl>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -125,28 +155,44 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <div class="table-header col-last">Description</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="../model/TransactionRequest.html" title="class in io.brane.core.model">TransactionRequest</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#build()" class="member-name-link">build</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Builds the transaction request.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#data(io.brane.core.types.HexData)" class="member-name-link">data</a><wbr>(<a href="../types/HexData.html" title="class in io.brane.core.types">HexData</a>&nbsp;data)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the transaction input data (calldata).</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#from(io.brane.core.types.Address)" class="member-name-link">from</a><wbr>(<a href="../types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the sender address.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#gasLimit(long)" class="member-name-link">gasLimit</a><wbr>(long&nbsp;gasLimit)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the gas limit.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#gasPrice(io.brane.core.types.Wei)" class="member-name-link">gasPrice</a><wbr>(<a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;gasPrice)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the gas price for the transaction.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#nonce(long)" class="member-name-link">nonce</a><wbr>(long&nbsp;nonce)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the transaction nonce.</div>
+</div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#to(io.brane.core.types.Address)" class="member-name-link">to</a><wbr>(<a href="../types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address)</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the recipient address.</div>
+</div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#value(io.brane.core.types.Wei)" class="member-name-link">value</a><wbr>(<a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;value)</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">&nbsp;</div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Sets the value to transfer.</div>
+</div>
 </div>
 </div>
 </div>
@@ -182,9 +228,19 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="from(io.brane.core.types.Address)">
 <h3>from</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></span>&nbsp;<span class="element-name">from</span><wbr><span class="parameters">(<a href="../types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#from(io.brane.core.types.Address)">TxBuilder</a></code></span></div>
+<div class="block">Sets the sender address.
+
+ <p>The sender address is required for all transactions. Calling <a href="TxBuilder.html#build()"><code>TxBuilder.build()</code></a>
+ without setting a from address will result in incomplete transaction data that
+ cannot be signed or submitted.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#from(io.brane.core.types.Address)">from</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>address</code> - the sender address (must not be null)</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
 </dl>
 </section>
 </li>
@@ -192,9 +248,15 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="to(io.brane.core.types.Address)">
 <h3>to</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></span>&nbsp;<span class="element-name">to</span><wbr><span class="parameters">(<a href="../types/Address.html" title="class in io.brane.core.types">Address</a>&nbsp;address)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#to(io.brane.core.types.Address)">TxBuilder</a></code></span></div>
+<div class="block">Sets the recipient address. Null for contract deployment.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#to(io.brane.core.types.Address)">to</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>address</code> - the recipient address, or null for contract creation</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
 </dl>
 </section>
 </li>
@@ -202,9 +264,15 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="value(io.brane.core.types.Wei)">
 <h3>value</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></span>&nbsp;<span class="element-name">value</span><wbr><span class="parameters">(<a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;value)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#value(io.brane.core.types.Wei)">TxBuilder</a></code></span></div>
+<div class="block">Sets the value to transfer.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#value(io.brane.core.types.Wei)">value</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>value</code> - the amount of native currency to transfer</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
 </dl>
 </section>
 </li>
@@ -212,9 +280,15 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="data(io.brane.core.types.HexData)">
 <h3>data</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></span>&nbsp;<span class="element-name">data</span><wbr><span class="parameters">(<a href="../types/HexData.html" title="class in io.brane.core.types">HexData</a>&nbsp;data)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#data(io.brane.core.types.HexData)">TxBuilder</a></code></span></div>
+<div class="block">Sets the transaction input data (calldata).</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#data(io.brane.core.types.HexData)">data</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>data</code> - the encoded function call or contract bytecode</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
 </dl>
 </section>
 </li>
@@ -222,9 +296,15 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="nonce(long)">
 <h3>nonce</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></span>&nbsp;<span class="element-name">nonce</span><wbr><span class="parameters">(long&nbsp;nonce)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#nonce(long)">TxBuilder</a></code></span></div>
+<div class="block">Sets the transaction nonce.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#nonce(long)">nonce</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>nonce</code> - the sender's transaction count</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
 </dl>
 </section>
 </li>
@@ -232,9 +312,15 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="gasLimit(long)">
 <h3>gasLimit</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></span>&nbsp;<span class="element-name">gasLimit</span><wbr><span class="parameters">(long&nbsp;gasLimit)</span></div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#gasLimit(long)">TxBuilder</a></code></span></div>
+<div class="block">Sets the gas limit.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#gasLimit(long)">gasLimit</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a>&gt;</code></dd>
+<dt>Parameters:</dt>
+<dd><code>gasLimit</code> - the maximum gas to use</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
 </dl>
 </section>
 </li>
@@ -242,15 +328,29 @@ implements <a href="TxBuilder.html" title="interface in io.brane.core.builder">T
 <section class="detail" id="gasPrice(io.brane.core.types.Wei)">
 <h3>gasPrice</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a></span>&nbsp;<span class="element-name">gasPrice</span><wbr><span class="parameters">(<a href="../types/Wei.html" title="class in io.brane.core.types">Wei</a>&nbsp;gasPrice)</span></div>
+<div class="block">Sets the gas price for the transaction.
+
+ <p>This is the price per gas unit that the sender is willing to pay.
+ Higher gas prices increase the likelihood of faster transaction inclusion.</div>
+<dl class="notes">
+<dt>Parameters:</dt>
+<dd><code>gasPrice</code> - the gas price in wei</dd>
+<dt>Returns:</dt>
+<dd>this builder for chaining</dd>
+</dl>
 </section>
 </li>
 <li>
 <section class="detail" id="build()">
 <h3>build</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="../model/TransactionRequest.html" title="class in io.brane.core.model">TransactionRequest</a></span>&nbsp;<span class="element-name">build</span>()</div>
+<div class="block"><span class="description-from-type-label">Description copied from interface:&nbsp;<code><a href="TxBuilder.html#build()">TxBuilder</a></code></span></div>
+<div class="block">Builds the transaction request.</div>
 <dl class="notes">
 <dt>Specified by:</dt>
 <dd><code><a href="TxBuilder.html#build()">build</a></code>&nbsp;in interface&nbsp;<code><a href="TxBuilder.html" title="interface in io.brane.core.builder">TxBuilder</a>&lt;<a href="LegacyBuilder.html" title="class in io.brane.core.builder">LegacyBuilder</a>&gt;</code></dd>
+<dt>Returns:</dt>
+<dd>the constructed transaction request</dd>
 </dl>
 </section>
 </li>

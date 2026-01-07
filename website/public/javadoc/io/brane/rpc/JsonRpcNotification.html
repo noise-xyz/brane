@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../index-all.html">Index</a></li>
 <li><a href="../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -90,11 +91,39 @@ loadScripts(document, 'script');</script>
 </div>
 </div>
 <section class="class-description" id="class-description">
+<dl class="notes">
+<dt>Record Components:</dt>
+<dd><code><span id="param-jsonrpc">jsonrpc</span></code> - the JSON-RPC version, typically "2.0"</dd>
+<dd><code><span id="param-method">method</span></code> - the notification method, e.g., "eth_subscription"</dd>
+<dd><code><span id="param-params">params</span></code> - the notification payload containing subscription ID and result data</dd>
+</dl>
 <hr>
 <div class="type-signature"><span class="modifiers">public record </span><span class="element-name type-name-label">JsonRpcNotification</span>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;jsonrpc, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;method, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;params)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a></span></div>
 <div class="block">Represents a JSON-RPC notification (a request without an ID).
- Used for subscription events.</div>
+
+ <p>Notifications are server-initiated messages sent over WebSocket connections,
+ typically for subscription events like new blocks or pending transactions.
+
+ <p>Example notification for a <code>newHeads</code> subscription:
+ <pre><code>
+ {
+   "jsonrpc": "2.0",
+   "method": "eth_subscription",
+   "params": {
+     "subscription": "0x1234...",
+     "result": { "number": "0x123", ... }
+   }
+ }
+ </code></pre></div>
+<dl class="notes">
+<dt>See Also:</dt>
+<dd>
+<ul class="tag-list-long">
+<li><a href="WebSocketProvider.html#subscribe(java.lang.String,java.util.List,java.util.function.Consumer)"><code>WebSocketProvider.subscribe(String, java.util.List, java.util.function.Consumer)</code></a></li>
+</ul>
+</dd>
+</dl>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -139,17 +168,17 @@ loadScripts(document, 'script');</script>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#jsonrpc()" class="member-name-link">jsonrpc</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns the value of the <code>jsonrpc</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-jsonrpc"><code>jsonrpc</code></a> record component.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#method()" class="member-name-link">method</a>()</code></div>
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns the value of the <code>method</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-method"><code>method</code></a> record component.</div>
 </div>
 <div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></code></div>
 <div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#params()" class="member-name-link">params</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
-<div class="block">Returns the value of the <code>params</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-params"><code>params</code></a> record component.</div>
 </div>
 <div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
 <div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
@@ -182,9 +211,9 @@ loadScripts(document, 'script');</script>
 <div class="block">Creates an instance of a <code>JsonRpcNotification</code> record class.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
-<dd><code>jsonrpc</code> - the value for the <code>jsonrpc</code> record component</dd>
-<dd><code>method</code> - the value for the <code>method</code> record component</dd>
-<dd><code>params</code> - the value for the <code>params</code> record component</dd>
+<dd><code>jsonrpc</code> - the value for the <a href="#param-jsonrpc"><code>jsonrpc</code></a> record component</dd>
+<dd><code>method</code> - the value for the <a href="#param-method"><code>method</code></a> record component</dd>
+<dd><code>params</code> - the value for the <a href="#param-params"><code>params</code></a> record component</dd>
 </dl>
 </section>
 </li>
@@ -241,10 +270,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="jsonrpc()">
 <h3>jsonrpc</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">jsonrpc</span>()</div>
-<div class="block">Returns the value of the <code>jsonrpc</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-jsonrpc"><code>jsonrpc</code></a> record component.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>the value of the <code>jsonrpc</code> record component</dd>
+<dd>the value of the <a href="#param-jsonrpc"><code>jsonrpc</code></a> record component</dd>
 </dl>
 </section>
 </li>
@@ -252,10 +281,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="method()">
 <h3>method</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">method</span>()</div>
-<div class="block">Returns the value of the <code>method</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-method"><code>method</code></a> record component.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>the value of the <code>method</code> record component</dd>
+<dd>the value of the <a href="#param-method"><code>method</code></a> record component</dd>
 </dl>
 </section>
 </li>
@@ -263,10 +292,10 @@ loadScripts(document, 'script');</script>
 <section class="detail" id="params()">
 <h3>params</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a></span>&nbsp;<span class="element-name">params</span>()</div>
-<div class="block">Returns the value of the <code>params</code> record component.</div>
+<div class="block">Returns the value of the <a href="#param-params"><code>params</code></a> record component.</div>
 <dl class="notes">
 <dt>Returns:</dt>
-<dd>the value of the <code>params</code> record component</dd>
+<dd>the value of the <a href="#param-params"><code>params</code></a> record component</dd>
 </dl>
 </section>
 </li>

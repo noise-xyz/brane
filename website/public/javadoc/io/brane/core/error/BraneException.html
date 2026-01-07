@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -107,25 +108,29 @@ loadScripts(document, 'script');</script>
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/RuntimeException.html" title="class or interface in java.lang" class="external-link">RuntimeException</a></span>
 <span class="permits">permits <a href="AbiDecodingException.html" title="class in io.brane.core.error">AbiDecodingException</a>, <a href="AbiEncodingException.html" title="class in io.brane.core.error">AbiEncodingException</a>, <a href="RevertException.html" title="class in io.brane.core.error">RevertException</a>, <a href="RpcException.html" title="class in io.brane.core.error">RpcException</a>, <a href="TxnException.html" title="class in io.brane.core.error">TxnException</a></span></div>
 <div class="block">Base runtime exception for all Brane SDK failures.
- 
+
  <p>
  This sealed class forms the root of Brane's exception hierarchy, ensuring
  all Brane-specific errors can be caught with a single catch clause while
  maintaining type safety through sealed types.
- 
+
  <p>
  <strong>Exception Hierarchy:</strong>
- <ul>
- <li><a href="RpcException.html" title="class in io.brane.core.error"><code>RpcException</code></a> - JSON-RPC communication failures</li>
- <li><a href="RevertException.html" title="class in io.brane.core.error"><code>RevertException</code></a> - EVM execution reverts</li>
- <li><a href="AbiEncodingException.html" title="class in io.brane.core.error"><code>AbiEncodingException</code></a> - ABI encoding failures</li>
- <li><a href="AbiDecodingException.html" title="class in io.brane.core.error"><code>AbiDecodingException</code></a> - ABI decoding failures</li>
- <li><a href="TxnException.html" title="class in io.brane.core.error"><code>TxnException</code></a> - Transaction-specific failures</li>
- </ul>
- 
+ <pre>
+ BraneException
+ ├── <a href="AbiDecodingException.html" title="class in io.brane.core.error"><code>AbiDecodingException</code></a> - ABI decoding failures
+ ├── <a href="AbiEncodingException.html" title="class in io.brane.core.error"><code>AbiEncodingException</code></a> - ABI encoding failures
+ ├── <a href="RevertException.html" title="class in io.brane.core.error"><code>RevertException</code></a> - EVM execution reverts
+ ├── <a href="RpcException.html" title="class in io.brane.core.error"><code>RpcException</code></a> - JSON-RPC communication failures
+ └── <a href="TxnException.html" title="class in io.brane.core.error"><code>TxnException</code></a> - Transaction-specific failures
+     ├── <a href="../builder/BraneTxBuilderException.html" title="class in io.brane.core.builder"><code>BraneTxBuilderException</code></a> - Transaction building failures
+     ├── <a href="ChainMismatchException.html" title="class in io.brane.core.error"><code>ChainMismatchException</code></a> - Chain ID mismatch errors
+     └── <a href="InvalidSenderException.html" title="class in io.brane.core.error"><code>InvalidSenderException</code></a> - Invalid sender address errors
+ </pre>
+
  <p>
  <strong>Usage:</strong>
- 
+
  <pre><code>
  try {
      client.sendTransaction(request);
@@ -138,6 +143,8 @@ loadScripts(document, 'script');</script>
  }
  </code></pre></div>
 <dl class="notes">
+<dt>Since:</dt>
+<dd>0.1.0-alpha</dd>
 <dt>See Also:</dt>
 <dd>
 <ul class="tag-list">

@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -102,7 +103,31 @@ loadScripts(document, 'script');</script>
 <div class="type-signature"><span class="modifiers">public record </span><span class="element-name type-name-label">Bool</span>(boolean&nbsp;value)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a>
 implements <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType</a></span></div>
-<div class="block">Represents a Solidity boolean (bool).</div>
+<div class="block">Represents a Solidity boolean (<code>bool</code>) type for ABI encoding/decoding.
+ <p>
+ In the Ethereum ABI encoding specification, boolean values occupy a full 32-byte slot:
+ <ul>
+ <li><code>true</code> is encoded as <code>0x0000...0001</code> (31 zero bytes followed by 0x01)</li>
+ <li><code>false</code> is encoded as <code>0x0000...0000</code> (32 zero bytes)</li>
+ </ul>
+ <p>
+ <strong>Example usage:</strong>
+ <pre><code>
+ // Create from boolean
+ Bool trueValue = new Bool(true);
+ Bool falseValue = new Bool(false);
+
+ // Use with ABI encoder
+ byte[] encoded = AbiEncoder.encode(new Bool(true));
+
+ // Decode from ABI data
+ Bool decoded = AbiDecoder.decode(data, Bool.class);
+ boolean value = decoded.value();
+ </code></pre></div>
+<dl class="notes">
+<dt>Since:</dt>
+<dd>0.1.0-alpha</dd>
+</dl>
 </section>
 <section class="summary">
 <ul class="summary-list">

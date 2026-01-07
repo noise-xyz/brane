@@ -30,6 +30,7 @@ loadScripts(document, 'script');</script>
 <li><a href="package-summary.html">Package</a></li>
 <li class="nav-bar-cell1-rev">Class</li>
 <li><a href="package-tree.html">Tree</a></li>
+<li><a href="../../../../deprecated-list.html">Deprecated</a></li>
 <li><a href="../../../../index-all.html">Index</a></li>
 <li><a href="../../../../help-doc.html#class">Help</a></li>
 </ul>
@@ -97,16 +98,41 @@ loadScripts(document, 'script');</script>
 <dd><code><span id="param-values">values</span></code> - the list of elements</dd>
 <dd><code><span id="param-type">type</span></code> - the class of the elements (e.g., UInt.class)</dd>
 <dd><code><span id="param-isDynamicLength">isDynamicLength</span></code> - true for 'T[]', false for 'T[N]'</dd>
+<dd><code><span id="param-elementTypeName">elementTypeName</span></code> - the Solidity type name of elements (e.g., "uint256", "address")</dd>
 </dl>
 <dl class="notes">
 <dt>All Implemented Interfaces:</dt>
 <dd><code><a href="AbiType.html" title="interface in io.brane.core.abi">AbiType</a></code></dd>
 </dl>
 <hr>
-<div class="type-signature"><span class="modifiers">public record </span><span class="element-name type-name-label">Array&lt;T extends <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType</a>&gt;</span>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="Array.html" title="type parameter in Array">T</a> extends <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType</a>&gt;&nbsp;values, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;<a href="Array.html" title="type parameter in Array">T</a> extends <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType</a>&gt;&nbsp;type, boolean&nbsp;isDynamicLength)
+<div class="type-signature"><span class="modifiers">public record </span><span class="element-name type-name-label">Array&lt;T extends <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType</a>&gt;</span>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="Array.html" title="type parameter in Array">T</a> extends <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType</a>&gt;&nbsp;values, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;<a href="Array.html" title="type parameter in Array">T</a> extends <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType</a>&gt;&nbsp;type, boolean&nbsp;isDynamicLength, <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;elementTypeName)
 <span class="extends-implements">extends <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Record.html" title="class or interface in java.lang" class="external-link">Record</a>
 implements <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType</a></span></div>
-<div class="block">Represents a Solidity array (static T[N] or dynamic T[]).</div>
+<div class="block">Represents a Solidity array (static T[N] or dynamic T[]).
+
+ <p>The <code>elementTypeName</code> parameter is required to correctly generate the
+ Solidity type signature for the array (e.g., "uint256[]", "address[5]").
+ This is necessary because Java's type erasure prevents inferring the element
+ type name at runtime, especially for empty arrays.
+
+ <h2 id="example-heading">Example</h2>
+ <pre><code>
+ // Dynamic array of uint256
+ Array&lt;UInt&gt; dynamicArray = new Array&lt;&gt;(
+     List.of(new UInt(1), new UInt(2)),
+     UInt.class,
+     true,  // isDynamicLength
+     "uint256"
+ );
+
+ // Static array of 3 addresses
+ Array&lt;io.brane.core.abi.Address&gt; staticArray = new Array&lt;&gt;(
+     List.of(addr1, addr2, addr3),
+     io.brane.core.abi.Address.class,
+     false,  // isDynamicLength
+     "address"
+ );
+ </code></pre></div>
 </section>
 <section class="summary">
 <ul class="summary-list">
@@ -118,9 +144,10 @@ implements <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType
 <div class="summary-table two-column-summary">
 <div class="table-header col-first">Constructor</div>
 <div class="table-header col-last">Description</div>
-<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(java.util.List,java.lang.Class,boolean)" class="member-name-link">Array</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="Array.html" title="type parameter in Array">T</a>&gt;&nbsp;values,
+<div class="col-constructor-name even-row-color"><code><a href="#%3Cinit%3E(java.util.List,java.lang.Class,boolean,java.lang.String)" class="member-name-link">Array</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="Array.html" title="type parameter in Array">T</a>&gt;&nbsp;values,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;<a href="Array.html" title="type parameter in Array">T</a>&gt;&nbsp;type,
- boolean&nbsp;isDynamicLength)</code></div>
+ boolean&nbsp;isDynamicLength,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;elementTypeName)</code></div>
 <div class="col-last even-row-color">
 <div class="block">Creates an instance of a <code>Array</code> record class.</div>
 </div>
@@ -148,44 +175,49 @@ implements <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType
 <div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the size in bytes of the dynamic content (tail).</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#equals(java.lang.Object)" class="member-name-link">equals</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;o)</code></div>
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#elementTypeName()" class="member-name-link">elementTypeName</a>()</code></div>
 <div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="block">Returns the value of the <a href="#param-elementTypeName"><code>elementTypeName</code></a> record component.</div>
+</div>
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#equals(java.lang.Object)" class="member-name-link">equals</a><wbr>(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Object.html" title="class or interface in java.lang" class="external-link">Object</a>&nbsp;o)</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Indicates whether some other object is "equal to" this one.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final int</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hashCode()" class="member-name-link">hashCode</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final int</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#hashCode()" class="member-name-link">hashCode</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a hash code value for this object.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isDynamic()" class="member-name-link">isDynamic</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isDynamic()" class="member-name-link">isDynamic</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns true if this type is dynamic.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isDynamicLength()" class="member-name-link">isDynamicLength</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>boolean</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#isDynamicLength()" class="member-name-link">isDynamicLength</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-isDynamicLength"><code>isDynamicLength</code></a> record component.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code>final <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#toString()" class="member-name-link">toString</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns a string representation of this record class.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a><wbr>&lt;<a href="Array.html" title="type parameter in Array">T</a>&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#type()" class="member-name-link">type</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a><wbr>&lt;<a href="Array.html" title="type parameter in Array">T</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#type()" class="member-name-link">type</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-type"><code>type</code></a> record component.</div>
 </div>
-<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
-<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#typeName()" class="member-name-link">typeName</a>()</code></div>
-<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></code></div>
+<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#typeName()" class="member-name-link">typeName</a>()</code></div>
+<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the canonical Solidity type name.</div>
 </div>
-<div class="col-first odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="Array.html" title="type parameter in Array">T</a>&gt;</code></div>
-<div class="col-second odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#values()" class="member-name-link">values</a>()</code></div>
-<div class="col-last odd-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
+<div class="col-first even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a><wbr>&lt;<a href="Array.html" title="type parameter in Array">T</a>&gt;</code></div>
+<div class="col-second even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4"><code><a href="#values()" class="member-name-link">values</a>()</code></div>
+<div class="col-last even-row-color method-summary-table method-summary-table-tab2 method-summary-table-tab4">
 <div class="block">Returns the value of the <a href="#param-values"><code>values</code></a> record component.</div>
 </div>
 </div>
@@ -206,17 +238,19 @@ implements <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType
 <h2>Constructor Details</h2>
 <ul class="member-list">
 <li>
-<section class="detail" id="&lt;init&gt;(java.util.List,java.lang.Class,boolean)">
+<section class="detail" id="&lt;init&gt;(java.util.List,java.lang.Class,boolean,java.lang.String)">
 <h3>Array</h3>
 <div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="element-name">Array</span><wbr><span class="parameters">(<a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/util/List.html" title="class or interface in java.util" class="external-link">List</a>&lt;<a href="Array.html" title="type parameter in Array">T</a>&gt;&nbsp;values,
  <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Class.html" title="class or interface in java.lang" class="external-link">Class</a>&lt;<a href="Array.html" title="type parameter in Array">T</a>&gt;&nbsp;type,
- boolean&nbsp;isDynamicLength)</span></div>
+ boolean&nbsp;isDynamicLength,
+ <a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a>&nbsp;elementTypeName)</span></div>
 <div class="block">Creates an instance of a <code>Array</code> record class.</div>
 <dl class="notes">
 <dt>Parameters:</dt>
 <dd><code>values</code> - the value for the <a href="#param-values"><code>values</code></a> record component</dd>
 <dd><code>type</code> - the value for the <a href="#param-type"><code>type</code></a> record component</dd>
 <dd><code>isDynamicLength</code> - the value for the <a href="#param-isDynamicLength"><code>isDynamicLength</code></a> record component</dd>
+<dd><code>elementTypeName</code> - the value for the <a href="#param-elementTypeName"><code>elementTypeName</code></a> record component</dd>
 </dl>
 </section>
 </li>
@@ -364,6 +398,17 @@ implements <a href="AbiType.html" title="interface in io.brane.core.abi">AbiType
 <dl class="notes">
 <dt>Returns:</dt>
 <dd>the value of the <a href="#param-isDynamicLength"><code>isDynamicLength</code></a> record component</dd>
+</dl>
+</section>
+</li>
+<li>
+<section class="detail" id="elementTypeName()">
+<h3>elementTypeName</h3>
+<div class="member-signature"><span class="modifiers">public</span>&nbsp;<span class="return-type"><a href="https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/String.html" title="class or interface in java.lang" class="external-link">String</a></span>&nbsp;<span class="element-name">elementTypeName</span>()</div>
+<div class="block">Returns the value of the <a href="#param-elementTypeName"><code>elementTypeName</code></a> record component.</div>
+<dl class="notes">
+<dt>Returns:</dt>
+<dd>the value of the <a href="#param-elementTypeName"><code>elementTypeName</code></a> record component</dd>
 </dl>
 </section>
 </li>
