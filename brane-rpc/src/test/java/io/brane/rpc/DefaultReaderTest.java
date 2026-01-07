@@ -11,6 +11,7 @@ import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -20,7 +21,12 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import io.brane.core.error.RpcException;
 import io.brane.core.model.BlockHeader;
+import io.brane.core.model.LogEntry;
+import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
+import io.brane.core.types.Hash;
+import io.brane.core.types.HexData;
+import io.brane.core.types.Wei;
 
 /**
  * Unit tests for {@link DefaultReader} with mock BraneProvider.
@@ -366,5 +372,375 @@ class DefaultReaderTest {
         // When/Then
         IllegalStateException ex = assertThrows(IllegalStateException.class, () -> reader.getBlockByNumber(100));
         assertTrue(ex.getMessage().contains("closed"));
+    }
+
+    // ==================== call() Tests ====================
+
+    @Test
+    void callReturnsResultFromProvider() {
+        // Given: provider returns a hex result
+        Address to = new Address("0x742d35Cc6634C0532925a3b844Bc9e7595f9e9e9");
+        HexData data = new HexData("0x70a08231000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f9e9e9");
+        CallRequest request = CallRequest.of(to, data);
+
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0x0000000000000000000000000000000000000000000000000de0b6b3a7640000", null, "1");
+        when(provider.send(eq("eth_call"), any())).thenReturn(response);
+
+        // When
+        HexData result = reader.call(request);
+
+        // Then
+        assertEquals("0x0000000000000000000000000000000000000000000000000de0b6b3a7640000", result.value());
+        verify(provider).send(eq("eth_call"), eq(List.of(request.toMap(), "latest")));
+    }
+
+    @Test
+    void callWithBlockTagUsesSpecifiedTag() {
+        // Given: call with specific block tag
+        Address to = new Address("0x742d35Cc6634C0532925a3b844Bc9e7595f9e9e9");
+        HexData data = new HexData("0x70a08231");
+        CallRequest request = CallRequest.of(to, data);
+
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0x1234", null, "1");
+        when(provider.send(eq("eth_call"), any())).thenReturn(response);
+
+        // When
+        HexData result = reader.call(request, BlockTag.PENDING);
+
+        // Then
+        assertEquals("0x1234", result.value());
+        verify(provider).send(eq("eth_call"), eq(List.of(request.toMap(), "pending")));
+    }
+
+    @Test
+    void callWithBlockNumberTag() {
+        // Given: call with specific block number
+        Address to = new Address("0x742d35Cc6634C0532925a3b844Bc9e7595f9e9e9");
+        CallRequest request = CallRequest.of(to, HexData.EMPTY);
+
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0xabcd", null, "1");
+        when(provider.send(eq("eth_call"), any())).thenReturn(response);
+
+        // When
+        HexData result = reader.call(request, BlockTag.of(1000));
+
+        // Then
+        assertEquals("0xabcd", result.value());
+        verify(provider).send(eq("eth_call"), eq(List.of(request.toMap(), "0x3e8")));
+    }
+
+    @Test
+    void callReturnsEmptyHexDataWhenResultIsNull() {
+        // Given: provider returns null result
+        Address to = new Address("0x742d35Cc6634C0532925a3b844Bc9e7595f9e9e9");
+        CallRequest request = CallRequest.of(to, HexData.EMPTY);
+
+        JsonRpcResponse response = new JsonRpcResponse("2.0", null, null, "1");
+        when(provider.send(eq("eth_call"), any())).thenReturn(response);
+
+        // When
+        HexData result = reader.call(request);
+
+        // Then
+        assertEquals(HexData.EMPTY, result);
+    }
+
+    @Test
+    void callThrowsAfterClose() {
+        // Given: reader is closed
+        reader.close();
+        Address to = new Address("0x742d35Cc6634C0532925a3b844Bc9e7595f9e9e9");
+        CallRequest request = CallRequest.of(to, HexData.EMPTY);
+
+        // When/Then
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> reader.call(request));
+        assertTrue(ex.getMessage().contains("closed"));
+    }
+
+    @Test
+    void callWithFullRequest() {
+        // Given: call with all parameters
+        Address from = new Address("0x1111111111111111111111111111111111111111");
+        Address to = new Address("0x2222222222222222222222222222222222222222");
+        HexData data = new HexData("0xdeadbeef");
+
+        CallRequest request = CallRequest.builder()
+                .from(from)
+                .to(to)
+                .data(data)
+                .build();
+
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0xcafe", null, "1");
+        when(provider.send(eq("eth_call"), any())).thenReturn(response);
+
+        // When
+        HexData result = reader.call(request);
+
+        // Then
+        assertEquals("0xcafe", result.value());
+        Map<String, Object> expectedParams = request.toMap();
+        verify(provider).send(eq("eth_call"), eq(List.of(expectedParams, "latest")));
+    }
+
+    // ==================== getLogs() Tests ====================
+
+    @Test
+    void getLogsReturnsLogsFromProvider() {
+        // Given: provider returns a list of logs
+        Address contractAddress = new Address("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+        Hash topic = new Hash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef");
+        LogFilter filter = LogFilter.byContract(contractAddress, List.of(topic));
+
+        String blockHash = "0xabc123abc123abc123abc123abc123abc123abc123abc123abc123abc123abc1";
+        String txHash = "0xdef456def456def456def456def456def456def456def456def456def456def4";
+        List<Map<String, Object>> logsData = List.of(
+                createLogMap(
+                        "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
+                        "0x0000000000000000000000000000000000000000000000000000000000001234",
+                        List.of("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"),
+                        blockHash,
+                        txHash,
+                        "0x0"
+                )
+        );
+        JsonRpcResponse response = new JsonRpcResponse("2.0", logsData, null, "1");
+        when(provider.send(eq("eth_getLogs"), any())).thenReturn(response);
+
+        // When
+        List<LogEntry> logs = reader.getLogs(filter);
+
+        // Then
+        assertEquals(1, logs.size());
+        LogEntry log = logs.get(0);
+        assertEquals("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", log.address().value());
+        assertEquals("0x0000000000000000000000000000000000000000000000000000000000001234", log.data().value());
+    }
+
+    @Test
+    void getLogsReturnsEmptyListWhenNoLogs() {
+        // Given: provider returns empty list
+        Address contractAddress = new Address("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+        LogFilter filter = LogFilter.byContract(contractAddress, List.of());
+
+        JsonRpcResponse response = new JsonRpcResponse("2.0", List.of(), null, "1");
+        when(provider.send(eq("eth_getLogs"), any())).thenReturn(response);
+
+        // When
+        List<LogEntry> logs = reader.getLogs(filter);
+
+        // Then
+        assertTrue(logs.isEmpty());
+    }
+
+    @Test
+    void getLogsReturnsEmptyListWhenResultIsNull() {
+        // Given: provider returns null result
+        Address contractAddress = new Address("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+        LogFilter filter = LogFilter.byContract(contractAddress, List.of());
+
+        JsonRpcResponse response = new JsonRpcResponse("2.0", null, null, "1");
+        when(provider.send(eq("eth_getLogs"), any())).thenReturn(response);
+
+        // When
+        List<LogEntry> logs = reader.getLogs(filter);
+
+        // Then
+        assertTrue(logs.isEmpty());
+    }
+
+    @Test
+    void getLogsWithMultipleLogs() {
+        // Given: provider returns multiple logs
+        Address contractAddress = new Address("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+        LogFilter filter = LogFilter.byContract(contractAddress, List.of());
+
+        String blockHash = "0xabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabcabca";
+        String txHash1 = "0x1111111111111111111111111111111111111111111111111111111111111111";
+        String txHash2 = "0x2222222222222222222222222222222222222222222222222222222222222222";
+        String txHash3 = "0x3333333333333333333333333333333333333333333333333333333333333333";
+        List<Map<String, Object>> logsData = List.of(
+                createLogMap("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "0x1111", List.of(), blockHash, txHash1, "0x0"),
+                createLogMap("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "0x2222", List.of(), blockHash, txHash2, "0x1"),
+                createLogMap("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48", "0x3333", List.of(), blockHash, txHash3, "0x2")
+        );
+        JsonRpcResponse response = new JsonRpcResponse("2.0", logsData, null, "1");
+        when(provider.send(eq("eth_getLogs"), any())).thenReturn(response);
+
+        // When
+        List<LogEntry> logs = reader.getLogs(filter);
+
+        // Then
+        assertEquals(3, logs.size());
+        assertEquals("0x1111", logs.get(0).data().value());
+        assertEquals("0x2222", logs.get(1).data().value());
+        assertEquals("0x3333", logs.get(2).data().value());
+    }
+
+    @Test
+    void getLogsThrowsAfterClose() {
+        // Given: reader is closed
+        reader.close();
+        Address contractAddress = new Address("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+        LogFilter filter = LogFilter.byContract(contractAddress, List.of());
+
+        // When/Then
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> reader.getLogs(filter));
+        assertTrue(ex.getMessage().contains("closed"));
+    }
+
+    @Test
+    void getLogsWithBlockRangeFilter() {
+        // Given: filter with block range
+        LogFilter filter = new LogFilter(
+                Optional.of(1000L),
+                Optional.of(2000L),
+                Optional.of(List.of(new Address("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48"))),
+                Optional.empty()
+        );
+
+        JsonRpcResponse response = new JsonRpcResponse("2.0", List.of(), null, "1");
+        when(provider.send(eq("eth_getLogs"), any())).thenReturn(response);
+
+        // When
+        reader.getLogs(filter);
+
+        // Then: verify the params include block range
+        verify(provider).send(eq("eth_getLogs"), any());
+    }
+
+    // ==================== estimateGas() Tests ====================
+
+    @Test
+    void estimateGasReturnsGasEstimate() {
+        // Given: provider returns a gas estimate
+        Address from = new Address("0x1111111111111111111111111111111111111111");
+        Address to = new Address("0x2222222222222222222222222222222222222222");
+        TransactionRequest request = new TransactionRequest(
+                from, to, null, null, null, null, null, null, null, true, null
+        );
+
+        // Gas estimate: 21000 (0x5208)
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0x5208", null, "1");
+        when(provider.send(eq("eth_estimateGas"), any())).thenReturn(response);
+
+        // When
+        BigInteger gasEstimate = reader.estimateGas(request);
+
+        // Then
+        assertEquals(BigInteger.valueOf(21000), gasEstimate);
+    }
+
+    @Test
+    void estimateGasReturnsLargeGasEstimate() {
+        // Given: provider returns a large gas estimate (complex contract call)
+        Address from = new Address("0x1111111111111111111111111111111111111111");
+        Address to = new Address("0x2222222222222222222222222222222222222222");
+        HexData data = new HexData("0xa9059cbb0000000000000000000000001234567890123456789012345678901234567890");
+        TransactionRequest request = new TransactionRequest(
+                from, to, null, null, null, null, null, null, data, true, null
+        );
+
+        // Gas estimate: 100000 (0x186a0)
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0x186a0", null, "1");
+        when(provider.send(eq("eth_estimateGas"), any())).thenReturn(response);
+
+        // When
+        BigInteger gasEstimate = reader.estimateGas(request);
+
+        // Then
+        assertEquals(BigInteger.valueOf(100000), gasEstimate);
+    }
+
+    @Test
+    void estimateGasThrowsWhenResultIsNull() {
+        // Given: provider returns null result
+        Address from = new Address("0x1111111111111111111111111111111111111111");
+        Address to = new Address("0x2222222222222222222222222222222222222222");
+        TransactionRequest request = new TransactionRequest(
+                from, to, null, null, null, null, null, null, null, true, null
+        );
+
+        JsonRpcResponse response = new JsonRpcResponse("2.0", null, null, "1");
+        when(provider.send(eq("eth_estimateGas"), any())).thenReturn(response);
+
+        // When/Then
+        RpcException ex = assertThrows(RpcException.class, () -> reader.estimateGas(request));
+        assertTrue(ex.getMessage().contains("null"));
+    }
+
+    @Test
+    void estimateGasThrowsAfterClose() {
+        // Given: reader is closed
+        reader.close();
+        Address from = new Address("0x1111111111111111111111111111111111111111");
+        Address to = new Address("0x2222222222222222222222222222222222222222");
+        TransactionRequest request = new TransactionRequest(
+                from, to, null, null, null, null, null, null, null, true, null
+        );
+
+        // When/Then
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> reader.estimateGas(request));
+        assertTrue(ex.getMessage().contains("closed"));
+    }
+
+    @Test
+    void estimateGasWithValueTransfer() {
+        // Given: provider returns gas estimate for value transfer
+        Address from = new Address("0x1111111111111111111111111111111111111111");
+        Address to = new Address("0x2222222222222222222222222222222222222222");
+        Wei value = Wei.of(1_000_000_000_000_000_000L); // 1 ETH in wei
+        TransactionRequest request = new TransactionRequest(
+                from, to, value, null, null, null, null, null, null, true, null
+        );
+
+        // Gas estimate: 21000 (standard transfer)
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0x5208", null, "1");
+        when(provider.send(eq("eth_estimateGas"), any())).thenReturn(response);
+
+        // When
+        BigInteger gasEstimate = reader.estimateGas(request);
+
+        // Then
+        assertEquals(BigInteger.valueOf(21000), gasEstimate);
+    }
+
+    @Test
+    void estimateGasWithContractDeployment() {
+        // Given: contract deployment (no 'to' address)
+        Address from = new Address("0x1111111111111111111111111111111111111111");
+        HexData bytecode = new HexData("0x608060405234801561001057600080fd5b50");
+        TransactionRequest request = new TransactionRequest(
+                from, null, null, null, null, null, null, null, bytecode, true, null
+        );
+
+        // Gas estimate: 200000 (contract deployment)
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0x30d40", null, "1");
+        when(provider.send(eq("eth_estimateGas"), any())).thenReturn(response);
+
+        // When
+        BigInteger gasEstimate = reader.estimateGas(request);
+
+        // Then
+        assertEquals(BigInteger.valueOf(200000), gasEstimate);
+    }
+
+    // ==================== Helper Methods ====================
+
+    private Map<String, Object> createLogMap(
+            String address,
+            String data,
+            List<String> topics,
+            String blockHash,
+            String transactionHash,
+            String logIndex) {
+        var map = new LinkedHashMap<String, Object>();
+        map.put("address", address);
+        map.put("data", data);
+        map.put("topics", topics);
+        map.put("blockHash", blockHash);
+        map.put("transactionHash", transactionHash);
+        map.put("logIndex", logIndex);
+        map.put("removed", false);
+        return map;
     }
 }
