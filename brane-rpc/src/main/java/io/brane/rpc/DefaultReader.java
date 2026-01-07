@@ -127,7 +127,8 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public @Nullable BlockHeader getBlockByNumber(final long blockNumber) {
-        throw new UnsupportedOperationException("Not implemented yet");
+        ensureOpen();
+        return getBlockByTag("0x" + Long.toHexString(blockNumber));
     }
 
     @Override
