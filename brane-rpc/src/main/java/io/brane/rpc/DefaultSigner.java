@@ -8,6 +8,7 @@ import java.util.function.Consumer;
 import org.jspecify.annotations.Nullable;
 
 import io.brane.core.chain.ChainProfile;
+import io.brane.core.crypto.Signer;
 
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
@@ -22,9 +23,28 @@ import io.brane.core.types.HexData;
 /**
  * Default implementation of {@link Brane.Signer} for full blockchain operations.
  *
+ * <p>This implementation provides access to all read operations via delegation to
+ * an internal {@link DefaultReader}, plus transaction signing and sending capabilities
+ * using the configured {@link Signer} and {@link SmartGasStrategy}.
+ *
  * @since 0.1.0
  */
 final class DefaultSigner implements Brane.Signer {
+
+    private final DefaultReader reader;
+    private final Signer signer;
+    private final SmartGasStrategy gasStrategy;
+
+    /**
+     * Package-private constructor placeholder.
+     * To be implemented by P3-02 with proper parameters.
+     */
+    DefaultSigner() {
+        // Temporary null assignments - P3-02 will add proper constructor
+        this.reader = null;
+        this.signer = null;
+        this.gasStrategy = null;
+    }
 
     @Override
     public BigInteger chainId() {
