@@ -413,6 +413,75 @@ class DefaultSignerTest {
                 () -> signer.sendTransactionAndWait(request, 5000, 10));
     }
 
+    @Test
+    void sendTransactionAndWaitMultiplePolls() {
+        // Given: receipt not available for first 3 polls
+        stubChainId("0x1");
+        stubLatestBlock(10_000_000_000L);
+        stubEstimateGas("0x5208");
+        stubNonce("0x0");
+        stubSendRawTransaction(TX_HASH.value());
+        stubReceiptAfterNPolls(TX_HASH.value(), 3);
+
+        TransactionRequest request = TxBuilder.eip1559()
+                .to(RECIPIENT)
+                .value(Wei.of(0))
+                .build();
+
+        // When
+        TransactionReceipt receipt = signer.sendTransactionAndWait(request, 10000, 5);
+
+        // Then: should succeed after 4 polls (3 nulls + 1 receipt)
+        assertEquals(TX_HASH.value(), receipt.transactionHash().value());
+        verify(provider, times(4)).send(eq("eth_getTransactionReceipt"), any());
+    }
+
+    @Test
+    void sendTransactionAndWaitWithDefaultTimeout() {
+        // Given
+        stubChainId("0x1");
+        stubLatestBlock(10_000_000_000L);
+        stubEstimateGas("0x5208");
+        stubNonce("0x0");
+        stubSendRawTransaction(TX_HASH.value());
+        stubReceiptSuccess(TX_HASH.value());
+
+        TransactionRequest request = TxBuilder.eip1559()
+                .to(RECIPIENT)
+                .value(Wei.of(0))
+                .build();
+
+        // When: use two-argument version with custom timeout and poll interval
+        TransactionReceipt receipt = signer.sendTransactionAndWait(request, 30000, 100);
+
+        // Then
+        assertEquals(TX_HASH.value(), receipt.transactionHash().value());
+        assertTrue(receipt.status());
+    }
+
+    @Test
+    void sendTransactionAndWaitRevertWithUnknownReason() {
+        // Given: receipt shows reverted but eth_call doesn't return revert data
+        stubChainId("0x1");
+        stubLatestBlock(10_000_000_000L);
+        stubEstimateGas("0x5208");
+        stubNonce("0x0");
+        stubSendRawTransaction(TX_HASH.value());
+        stubReceiptReverted(TX_HASH.value());
+        // eth_call returns error without revert data
+        stubCallError(-32000, "execution reverted");
+
+        TransactionRequest request = TxBuilder.eip1559()
+                .to(RECIPIENT)
+                .value(Wei.of(0))
+                .build();
+
+        // When/Then
+        RevertException ex = assertThrows(RevertException.class,
+                () -> signer.sendTransactionAndWait(request, 5000, 10));
+        assertTrue(ex.getMessage().contains("reverted"));
+    }
+
     // ==================== signer() Tests ====================
 
     @Test
@@ -581,6 +650,34 @@ class DefaultSignerTest {
         JsonRpcResponse response = new JsonRpcResponse("2.0", null,
                 new JsonRpcError(-32000, "execution reverted", revertData), "1");
         when(provider.send(eq("eth_call"), any())).thenReturn(response);
+    }
+
+    private void stubCallError(int code, String message) {
+        JsonRpcResponse response = new JsonRpcResponse("2.0", null,
+                new JsonRpcError(code, message, null), "1");
+        when(provider.send(eq("eth_call"), any())).thenReturn(response);
+    }
+
+    private void stubReceiptAfterNPolls(String txHash, int nullPolls) {
+        JsonRpcResponse nullResponse = new JsonRpcResponse("2.0", null, null, "1");
+        Map<String, Object> receiptMap = new LinkedHashMap<>();
+        receiptMap.put("transactionHash", txHash);
+        receiptMap.put("blockNumber", "0x1");
+        receiptMap.put("blockHash", BLOCK_HASH.value());
+        receiptMap.put("from", SENDER.value());
+        receiptMap.put("to", RECIPIENT.value());
+        receiptMap.put("status", "0x1");
+        receiptMap.put("cumulativeGasUsed", "0x5208");
+        receiptMap.put("logs", List.of());
+        JsonRpcResponse successResponse = new JsonRpcResponse("2.0", receiptMap, null, "1");
+
+        // Build stubbing with the right number of null returns followed by success
+        var stubbing = when(provider.send(eq("eth_getTransactionReceipt"), any()))
+                .thenReturn(nullResponse);
+        for (int i = 1; i < nullPolls; i++) {
+            stubbing = stubbing.thenReturn(nullResponse);
+        }
+        stubbing.thenReturn(successResponse);
     }
 
     /**
