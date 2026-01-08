@@ -349,6 +349,16 @@ class DefaultTesterTest {
     class SetCoinbaseValidation {
 
         @Test
+        void setCoinbaseWithNullThrowsNullPointerException() {
+            Brane.Tester tester = createTester();
+
+            NullPointerException ex = assertThrows(
+                    NullPointerException.class,
+                    () -> tester.setCoinbase(null));
+            assertEquals("coinbase", ex.getMessage());
+        }
+
+        @Test
         void callsCorrectRpcMethod() {
             JsonRpcResponse response = new JsonRpcResponse("2.0", null, null, "1");
             when(provider.send(eq("anvil_setCoinbase"), any())).thenReturn(response);
