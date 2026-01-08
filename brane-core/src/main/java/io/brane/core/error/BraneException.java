@@ -14,6 +14,7 @@ package io.brane.core.error;
  * BraneException
  * ├── {@link AbiDecodingException} - ABI decoding failures
  * ├── {@link AbiEncodingException} - ABI encoding failures
+ * ├── {@link Eip712Exception} - EIP-712 typed data failures
  * ├── {@link RevertException} - EVM execution reverts
  * ├── {@link RpcException} - JSON-RPC communication failures
  * └── {@link TxnException} - Transaction-specific failures
@@ -42,6 +43,7 @@ package io.brane.core.error;
 public sealed class BraneException extends RuntimeException
         permits AbiDecodingException,
         AbiEncodingException,
+        Eip712Exception,
         RevertException,
         RpcException,
         TxnException {
