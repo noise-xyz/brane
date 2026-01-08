@@ -12,6 +12,21 @@ import io.brane.core.crypto.Signer;
  *
  * <p>Each account is pre-funded with 10,000 ETH when Anvil starts.
  *
+ * <h2>Default Addresses</h2>
+ * <p>The 10 pre-funded addresses (in order of index 0-9):
+ * <ol start="0">
+ *   <li>{@code 0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266}</li>
+ *   <li>{@code 0x70997970C51812dc3A010C7d01b50e0d17dc79C8}</li>
+ *   <li>{@code 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC}</li>
+ *   <li>{@code 0x90F79bf6EB2c4f870365E785982E1f101E93b906}</li>
+ *   <li>{@code 0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65}</li>
+ *   <li>{@code 0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc}</li>
+ *   <li>{@code 0x976EA74026E726554dB657fA54763abd0C3a0aa9}</li>
+ *   <li>{@code 0x14dC79964da2C08b23698B3D3cc7Ca32193d9955}</li>
+ *   <li>{@code 0x23618e81E3f5cdF7f54C3d65f7FBc0aBf5B21E8f}</li>
+ *   <li>{@code 0xa0Ee7A142d267C1f36714E4a8F75612F20a79720}</li>
+ * </ol>
+ *
  * <h2>Usage Example</h2>
  * <pre>{@code
  * // Get the default funded account (index 0)
@@ -27,11 +42,23 @@ import io.brane.core.crypto.Signer;
  * }
  * }</pre>
  *
- * <p><strong>Security Warning:</strong> These keys are publicly known and must
- * NEVER be used on mainnet or any network with real value. They are intended
- * solely for local development and testing with Anvil.
+ * <h2>SECURITY WARNING</h2>
+ * <p><strong>These keys are publicly known and must NEVER be used on mainnet
+ * or any network with real value.</strong> They are intended solely for local
+ * development and testing with Anvil. Any funds sent to these addresses on
+ * public networks can be stolen by anyone.
  *
- * @since 0.3.0
+ * <h2>Memory Management</h2>
+ * <p>Each call to {@link #defaultKey()} or {@link #keyAt(int)} creates a new
+ * {@link PrivateKeySigner} instance backed by a {@link io.brane.core.crypto.PrivateKey}.
+ * While test keys are not sensitive, if you need to clear key material from memory,
+ * the underlying {@code PrivateKey} implements {@link javax.security.auth.Destroyable}.
+ * Note that the {@link Signer} interface does not expose the {@code destroy()} method
+ * directly; cast to the underlying type if explicit cleanup is needed.
+ *
+ * @see Brane.Tester
+ * @see io.brane.core.crypto.PrivateKey
+ * @since 0.2.0
  */
 public final class AnvilSigners {
 
