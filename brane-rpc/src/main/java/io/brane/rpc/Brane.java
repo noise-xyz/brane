@@ -32,6 +32,7 @@ import io.brane.core.types.HexData;
  * <ul>
  *   <li>{@link Reader} - Read-only operations (queries, calls, subscriptions)</li>
  *   <li>{@link Signer} - Full operations including transaction signing and sending</li>
+ *   <li>{@link Tester} - Test node operations (snapshots, impersonation, time manipulation)</li>
  * </ul>
  *
  * <p>The sealed hierarchy enables exhaustive pattern matching and compile-time type safety
@@ -87,6 +88,10 @@ import io.brane.core.types.HexData;
  *     case Brane.Signer s -> {
  *         // Full operations including transactions
  *         Hash hash = s.sendTransaction(request);
+ *     }
+ *     case Brane.Tester t -> {
+ *         // Test node operations
+ *         SnapshotId snapshot = t.snapshot();
  *     }
  * }
  * }</pre>
@@ -214,11 +219,12 @@ import io.brane.core.types.HexData;
  *
  * @see Brane.Reader
  * @see Brane.Signer
+ * @see Brane.Tester
  * @see Brane.Builder
  * @see BraneProvider
  * @since 0.1.0
  */
-public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.Signer {
+public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.Signer, Brane.Tester {
 
     /**
      * Returns the chain ID of the connected network.
@@ -843,7 +849,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      *
      * @since 0.1.0-alpha
      */
-    interface Tester {
+    non-sealed interface Tester extends Brane {
 
         /**
          * Creates a snapshot of the current blockchain state.

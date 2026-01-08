@@ -120,6 +120,7 @@ class BraneTest {
         String readerResult = switch (reader) {
             case Brane.Reader r -> "reader";
             case Brane.Signer s -> "signer";
+            case Brane.Tester t -> "tester";
         };
         assertEquals("reader", readerResult);
 
@@ -131,6 +132,7 @@ class BraneTest {
         String signerResult = switch (signerClient) {
             case Brane.Reader r -> "reader";
             case Brane.Signer s -> "signer";
+            case Brane.Tester t -> "tester";
         };
         assertEquals("signer", signerResult);
     }

@@ -128,5 +128,96 @@ class SnapshotIdTest {
             this.lastRevertedSnapshot = snapshotId;
             return revertResult;
         }
+
+        // Required Brane interface methods - throw UnsupportedOperationException for mock
+        @Override
+        public java.math.BigInteger chainId() {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public java.math.BigInteger getBalance(io.brane.core.types.Address address) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public io.brane.core.model.BlockHeader getLatestBlock() {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public io.brane.core.model.BlockHeader getBlockByNumber(long blockNumber) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public io.brane.core.model.Transaction getTransactionByHash(io.brane.core.types.Hash hash) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public io.brane.core.model.TransactionReceipt getTransactionReceipt(io.brane.core.types.Hash hash) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public io.brane.core.types.HexData call(CallRequest request) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public io.brane.core.types.HexData call(CallRequest request, BlockTag blockTag) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public java.util.List<io.brane.core.model.LogEntry> getLogs(LogFilter filter) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public java.math.BigInteger estimateGas(io.brane.core.model.TransactionRequest request) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public io.brane.core.model.AccessListWithGas createAccessList(io.brane.core.model.TransactionRequest request) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public SimulateResult simulate(SimulateRequest request) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public MulticallBatch batch() {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public Subscription onNewHeads(java.util.function.Consumer<io.brane.core.model.BlockHeader> callback) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public Subscription onLogs(LogFilter filter, java.util.function.Consumer<io.brane.core.model.LogEntry> callback) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public java.util.Optional<io.brane.core.chain.ChainProfile> chain() {
+            return java.util.Optional.empty();
+        }
+
+        @Override
+        public boolean canSubscribe() {
+            return false;
+        }
+
+        @Override
+        public void close() {
+            // No-op for mock
+        }
     }
 }
