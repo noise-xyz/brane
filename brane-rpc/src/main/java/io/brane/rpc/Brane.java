@@ -1449,6 +1449,38 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          */
         boolean loadState(HexData state);
 
+        // ==================== Transaction Pool Methods ====================
+
+        /**
+         * Removes a transaction from the mempool.
+         *
+         * <p>This allows you to remove pending transactions that have not yet been mined.
+         * Useful for testing scenarios where you want to cancel or replace pending
+         * transactions in the mempool.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * // Disable automine to keep transaction in mempool
+         * tester.setAutomine(false);
+         * Hash txHash = signer.sendTransaction(request);
+         *
+         * // Drop the pending transaction
+         * boolean dropped = tester.dropTransaction(txHash);
+         *
+         * // Re-enable automine
+         * tester.setAutomine(true);
+         * }</pre>
+         *
+         * <p><strong>Note:</strong> Only supported by Anvil ({@code anvil_dropTransaction}).
+         * Other test nodes may not support this operation.
+         *
+         * @param txHash the transaction hash to drop
+         * @return true if the transaction was dropped, false otherwise
+         * @throws io.brane.core.error.RpcException if the RPC call fails
+         * @since 0.2.0
+         */
+        boolean dropTransaction(Hash txHash);
+
         // ==================== Receipt Waiting Methods ====================
 
         /** Default timeout for waiting for receipt: 60 seconds. */

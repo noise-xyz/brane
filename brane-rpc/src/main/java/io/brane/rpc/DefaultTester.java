@@ -504,6 +504,22 @@ final class DefaultTester implements Brane.Tester {
         return result != null && Boolean.TRUE.equals(result);
     }
 
+    // ==================== Transaction Pool Methods ====================
+
+    @Override
+    public boolean dropTransaction(final Hash txHash) {
+        java.util.Objects.requireNonNull(txHash, "txHash must not be null");
+        if (mode != TestNodeMode.ANVIL) {
+            throw new UnsupportedOperationException("dropTransaction is only supported by Anvil");
+        }
+        final JsonRpcResponse response = sendWithRetry("anvil_dropTransaction", List.of(txHash.value()));
+        if (response.hasError()) {
+            return false;
+        }
+        final Object result = response.result();
+        return result != null && Boolean.TRUE.equals(result);
+    }
+
     // ==================== Internal Helpers ====================
 
     /**
