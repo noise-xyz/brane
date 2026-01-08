@@ -625,4 +625,186 @@ class TesterIntegrationTest {
             }
         }
     }
+
+    // ==================== Impersonation Integration Tests ====================
+
+    @Nested
+    @DisplayName("Impersonation integration tests")
+    class ImpersonationTests {
+
+        // Whale address to impersonate - a different address from the test signer
+        private static final Address WHALE_ADDRESS =
+                new Address("0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC");
+
+        @Test
+        @DisplayName("impersonate sends transaction from impersonated address")
+        void impersonateSendsTransactionFromImpersonatedAddress() {
+            // Fund the whale address
+            Wei whaleFunds = Wei.fromEther(new java.math.BigDecimal("100"));
+            tester.setBalance(WHALE_ADDRESS, whaleFunds);
+
+            Address recipient = new Address("0x90F79bf6EB2c4f870365E785982E1f101E93b906");
+            BigInteger recipientBalanceBefore = tester.getBalance(recipient);
+
+            Wei transferAmount = Wei.fromEther(new java.math.BigDecimal("1"));
+
+            try (ImpersonationSession session = tester.impersonate(WHALE_ADDRESS)) {
+                io.brane.core.model.TransactionRequest request = new io.brane.core.model.TransactionRequest(
+                        null, // from - will be set by session
+                        recipient,
+                        transferAmount,
+                        21_000L, // gasLimit
+                        null, null, null, null, null, false, null);
+
+                Hash txHash = session.sendTransaction(request);
+                assertNotNull(txHash);
+
+                // Wait for transaction to be mined
+                io.brane.core.model.TransactionReceipt receipt = tester.waitForReceipt(txHash);
+                assertNotNull(receipt);
+                assertTrue(receipt.status());
+            }
+
+            // Verify recipient received the funds
+            BigInteger recipientBalanceAfter = tester.getBalance(recipient);
+            assertEquals(
+                    recipientBalanceBefore.add(transferAmount.value()),
+                    recipientBalanceAfter);
+        }
+
+        @Test
+        @DisplayName("impersonate sendTransactionAndWait works correctly")
+        void impersonateSendTransactionAndWaitWorks() {
+            // Fund the whale address
+            Wei whaleFunds = Wei.fromEther(new java.math.BigDecimal("100"));
+            tester.setBalance(WHALE_ADDRESS, whaleFunds);
+
+            Address recipient = new Address("0x90F79bf6EB2c4f870365E785982E1f101E93b906");
+            BigInteger recipientBalanceBefore = tester.getBalance(recipient);
+
+            Wei transferAmount = Wei.fromEther(new java.math.BigDecimal("2"));
+
+            try (ImpersonationSession session = tester.impersonate(WHALE_ADDRESS)) {
+                io.brane.core.model.TransactionRequest request = new io.brane.core.model.TransactionRequest(
+                        null,
+                        recipient,
+                        transferAmount,
+                        21_000L,
+                        null, null, null, null, null, false, null);
+
+                io.brane.core.model.TransactionReceipt receipt = session.sendTransactionAndWait(request);
+
+                assertNotNull(receipt);
+                assertTrue(receipt.status());
+                assertNotNull(receipt.transactionHash());
+            }
+
+            // Verify recipient received the funds
+            BigInteger recipientBalanceAfter = tester.getBalance(recipient);
+            assertEquals(
+                    recipientBalanceBefore.add(transferAmount.value()),
+                    recipientBalanceAfter);
+        }
+
+        @Test
+        @DisplayName("impersonate session address returns correct impersonated address")
+        void impersonateSessionAddressReturnsCorrectAddress() {
+            try (ImpersonationSession session = tester.impersonate(WHALE_ADDRESS)) {
+                assertEquals(WHALE_ADDRESS, session.address());
+            }
+        }
+
+        @Test
+        @DisplayName("impersonate session auto-closes with try-with-resources")
+        void impersonateSessionAutoCloses() {
+            ImpersonationSession session = tester.impersonate(WHALE_ADDRESS);
+            session.close();
+
+            // After close, sendTransaction should throw IllegalStateException
+            io.brane.core.model.TransactionRequest request = new io.brane.core.model.TransactionRequest(
+                    null,
+                    TEST_ADDRESS,
+                    Wei.fromEther(java.math.BigDecimal.ONE),
+                    21_000L,
+                    null, null, null, null, null, false, null);
+
+            IllegalStateException ex = assertThrows(
+                    IllegalStateException.class,
+                    () -> session.sendTransaction(request));
+            assertTrue(ex.getMessage().contains("closed"));
+        }
+
+        @Test
+        @DisplayName("impersonate session close is idempotent")
+        void impersonateSessionCloseIsIdempotent() {
+            ImpersonationSession session = tester.impersonate(WHALE_ADDRESS);
+
+            // Multiple close calls should not throw
+            assertDoesNotThrow(() -> {
+                session.close();
+                session.close();
+                session.close();
+            });
+        }
+
+        @Test
+        @DisplayName("impersonate can send multiple transactions in same session")
+        void impersonateCanSendMultipleTransactions() {
+            Wei whaleFunds = Wei.fromEther(new java.math.BigDecimal("100"));
+            tester.setBalance(WHALE_ADDRESS, whaleFunds);
+
+            Address recipient1 = new Address("0x90F79bf6EB2c4f870365E785982E1f101E93b906");
+            Address recipient2 = new Address("0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65");
+
+            try (ImpersonationSession session = tester.impersonate(WHALE_ADDRESS)) {
+                // First transaction
+                io.brane.core.model.TransactionRequest request1 = new io.brane.core.model.TransactionRequest(
+                        null, recipient1, Wei.fromEther(java.math.BigDecimal.ONE),
+                        21_000L, null, null, null, null, null, false, null);
+                io.brane.core.model.TransactionReceipt receipt1 = session.sendTransactionAndWait(request1);
+                assertTrue(receipt1.status());
+
+                // Second transaction
+                io.brane.core.model.TransactionRequest request2 = new io.brane.core.model.TransactionRequest(
+                        null, recipient2, Wei.fromEther(java.math.BigDecimal.ONE),
+                        21_000L, null, null, null, null, null, false, null);
+                io.brane.core.model.TransactionReceipt receipt2 = session.sendTransactionAndWait(request2);
+                assertTrue(receipt2.status());
+            }
+        }
+
+        @Test
+        @DisplayName("impersonate overwrites any from address in request")
+        void impersonateOverwritesFromAddress() {
+            Wei whaleFunds = Wei.fromEther(new java.math.BigDecimal("100"));
+            tester.setBalance(WHALE_ADDRESS, whaleFunds);
+
+            Address recipient = new Address("0x90F79bf6EB2c4f870365E785982E1f101E93b906");
+            BigInteger recipientBalanceBefore = tester.getBalance(recipient);
+
+            // Even though we specify a different from address, the whale address should be used
+            Address differentFrom = new Address("0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65");
+            Wei transferAmount = Wei.fromEther(java.math.BigDecimal.ONE);
+
+            try (ImpersonationSession session = tester.impersonate(WHALE_ADDRESS)) {
+                io.brane.core.model.TransactionRequest request = new io.brane.core.model.TransactionRequest(
+                        differentFrom, // This should be ignored
+                        recipient,
+                        transferAmount,
+                        21_000L,
+                        null, null, null, null, null, false, null);
+
+                io.brane.core.model.TransactionReceipt receipt = session.sendTransactionAndWait(request);
+                assertTrue(receipt.status());
+            }
+
+            // Verify whale's balance decreased (not differentFrom's)
+            BigInteger whaleBalanceAfter = tester.getBalance(WHALE_ADDRESS);
+            assertTrue(whaleBalanceAfter.compareTo(whaleFunds.value()) < 0);
+
+            // Verify recipient received funds
+            BigInteger recipientBalanceAfter = tester.getBalance(recipient);
+            assertEquals(recipientBalanceBefore.add(transferAmount.value()), recipientBalanceAfter);
+        }
+    }
 }
