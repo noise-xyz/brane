@@ -192,13 +192,13 @@ class DefaultTesterTest {
     class SetBlockGasLimitValidation {
 
         @Test
-        void throwsOnNullGasLimit() {
+        void setBlockGasLimitWithNullThrowsNullPointerException() {
             Brane.Tester tester = createTester();
 
             NullPointerException ex = assertThrows(
                     NullPointerException.class,
                     () -> tester.setBlockGasLimit(null));
-            assertEquals("gasLimit must not be null", ex.getMessage());
+            assertEquals("gasLimit", ex.getMessage());
         }
     }
 
