@@ -113,6 +113,11 @@ final class DefaultTester implements Brane.Tester {
     }
 
     @Override
+    public HexData getCode(final Address address) {
+        return signer.getCode(address);
+    }
+
+    @Override
     public @Nullable BlockHeader getLatestBlock() {
         return signer.getLatestBlock();
     }

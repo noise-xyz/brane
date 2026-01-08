@@ -244,6 +244,29 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
     BigInteger getBalance(Address address);
 
     /**
+     * Retrieves the bytecode at an address.
+     *
+     * <p>This method returns the contract bytecode deployed at the specified address.
+     * For externally owned accounts (EOAs) with no code, this returns empty hex data.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Address contractAddress = Address.from("0x...");
+     * HexData code = client.getCode(contractAddress);
+     * if (code.byteLength() > 0) {
+     *     System.out.println("Contract code: " + code.value());
+     * } else {
+     *     System.out.println("No code at this address (EOA or empty contract)");
+     * }
+     * }</pre>
+     *
+     * @param address the address to query
+     * @return the bytecode at the address, or empty hex data if none
+     * @since 0.1.0
+     */
+    HexData getCode(Address address);
+
+    /**
      * Retrieves the latest block header.
      *
      * @return the latest block header, or {@code null} if not found

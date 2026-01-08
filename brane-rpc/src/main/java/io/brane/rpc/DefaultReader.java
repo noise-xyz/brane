@@ -98,6 +98,22 @@ final class DefaultReader implements Brane.Reader {
     }
 
     @Override
+    public HexData getCode(final Address address) {
+        ensureOpen();
+        final JsonRpcResponse response = sendWithRetry("eth_getCode", List.of(address.value(), "latest"));
+        final Object result = response.result();
+        if (result == null) {
+            return HexData.EMPTY;
+        }
+        final String hex = result.toString();
+        // eth_getCode returns "0x" for addresses with no code
+        if ("0x".equals(hex)) {
+            return HexData.EMPTY;
+        }
+        return new HexData(hex);
+    }
+
+    @Override
     public @Nullable BlockHeader getLatestBlock() {
         ensureOpen();
         return getBlockByTag(BlockTag.LATEST.toRpcValue());
