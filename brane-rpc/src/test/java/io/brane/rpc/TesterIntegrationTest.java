@@ -189,6 +189,27 @@ class TesterIntegrationTest {
             HexData actualCode = getCode(TEST_ADDRESS);
             assertEquals(code2.value(), actualCode.value());
         }
+
+        @Test
+        @DisplayName("getCode via Brane.Reader interface returns code set by setCode")
+        void getCodeViaReaderInterfaceReturnsSetCode() {
+            tester.setCode(TEST_ADDRESS, SIMPLE_CODE);
+
+            // Use the Brane.Reader interface method (not raw RPC)
+            HexData actualCode = tester.getCode(TEST_ADDRESS);
+            assertEquals(SIMPLE_CODE.value(), actualCode.value());
+        }
+
+        @Test
+        @DisplayName("getCode via Brane.Reader interface returns empty for EOA")
+        void getCodeViaReaderInterfaceReturnsEmptyForEoa() {
+            // Clear any existing code
+            tester.setCode(TEST_ADDRESS, new HexData("0x"));
+
+            // Use the Brane.Reader interface method
+            HexData actualCode = tester.getCode(TEST_ADDRESS);
+            assertEquals("0x", actualCode.value());
+        }
     }
 
     // ==================== setNonce() Integration Tests ====================
@@ -288,6 +309,51 @@ class TesterIntegrationTest {
 
             assertEquals(value1.value(), getStorageAt(TEST_ADDRESS, slot1).value());
             assertEquals(value5.value(), getStorageAt(TEST_ADDRESS, slot5).value());
+        }
+
+        @Test
+        @DisplayName("getStorageAt via Brane.Reader interface returns value set by setStorageAt")
+        void getStorageAtViaReaderInterfaceReturnsSetValue() {
+            // Deploy code first so address is a contract
+            tester.setCode(TEST_ADDRESS, new HexData("0x60016000"));
+
+            tester.setStorageAt(TEST_ADDRESS, SLOT_0, VALUE_42);
+
+            // Use the Brane.Reader interface method (takes BigInteger slot)
+            HexData actualValue = tester.getStorageAt(TEST_ADDRESS, BigInteger.ZERO);
+            assertEquals(VALUE_42.value(), actualValue.value());
+        }
+
+        @Test
+        @DisplayName("getStorageAt via Brane.Reader interface returns zero for uninitialized slot")
+        void getStorageAtViaReaderInterfaceReturnsZeroForUninitializedSlot() {
+            // Deploy code first
+            tester.setCode(TEST_ADDRESS, new HexData("0x60016000"));
+
+            // Query a slot that was never written to
+            BigInteger uninitializedSlot = BigInteger.valueOf(999);
+            HexData actualValue = tester.getStorageAt(TEST_ADDRESS, uninitializedSlot);
+
+            // Should return 32 zero bytes
+            assertEquals(
+                    "0x0000000000000000000000000000000000000000000000000000000000000000",
+                    actualValue.value());
+        }
+
+        @Test
+        @DisplayName("getStorageAt via Brane.Reader interface works with large slot numbers")
+        void getStorageAtViaReaderInterfaceWorksWithLargeSlotNumbers() {
+            tester.setCode(TEST_ADDRESS, new HexData("0x60016000"));
+
+            // Large slot number (like those used by Solidity mappings)
+            BigInteger largeSlot = new BigInteger("abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890", 16);
+            Hash slotAsHash = new Hash("0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890");
+            Hash testValue = new Hash("0x000000000000000000000000000000000000000000000000000000cafebabe00");
+
+            tester.setStorageAt(TEST_ADDRESS, slotAsHash, testValue);
+
+            HexData actualValue = tester.getStorageAt(TEST_ADDRESS, largeSlot);
+            assertEquals(testValue.value(), actualValue.value());
         }
     }
 
