@@ -324,6 +324,18 @@ final class DefaultTester implements Brane.Tester {
     }
 
     @Override
+    public void mine(final long blocks, final long intervalSeconds) {
+        final String method = mode.prefix() + "mine";
+        final String blocksHex = "0x" + Long.toHexString(blocks);
+        final String intervalHex = "0x" + Long.toHexString(intervalSeconds);
+        final JsonRpcResponse response = sendWithRetry(method, List.of(blocksHex, intervalHex));
+        if (response.hasError()) {
+            final JsonRpcError err = response.error();
+            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+        }
+    }
+
+    @Override
     public void mineAt(final long timestamp) {
         final String method = mode.prefix() + "mine";
         final String timestampHex = "0x" + Long.toHexString(timestamp);
@@ -333,6 +345,23 @@ final class DefaultTester implements Brane.Tester {
             final JsonRpcError err = response.error();
             throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
         }
+    }
+
+    @Override
+    public boolean getAutomine() {
+        final String method = mode == TestNodeMode.ANVIL
+                ? "anvil_getAutomine"
+                : mode.prefix() + "getAutomine";
+        final JsonRpcResponse response = sendWithRetry(method, List.of());
+        if (response.hasError()) {
+            final JsonRpcError err = response.error();
+            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+        }
+        final Object result = response.result();
+        if (result == null) {
+            throw new RpcException(-32000, method + " returned null", (String) null, (Throwable) null);
+        }
+        return Boolean.TRUE.equals(result);
     }
 
     @Override

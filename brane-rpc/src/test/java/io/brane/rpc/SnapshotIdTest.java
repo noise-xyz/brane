@@ -201,7 +201,17 @@ class SnapshotIdTest {
         }
 
         @Override
+        public void mine(long blocks, long intervalSeconds) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
         public void mineAt(long timestamp) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public boolean getAutomine() {
             throw new UnsupportedOperationException("Mock tester");
         }
 

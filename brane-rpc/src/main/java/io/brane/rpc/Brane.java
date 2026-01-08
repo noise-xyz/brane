@@ -1225,6 +1225,23 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
         void mine(long blocks);
 
         /**
+         * Mines the specified number of blocks with a time interval between each block.
+         *
+         * <p>This allows simulating realistic block production with consistent block times.
+         * The interval is applied between consecutive blocks, so the total time will be
+         * approximately {@code (blocks - 1) * intervalSeconds}.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.mine(10, 12); // Mine 10 blocks with 12 seconds between each
+         * }</pre>
+         *
+         * @param blocks          the number of blocks to mine
+         * @param intervalSeconds the time interval in seconds between each block
+         */
+        void mine(long blocks, long intervalSeconds);
+
+        /**
          * Mines a single block with the specified timestamp.
          *
          * <p>This combines mining with time manipulation in a single operation.
@@ -1232,6 +1249,15 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @param timestamp the Unix timestamp for the mined block
          */
         void mineAt(long timestamp);
+
+        /**
+         * Returns whether automine is currently enabled.
+         *
+         * <p>Automine controls whether transactions are mined immediately upon submission.
+         *
+         * @return true if automine is enabled, false otherwise
+         */
+        boolean getAutomine();
 
         /**
          * Enables or disables automatic mining.
