@@ -132,7 +132,7 @@ public final class TypedDataSigner {
     /**
      * Signs a raw hash and adjusts v to 27/28 for EIP-712 compatibility.
      */
-    private static Signature signHash(Signer signer, byte[] hash) {
+    static Signature signHash(Signer signer, byte[] hash) {
         if (signer instanceof PrivateKeySigner pks) {
             Signature rawSig = pks.signRawHash(hash);
             int adjustedV = rawSig.v() + 27;

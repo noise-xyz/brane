@@ -145,48 +145,8 @@ public final class TypedData<T> {
      */
     public Signature sign(Signer signer) {
         Objects.requireNonNull(signer, "signer");
-
-        // Compute the hash to sign
         Hash hashToSign = hash();
-
-        // Sign using personal message signing (which returns v=27 or 28)
-        // But we need to sign the raw hash, not apply personal_sign prefix
-        // So we sign the raw hash bytes directly
-        return signHash(signer, hashToSign.toBytes());
-    }
-
-    /**
-     * Signs a raw hash without any message prefix.
-     * This is needed for EIP-712 since the 0x19 0x01 prefix is already included.
-     */
-    private static Signature signHash(Signer signer, byte[] hash) {
-        // For EIP-712, we need to sign the raw hash without the personal_sign prefix.
-        // The Signer interface provides signMessage which adds EIP-191 prefix.
-        // We need direct hash signing capability.
-        //
-        // If the signer is a PrivateKeySigner, we can access the underlying PrivateKey.
-        // For now, we use a workaround: cast to PrivateKeySigner or require PrivateKey.
-        //
-        // The cleanest approach is to require the signer to support raw hash signing.
-        // Since PrivateKeySigner wraps PrivateKey which has sign(byte[] hash), we can:
-        // 1. Check if signer is PrivateKeySigner and use its key
-        // 2. Add a signHash method to Signer interface (breaking change)
-        // 3. Use reflection (not ideal)
-        //
-        // For now, we require that the caller provide a PrivateKey-backed signer.
-        // Future: add signTypedData or signHash to Signer interface.
-
-        if (signer instanceof io.brane.core.crypto.PrivateKeySigner pks) {
-            Signature rawSig = pks.signRawHash(hash);
-            // Convert v from 0/1 to 27/28
-            int adjustedV = rawSig.v() + 27;
-            return new Signature(rawSig.r(), rawSig.s(), adjustedV);
-        }
-
-        throw new UnsupportedOperationException(
-            "EIP-712 signing requires a PrivateKeySigner. " +
-            "Provided signer type: " + signer.getClass().getName()
-        );
+        return TypedDataSigner.signHash(signer, hashToSign.toBytes());
     }
 
     /**
