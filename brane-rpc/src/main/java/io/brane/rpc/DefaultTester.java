@@ -259,6 +259,8 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public void setBalance(final Address address, final Wei balance) {
+        java.util.Objects.requireNonNull(address, "address must not be null");
+        java.util.Objects.requireNonNull(balance, "balance must not be null");
         final String method = mode.prefix() + "setBalance";
         final String balanceHex = "0x" + balance.value().toString(16);
         final JsonRpcResponse response = sendWithRetry(method, List.of(address.value(), balanceHex));
@@ -270,6 +272,8 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public void setCode(final Address address, final HexData code) {
+        java.util.Objects.requireNonNull(address, "address must not be null");
+        java.util.Objects.requireNonNull(code, "code must not be null");
         final String method = mode.prefix() + "setCode";
         final JsonRpcResponse response = sendWithRetry(method, List.of(address.value(), code.value()));
         if (response.hasError()) {
@@ -280,6 +284,7 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public void setNonce(final Address address, final long nonce) {
+        java.util.Objects.requireNonNull(address, "address must not be null");
         final String method = mode.prefix() + "setNonce";
         final String nonceHex = "0x" + Long.toHexString(nonce);
         final JsonRpcResponse response = sendWithRetry(method, List.of(address.value(), nonceHex));
@@ -291,6 +296,9 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public void setStorageAt(final Address address, final Hash slot, final Hash value) {
+        java.util.Objects.requireNonNull(address, "address must not be null");
+        java.util.Objects.requireNonNull(slot, "slot must not be null");
+        java.util.Objects.requireNonNull(value, "value must not be null");
         final String method = mode.prefix() + "setStorageAt";
         final JsonRpcResponse response = sendWithRetry(method, List.of(address.value(), slot.value(), value.value()));
         if (response.hasError()) {
