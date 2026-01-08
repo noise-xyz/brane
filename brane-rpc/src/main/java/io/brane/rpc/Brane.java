@@ -820,6 +820,51 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
     }
 
     /**
+     * Testing interface for interacting with test nodes (Anvil, Hardhat, Ganache).
+     * <p>
+     * This interface provides methods for test-specific operations like snapshots,
+     * time manipulation, and state management that are only available on test networks.
+     * <p>
+     * <strong>Example:</strong>
+     * <pre>{@code
+     * // Obtain tester capabilities from a client
+     * Brane.Tester tester = client.tester(TestNodeMode.ANVIL);
+     *
+     * // Create a snapshot
+     * SnapshotId snapshot = tester.snapshot();
+     *
+     * // ... perform operations ...
+     *
+     * // Revert to snapshot
+     * snapshot.revertUsing(tester);
+     * // or equivalently:
+     * tester.revert(snapshot);
+     * }</pre>
+     *
+     * @since 0.1.0-alpha
+     */
+    interface Tester {
+
+        /**
+         * Creates a snapshot of the current blockchain state.
+         * <p>
+         * The returned {@link SnapshotId} can be used to revert the chain state
+         * back to this point using {@link #revert(SnapshotId)}.
+         *
+         * @return the snapshot ID
+         */
+        SnapshotId snapshot();
+
+        /**
+         * Reverts the blockchain state to a previously taken snapshot.
+         *
+         * @param snapshotId the snapshot to revert to
+         * @return true if the revert succeeded, false otherwise
+         */
+        boolean revert(SnapshotId snapshotId);
+    }
+
+    /**
      * Builder for creating {@link Brane} client instances.
      *
      * <p>The builder provides fine-grained control over client configuration, including
