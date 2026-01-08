@@ -256,6 +256,16 @@ class SnapshotIdTest {
         }
 
         @Override
+        public io.brane.core.types.HexData dumpState() {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public boolean loadState(io.brane.core.types.HexData state) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
         public io.brane.core.model.TransactionReceipt waitForReceipt(
                 io.brane.core.types.Hash txHash, long timeoutMillis, long pollIntervalMillis) {
             throw new UnsupportedOperationException("Mock tester");

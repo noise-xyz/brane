@@ -459,6 +459,39 @@ final class DefaultTester implements Brane.Tester {
         }
     }
 
+    // ==================== State Management Methods ====================
+
+    @Override
+    public HexData dumpState() {
+        if (mode != TestNodeMode.ANVIL) {
+            throw new UnsupportedOperationException("dumpState is only supported by Anvil");
+        }
+        final JsonRpcResponse response = sendWithRetry("anvil_dumpState", List.of());
+        if (response.hasError()) {
+            final JsonRpcError err = response.error();
+            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+        }
+        final Object result = response.result();
+        if (result == null) {
+            throw new RpcException(-32000, "anvil_dumpState returned null", (String) null, (Throwable) null);
+        }
+        return new HexData(result.toString());
+    }
+
+    @Override
+    public boolean loadState(final HexData state) {
+        java.util.Objects.requireNonNull(state, "state must not be null");
+        if (mode != TestNodeMode.ANVIL) {
+            throw new UnsupportedOperationException("loadState is only supported by Anvil");
+        }
+        final JsonRpcResponse response = sendWithRetry("anvil_loadState", List.of(state.value()));
+        if (response.hasError()) {
+            return false;
+        }
+        final Object result = response.result();
+        return result != null && Boolean.TRUE.equals(result);
+    }
+
     // ==================== Internal Helpers ====================
 
     /**

@@ -1375,6 +1375,70 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          */
         void reset(String forkUrl, long blockNumber);
 
+        // ==================== State Management Methods ====================
+
+        /**
+         * Dumps the current chain state to a hex-encoded string.
+         *
+         * <p>The returned state can be used to restore the chain to this exact point
+         * using {@link #loadState(HexData)}. This is useful for:
+         * <ul>
+         *   <li>Saving test chain state to disk for later restoration</li>
+         *   <li>Sharing chain state between different test processes</li>
+         *   <li>Creating test fixtures with pre-configured state</li>
+         * </ul>
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * // Dump current state
+         * HexData state = tester.dumpState();
+         *
+         * // Save to file for later use
+         * Files.writeString(Path.of("test-state.hex"), state.value());
+         *
+         * // Later, restore in another process
+         * String savedState = Files.readString(Path.of("test-state.hex"));
+         * tester.loadState(HexData.from(savedState));
+         * }</pre>
+         *
+         * <p><strong>Note:</strong> Only supported by Anvil ({@code anvil_dumpState}).
+         * Other test nodes may not support this operation.
+         *
+         * @return the serialized chain state as hex-encoded data
+         * @throws UnsupportedOperationException if the test node does not support state dumping
+         * @see #loadState(HexData)
+         */
+        HexData dumpState();
+
+        /**
+         * Loads a previously dumped chain state.
+         *
+         * <p>This method restores chain state from data previously obtained via
+         * {@link #dumpState()}. The loaded state is merged into the current chain,
+         * overwriting any conflicting addresses or storage slots.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * // Load state from a file
+         * String savedState = Files.readString(Path.of("test-state.hex"));
+         * boolean success = tester.loadState(HexData.from(savedState));
+         *
+         * // Or load state dumped in the same session
+         * HexData state = tester.dumpState();
+         * // ... make some changes ...
+         * boolean restored = tester.loadState(state);
+         * }</pre>
+         *
+         * <p><strong>Note:</strong> Only supported by Anvil ({@code anvil_loadState}).
+         * Other test nodes may not support this operation.
+         *
+         * @param state the serialized chain state to load (from {@link #dumpState()})
+         * @return true if the state was loaded successfully, false otherwise
+         * @throws UnsupportedOperationException if the test node does not support state loading
+         * @see #dumpState()
+         */
+        boolean loadState(HexData state);
+
         // ==================== Receipt Waiting Methods ====================
 
         /** Default timeout for waiting for receipt: 60 seconds. */
