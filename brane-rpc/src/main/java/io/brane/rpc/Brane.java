@@ -1116,7 +1116,8 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      *
      * <p><strong>Batching transactions in a single block:</strong>
      * <pre>{@code
-     * // Disable automine to control when blocks are produced
+     * // Save current automine state, then disable it
+     * boolean wasAutomine = tester.getAutomine();
      * tester.setAutomine(false);
      * try {
      *     // All these transactions go into the mempool
@@ -1132,7 +1133,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      *     TransactionReceipt r2 = tester.waitForReceipt(tx2);
      *     assertThat(r1.blockNumber()).isEqualTo(r2.blockNumber());
      * } finally {
-     *     tester.setAutomine(true);  // Restore automine
+     *     tester.setAutomine(wasAutomine);  // Restore original automine state
      * }
      * }</pre>
      *
