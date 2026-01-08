@@ -827,35 +827,86 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
 
     /**
      * Testing interface for interacting with test nodes (Anvil, Hardhat, Ganache).
-     * <p>
-     * This interface provides methods for test-specific operations like snapshots,
-     * time manipulation, and state management that are only available on test networks.
-     * <p>
-     * <strong>Example:</strong>
+     *
+     * <p>This interface provides methods for test-specific operations like snapshots,
+     * time manipulation, account impersonation, and state management that are only
+     * available on test networks.
+     *
+     * <h2>Capabilities Overview</h2>
+     * <ul>
+     *   <li><strong>Signing:</strong> {@link #asSigner()} - Convert to a Signer for transaction sending</li>
+     *   <li><strong>Snapshots:</strong> {@link #snapshot()}, {@link #revert(SnapshotId)} - Save/restore chain state</li>
+     *   <li><strong>Impersonation:</strong> {@link #impersonate(Address)}, {@link #stopImpersonating(Address)} - Act as any address</li>
+     *   <li><strong>Account Manipulation:</strong> {@link #setBalance(Address, Wei)}, {@link #setCode(Address, HexData)}, {@link #setNonce(Address, long)}, {@link #setStorageAt(Address, Hash, Hash)}</li>
+     *   <li><strong>Mining:</strong> {@link #mine()}, {@link #mine(long)}, {@link #setAutomine(boolean)}, {@link #setIntervalMining(long)}</li>
+     *   <li><strong>Time:</strong> {@link #setNextBlockTimestamp(long)}, {@link #increaseTime(long)}</li>
+     *   <li><strong>Block Config:</strong> {@link #setNextBlockBaseFee(Wei)}, {@link #setCoinbase(Address)}</li>
+     *   <li><strong>Reset:</strong> {@link #reset()}, {@link #reset(String, long)} - Reset chain state</li>
+     * </ul>
+     *
+     * <h2>Example Usage</h2>
      * <pre>{@code
-     * // Obtain tester capabilities from a client
-     * Brane.Tester tester = client.tester(TestNodeMode.ANVIL);
+     * // Create a tester client
+     * Brane.Tester tester = ... // obtain from factory
      *
-     * // Create a snapshot
+     * // Snapshot and restore pattern
      * SnapshotId snapshot = tester.snapshot();
+     * try {
+     *     // ... perform test operations ...
+     * } finally {
+     *     tester.revert(snapshot);
+     * }
      *
-     * // ... perform operations ...
+     * // Impersonation pattern (auto-cleanup)
+     * Address whale = Address.from("0x...");
+     * try (ImpersonationSession session = tester.impersonate(whale)) {
+     *     TransactionReceipt receipt = session.sendTransactionAndWait(request);
+     * }
      *
-     * // Revert to snapshot
-     * snapshot.revertUsing(tester);
-     * // or equivalently:
-     * tester.revert(snapshot);
+     * // Time manipulation
+     * tester.setNextBlockTimestamp(System.currentTimeMillis() / 1000 + 86400); // +1 day
+     * tester.mine();
      * }</pre>
      *
      * @since 0.1.0-alpha
+     * @see SnapshotId
+     * @see ImpersonationSession
      */
     non-sealed interface Tester extends Brane {
 
+        // ==================== Signer Conversion ====================
+
+        /**
+         * Returns this tester as a {@link Signer} for transaction sending.
+         *
+         * <p>The returned signer uses the underlying signer configured for this tester,
+         * allowing standard transaction operations while retaining access to test-specific
+         * methods through the original tester reference.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * Brane.Signer signer = tester.asSigner();
+         * Hash txHash = signer.sendTransaction(request);
+         * }</pre>
+         *
+         * @return a signer view of this tester
+         */
+        Signer asSigner();
+
+        // ==================== Snapshot Methods ====================
+
         /**
          * Creates a snapshot of the current blockchain state.
-         * <p>
-         * The returned {@link SnapshotId} can be used to revert the chain state
+         *
+         * <p>The returned {@link SnapshotId} can be used to revert the chain state
          * back to this point using {@link #revert(SnapshotId)}.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * SnapshotId snapshot = tester.snapshot();
+         * // ... perform operations ...
+         * tester.revert(snapshot);
+         * }</pre>
          *
          * @return the snapshot ID
          */
@@ -864,10 +915,267 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
         /**
          * Reverts the blockchain state to a previously taken snapshot.
          *
+         * <p><strong>Note:</strong> After reverting, the snapshot is consumed and cannot
+         * be reused. Take a new snapshot if you need to revert to the same state again.
+         *
          * @param snapshotId the snapshot to revert to
          * @return true if the revert succeeded, false otherwise
          */
         boolean revert(SnapshotId snapshotId);
+
+        // ==================== Impersonation Methods ====================
+
+        /**
+         * Starts impersonating the specified address.
+         *
+         * <p>Returns an {@link ImpersonationSession} that allows sending transactions
+         * from the impersonated address without possessing its private key. The session
+         * implements {@link AutoCloseable} for automatic cleanup.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * Address whale = Address.from("0x...");
+         * try (ImpersonationSession session = tester.impersonate(whale)) {
+         *     TransactionReceipt receipt = session.sendTransactionAndWait(request);
+         * }
+         * // Impersonation automatically stopped
+         * }</pre>
+         *
+         * @param address the address to impersonate
+         * @return an impersonation session for sending transactions
+         * @see #stopImpersonating(Address)
+         */
+        ImpersonationSession impersonate(Address address);
+
+        /**
+         * Stops impersonating the specified address.
+         *
+         * <p>This method is automatically called when an {@link ImpersonationSession}
+         * is closed. Direct calls are useful when managing impersonation manually.
+         *
+         * @param address the address to stop impersonating
+         */
+        void stopImpersonating(Address address);
+
+        /**
+         * Enables automatic impersonation for all addresses.
+         *
+         * <p>When enabled, any address can send transactions without explicit
+         * impersonation. This is useful for complex test scenarios requiring
+         * multiple addresses.
+         *
+         * <p><strong>Note:</strong> Only supported by Anvil ({@code anvil_autoImpersonateAccount}).
+         */
+        void enableAutoImpersonate();
+
+        /**
+         * Disables automatic impersonation.
+         *
+         * <p><strong>Note:</strong> Only supported by Anvil ({@code anvil_autoImpersonateAccount}).
+         */
+        void disableAutoImpersonate();
+
+        // ==================== Account Manipulation Methods ====================
+
+        /**
+         * Sets the ETH balance of an account.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.setBalance(address, Wei.fromEther("1000"));
+         * }</pre>
+         *
+         * @param address the account address
+         * @param balance the new balance in Wei
+         */
+        void setBalance(Address address, io.brane.core.types.Wei balance);
+
+        /**
+         * Sets the bytecode at an address.
+         *
+         * <p>This can be used to deploy arbitrary bytecode or modify existing contracts.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.setCode(contractAddress, HexData.from("0x608060405234..."));
+         * }</pre>
+         *
+         * @param address the address to set code at
+         * @param code    the bytecode to set
+         */
+        void setCode(Address address, HexData code);
+
+        /**
+         * Sets the nonce of an account.
+         *
+         * <p>The nonce affects the order and validity of transactions from this account.
+         *
+         * @param address the account address
+         * @param nonce   the new nonce value
+         */
+        void setNonce(Address address, long nonce);
+
+        /**
+         * Sets a storage slot value at an address.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * Hash slot = Hash.from("0x0000000000000000000000000000000000000000000000000000000000000000");
+         * Hash value = Hash.from("0x000000000000000000000000000000000000000000000000000000000000002a");
+         * tester.setStorageAt(contractAddress, slot, value);
+         * }</pre>
+         *
+         * @param address the contract address
+         * @param slot    the storage slot (32 bytes)
+         * @param value   the value to set (32 bytes)
+         */
+        void setStorageAt(Address address, Hash slot, Hash value);
+
+        // ==================== Mining Methods ====================
+
+        /**
+         * Mines a single block.
+         *
+         * <p>This is equivalent to {@code mine(1)}.
+         */
+        void mine();
+
+        /**
+         * Mines the specified number of blocks.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.mine(100); // Mine 100 blocks
+         * }</pre>
+         *
+         * @param blocks the number of blocks to mine
+         */
+        void mine(long blocks);
+
+        /**
+         * Mines a single block with the specified timestamp.
+         *
+         * <p>This combines mining with time manipulation in a single operation.
+         *
+         * @param timestamp the Unix timestamp for the mined block
+         */
+        void mineAt(long timestamp);
+
+        /**
+         * Enables or disables automatic mining.
+         *
+         * <p>When automine is enabled (default), transactions are mined immediately
+         * upon submission. When disabled, transactions remain in the mempool until
+         * {@link #mine()} is called explicitly.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.setAutomine(false);
+         * // Transactions now stay in mempool
+         * Hash tx1 = signer.sendTransaction(request1);
+         * Hash tx2 = signer.sendTransaction(request2);
+         * tester.mine(); // Both transactions mined in same block
+         * }</pre>
+         *
+         * @param enabled true to enable automine, false to disable
+         */
+        void setAutomine(boolean enabled);
+
+        /**
+         * Sets interval mining with the specified block time.
+         *
+         * <p>When interval mining is enabled, blocks are mined automatically at
+         * the specified interval, simulating real network behavior.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.setIntervalMining(12_000); // Mine every 12 seconds (like mainnet)
+         * }</pre>
+         *
+         * @param intervalMs the mining interval in milliseconds (0 to disable)
+         */
+        void setIntervalMining(long intervalMs);
+
+        // ==================== Time Manipulation Methods ====================
+
+        /**
+         * Sets the timestamp for the next block.
+         *
+         * <p>The timestamp must be greater than the current block's timestamp.
+         * This affects only the next block; subsequent blocks will increment
+         * normally from this timestamp.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * long futureTime = System.currentTimeMillis() / 1000 + 86400; // +1 day
+         * tester.setNextBlockTimestamp(futureTime);
+         * tester.mine();
+         * }</pre>
+         *
+         * @param timestamp the Unix timestamp (seconds since epoch)
+         */
+        void setNextBlockTimestamp(long timestamp);
+
+        /**
+         * Increases the blockchain time by the specified number of seconds.
+         *
+         * <p>Unlike {@link #setNextBlockTimestamp(long)}, this increments from
+         * the current time rather than setting an absolute value.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.increaseTime(3600); // Advance 1 hour
+         * tester.mine();
+         * }</pre>
+         *
+         * @param seconds the number of seconds to advance
+         */
+        void increaseTime(long seconds);
+
+        // ==================== Block Configuration Methods ====================
+
+        /**
+         * Sets the base fee for the next block.
+         *
+         * <p>This is useful for testing gas price edge cases and EIP-1559 behavior.
+         *
+         * @param baseFee the base fee in Wei
+         */
+        void setNextBlockBaseFee(io.brane.core.types.Wei baseFee);
+
+        /**
+         * Sets the coinbase (block reward recipient) address.
+         *
+         * <p>This affects the {@code block.coinbase} value in subsequent blocks.
+         *
+         * @param coinbase the coinbase address
+         */
+        void setCoinbase(Address coinbase);
+
+        // ==================== Reset Methods ====================
+
+        /**
+         * Resets the chain to its initial state.
+         *
+         * <p>This clears all transactions, blocks (except genesis), and restores
+         * the initial account states.
+         */
+        void reset();
+
+        /**
+         * Resets the chain and forks from the specified RPC endpoint at the given block.
+         *
+         * <p>This is useful for resetting to a specific state from a live network.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.reset("https://eth-mainnet.g.alchemy.com/v2/...", 18_000_000L);
+         * }</pre>
+         *
+         * @param forkUrl     the RPC URL to fork from
+         * @param blockNumber the block number to fork at
+         */
+        void reset(String forkUrl, long blockNumber);
     }
 
     /**

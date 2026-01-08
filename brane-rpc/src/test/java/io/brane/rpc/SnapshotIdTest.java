@@ -129,6 +129,106 @@ class SnapshotIdTest {
             return revertResult;
         }
 
+        @Override
+        public Brane.Signer asSigner() {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public ImpersonationSession impersonate(io.brane.core.types.Address address) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void stopImpersonating(io.brane.core.types.Address address) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void enableAutoImpersonate() {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void disableAutoImpersonate() {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void setBalance(io.brane.core.types.Address address, io.brane.core.types.Wei balance) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void setCode(io.brane.core.types.Address address, io.brane.core.types.HexData code) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void setNonce(io.brane.core.types.Address address, long nonce) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void setStorageAt(io.brane.core.types.Address address, io.brane.core.types.Hash slot, io.brane.core.types.Hash value) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void mine() {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void mine(long blocks) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void mineAt(long timestamp) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void setAutomine(boolean enabled) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void setIntervalMining(long intervalMs) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void setNextBlockTimestamp(long timestamp) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void increaseTime(long seconds) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void setNextBlockBaseFee(io.brane.core.types.Wei baseFee) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void setCoinbase(io.brane.core.types.Address coinbase) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void reset() {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public void reset(String forkUrl, long blockNumber) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
         // Required Brane interface methods - throw UnsupportedOperationException for mock
         @Override
         public java.math.BigInteger chainId() {
