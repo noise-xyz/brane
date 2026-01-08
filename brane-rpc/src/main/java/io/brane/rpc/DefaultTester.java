@@ -399,6 +399,7 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public void setCoinbase(final Address coinbase) {
+        java.util.Objects.requireNonNull(coinbase, "coinbase");
         sendVoid(mode.prefix() + "setCoinbase", List.of(coinbase.value()));
     }
 
