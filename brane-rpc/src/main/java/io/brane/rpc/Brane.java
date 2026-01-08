@@ -950,49 +950,182 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
     /**
      * Testing interface for interacting with test nodes (Anvil, Hardhat, Ganache).
      *
-     * <p>This interface provides methods for test-specific operations like snapshots,
-     * time manipulation, account impersonation, and state management that are only
-     * available on test networks.
+     * <p>{@code Tester} provides test-specific operations like snapshots, time manipulation,
+     * account impersonation, and state management that are only available on local test networks.
+     * This is the client type to use for integration tests, fuzz testing, and local development.
      *
-     * <h2>Capabilities Overview</h2>
-     * <ul>
-     *   <li><strong>Signing:</strong> {@link #asSigner()} - Convert to a Signer for transaction sending</li>
-     *   <li><strong>Snapshots:</strong> {@link #snapshot()}, {@link #revert(SnapshotId)} - Save/restore chain state</li>
-     *   <li><strong>Impersonation:</strong> {@link #impersonate(Address)}, {@link #stopImpersonating(Address)} - Act as any address</li>
-     *   <li><strong>Account Manipulation:</strong> {@link #setBalance(Address, Wei)}, {@link #setCode(Address, HexData)}, {@link #setNonce(Address, long)}, {@link #setStorageAt(Address, Hash, Hash)}</li>
-     *   <li><strong>Mining:</strong> {@link #mine()}, {@link #mine(long)}, {@link #setAutomine(boolean)}, {@link #setIntervalMining(long)}</li>
-     *   <li><strong>Time:</strong> {@link #setNextBlockTimestamp(long)}, {@link #increaseTime(long)}</li>
-     *   <li><strong>Block Config:</strong> {@link #setNextBlockBaseFee(Wei)}, {@link #setCoinbase(Address)}</li>
-     *   <li><strong>Reset:</strong> {@link #reset()}, {@link #reset(String, long)} - Reset chain state</li>
-     * </ul>
+     * <h2>Type Hierarchy Design</h2>
      *
-     * <h2>Example Usage</h2>
+     * <p>{@code Tester} is a <strong>sibling</strong> to {@link Reader} and {@link Signer} in
+     * the sealed type hierarchy, rather than extending {@code Signer}. This design enables
+     * exhaustive pattern matching across all three client types:
+     *
      * <pre>{@code
-     * // Create a tester client
-     * Brane.Tester tester = ... // obtain from factory
-     *
-     * // Snapshot and restore pattern
-     * SnapshotId snapshot = tester.snapshot();
-     * try {
-     *     // ... perform test operations ...
-     * } finally {
-     *     tester.revert(snapshot);
+     * // Compile-time guarantee of exhaustive handling
+     * switch (client) {
+     *     case Brane.Reader r  -> handleReadOnly(r);
+     *     case Brane.Signer s  -> handleSigner(s);
+     *     case Brane.Tester t  -> handleTester(t);
      * }
-     *
-     * // Impersonation pattern (auto-cleanup)
-     * Address whale = Address.from("0x...");
-     * try (ImpersonationSession session = tester.impersonate(whale)) {
-     *     TransactionReceipt receipt = session.sendTransactionAndWait(request);
-     * }
-     *
-     * // Time manipulation
-     * tester.setNextBlockTimestamp(System.currentTimeMillis() / 1000 + 86400); // +1 day
-     * tester.mine();
      * }</pre>
      *
-     * @since 0.1.0-alpha
+     * <p>If {@code Tester} extended {@code Signer}, pattern matching would require checking
+     * {@code Tester} before {@code Signer} to avoid dead code, and the type hierarchy would
+     * not be truly sealed (future subtypes could break exhaustiveness).
+     *
+     * <p>To use signing operations, call {@link #asSigner()} to obtain a {@link Signer} view,
+     * or use the convenience delegation methods like {@link #sendTransaction(TransactionRequest)}
+     * directly on the tester.
+     *
+     * <h2>Capabilities Overview</h2>
+     *
+     * <ul>
+     *   <li><strong>Signing:</strong> {@link #asSigner()}, {@link #sendTransaction},
+     *       {@link #sendTransactionAndWait} - Transaction sending</li>
+     *   <li><strong>Snapshots:</strong> {@link #snapshot()}, {@link #revert(SnapshotId)} -
+     *       Save/restore chain state</li>
+     *   <li><strong>Impersonation:</strong> {@link #impersonate(Address)},
+     *       {@link #stopImpersonating(Address)} - Act as any address without private key</li>
+     *   <li><strong>Account Manipulation:</strong> {@link #setBalance(Address, Wei)},
+     *       {@link #setCode(Address, HexData)}, {@link #setNonce(Address, long)},
+     *       {@link #setStorageAt(Address, Hash, Hash)}</li>
+     *   <li><strong>Mining:</strong> {@link #mine()}, {@link #mine(long)},
+     *       {@link #setAutomine(boolean)}, {@link #setIntervalMining(long)}</li>
+     *   <li><strong>Time:</strong> {@link #setNextBlockTimestamp(long)},
+     *       {@link #increaseTime(long)}</li>
+     *   <li><strong>Block Config:</strong> {@link #setNextBlockBaseFee(Wei)},
+     *       {@link #setCoinbase(Address)}, {@link #setBlockGasLimit(java.math.BigInteger)}</li>
+     *   <li><strong>State:</strong> {@link #dumpState()}, {@link #loadState(HexData)} -
+     *       Serialize/deserialize chain state</li>
+     *   <li><strong>Reset:</strong> {@link #reset()}, {@link #reset(String, long)} -
+     *       Reset chain or fork from live network</li>
+     * </ul>
+     *
+     * <h2>Creating a Tester</h2>
+     *
+     * <pre>{@code
+     * // Simplest: connect to local Anvil with default test key
+     * Brane.Tester tester = Brane.connectTest();
+     *
+     * // With custom signer
+     * Signer key = AnvilSigners.keyAt(3);  // Use 4th test account
+     * Brane.Tester tester = Brane.connectTest(key);
+     *
+     * // With custom URL and mode
+     * Brane.Tester tester = Brane.connectTest(
+     *     "http://localhost:8545",
+     *     PrivateKey.fromHex("0x..."),
+     *     TestNodeMode.HARDHAT
+     * );
+     *
+     * // Via builder for full configuration
+     * Brane.Tester tester = Brane.builder()
+     *     .rpcUrl("http://localhost:8545")
+     *     .signer(AnvilSigners.defaultKey())
+     *     .testMode(TestNodeMode.ANVIL)
+     *     .buildTester();
+     * }</pre>
+     *
+     * <h2>Common Patterns</h2>
+     *
+     * <p><strong>Snapshot and restore (recommended for test isolation):</strong>
+     * <pre>{@code
+     * // Take snapshot at start of test
+     * SnapshotId snapshot = tester.snapshot();
+     * try {
+     *     // Test operations that modify state
+     *     tester.setBalance(testAccount, Wei.fromEther("1000"));
+     *     Hash txHash = tester.sendTransaction(request);
+     *     // ... assertions ...
+     * } finally {
+     *     // Always restore to clean state
+     *     tester.revert(snapshot);
+     * }
+     * }</pre>
+     *
+     * <p><strong>Impersonation (act as any address):</strong>
+     * <pre>{@code
+     * // Impersonate a whale address to test large transfers
+     * Address whale = Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+     * try (ImpersonationSession session = tester.impersonate(whale)) {
+     *     TransactionRequest request = TransactionRequest.builder()
+     *         .to(recipient)
+     *         .value(Wei.fromEther("10000"))
+     *         .build();
+     *     TransactionReceipt receipt = session.sendTransactionAndWait(request);
+     *     assertThat(receipt.status()).isEqualTo(1);
+     * }
+     * // Impersonation automatically stopped when session closes
+     * }</pre>
+     *
+     * <p><strong>Time manipulation (test time-dependent logic):</strong>
+     * <pre>{@code
+     * // Test a vesting contract that unlocks after 30 days
+     * long thirtyDaysInSeconds = 30 * 24 * 60 * 60;
+     * tester.increaseTime(thirtyDaysInSeconds);
+     * tester.mine();  // Mine a block with the new timestamp
+     *
+     * // Now the vesting contract should allow withdrawal
+     * TransactionReceipt receipt = tester.sendTransactionAndWait(withdrawRequest);
+     * }</pre>
+     *
+     * <p><strong>Batching transactions in a single block:</strong>
+     * <pre>{@code
+     * // Disable automine to control when blocks are produced
+     * tester.setAutomine(false);
+     * try {
+     *     // All these transactions go into the mempool
+     *     Hash tx1 = tester.sendTransaction(request1);
+     *     Hash tx2 = tester.sendTransaction(request2);
+     *     Hash tx3 = tester.sendTransaction(request3);
+     *
+     *     // Mine them all in a single block
+     *     tester.mine();
+     *
+     *     // All three receipts should have the same block number
+     *     TransactionReceipt r1 = tester.waitForReceipt(tx1);
+     *     TransactionReceipt r2 = tester.waitForReceipt(tx2);
+     *     assertThat(r1.blockNumber()).isEqualTo(r2.blockNumber());
+     * } finally {
+     *     tester.setAutomine(true);  // Restore automine
+     * }
+     * }</pre>
+     *
+     * <h2>Thread Safety</h2>
+     *
+     * <p>All {@code Tester} implementations are thread-safe. Multiple threads can safely
+     * share a single tester instance for concurrent test operations. However, test-specific
+     * operations like snapshots, time manipulation, and impersonation affect the <em>global</em>
+     * state of the test node, so concurrent tests sharing the same node should coordinate
+     * their state modifications to avoid interference.
+     *
+     * <p><strong>Recommended approach for parallel tests:</strong>
+     * <ul>
+     *   <li>Each test takes its own snapshot at the start and reverts in a finally block</li>
+     *   <li>Tests use distinct addresses to avoid nonce conflicts</li>
+     *   <li>Time manipulation tests run serially or on separate Anvil instances</li>
+     * </ul>
+     *
+     * <h2>Test Node Compatibility</h2>
+     *
+     * <p>{@code Tester} supports multiple test node implementations via {@link TestNodeMode}:
+     * <ul>
+     *   <li>{@link TestNodeMode#ANVIL} - Foundry's Anvil (recommended, full feature support)</li>
+     *   <li>{@link TestNodeMode#HARDHAT} - Hardhat Network</li>
+     *   <li>{@link TestNodeMode#GANACHE} - Truffle's Ganache</li>
+     * </ul>
+     *
+     * <p>Some methods are only available on specific test nodes (e.g., {@link #dumpState()}
+     * is Anvil-only). See individual method documentation for compatibility notes.
+     *
+     * @see Brane
+     * @see Brane.Reader
+     * @see Brane.Signer
      * @see SnapshotId
      * @see ImpersonationSession
+     * @see TestNodeMode
+     * @see AnvilSigners
+     * @since 0.2.0
      */
     non-sealed interface Tester extends Brane {
 
@@ -1012,6 +1145,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * }</pre>
          *
          * @return a signer view of this tester
+         * @since 0.2.0
          */
         Signer asSigner();
 
@@ -1026,6 +1160,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @param request the transaction request
          * @return the transaction hash
          * @see Signer#sendTransaction
+         * @since 0.2.0
          */
         Hash sendTransaction(TransactionRequest request);
 
@@ -1038,6 +1173,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @param request the transaction request
          * @return the transaction receipt once confirmed
          * @see Signer#sendTransactionAndWait(TransactionRequest)
+         * @since 0.2.0
          */
         default TransactionReceipt sendTransactionAndWait(TransactionRequest request) {
             return sendTransactionAndWait(request, Signer.DEFAULT_TIMEOUT_MILLIS, Signer.DEFAULT_POLL_INTERVAL_MILLIS);
@@ -1053,6 +1189,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @param pollIntervalMillis poll interval in milliseconds
          * @return the transaction receipt once confirmed
          * @see Signer#sendTransactionAndWait(TransactionRequest, long, long)
+         * @since 0.2.0
          */
         TransactionReceipt sendTransactionAndWait(
                 TransactionRequest request, long timeoutMillis, long pollIntervalMillis);
@@ -1062,6 +1199,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          *
          * @return the signer
          * @see Signer#signer()
+         * @since 0.2.0
          */
         io.brane.core.crypto.Signer signer();
 
@@ -1081,6 +1219,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * }</pre>
          *
          * @return the snapshot ID
+         * @since 0.2.0
          */
         SnapshotId snapshot();
 
@@ -1092,6 +1231,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          *
          * @param snapshotId the snapshot to revert to
          * @return true if the revert succeeded, false otherwise
+         * @since 0.2.0
          */
         boolean revert(SnapshotId snapshotId);
 
@@ -1116,6 +1256,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @param address the address to impersonate
          * @return an impersonation session for sending transactions
          * @see #stopImpersonating(Address)
+         * @since 0.2.0
          */
         ImpersonationSession impersonate(Address address);
 
@@ -1126,6 +1267,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * is closed. Direct calls are useful when managing impersonation manually.
          *
          * @param address the address to stop impersonating
+         * @since 0.2.0
          */
         void stopImpersonating(Address address);
 
@@ -1137,6 +1279,8 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * multiple addresses.
          *
          * <p><strong>Note:</strong> Only supported by Anvil ({@code anvil_autoImpersonateAccount}).
+         *
+         * @since 0.2.0
          */
         void enableAutoImpersonate();
 
@@ -1144,6 +1288,8 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * Disables automatic impersonation.
          *
          * <p><strong>Note:</strong> Only supported by Anvil ({@code anvil_autoImpersonateAccount}).
+         *
+         * @since 0.2.0
          */
         void disableAutoImpersonate();
 
@@ -1159,6 +1305,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          *
          * @param address the account address
          * @param balance the new balance in Wei
+         * @since 0.2.0
          */
         void setBalance(Address address, io.brane.core.types.Wei balance);
 
@@ -1174,6 +1321,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          *
          * @param address the address to set code at
          * @param code    the bytecode to set
+         * @since 0.2.0
          */
         void setCode(Address address, HexData code);
 
@@ -1184,6 +1332,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          *
          * @param address the account address
          * @param nonce   the new nonce value
+         * @since 0.2.0
          */
         void setNonce(Address address, long nonce);
 
@@ -1200,6 +1349,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @param address the contract address
          * @param slot    the storage slot (32 bytes)
          * @param value   the value to set (32 bytes)
+         * @since 0.2.0
          */
         void setStorageAt(Address address, Hash slot, Hash value);
 
@@ -1209,6 +1359,8 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * Mines a single block.
          *
          * <p>This is equivalent to {@code mine(1)}.
+         *
+         * @since 0.2.0
          */
         void mine();
 
@@ -1221,6 +1373,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * }</pre>
          *
          * @param blocks the number of blocks to mine
+         * @since 0.2.0
          */
         void mine(long blocks);
 
@@ -1238,6 +1391,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          *
          * @param blocks          the number of blocks to mine
          * @param intervalSeconds the time interval in seconds between each block
+         * @since 0.2.0
          */
         void mine(long blocks, long intervalSeconds);
 
@@ -1247,6 +1401,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * <p>This combines mining with time manipulation in a single operation.
          *
          * @param timestamp the Unix timestamp for the mined block
+         * @since 0.2.0
          */
         void mineAt(long timestamp);
 
@@ -1256,6 +1411,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * <p>Automine controls whether transactions are mined immediately upon submission.
          *
          * @return true if automine is enabled, false otherwise
+         * @since 0.2.0
          */
         boolean getAutomine();
 
@@ -1276,6 +1432,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * }</pre>
          *
          * @param enabled true to enable automine, false to disable
+         * @since 0.2.0
          */
         void setAutomine(boolean enabled);
 
@@ -1291,6 +1448,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * }</pre>
          *
          * @param intervalMs the mining interval in milliseconds (0 to disable)
+         * @since 0.2.0
          */
         void setIntervalMining(long intervalMs);
 
@@ -1311,6 +1469,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * }</pre>
          *
          * @param timestamp the Unix timestamp (seconds since epoch)
+         * @since 0.2.0
          */
         void setNextBlockTimestamp(long timestamp);
 
@@ -1327,6 +1486,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * }</pre>
          *
          * @param seconds the number of seconds to advance
+         * @since 0.2.0
          */
         void increaseTime(long seconds);
 
@@ -1338,6 +1498,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * <p>This is useful for testing gas price edge cases and EIP-1559 behavior.
          *
          * @param baseFee the base fee in Wei
+         * @since 0.2.0
          */
         void setNextBlockBaseFee(io.brane.core.types.Wei baseFee);
 
@@ -1348,6 +1509,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * transaction gas requirements.
          *
          * @param gasLimit the gas limit for the next block
+         * @since 0.2.0
          */
         void setBlockGasLimit(java.math.BigInteger gasLimit);
 
@@ -1357,6 +1519,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * <p>This affects the {@code block.coinbase} value in subsequent blocks.
          *
          * @param coinbase the coinbase address
+         * @since 0.2.0
          */
         void setCoinbase(Address coinbase);
 
@@ -1367,6 +1530,8 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          *
          * <p>This clears all transactions, blocks (except genesis), and restores
          * the initial account states.
+         *
+         * @since 0.2.0
          */
         void reset();
 
@@ -1382,6 +1547,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          *
          * @param forkUrl     the RPC URL to fork from
          * @param blockNumber the block number to fork at
+         * @since 0.2.0
          */
         void reset(String forkUrl, long blockNumber);
 
@@ -1417,6 +1583,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @return the serialized chain state as hex-encoded data
          * @throws UnsupportedOperationException if the test node does not support state dumping
          * @see #loadState(HexData)
+         * @since 0.2.0
          */
         HexData dumpState();
 
@@ -1446,6 +1613,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @return true if the state was loaded successfully, false otherwise
          * @throws UnsupportedOperationException if the test node does not support state loading
          * @see #dumpState()
+         * @since 0.2.0
          */
         boolean loadState(HexData state);
 
@@ -1508,6 +1676,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @param txHash the transaction hash to wait for
          * @return the transaction receipt once available
          * @throws io.brane.core.error.RpcException if timeout is reached or interrupted
+         * @since 0.2.0
          */
         default TransactionReceipt waitForReceipt(Hash txHash) {
             return waitForReceipt(txHash, DEFAULT_WAIT_TIMEOUT_MILLIS, DEFAULT_WAIT_POLL_INTERVAL_MILLIS);
@@ -1531,6 +1700,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @param pollIntervalMillis initial poll interval in milliseconds (doubles each poll, max 10s)
          * @return the transaction receipt once available
          * @throws io.brane.core.error.RpcException if timeout is reached or interrupted
+         * @since 0.2.0
          */
         TransactionReceipt waitForReceipt(Hash txHash, long timeoutMillis, long pollIntervalMillis);
     }
