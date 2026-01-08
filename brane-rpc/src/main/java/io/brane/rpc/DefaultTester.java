@@ -3,6 +3,7 @@ package io.brane.rpc;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
@@ -456,5 +457,43 @@ final class DefaultTester implements Brane.Tester {
      */
     DefaultSigner delegateSigner() {
         return signer;
+    }
+
+    // ==================== Receipt Waiting ====================
+
+    /** Maximum poll interval for exponential backoff (10 seconds). */
+    private static final long MAX_POLL_INTERVAL_MILLIS = 10_000L;
+
+    @Override
+    public TransactionReceipt waitForReceipt(
+            final Hash txHash, final long timeoutMillis, final long pollIntervalMillis) {
+        // Use monotonic clock (System.nanoTime) instead of wall clock
+        // to avoid issues with NTP adjustments or VM clock skew.
+        final long deadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+
+        // Exponential backoff: start with user-provided interval, double each time, cap at MAX
+        long currentInterval = pollIntervalMillis;
+
+        while (System.nanoTime() - deadlineNanos < 0) {
+            final TransactionReceipt receipt = getTransactionReceipt(txHash);
+            if (receipt != null) {
+                return receipt;
+            }
+            try {
+                Thread.sleep(currentInterval);
+                // Double the interval for next iteration, capped at MAX_POLL_INTERVAL_MILLIS
+                currentInterval = Math.min(currentInterval * 2, MAX_POLL_INTERVAL_MILLIS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw new RpcException(-32000, "Interrupted while waiting for receipt", null, e);
+            }
+        }
+
+        throw new RpcException(
+                -32000,
+                "Timed out waiting for transaction receipt for " + txHash.value(),
+                null,
+                null,
+                null);
     }
 }

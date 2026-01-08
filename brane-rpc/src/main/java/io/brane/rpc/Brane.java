@@ -1348,6 +1348,59 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @param blockNumber the block number to fork at
          */
         void reset(String forkUrl, long blockNumber);
+
+        // ==================== Receipt Waiting Methods ====================
+
+        /** Default timeout for waiting for receipt: 60 seconds. */
+        long DEFAULT_WAIT_TIMEOUT_MILLIS = 60_000;
+
+        /** Default initial poll interval for waiting for receipt: 100 milliseconds. */
+        long DEFAULT_WAIT_POLL_INTERVAL_MILLIS = 100;
+
+        /**
+         * Waits for a transaction receipt to be available.
+         *
+         * <p>This method polls {@code eth_getTransactionReceipt} with exponential backoff
+         * until the receipt is available or the timeout is reached. The poll interval
+         * starts at the specified value and doubles after each poll, capped at 10 seconds.
+         *
+         * <p>Uses default timeout (60 seconds) and initial poll interval (100 milliseconds).
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * // Wait for a transaction sent elsewhere
+         * Hash txHash = session.sendTransaction(request);
+         * TransactionReceipt receipt = tester.waitForReceipt(txHash);
+         * }</pre>
+         *
+         * @param txHash the transaction hash to wait for
+         * @return the transaction receipt once available
+         * @throws io.brane.core.error.RpcException if timeout is reached or interrupted
+         */
+        default TransactionReceipt waitForReceipt(Hash txHash) {
+            return waitForReceipt(txHash, DEFAULT_WAIT_TIMEOUT_MILLIS, DEFAULT_WAIT_POLL_INTERVAL_MILLIS);
+        }
+
+        /**
+         * Waits for a transaction receipt to be available with custom timeout settings.
+         *
+         * <p>This method polls {@code eth_getTransactionReceipt} with exponential backoff
+         * until the receipt is available or the timeout is reached. The poll interval
+         * starts at the specified value and doubles after each poll, capped at 10 seconds.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * // Wait with custom settings
+         * TransactionReceipt receipt = tester.waitForReceipt(txHash, 120_000, 50);
+         * }</pre>
+         *
+         * @param txHash             the transaction hash to wait for
+         * @param timeoutMillis      maximum time to wait, in milliseconds
+         * @param pollIntervalMillis initial poll interval in milliseconds (doubles each poll, max 10s)
+         * @return the transaction receipt once available
+         * @throws io.brane.core.error.RpcException if timeout is reached or interrupted
+         */
+        TransactionReceipt waitForReceipt(Hash txHash, long timeoutMillis, long pollIntervalMillis);
     }
 
     /**

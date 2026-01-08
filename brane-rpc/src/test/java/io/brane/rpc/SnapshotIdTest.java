@@ -245,6 +245,12 @@ class SnapshotIdTest {
             throw new UnsupportedOperationException("Mock tester");
         }
 
+        @Override
+        public io.brane.core.model.TransactionReceipt waitForReceipt(
+                io.brane.core.types.Hash txHash, long timeoutMillis, long pollIntervalMillis) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
         // Required Brane interface methods - throw UnsupportedOperationException for mock
         @Override
         public java.math.BigInteger chainId() {
