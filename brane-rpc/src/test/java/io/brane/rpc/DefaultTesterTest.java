@@ -392,6 +392,16 @@ class DefaultTesterTest {
     class SetNextBlockBaseFeeValidation {
 
         @Test
+        void setNextBlockBaseFeeWithNullThrowsNullPointerException() {
+            Brane.Tester tester = createTester();
+
+            NullPointerException ex = assertThrows(
+                    NullPointerException.class,
+                    () -> tester.setNextBlockBaseFee(null));
+            assertEquals("baseFee", ex.getMessage());
+        }
+
+        @Test
         @SuppressWarnings("unchecked")
         void passesCorrectParameters() {
             JsonRpcResponse response = new JsonRpcResponse("2.0", null, null, "1");
