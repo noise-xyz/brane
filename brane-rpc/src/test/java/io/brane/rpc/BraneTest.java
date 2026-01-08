@@ -521,4 +521,163 @@ class BraneTest {
         };
         assertEquals("tester", result);
     }
+
+    // ==================== Tester Delegation Tests (TESTER-11) ====================
+
+    @Test
+    void testerChainIdDelegatesCorrectly() {
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0x1", null, "1");
+        when(provider.send(eq("eth_chainId"), any())).thenReturn(response);
+
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        assertEquals(java.math.BigInteger.ONE, tester.chainId());
+    }
+
+    @Test
+    void testerGetBalanceDelegatesCorrectly() {
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0xde0b6b3a7640000", null, "1");
+        when(provider.send(eq("eth_getBalance"), any())).thenReturn(response);
+
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        io.brane.core.types.Address address = new io.brane.core.types.Address("0x0000000000000000000000000000000000000001");
+        java.math.BigInteger balance = tester.getBalance(address);
+        assertEquals(new java.math.BigInteger("1000000000000000000"), balance);
+    }
+
+    @Test
+    void testerGetLatestBlockDelegatesCorrectly() {
+        // Create a mock response with block data
+        java.util.Map<String, Object> blockData = new java.util.LinkedHashMap<>();
+        blockData.put("number", "0x1");
+        blockData.put("hash", "0x" + "a".repeat(64));
+        blockData.put("parentHash", "0x" + "b".repeat(64));
+        blockData.put("timestamp", "0x5f5e100");
+        blockData.put("gasLimit", "0x1c9c380");
+        blockData.put("gasUsed", "0x5208");
+        blockData.put("baseFeePerGas", "0x3b9aca00");
+        JsonRpcResponse response = new JsonRpcResponse("2.0", blockData, null, "1");
+        when(provider.send(eq("eth_getBlockByNumber"), any())).thenReturn(response);
+
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        io.brane.core.model.BlockHeader block = tester.getLatestBlock();
+        assertNotNull(block);
+        assertEquals(1L, block.number());
+    }
+
+    @Test
+    void testerCallDelegatesCorrectly() {
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0x" + "00".repeat(32), null, "1");
+        when(provider.send(eq("eth_call"), any())).thenReturn(response);
+
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        io.brane.core.types.Address contractAddress = new io.brane.core.types.Address("0x0000000000000000000000000000000000000001");
+        CallRequest request = CallRequest.builder()
+                .to(contractAddress)
+                .data(new io.brane.core.types.HexData("0x"))
+                .build();
+
+        io.brane.core.types.HexData result = tester.call(request);
+        assertNotNull(result);
+    }
+
+    @Test
+    void testerGetLogsDelegatesCorrectly() {
+        JsonRpcResponse response = new JsonRpcResponse("2.0", java.util.List.of(), null, "1");
+        when(provider.send(eq("eth_getLogs"), any())).thenReturn(response);
+
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        io.brane.core.types.Address contractAddress = new io.brane.core.types.Address("0x0000000000000000000000000000000000000001");
+        LogFilter filter = LogFilter.byContract(contractAddress, java.util.List.of());
+
+        java.util.List<io.brane.core.model.LogEntry> logs = tester.getLogs(filter);
+        assertNotNull(logs);
+        assertTrue(logs.isEmpty());
+    }
+
+    @Test
+    void testerEstimateGasDelegatesCorrectly() {
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0x5208", null, "1");
+        when(provider.send(eq("eth_estimateGas"), any())).thenReturn(response);
+
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        io.brane.core.types.Address from = new io.brane.core.types.Address("0x0000000000000000000000000000000000000001");
+        io.brane.core.types.Address to = new io.brane.core.types.Address("0x0000000000000000000000000000000000000002");
+        io.brane.core.model.TransactionRequest request = io.brane.core.builder.TxBuilder.eip1559()
+                .from(from)
+                .to(to)
+                .build();
+
+        java.math.BigInteger gasEstimate = tester.estimateGas(request);
+        assertEquals(java.math.BigInteger.valueOf(21000), gasEstimate);
+    }
+
+    @Test
+    void testerCanSubscribeDelegatesCorrectly() {
+        // HTTP provider does not support subscriptions
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        assertFalse(tester.canSubscribe());
+    }
+
+    @Test
+    void testerChainDelegatesCorrectly() {
+        io.brane.core.chain.ChainProfile chainProfile = io.brane.core.chain.ChainProfiles.ETH_MAINNET;
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .chain(chainProfile)
+                .buildTester();
+
+        assertTrue(tester.chain().isPresent());
+        assertEquals(chainProfile, tester.chain().get());
+    }
+
+    @Test
+    void testerAsSignerReturnsSignerInstance() {
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        Brane.Signer returnedSigner = tester.asSigner();
+        assertNotNull(returnedSigner);
+        assertTrue(returnedSigner.canSign());
+        assertEquals(signer, returnedSigner.signer());
+    }
 }
