@@ -80,6 +80,30 @@ public final class TypedData<T> {
     }
 
     /**
+     * Creates typed data from a parsed JSON payload.
+     *
+     * <p>This factory method is used for dynamic EIP-712 signing when the message
+     * type is not known at compile time (e.g., from WalletConnect or dapp requests).
+     *
+     * @param payload the parsed typed data payload from JSON
+     * @return typed data ready for signing or hashing
+     * @see TypedDataJson#parseAndValidate(String)
+     */
+    @SuppressWarnings("unchecked")
+    public static TypedData<Map<String, Object>> fromPayload(TypedDataPayload payload) {
+        Objects.requireNonNull(payload, "payload");
+
+        // Create a type definition for dynamic (Map-based) message
+        TypeDefinition<Map<String, Object>> definition = new TypeDefinition<>(
+            payload.primaryType(),
+            payload.types(),
+            msg -> (Map<String, Object>) msg
+        );
+
+        return new TypedData<>(payload.domain(), definition, payload.message());
+    }
+
+    /**
      * Computes the EIP-712 hash without signing.
      *
      * <p>The hash is computed as:
