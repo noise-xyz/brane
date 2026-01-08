@@ -1,5 +1,10 @@
 package io.brane.core.crypto;
 
+import java.util.List;
+import java.util.Map;
+
+import io.brane.core.crypto.eip712.Eip712Domain;
+import io.brane.core.crypto.eip712.TypedDataField;
 import io.brane.core.tx.UnsignedTransaction;
 import io.brane.core.types.Address;
 
@@ -75,5 +80,26 @@ public final class PrivateKeySigner implements Signer {
             throw new IllegalArgumentException("Hash must be 32 bytes, got " + hash.length);
         }
         return privateKey.signFast(hash);
+    }
+
+    @Override
+    public Signature signTypedData(
+            Eip712Domain domain,
+            String primaryType,
+            Map<String, List<TypedDataField>> types,
+            Map<String, Object> message) {
+
+        // Compute the final EIP-712 hash using TypedDataSigner
+        // This hash is: keccak256("\x19\x01" || domainSeparator || hashStruct(message))
+        byte[] finalHash = io.brane.core.crypto.eip712.TypedDataSigner
+                .hashTypedData(domain, primaryType, types, message)
+                .toBytes();
+
+        // Sign using signFast for consistency with signMessage
+        // signFast returns v=0 or v=1 (recovery ID)
+        Signature sig = privateKey.signFast(finalHash);
+
+        // Adjust v to 27 or 28 for EIP-712/EIP-191 compatibility
+        return new Signature(sig.r(), sig.s(), sig.v() + 27);
     }
 }
