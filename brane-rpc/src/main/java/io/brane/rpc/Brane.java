@@ -267,6 +267,28 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
     HexData getCode(Address address);
 
     /**
+     * Retrieves the value stored at a specific storage slot of an address.
+     *
+     * <p>This method queries the storage of a contract at the specified slot position.
+     * Storage slots are 32-byte values. For addresses without code (EOAs) or
+     * uninitialized slots, this returns a zero-padded 32-byte hex value.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Address contractAddress = Address.from("0x...");
+     * BigInteger slot = BigInteger.ZERO; // First storage slot
+     * HexData value = client.getStorageAt(contractAddress, slot);
+     * System.out.println("Storage slot 0: " + value.value());
+     * }</pre>
+     *
+     * @param address the contract address to query
+     * @param slot the storage slot position
+     * @return the 32-byte value at the storage slot
+     * @since 0.1.0
+     */
+    HexData getStorageAt(Address address, BigInteger slot);
+
+    /**
      * Retrieves the latest block header.
      *
      * @return the latest block header, or {@code null} if not found

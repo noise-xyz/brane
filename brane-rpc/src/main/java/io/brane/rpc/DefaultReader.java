@@ -114,6 +114,19 @@ final class DefaultReader implements Brane.Reader {
     }
 
     @Override
+    public HexData getStorageAt(final Address address, final BigInteger slot) {
+        ensureOpen();
+        final String slotHex = "0x" + slot.toString(16);
+        final JsonRpcResponse response = sendWithRetry(
+                "eth_getStorageAt", List.of(address.value(), slotHex, "latest"));
+        final Object result = response.result();
+        if (result == null) {
+            return HexData.EMPTY;
+        }
+        return new HexData(result.toString());
+    }
+
+    @Override
     public @Nullable BlockHeader getLatestBlock() {
         ensureOpen();
         return getBlockByTag(BlockTag.LATEST.toRpcValue());

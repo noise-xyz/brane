@@ -118,6 +118,11 @@ final class DefaultTester implements Brane.Tester {
     }
 
     @Override
+    public HexData getStorageAt(final Address address, final BigInteger slot) {
+        return signer.getStorageAt(address, slot);
+    }
+
+    @Override
     public @Nullable BlockHeader getLatestBlock() {
         return signer.getLatestBlock();
     }

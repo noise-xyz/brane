@@ -95,6 +95,11 @@ final class DefaultSigner implements Brane.Signer {
     }
 
     @Override
+    public HexData getStorageAt(final Address address, final BigInteger slot) {
+        return reader.getStorageAt(address, slot);
+    }
+
+    @Override
     public @Nullable BlockHeader getLatestBlock() {
         return reader.getLatestBlock();
     }
