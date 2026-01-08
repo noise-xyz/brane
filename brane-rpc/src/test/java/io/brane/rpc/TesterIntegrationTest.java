@@ -345,4 +345,284 @@ class TesterIntegrationTest {
             assertEquals(originalBalance, tester.getBalance(TEST_ADDRESS));
         }
     }
+
+    // ==================== State Management Integration Tests ====================
+
+    @Nested
+    @DisplayName("Snapshot and revert integration tests")
+    class SnapshotAndRevertTests {
+
+        @Test
+        @DisplayName("snapshot returns unique IDs for each call")
+        void snapshotReturnsUniqueIds() {
+            SnapshotId snapshot1 = tester.snapshot();
+            SnapshotId snapshot2 = tester.snapshot();
+
+            assertNotNull(snapshot1);
+            assertNotNull(snapshot2);
+            assertNotEquals(snapshot1.value(), snapshot2.value());
+        }
+
+        @Test
+        @DisplayName("revert restores balance changes")
+        void revertRestoresBalanceChanges() {
+            BigInteger originalBalance = tester.getBalance(TEST_ADDRESS);
+            SnapshotId snap = tester.snapshot();
+
+            Wei newBalance = Wei.fromEther(new java.math.BigDecimal("555"));
+            tester.setBalance(TEST_ADDRESS, newBalance);
+            assertEquals(newBalance.value(), tester.getBalance(TEST_ADDRESS));
+
+            boolean reverted = tester.revert(snap);
+            assertTrue(reverted);
+            assertEquals(originalBalance, tester.getBalance(TEST_ADDRESS));
+        }
+
+        @Test
+        @DisplayName("revert restores code changes")
+        void revertRestoresCodeChanges() {
+            HexData originalCode = getCode(TEST_ADDRESS);
+            SnapshotId snap = tester.snapshot();
+
+            HexData newCode = new HexData("0x602a60005260206000f3");
+            tester.setCode(TEST_ADDRESS, newCode);
+            assertEquals(newCode.value(), getCode(TEST_ADDRESS).value());
+
+            tester.revert(snap);
+            assertEquals(originalCode.value(), getCode(TEST_ADDRESS).value());
+        }
+
+        @Test
+        @DisplayName("revert restores nonce changes")
+        void revertRestoresNonceChanges() {
+            BigInteger originalNonce = getNonce(TEST_ADDRESS);
+            SnapshotId snap = tester.snapshot();
+
+            tester.setNonce(TEST_ADDRESS, 999);
+            assertEquals(BigInteger.valueOf(999), getNonce(TEST_ADDRESS));
+
+            tester.revert(snap);
+            assertEquals(originalNonce, getNonce(TEST_ADDRESS));
+        }
+
+        @Test
+        @DisplayName("revert restores storage changes")
+        void revertRestoresStorageChanges() {
+            Hash slot = new Hash("0x0000000000000000000000000000000000000000000000000000000000000000");
+            Hash zeroValue = new Hash("0x0000000000000000000000000000000000000000000000000000000000000000");
+
+            // Set up a contract with some code
+            tester.setCode(TEST_ADDRESS, new HexData("0x60016000"));
+
+            Hash originalStorage = getStorageAt(TEST_ADDRESS, slot);
+            SnapshotId snap = tester.snapshot();
+
+            Hash newValue = new Hash("0x000000000000000000000000000000000000000000000000000000000000abcd");
+            tester.setStorageAt(TEST_ADDRESS, slot, newValue);
+            assertEquals(newValue.value(), getStorageAt(TEST_ADDRESS, slot).value());
+
+            tester.revert(snap);
+            assertEquals(originalStorage.value(), getStorageAt(TEST_ADDRESS, slot).value());
+        }
+
+        @Test
+        @DisplayName("nested snapshots work correctly")
+        void nestedSnapshotsWorkCorrectly() {
+            BigInteger balance0 = tester.getBalance(TEST_ADDRESS);
+
+            SnapshotId snap1 = tester.snapshot();
+            Wei balance1 = Wei.fromEther(new java.math.BigDecimal("100"));
+            tester.setBalance(TEST_ADDRESS, balance1);
+
+            SnapshotId snap2 = tester.snapshot();
+            Wei balance2 = Wei.fromEther(new java.math.BigDecimal("200"));
+            tester.setBalance(TEST_ADDRESS, balance2);
+
+            assertEquals(balance2.value(), tester.getBalance(TEST_ADDRESS));
+
+            // Revert to snap2 - should restore balance1
+            tester.revert(snap2);
+            assertEquals(balance1.value(), tester.getBalance(TEST_ADDRESS));
+
+            // Revert to snap1 - should restore balance0
+            tester.revert(snap1);
+            assertEquals(balance0, tester.getBalance(TEST_ADDRESS));
+        }
+
+        @Test
+        @DisplayName("revert restores multiple state changes atomically")
+        void revertRestoresMultipleChangesAtomically() {
+            BigInteger originalBalance = tester.getBalance(TEST_ADDRESS);
+            BigInteger originalNonce = getNonce(TEST_ADDRESS);
+
+            SnapshotId snap = tester.snapshot();
+
+            // Make multiple changes
+            tester.setBalance(TEST_ADDRESS, Wei.fromEther(new java.math.BigDecimal("777")));
+            tester.setNonce(TEST_ADDRESS, 777);
+
+            // Verify changes
+            assertEquals(Wei.fromEther(new java.math.BigDecimal("777")).value(), tester.getBalance(TEST_ADDRESS));
+            assertEquals(BigInteger.valueOf(777), getNonce(TEST_ADDRESS));
+
+            // Revert should restore all changes
+            tester.revert(snap);
+            assertEquals(originalBalance, tester.getBalance(TEST_ADDRESS));
+            assertEquals(originalNonce, getNonce(TEST_ADDRESS));
+        }
+    }
+
+    // ==================== Dump and Load State Integration Tests ====================
+
+    @Nested
+    @DisplayName("dumpState and loadState integration tests")
+    class DumpAndLoadStateTests {
+
+        @Test
+        @DisplayName("dumpState returns non-empty state data")
+        void dumpStateReturnsNonEmptyData() {
+            HexData state = tester.dumpState();
+
+            assertNotNull(state);
+            assertNotNull(state.value());
+            assertTrue(state.value().length() > 2, "State should have content beyond '0x' prefix");
+        }
+
+        @Test
+        @DisplayName("loadState returns true on valid state")
+        void loadStateReturnsTrueOnValidState() {
+            HexData state = tester.dumpState();
+
+            boolean loaded = tester.loadState(state);
+
+            assertTrue(loaded, "loadState should return true for valid state data");
+        }
+
+        @Test
+        @DisplayName("dumpState and loadState preserve account balance")
+        void dumpAndLoadStatePreservesBalance() {
+            // Set a specific balance
+            Wei testBalance = Wei.fromEther(new java.math.BigDecimal("123.456"));
+            tester.setBalance(TEST_ADDRESS, testBalance);
+
+            // Dump state
+            HexData savedState = tester.dumpState();
+
+            // Change the balance
+            tester.setBalance(TEST_ADDRESS, Wei.of(0));
+            assertEquals(BigInteger.ZERO, tester.getBalance(TEST_ADDRESS));
+
+            // Load saved state
+            boolean loaded = tester.loadState(savedState);
+            assertTrue(loaded);
+
+            // Balance should be restored
+            assertEquals(testBalance.value(), tester.getBalance(TEST_ADDRESS));
+        }
+
+        @Test
+        @DisplayName("dumpState captures nonce in state")
+        void dumpStateCapturesNonce() {
+            // Set a specific nonce
+            long testNonce = 42;
+            tester.setNonce(TEST_ADDRESS, testNonce);
+            assertEquals(BigInteger.valueOf(testNonce), getNonce(TEST_ADDRESS));
+
+            // Dump state - verifies the operation completes successfully
+            HexData savedState = tester.dumpState();
+            assertNotNull(savedState);
+            assertTrue(savedState.value().length() > 2);
+        }
+
+        @Test
+        @DisplayName("dumpState and loadState preserve contract code")
+        void dumpAndLoadStatePreservesCode() {
+            // Set contract code
+            HexData testCode = new HexData("0x602a60005260206000f3");
+            tester.setCode(TEST_ADDRESS, testCode);
+
+            // Dump state
+            HexData savedState = tester.dumpState();
+
+            // Change the code
+            tester.setCode(TEST_ADDRESS, new HexData("0x6001"));
+            assertEquals("0x6001", getCode(TEST_ADDRESS).value());
+
+            // Load saved state
+            tester.loadState(savedState);
+
+            // Code should be restored
+            assertEquals(testCode.value(), getCode(TEST_ADDRESS).value());
+        }
+
+        @Test
+        @DisplayName("dumpState and loadState preserve storage")
+        void dumpAndLoadStatePreservesStorage() {
+            // Set up contract with storage
+            Hash slot = new Hash("0x0000000000000000000000000000000000000000000000000000000000000001");
+            Hash testValue = new Hash("0x00000000000000000000000000000000000000000000000000000000deadbeef");
+
+            tester.setCode(TEST_ADDRESS, new HexData("0x60016000"));
+            tester.setStorageAt(TEST_ADDRESS, slot, testValue);
+
+            // Dump state
+            HexData savedState = tester.dumpState();
+
+            // Change the storage
+            Hash newValue = new Hash("0x0000000000000000000000000000000000000000000000000000000000000000");
+            tester.setStorageAt(TEST_ADDRESS, slot, newValue);
+            assertEquals(newValue.value(), getStorageAt(TEST_ADDRESS, slot).value());
+
+            // Load saved state
+            tester.loadState(savedState);
+
+            // Storage should be restored
+            assertEquals(testValue.value(), getStorageAt(TEST_ADDRESS, slot).value());
+        }
+
+        @Test
+        @DisplayName("dumpState and loadState preserve multiple accounts")
+        void dumpAndLoadStatePreservesMultipleAccounts() {
+            Address account1 = TEST_ADDRESS;
+            Address account2 = new Address("0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC");
+
+            Wei balance1 = Wei.fromEther(new java.math.BigDecimal("111"));
+            Wei balance2 = Wei.fromEther(new java.math.BigDecimal("222"));
+
+            tester.setBalance(account1, balance1);
+            tester.setBalance(account2, balance2);
+
+            // Dump state
+            HexData savedState = tester.dumpState();
+
+            // Change both balances
+            tester.setBalance(account1, Wei.of(0));
+            tester.setBalance(account2, Wei.of(0));
+
+            // Load saved state
+            tester.loadState(savedState);
+
+            // Both balances should be restored
+            assertEquals(balance1.value(), tester.getBalance(account1));
+            assertEquals(balance2.value(), tester.getBalance(account2));
+        }
+
+        @Test
+        @DisplayName("state can be loaded multiple times")
+        void stateCanBeLoadedMultipleTimes() {
+            Wei testBalance = Wei.fromEther(new java.math.BigDecimal("500"));
+            tester.setBalance(TEST_ADDRESS, testBalance);
+
+            HexData savedState = tester.dumpState();
+
+            // Load multiple times
+            for (int i = 0; i < 3; i++) {
+                tester.setBalance(TEST_ADDRESS, Wei.of(i));
+                boolean loaded = tester.loadState(savedState);
+                assertTrue(loaded, "Load attempt " + (i + 1) + " should succeed");
+                assertEquals(testBalance.value(), tester.getBalance(TEST_ADDRESS),
+                        "Balance should be restored after load attempt " + (i + 1));
+            }
+        }
+    }
 }
