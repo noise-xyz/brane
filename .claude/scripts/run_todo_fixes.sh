@@ -134,7 +134,7 @@ while IFS=':' read -r task_id task_desc || [[ -n "$task_id" ]]; do
 
     prompt=$(build_prompt "$task_id" "$task_desc")
 
-    if $CLAUDE_CMD -p "$prompt" --dangerously-skip-permissions 2>&1 | tee "$log_file"; then
+    if $CLAUDE_CMD -p "$prompt" --dangerously-skip-permissions < /dev/null 2>&1 | tee "$log_file"; then
         echo ""
         echo "[$task_id] Completed"
         mark_done "$task_id"
