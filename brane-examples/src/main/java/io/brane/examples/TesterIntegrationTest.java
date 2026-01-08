@@ -135,8 +135,15 @@ public final class TesterIntegrationTest {
                 testReset(tester);
 
             } finally {
-                // Ensure we restore to a clean state
-                tester.reset();
+                // After testReset() runs, all snapshots are invalidated, so we can't
+                // reliably revert. The best we can do is ensure automine is enabled.
+                // Since this test runs last in the integration suite, leaving the chain
+                // in reset state is acceptable.
+                try {
+                    tester.setAutomine(true);
+                } catch (Exception ignored) {
+                    // Ignore - chain may be in inconsistent state after reset tests
+                }
             }
 
             // Print summary
