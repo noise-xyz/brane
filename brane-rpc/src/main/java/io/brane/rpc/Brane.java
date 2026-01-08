@@ -573,6 +573,128 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
         return builder().rpcUrl(rpcUrl).signer(signer).buildSigner();
     }
 
+    /** Default local Anvil RPC URL. */
+    String DEFAULT_ANVIL_URL = "http://127.0.0.1:8545";
+
+    /**
+     * Creates a test client connected to a local Anvil node with the default test key.
+     *
+     * <p>This is the simplest way to create a test client for local development.
+     * It connects to Anvil at {@code http://127.0.0.1:8545} using the default
+     * funded test account (index 0).
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Brane.Tester tester = Brane.connectTest();
+     *
+     * // Take a snapshot before test operations
+     * SnapshotId snapshot = tester.snapshot();
+     * try {
+     *     // Perform test operations
+     *     tester.setBalance(address, Wei.fromEther("1000"));
+     *     // ... more operations ...
+     * } finally {
+     *     tester.revert(snapshot);
+     * }
+     * }</pre>
+     *
+     * <p><strong>Prerequisites:</strong> Anvil must be running on localhost:8545.
+     * Start it with: {@code anvil}
+     *
+     * @return a new test client connected to local Anvil
+     * @since 0.3.0
+     * @see AnvilSigners#defaultKey()
+     */
+    static Tester connectTest() {
+        return connectTest(DEFAULT_ANVIL_URL);
+    }
+
+    /**
+     * Creates a test client connected to a local Anvil node with the specified test key.
+     *
+     * <p>Connects to Anvil at {@code http://127.0.0.1:8545} using the provided signer.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * // Use a specific Anvil test account
+     * Signer key = AnvilSigners.keyAt(3);
+     * Brane.Tester tester = Brane.connectTest(key);
+     * }</pre>
+     *
+     * @param signer the signer for transaction signing
+     * @return a new test client connected to local Anvil
+     * @since 0.3.0
+     */
+    static Tester connectTest(io.brane.core.crypto.Signer signer) {
+        return connectTest(DEFAULT_ANVIL_URL, signer);
+    }
+
+    /**
+     * Creates a test client connected to the specified RPC endpoint with the default test key.
+     *
+     * <p>Uses Anvil mode by default and the default funded test account (index 0).
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * // Connect to a remote Anvil instance
+     * Brane.Tester tester = Brane.connectTest("http://192.168.1.100:8545");
+     * }</pre>
+     *
+     * @param rpcUrl the HTTP/HTTPS RPC endpoint URL
+     * @return a new test client with ANVIL mode
+     * @since 0.3.0
+     */
+    static Tester connectTest(String rpcUrl) {
+        return builder().rpcUrl(rpcUrl).signer(AnvilSigners.defaultKey()).buildTester();
+    }
+
+    /**
+     * Creates a test client connected to the specified RPC endpoint with the provided signer.
+     *
+     * <p>Uses Anvil mode by default.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Signer key = PrivateKey.fromHex("0x...");
+     * Brane.Tester tester = Brane.connectTest("http://localhost:8545", key);
+     *
+     * // Impersonate a whale for testing
+     * Address whale = Address.from("0x...");
+     * try (ImpersonationSession session = tester.impersonate(whale)) {
+     *     session.sendTransactionAndWait(request);
+     * }
+     * }</pre>
+     *
+     * @param rpcUrl the HTTP/HTTPS RPC endpoint URL
+     * @param signer the signer for transaction signing
+     * @return a new test client with ANVIL mode
+     * @since 0.3.0
+     */
+    static Tester connectTest(String rpcUrl, io.brane.core.crypto.Signer signer) {
+        return builder().rpcUrl(rpcUrl).signer(signer).buildTester();
+    }
+
+    /**
+     * Creates a test client connected to the specified RPC endpoint with the specified test node mode.
+     *
+     * <p>Use this method when connecting to non-Anvil test nodes like Hardhat or Ganache.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Signer key = PrivateKey.fromHex("0x...");
+     * Brane.Tester tester = Brane.connectTest("http://localhost:8545", key, TestNodeMode.HARDHAT);
+     * }</pre>
+     *
+     * @param rpcUrl the HTTP/HTTPS RPC endpoint URL
+     * @param signer the signer for transaction signing
+     * @param mode   the test node mode (Anvil, Hardhat, or Ganache)
+     * @return a new test client with the specified mode
+     * @since 0.3.0
+     */
+    static Tester connectTest(String rpcUrl, io.brane.core.crypto.Signer signer, TestNodeMode mode) {
+        return builder().rpcUrl(rpcUrl).signer(signer).testMode(mode).buildTester();
+    }
+
     /**
      * Creates a new builder for configuring a Brane client.
      *
@@ -1271,6 +1393,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
         private @Nullable ChainProfile chain;
         private int retries = 3;
         private @Nullable RpcRetryConfig retryConfig;
+        private TestNodeMode testMode = TestNodeMode.ANVIL;
 
         /**
          * Creates a new builder instance.
@@ -1422,6 +1545,33 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
         }
 
         /**
+         * Sets the test node mode for tester clients.
+         *
+         * <p>This determines which RPC method prefixes to use for test-specific
+         * operations like snapshots, impersonation, and time manipulation.
+         *
+         * <p>Default is {@link TestNodeMode#ANVIL}.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * Brane.Tester tester = Brane.builder()
+         *     .rpcUrl("http://localhost:8545")
+         *     .signer(key)
+         *     .testMode(TestNodeMode.HARDHAT)
+         *     .buildTester();
+         * }</pre>
+         *
+         * @param testMode the test node mode
+         * @return this builder for chaining
+         * @since 0.3.0
+         * @see TestNodeMode
+         */
+        public Builder testMode(TestNodeMode testMode) {
+            this.testMode = testMode;
+            return this;
+        }
+
+        /**
          * Builds a {@link Brane} client based on the configured options.
          *
          * <p>This method returns:
@@ -1510,6 +1660,47 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
             BraneProvider resolvedProvider = resolveProvider();
             RpcRetryConfig resolvedRetryConfig = retryConfig != null ? retryConfig : RpcRetryConfig.defaults();
             return new DefaultSigner(resolvedProvider, resolvedSigner, chain, retries, resolvedRetryConfig);
+        }
+
+        /**
+         * Builds a test-capable {@link Brane.Tester} client.
+         *
+         * <p>Use this method when you need test node operations such as snapshots,
+         * impersonation, and time manipulation. Requires a signer to be configured.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * Brane.Tester tester = Brane.builder()
+         *     .rpcUrl("http://localhost:8545")
+         *     .signer(AnvilSigners.defaultKey())
+         *     .testMode(TestNodeMode.ANVIL)
+         *     .buildTester();
+         *
+         * // Take snapshot before test
+         * SnapshotId snapshot = tester.snapshot();
+         * try {
+         *     // Test operations...
+         * } finally {
+         *     tester.revert(snapshot);
+         * }
+         * }</pre>
+         *
+         * @return a new test-capable {@link Brane.Tester} instance
+         * @throws IllegalStateException if neither rpcUrl nor provider is configured
+         * @throws IllegalStateException if no signer is configured
+         * @since 0.3.0
+         * @see TestNodeMode
+         */
+        public Tester buildTester() {
+            validateProviderConfig();
+            final io.brane.core.crypto.Signer resolvedSigner = signer;
+            if (resolvedSigner == null) {
+                throw new IllegalStateException(
+                        "Cannot build Tester without a signer. Call signer() before buildTester().");
+            }
+            BraneProvider resolvedProvider = resolveProvider();
+            RpcRetryConfig resolvedRetryConfig = retryConfig != null ? retryConfig : RpcRetryConfig.defaults();
+            return new DefaultTester(resolvedProvider, resolvedSigner, chain, retries, resolvedRetryConfig, testMode);
         }
 
         /**
