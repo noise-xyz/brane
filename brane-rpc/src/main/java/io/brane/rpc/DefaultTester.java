@@ -679,6 +679,22 @@ final class DefaultTester implements Brane.Tester {
         }
 
         @Override
+        public HexData call(final CallRequest request) {
+            ensureOpen();
+            // Build call request with the impersonated address as from
+            final CallRequest impersonatedRequest = new CallRequest(
+                    address, // Override from with impersonated address
+                    request.to(),
+                    request.data(),
+                    request.value(),
+                    request.gas(),
+                    request.gasPrice(),
+                    request.maxFeePerGas(),
+                    request.maxPriorityFeePerGas());
+            return tester.call(impersonatedRequest);
+        }
+
+        @Override
         public void close() {
             if (closed.compareAndSet(false, true)) {
                 try {

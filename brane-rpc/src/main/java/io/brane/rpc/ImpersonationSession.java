@@ -4,6 +4,7 @@ import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
+import io.brane.core.types.HexData;
 
 /**
  * Represents an active impersonation session for a specific address on a test node.
@@ -93,6 +94,22 @@ public interface ImpersonationSession extends AutoCloseable {
      */
     TransactionReceipt sendTransactionAndWait(
             TransactionRequest request, long timeoutMillis, long pollIntervalMillis);
+
+    /**
+     * Executes a read-only call from the impersonated address.
+     * <p>
+     * The call's {@code from} field is automatically set to the impersonated
+     * address. Any existing {@code from} value in the request is ignored.
+     * <p>
+     * This is useful for testing view functions that behave differently based
+     * on msg.sender, such as balance checks or permission verifications.
+     *
+     * @param request the call request (from address is automatically set)
+     * @return the call result data
+     * @throws io.brane.core.error.RpcException if the RPC call fails
+     * @since 0.3.0
+     */
+    HexData call(CallRequest request);
 
     /**
      * Stops the impersonation session.
