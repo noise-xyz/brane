@@ -209,13 +209,13 @@ class DefaultTesterTest {
     class LoadStateValidation {
 
         @Test
-        void throwsOnNullState() {
+        void loadStateWithNullThrowsNullPointerException() {
             Brane.Tester tester = createTester();
 
             NullPointerException ex = assertThrows(
                     NullPointerException.class,
                     () -> tester.loadState(null));
-            assertEquals("state must not be null", ex.getMessage());
+            assertEquals("state", ex.getMessage());
         }
     }
 
