@@ -58,4 +58,22 @@ public final class PrivateKeySigner implements Signer {
         int v = sig.v() + 27;
         return new Signature(sig.r(), sig.s(), v);
     }
+
+    /**
+     * Signs a raw 32-byte hash directly without any prefixing.
+     *
+     * <p>This is used for EIP-712 typed data signing where the hash
+     * already includes the appropriate prefix (0x19 0x01).
+     *
+     * @param hash the 32-byte hash to sign
+     * @return signature with v=0 or v=1
+     * @throws IllegalArgumentException if hash is not 32 bytes
+     */
+    public Signature signRawHash(final byte[] hash) {
+        java.util.Objects.requireNonNull(hash, "hash cannot be null");
+        if (hash.length != 32) {
+            throw new IllegalArgumentException("Hash must be 32 bytes, got " + hash.length);
+        }
+        return privateKey.signFast(hash);
+    }
 }
