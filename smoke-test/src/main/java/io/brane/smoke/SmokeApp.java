@@ -150,6 +150,7 @@ public class SmokeApp {
                 testEip712TypeSafeSigning(); // Scenario R
                 testEip712DynamicSigning(); // Scenario S
                 testEip712JsonParsing(); // Scenario T
+                testTesterOperations(); // Scenario U
             }
 
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
@@ -1141,5 +1142,126 @@ public class SmokeApp {
         System.out.println("  ✓ parseAndValidate() produces same hash");
 
         System.out.println("  ✅ Scenario T: EIP-712 JSON Parsing PASSED");
+    }
+
+    /**
+     * Scenario U: Tester Client Operations.
+     * <p>
+     * Tests the Brane.Tester client for local development and testing:
+     * - connectTest() factory method
+     * - setBalance() for account manipulation
+     * - snapshot()/revert() for state management
+     * - impersonate() for testing without private keys
+     * - mine() for block production control
+     */
+    private static void testTesterOperations() {
+        System.out.println("\n[Scenario U] Tester Client Operations");
+
+        String rpcUrl = "http://127.0.0.1:8545";
+
+        try (Brane.Tester tester = Brane.connectTest(rpcUrl)) {
+            // 1. Test connectTest() and basic connectivity
+            System.out.println("  Testing connectTest()...");
+            BigInteger chainId = tester.chainId();
+            if (!chainId.equals(BigInteger.valueOf(31337))) {
+                throw new RuntimeException("Unexpected chain ID: " + chainId + " (expected 31337)");
+            }
+            System.out.println("    ✓ Connected to Anvil (Chain ID: " + chainId + ")");
+
+            // 2. Test setBalance()
+            System.out.println("  Testing setBalance()...");
+            Address testAccount = new Address("0x1111111111111111111111111111111111111111");
+            Wei targetBalance = Wei.fromEther(new BigDecimal("100"));
+
+            tester.setBalance(testAccount, targetBalance);
+            BigInteger actualBalance = tester.getBalance(testAccount);
+
+            if (!actualBalance.equals(targetBalance.value())) {
+                throw new RuntimeException("Balance mismatch: expected " + targetBalance.value() + ", got " + actualBalance);
+            }
+            System.out.println("    ✓ setBalance() works (set 100 ETH)");
+
+            // 3. Test snapshot()/revert()
+            System.out.println("  Testing snapshot()/revert()...");
+            io.brane.rpc.SnapshotId snapshot = tester.snapshot();
+            System.out.println("    Snapshot taken: " + snapshot.value());
+
+            // Modify state after snapshot
+            Wei modifiedBalance = Wei.fromEther(new BigDecimal("999"));
+            tester.setBalance(testAccount, modifiedBalance);
+            BigInteger balanceAfterModify = tester.getBalance(testAccount);
+            if (!balanceAfterModify.equals(modifiedBalance.value())) {
+                throw new RuntimeException("Balance not modified correctly");
+            }
+
+            // Revert to snapshot
+            boolean reverted = tester.revert(snapshot);
+            if (!reverted) {
+                throw new RuntimeException("Revert returned false");
+            }
+
+            BigInteger balanceAfterRevert = tester.getBalance(testAccount);
+            if (!balanceAfterRevert.equals(targetBalance.value())) {
+                throw new RuntimeException("Balance not restored after revert: expected " + targetBalance.value() + ", got " + balanceAfterRevert);
+            }
+            System.out.println("    ✓ snapshot()/revert() works");
+
+            // 4. Test impersonate()
+            System.out.println("  Testing impersonate()...");
+            Address whaleAddress = new Address("0x2222222222222222222222222222222222222222");
+            Address recipient = io.brane.rpc.AnvilSigners.keyAt(1).address();
+
+            // Fund the whale
+            tester.setBalance(whaleAddress, Wei.fromEther(new BigDecimal("50")));
+            BigInteger recipientBalanceBefore = tester.getBalance(recipient);
+
+            Wei transferAmount = Wei.fromEther(new BigDecimal("1"));
+
+            try (io.brane.rpc.ImpersonationSession session = tester.impersonate(whaleAddress)) {
+                // Verify session address matches
+                if (!session.address().equals(whaleAddress)) {
+                    throw new RuntimeException("Session address mismatch");
+                }
+
+                // Send transaction as impersonated account
+                TransactionRequest request = new TransactionRequest(
+                        null, recipient, transferAmount,
+                        21_000L, null, null, null, null, null, false, null);
+
+                TransactionReceipt receipt = session.sendTransactionAndWait(request);
+                if (!receipt.status()) {
+                    throw new RuntimeException("Impersonated transaction failed");
+                }
+            }
+
+            BigInteger recipientBalanceAfter = tester.getBalance(recipient);
+            if (!recipientBalanceAfter.equals(recipientBalanceBefore.add(transferAmount.value()))) {
+                throw new RuntimeException("Recipient did not receive funds from impersonated tx");
+            }
+            System.out.println("    ✓ impersonate() works");
+
+            // 5. Test mine()
+            System.out.println("  Testing mine()...");
+            BlockHeader blockBefore = tester.getLatestBlock();
+            long blockNumberBefore = blockBefore.number();
+
+            tester.mine();
+            BlockHeader blockAfterOne = tester.getLatestBlock();
+            if (blockAfterOne.number() != blockNumberBefore + 1) {
+                throw new RuntimeException("mine() did not advance block by 1");
+            }
+
+            tester.mine(5);
+            BlockHeader blockAfterFive = tester.getLatestBlock();
+            if (blockAfterFive.number() != blockNumberBefore + 6) {
+                throw new RuntimeException("mine(5) did not advance blocks correctly");
+            }
+            System.out.println("    ✓ mine() works (mined 6 blocks total)");
+
+            System.out.println("  ✅ Scenario U: Tester Client Operations PASSED");
+
+        } catch (Exception e) {
+            throw new RuntimeException("Tester operations test failed", e);
+        }
     }
 }
