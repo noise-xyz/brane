@@ -36,15 +36,16 @@ import io.brane.core.types.Hash;
  * // Impersonation automatically stopped
  * }</pre>
  *
- * @since 0.1.0-alpha
  * @see Brane.Tester
+ * @since 0.2.0
  */
 public interface ImpersonationSession extends AutoCloseable {
 
     /**
      * Returns the address being impersonated in this session.
      *
-     * @return the impersonated address
+     * @return the impersonated address, never {@code null}
+     * @since 0.2.0
      */
     Address address();
 
@@ -61,6 +62,7 @@ public interface ImpersonationSession extends AutoCloseable {
      * @param request the transaction request (from address is automatically set)
      * @return the transaction hash
      * @throws io.brane.core.error.RpcException if the RPC call fails
+     * @since 0.2.0
      */
     Hash sendTransaction(TransactionRequest request);
 
@@ -73,6 +75,7 @@ public interface ImpersonationSession extends AutoCloseable {
      * @return the transaction receipt once confirmed
      * @throws io.brane.core.error.RpcException if the RPC call fails or times out
      * @throws io.brane.core.error.RevertException if the transaction reverts
+     * @since 0.2.0
      */
     TransactionReceipt sendTransactionAndWait(TransactionRequest request);
 
@@ -86,6 +89,7 @@ public interface ImpersonationSession extends AutoCloseable {
      * @return the transaction receipt once confirmed
      * @throws io.brane.core.error.RpcException if the RPC call fails or times out
      * @throws io.brane.core.error.RevertException if the transaction reverts
+     * @since 0.2.0
      */
     TransactionReceipt sendTransactionAndWait(
             TransactionRequest request, long timeoutMillis, long pollIntervalMillis);
@@ -99,6 +103,8 @@ public interface ImpersonationSession extends AutoCloseable {
      * <p>
      * This method does not throw exceptions. Any errors during cleanup are logged
      * but not propagated.
+     *
+     * @since 0.2.0
      */
     @Override
     void close();
