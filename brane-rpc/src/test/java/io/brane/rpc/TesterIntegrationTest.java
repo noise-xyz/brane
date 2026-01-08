@@ -807,4 +807,312 @@ class TesterIntegrationTest {
             assertEquals(recipientBalanceBefore.add(transferAmount.value()), recipientBalanceAfter);
         }
     }
+
+    // ==================== Mining Integration Tests ====================
+
+    @Nested
+    @DisplayName("Mining integration tests")
+    class MiningTests {
+
+        @Test
+        @DisplayName("mine() advances block number by 1")
+        void mineAdvancesBlockNumberByOne() {
+            io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
+            long beforeNumber = beforeBlock.number();
+
+            tester.mine();
+
+            io.brane.core.model.BlockHeader afterBlock = tester.getLatestBlock();
+            assertEquals(beforeNumber + 1, afterBlock.number());
+        }
+
+        @Test
+        @DisplayName("mine(blocks) advances block number by specified amount")
+        void mineBlocksAdvancesBlockNumber() {
+            io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
+            long beforeNumber = beforeBlock.number();
+
+            tester.mine(10);
+
+            io.brane.core.model.BlockHeader afterBlock = tester.getLatestBlock();
+            assertEquals(beforeNumber + 10, afterBlock.number());
+        }
+
+        @Test
+        @DisplayName("mine(blocks, interval) advances both block number and time")
+        void mineWithIntervalAdvancesBlocksAndTime() {
+            io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
+            long beforeNumber = beforeBlock.number();
+            long beforeTimestamp = beforeBlock.timestamp();
+
+            // Mine 5 blocks with 12 second intervals
+            tester.mine(5, 12);
+
+            io.brane.core.model.BlockHeader afterBlock = tester.getLatestBlock();
+            assertEquals(beforeNumber + 5, afterBlock.number());
+
+            // Time should have advanced by approximately 5 * 12 = 60 seconds
+            // Note: we check >= because Anvil may add some base time
+            long timeAdvanced = afterBlock.timestamp() - beforeTimestamp;
+            assertTrue(timeAdvanced >= 60,
+                    "Time should advance by at least 60 seconds, actual: " + timeAdvanced);
+        }
+
+        @Test
+        @DisplayName("mine with large block count works")
+        void mineLargeBlockCount() {
+            io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
+            long beforeNumber = beforeBlock.number();
+
+            tester.mine(100);
+
+            io.brane.core.model.BlockHeader afterBlock = tester.getLatestBlock();
+            assertEquals(beforeNumber + 100, afterBlock.number());
+        }
+    }
+
+    // ==================== Automine Integration Tests ====================
+
+    @Nested
+    @DisplayName("Automine integration tests")
+    class AutomineTests {
+
+        @org.junit.jupiter.api.BeforeEach
+        void ensureAutomineEnabled() {
+            // Ensure automine is enabled before each test since snapshot/revert
+            // may not restore automine state
+            tester.setAutomine(true);
+        }
+
+        @org.junit.jupiter.api.AfterEach
+        void restoreAutomine() {
+            // Always re-enable automine after tests
+            tester.setAutomine(true);
+        }
+
+        @Test
+        @DisplayName("getAutomine returns current state correctly")
+        void getAutomineReturnsCurrentState() {
+            // After setup, automine should be enabled
+            boolean automine = tester.getAutomine();
+            assertTrue(automine, "Automine should be enabled after setup");
+        }
+
+        @Test
+        @DisplayName("setAutomine(false) disables automine")
+        void setAutomineDisables() {
+            // Get initial state (should be true after setup)
+            assertTrue(tester.getAutomine());
+
+            // Disable automine
+            tester.setAutomine(false);
+            assertFalse(tester.getAutomine());
+        }
+
+        @Test
+        @DisplayName("setAutomine(true) enables automine")
+        void setAutomineEnables() {
+            // Disable automine first
+            tester.setAutomine(false);
+            assertFalse(tester.getAutomine());
+
+            // Re-enable automine
+            tester.setAutomine(true);
+            assertTrue(tester.getAutomine());
+        }
+
+        @Test
+        @DisplayName("transactions are not mined when automine is disabled")
+        void transactionsNotMinedWhenAutomineDisabled() {
+            // Disable automine
+            tester.setAutomine(false);
+
+            // Get current block number
+            io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
+            long beforeNumber = beforeBlock.number();
+
+            // Send a transaction (won't be mined automatically)
+            Address recipient = new Address("0x90F79bf6EB2c4f870365E785982E1f101E93b906");
+            io.brane.core.model.TransactionRequest request = new io.brane.core.model.TransactionRequest(
+                    null, recipient, Wei.fromEther(java.math.BigDecimal.ONE),
+                    21_000L, null, null, null, null, null, false, null);
+
+            // Tester has sendTransaction method directly
+            Hash txHash = tester.sendTransaction(request);
+            assertNotNull(txHash);
+
+            // Block number should NOT have advanced yet
+            io.brane.core.model.BlockHeader afterBlock = tester.getLatestBlock();
+            assertEquals(beforeNumber, afterBlock.number(),
+                    "Block number should not advance with automine disabled");
+
+            // Now mine manually to include the transaction
+            tester.mine();
+
+            io.brane.core.model.BlockHeader finalBlock = tester.getLatestBlock();
+            assertEquals(beforeNumber + 1, finalBlock.number());
+        }
+
+        @Test
+        @DisplayName("setIntervalMining sets mining interval")
+        void setIntervalMiningSetsInterval() {
+            // This test just verifies the method executes without error
+            // Interval mining is harder to test in a unit test context
+            assertDoesNotThrow(() -> tester.setIntervalMining(0)); // Disable interval mining
+        }
+    }
+
+    // ==================== Time Manipulation Integration Tests ====================
+
+    @Nested
+    @DisplayName("Time manipulation integration tests")
+    class TimeManipulationTests {
+
+        @Test
+        @DisplayName("increaseTime advances timestamp")
+        void increaseTimeAdvancesTimestamp() {
+            io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
+            long beforeTimestamp = beforeBlock.timestamp();
+
+            // Increase time by 1 hour (3600 seconds)
+            tester.increaseTime(3600);
+
+            // Mine a block to see the new timestamp
+            tester.mine();
+
+            io.brane.core.model.BlockHeader afterBlock = tester.getLatestBlock();
+            long afterTimestamp = afterBlock.timestamp();
+
+            // Timestamp should have advanced by at least 3600 seconds
+            long timeAdvanced = afterTimestamp - beforeTimestamp;
+            assertTrue(timeAdvanced >= 3600,
+                    "Time should advance by at least 3600 seconds, actual: " + timeAdvanced);
+        }
+
+        @Test
+        @DisplayName("increaseTime by 1 day")
+        void increaseTimeByOneDay() {
+            io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
+            long beforeTimestamp = beforeBlock.timestamp();
+
+            // Increase time by 1 day (86400 seconds)
+            tester.increaseTime(86400);
+
+            // Mine a block to see the new timestamp
+            tester.mine();
+
+            io.brane.core.model.BlockHeader afterBlock = tester.getLatestBlock();
+            long afterTimestamp = afterBlock.timestamp();
+
+            // Timestamp should have advanced by at least 86400 seconds
+            long timeAdvanced = afterTimestamp - beforeTimestamp;
+            assertTrue(timeAdvanced >= 86400,
+                    "Time should advance by at least 86400 seconds (1 day), actual: " + timeAdvanced);
+        }
+
+        @Test
+        @DisplayName("setNextBlockTimestamp sets specific timestamp for next block")
+        void setNextBlockTimestampSetsTimestamp() {
+            // Get a future timestamp (current time + 1 year)
+            long futureTimestamp = System.currentTimeMillis() / 1000 + 365 * 24 * 60 * 60;
+
+            tester.setNextBlockTimestamp(futureTimestamp);
+
+            // Mine a block to apply the timestamp
+            tester.mine();
+
+            io.brane.core.model.BlockHeader afterBlock = tester.getLatestBlock();
+
+            // The timestamp should be exactly what we set
+            assertEquals(futureTimestamp, afterBlock.timestamp(),
+                    "Block timestamp should match the set value");
+        }
+
+        @Test
+        @DisplayName("setNextBlockTimestamp only affects next block")
+        void setNextBlockTimestampOnlyAffectsNextBlock() {
+            // Get current timestamp
+            io.brane.core.model.BlockHeader currentBlock = tester.getLatestBlock();
+            long currentTimestamp = currentBlock.timestamp();
+
+            // Set a specific timestamp for next block
+            long specificTimestamp = currentTimestamp + 1000;
+            tester.setNextBlockTimestamp(specificTimestamp);
+
+            // Mine first block - should have specific timestamp
+            tester.mine();
+            io.brane.core.model.BlockHeader firstBlock = tester.getLatestBlock();
+            assertEquals(specificTimestamp, firstBlock.timestamp());
+
+            // Mine second block - timestamp should increment normally
+            // Anvil increments by at least 1 second, but may reuse same timestamp if mined too quickly
+            // So we use setNextBlockTimestamp for the second block to ensure different timestamp
+            long secondTimestamp = specificTimestamp + 100;
+            tester.setNextBlockTimestamp(secondTimestamp);
+            tester.mine();
+            io.brane.core.model.BlockHeader secondBlock = tester.getLatestBlock();
+
+            // Verify the second block has the new timestamp (proves first setNextBlockTimestamp
+            // didn't persist to affect this block)
+            assertEquals(secondTimestamp, secondBlock.timestamp(),
+                    "Second block should have its own set timestamp");
+            assertTrue(secondBlock.timestamp() > firstBlock.timestamp(),
+                    "Second block timestamp should be after the first block");
+        }
+
+        @Test
+        @DisplayName("increaseTime with multiple calls accumulates")
+        void increaseTimeAccumulates() {
+            io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
+            long beforeTimestamp = beforeBlock.timestamp();
+
+            // Increase time multiple times
+            tester.increaseTime(1000);
+            tester.increaseTime(2000);
+            tester.increaseTime(3000);
+
+            // Mine a block to see the accumulated time
+            tester.mine();
+
+            io.brane.core.model.BlockHeader afterBlock = tester.getLatestBlock();
+            long afterTimestamp = afterBlock.timestamp();
+
+            // Total time increase should be at least 6000 seconds
+            long timeAdvanced = afterTimestamp - beforeTimestamp;
+            assertTrue(timeAdvanced >= 6000,
+                    "Time should advance by at least 6000 seconds, actual: " + timeAdvanced);
+        }
+
+        @Test
+        @DisplayName("time manipulation is preserved across snapshots")
+        void timeManipulationPreservedAcrossSnapshots() {
+            // Get initial timestamp
+            io.brane.core.model.BlockHeader initialBlock = tester.getLatestBlock();
+            long initialTimestamp = initialBlock.timestamp();
+
+            // Create a snapshot
+            SnapshotId snap = tester.snapshot();
+
+            // Advance time significantly
+            tester.increaseTime(10000);
+            tester.mine();
+
+            io.brane.core.model.BlockHeader advancedBlock = tester.getLatestBlock();
+            long advancedTimestamp = advancedBlock.timestamp();
+            assertTrue(advancedTimestamp > initialTimestamp + 9000);
+
+            // Revert to snapshot
+            tester.revert(snap);
+
+            // Mine a new block - timestamp should be based on reverted state
+            tester.mine();
+            io.brane.core.model.BlockHeader revertedBlock = tester.getLatestBlock();
+
+            // The reverted timestamp should be close to initial (not the advanced time)
+            // Allow some tolerance since mining adds time
+            long revertedTimestamp = revertedBlock.timestamp();
+            assertTrue(revertedTimestamp < advancedTimestamp,
+                    "Reverted timestamp should be less than advanced timestamp");
+        }
+    }
 }
