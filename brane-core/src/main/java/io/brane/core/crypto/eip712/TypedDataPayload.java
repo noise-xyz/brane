@@ -25,6 +25,7 @@ public record TypedDataPayload(
         @JsonProperty("message") Map<String, Object> message
 ) {
     public TypedDataPayload {
+        Objects.requireNonNull(domain, "domain");
         Objects.requireNonNull(primaryType, "primaryType");
         Objects.requireNonNull(types, "types");
         Objects.requireNonNull(message, "message");
