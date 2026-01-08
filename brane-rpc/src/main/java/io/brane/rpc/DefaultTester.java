@@ -396,21 +396,21 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public void setNextBlockBaseFee(final Wei baseFee) {
-        java.util.Objects.requireNonNull(baseFee, "baseFee");
+        java.util.Objects.requireNonNull(baseFee, "baseFee must not be null");
         final String baseFeeHex = "0x" + baseFee.value().toString(16);
         sendVoid(mode.prefix() + "setNextBlockBaseFeePerGas", List.of(baseFeeHex));
     }
 
     @Override
     public void setBlockGasLimit(final java.math.BigInteger gasLimit) {
-        java.util.Objects.requireNonNull(gasLimit, "gasLimit");
+        java.util.Objects.requireNonNull(gasLimit, "gasLimit must not be null");
         final String gasLimitHex = "0x" + gasLimit.toString(16);
         sendVoid(mode.prefix() + "setBlockGasLimit", List.of(gasLimitHex));
     }
 
     @Override
     public void setCoinbase(final Address coinbase) {
-        java.util.Objects.requireNonNull(coinbase, "coinbase");
+        java.util.Objects.requireNonNull(coinbase, "coinbase must not be null");
         sendVoid(mode.prefix() + "setCoinbase", List.of(coinbase.value()));
     }
 
@@ -450,7 +450,7 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public boolean loadState(final HexData state) {
-        java.util.Objects.requireNonNull(state, "state");
+        java.util.Objects.requireNonNull(state, "state must not be null");
         if (mode != TestNodeMode.ANVIL) {
             throw new UnsupportedOperationException("loadState is only supported by Anvil");
         }
