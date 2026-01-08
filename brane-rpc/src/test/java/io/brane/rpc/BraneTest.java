@@ -411,4 +411,114 @@ class BraneTest {
         assertFalse(reader.canSubscribe(),
                 "Explicit provider should have priority over wsUrl");
     }
+
+    // ==================== Tester Builder Tests (TESTER-09) ====================
+
+    @Test
+    void buildTesterReturnsTesterInstance() {
+        // buildTester() should return a Tester when signer is provided
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        assertNotNull(tester);
+        assertInstanceOf(Brane.Tester.class, tester);
+        assertTrue(tester.canSign());
+    }
+
+    @Test
+    void buildTesterWithoutSignerThrows() {
+        // buildTester() without signer should throw IllegalStateException
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> Brane.builder().provider(provider).buildTester());
+
+        assertTrue(ex.getMessage().contains("signer"),
+                "Exception message should mention signer");
+    }
+
+    @Test
+    void buildTesterWithoutRpcUrlOrProviderThrows() {
+        // buildTester() without rpcUrl or provider should throw IllegalStateException
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        IllegalStateException ex = assertThrows(
+                IllegalStateException.class,
+                () -> Brane.builder().signer(signer).buildTester());
+
+        assertTrue(ex.getMessage().contains("rpcUrl") || ex.getMessage().contains("provider"),
+                "Exception message should mention rpcUrl or provider");
+    }
+
+    @Test
+    void testModeDefaultsToAnvil() {
+        // Default testMode should be ANVIL
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        assertNotNull(tester);
+        // Tester should be created successfully with default ANVIL mode
+        assertInstanceOf(Brane.Tester.class, tester);
+    }
+
+    @Test
+    void testModeCanBeSetToHardhat() {
+        // testMode() should accept HARDHAT
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .testMode(TestNodeMode.HARDHAT)
+                .buildTester();
+
+        assertNotNull(tester);
+        assertInstanceOf(Brane.Tester.class, tester);
+    }
+
+    @Test
+    void testModeCanBeSetToGanache() {
+        // testMode() should accept GANACHE
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .testMode(TestNodeMode.GANACHE)
+                .buildTester();
+
+        assertNotNull(tester);
+        assertInstanceOf(Brane.Tester.class, tester);
+    }
+
+    @Test
+    void testerCanSignReturnsTrue() {
+        // Tester.canSign() should return true
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        assertTrue(tester.canSign(), "Tester should be able to sign transactions");
+    }
+
+    @Test
+    void patternMatchingWorksWithTester() {
+        // Test pattern matching includes Tester case
+        Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        Brane tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        String result = switch (tester) {
+            case Brane.Reader r -> "reader";
+            case Brane.Signer s -> "signer";
+            case Brane.Tester t -> "tester";
+        };
+        assertEquals("tester", result);
+    }
 }
