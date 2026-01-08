@@ -1,5 +1,12 @@
 package io.brane.core.crypto;
 
+import java.util.List;
+import java.util.Map;
+
+import io.brane.core.crypto.eip712.Eip712Domain;
+import io.brane.core.crypto.eip712.TypedData;
+import io.brane.core.crypto.eip712.TypedDataField;
+import io.brane.core.crypto.eip712.TypedDataSigner;
 import io.brane.core.tx.UnsignedTransaction;
 import io.brane.core.types.Address;
 
@@ -45,4 +52,33 @@ public interface Signer {
      * @throws NullPointerException if message is null
      */
     Signature signMessage(byte[] message);
+
+    /**
+     * Signs typed data according to EIP-712.
+     *
+     * @param domain      the EIP-712 domain
+     * @param primaryType the primary type name
+     * @param types       type definitions
+     * @param message     message data
+     * @return signature with v=27 or v=28
+     */
+    default Signature signTypedData(
+            Eip712Domain domain,
+            String primaryType,
+            Map<String, List<TypedDataField>> types,
+            Map<String, Object> message) {
+        return TypedDataSigner.signTypedData(domain, primaryType, types, message, this);
+    }
+
+    /**
+     * Signs typed data according to EIP-712.
+     * <p>
+     * Convenience overload for the type-safe {@link TypedData} API.
+     *
+     * @param typedData the typed data to sign
+     * @return signature with v=27 or v=28
+     */
+    default Signature signTypedData(TypedData<?> typedData) {
+        return typedData.sign(this);
+    }
 }
