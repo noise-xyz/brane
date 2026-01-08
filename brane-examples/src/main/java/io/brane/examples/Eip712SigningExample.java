@@ -135,7 +135,7 @@ public final class Eip712SigningExample {
         // Define the domain separator - this uniquely identifies the protocol/contract
         // that will verify the signature. All fields are optional but should match
         // what the verifying contract expects.
-        Address tokenAddress = new Address("0x6B175474E89094C44Da98b954EescdEAC495271dF");
+        Address tokenAddress = new Address("0x6B175474E89094C44Da98b954EecdBeAC495271d");
         Eip712Domain permitDomain = Eip712Domain.builder()
                 .name("MyToken")           // Protocol/token name
                 .version("1")              // Domain version
