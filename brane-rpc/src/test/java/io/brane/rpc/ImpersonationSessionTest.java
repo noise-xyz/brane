@@ -271,6 +271,35 @@ class ImpersonationSessionTest {
             // Assert
             assertEquals(TX_HASH, result);
         }
+
+        @Test
+        @DisplayName("call sets from address to impersonated address")
+        @SuppressWarnings("unchecked")
+        void callWithImpersonatedAddressSetsFromCorrectly() {
+            // Arrange
+            HexData callResult = new HexData("0x0000000000000000000000000000000000000000000000000000000000000001");
+            JsonRpcResponse callResponse = new JsonRpcResponse("2.0", callResult.value(), null, "2");
+            ArgumentCaptor<List<?>> paramsCaptor = ArgumentCaptor.forClass(List.class);
+            when(provider.send(eq("eth_call"), paramsCaptor.capture())).thenReturn(callResponse);
+
+            ImpersonationSession session = createSession();
+
+            HexData calldata = new HexData("0x70a08231"); // balanceOf selector
+            CallRequest request = new CallRequest(
+                    null, // from - will be set by session
+                    RECIPIENT_ADDRESS, // to
+                    calldata,
+                    null, null, null, null, null);
+
+            // Act
+            session.call(request);
+
+            // Assert
+            List<?> params = paramsCaptor.getValue();
+            assertEquals(2, params.size()); // [callParams, blockTag]
+            Map<String, Object> callParams = (Map<String, Object>) params.get(0);
+            assertEquals(IMPERSONATED_ADDRESS.value(), callParams.get("from"));
+        }
     }
 
     // ==================== Session State Tests ====================
