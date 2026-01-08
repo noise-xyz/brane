@@ -318,8 +318,10 @@ final class TypedDataEncoder {
      * string encoding: keccak256(value)
      */
     private static byte[] encodeString(Object value) {
-        String str = (String) value;
-        return Keccak256.hash(str.getBytes(StandardCharsets.UTF_8));
+        if (value instanceof String str) {
+            return Keccak256.hash(str.getBytes(StandardCharsets.UTF_8));
+        }
+        throw Eip712Exception.invalidValue("string", value);
     }
 
     /**
