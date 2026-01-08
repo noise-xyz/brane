@@ -393,7 +393,7 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public void setBlockGasLimit(final java.math.BigInteger gasLimit) {
-        java.util.Objects.requireNonNull(gasLimit, "gasLimit must not be null");
+        java.util.Objects.requireNonNull(gasLimit, "gasLimit");
         final String gasLimitHex = "0x" + gasLimit.toString(16);
         sendVoid(mode.prefix() + "setBlockGasLimit", List.of(gasLimitHex));
     }
