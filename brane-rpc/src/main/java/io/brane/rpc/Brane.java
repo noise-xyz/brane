@@ -1127,7 +1127,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @see AnvilSigners
      * @since 0.2.0
      */
-    non-sealed interface Tester extends Brane {
+    sealed interface Tester extends Brane permits DefaultTester {
 
         // ==================== Signer Conversion ====================
 
