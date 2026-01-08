@@ -241,6 +241,11 @@ class SnapshotIdTest {
         }
 
         @Override
+        public void setBlockGasLimit(java.math.BigInteger gasLimit) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
         public void setCoinbase(io.brane.core.types.Address coinbase) {
             throw new UnsupportedOperationException("Mock tester");
         }

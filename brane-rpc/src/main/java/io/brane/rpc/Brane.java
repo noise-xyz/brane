@@ -1342,6 +1342,16 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
         void setNextBlockBaseFee(io.brane.core.types.Wei baseFee);
 
         /**
+         * Sets the gas limit for the next block.
+         *
+         * <p>This is useful for testing block gas limit edge cases and
+         * transaction gas requirements.
+         *
+         * @param gasLimit the gas limit for the next block
+         */
+        void setBlockGasLimit(java.math.BigInteger gasLimit);
+
+        /**
          * Sets the coinbase (block reward recipient) address.
          *
          * <p>This affects the {@code block.coinbase} value in subsequent blocks.

@@ -426,6 +426,18 @@ final class DefaultTester implements Brane.Tester {
     }
 
     @Override
+    public void setBlockGasLimit(final java.math.BigInteger gasLimit) {
+        java.util.Objects.requireNonNull(gasLimit, "gasLimit must not be null");
+        final String method = mode.prefix() + "setBlockGasLimit";
+        final String gasLimitHex = "0x" + gasLimit.toString(16);
+        final JsonRpcResponse response = sendWithRetry(method, List.of(gasLimitHex));
+        if (response.hasError()) {
+            final JsonRpcError err = response.error();
+            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+        }
+    }
+
+    @Override
     public void setCoinbase(final Address coinbase) {
         final String method = mode.prefix() + "setCoinbase";
         final JsonRpcResponse response = sendWithRetry(method, List.of(coinbase.value()));
