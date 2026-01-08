@@ -1115,4 +1115,196 @@ class TesterIntegrationTest {
                     "Reverted timestamp should be less than advanced timestamp");
         }
     }
+
+    // ==================== Reset Integration Tests ====================
+
+    /**
+     * Integration tests for {@link Brane.Tester#reset()} and {@link Brane.Tester#reset(String, long)}.
+     *
+     * <p>These tests verify that reset() properly clears blockchain state and that
+     * reset(forkUrl, blockNumber) can set up forking.
+     *
+     * <p><strong>Important:</strong> These tests call {@code reset()} which invalidates
+     * any existing snapshots. Each test creates a fresh snapshot after reset to allow
+     * the class-level {@code @AfterEach} to clean up properly.
+     */
+    @Nested
+    @DisplayName("Reset integration tests")
+    class ResetTests {
+
+        /**
+         * After each reset test, we need to create a new snapshot for the class-level
+         * @AfterEach to work with, since reset() invalidates all prior snapshots.
+         */
+        @org.junit.jupiter.api.AfterEach
+        void createFreshSnapshotAfterReset() {
+            // Reset invalidates the class-level snapshot, so update it
+            snapshot = tester.snapshot();
+        }
+
+        @Test
+        @DisplayName("reset() resets block number to genesis")
+        void resetResetsBlockNumberToGenesis() {
+            // Mine several blocks
+            tester.mine(50);
+
+            io.brane.core.model.BlockHeader blockBeforeReset = tester.getLatestBlock();
+            assertTrue(blockBeforeReset.number() >= 50,
+                    "Block number should be at least 50 after mining");
+
+            // Reset the chain
+            tester.reset();
+
+            // After reset, block number should be back to 0
+            io.brane.core.model.BlockHeader blockAfterReset = tester.getLatestBlock();
+            assertEquals(0, blockAfterReset.number(),
+                    "Block number should be 0 after reset");
+        }
+
+        @Test
+        @DisplayName("reset() restores default account balances")
+        void resetRestoresDefaultAccountBalances() {
+            // Anvil's default test account balance is 10000 ETH
+            Wei defaultBalance = Wei.fromEther(new java.math.BigDecimal("10000"));
+
+            // Modify balance to something different
+            Wei modifiedBalance = Wei.fromEther(new java.math.BigDecimal("12345.6789"));
+            tester.setBalance(TEST_ADDRESS, modifiedBalance);
+            assertEquals(modifiedBalance.value(), tester.getBalance(TEST_ADDRESS));
+
+            // Reset the chain
+            tester.reset();
+
+            // After reset, balance should be back to Anvil's default (10000 ETH)
+            BigInteger balanceAfterReset = tester.getBalance(TEST_ADDRESS);
+            assertEquals(defaultBalance.value(), balanceAfterReset,
+                    "Balance should be restored to default 10000 ETH after reset");
+        }
+
+        @Test
+        @DisplayName("reset() resets nonces to zero")
+        void resetResetsNoncesToZero() {
+            // Set a non-zero nonce
+            tester.setNonce(TEST_ADDRESS, 999);
+            assertEquals(BigInteger.valueOf(999), getNonce(TEST_ADDRESS));
+
+            // Reset the chain
+            tester.reset();
+
+            // Nonce should be reset to 0
+            BigInteger nonceAfterReset = getNonce(TEST_ADDRESS);
+            assertEquals(BigInteger.ZERO, nonceAfterReset,
+                    "Nonce should be 0 after reset");
+        }
+
+        @Test
+        @DisplayName("reset() allows continued chain operations")
+        void resetAllowsContinuedChainOperations() {
+            // Mine some blocks
+            tester.mine(10);
+
+            // Reset the chain
+            tester.reset();
+            assertEquals(0, tester.getLatestBlock().number());
+
+            // Should be able to continue mining
+            tester.mine(5);
+            assertEquals(5, tester.getLatestBlock().number(),
+                    "Should be able to mine after reset");
+
+            // Should be able to manipulate state
+            Wei testBalance = Wei.fromEther(new java.math.BigDecimal("200"));
+            tester.setBalance(TEST_ADDRESS, testBalance);
+            assertEquals(testBalance.value(), tester.getBalance(TEST_ADDRESS),
+                    "Should be able to set balance after reset");
+        }
+
+        @Test
+        @DisplayName("reset() can be called multiple times")
+        void resetCanBeCalledMultipleTimes() {
+            // First set of operations
+            tester.mine(10);
+            assertEquals(10, tester.getLatestBlock().number());
+
+            // First reset
+            tester.reset();
+            assertEquals(0, tester.getLatestBlock().number());
+
+            // Second set of operations
+            tester.mine(20);
+            assertEquals(20, tester.getLatestBlock().number());
+
+            // Second reset
+            tester.reset();
+            assertEquals(0, tester.getLatestBlock().number());
+
+            // Third set of operations
+            tester.mine(5);
+            assertEquals(5, tester.getLatestBlock().number(),
+                    "Should be able to mine after multiple resets");
+        }
+
+        /**
+         * Tests reset with fork URL.
+         *
+         * <p>Note: This test uses a public Ethereum RPC endpoint to verify fork functionality.
+         * The fork is done at a specific historical block to ensure consistent behavior.
+         * If no external RPC is available, the test verifies the method executes without error.
+         */
+        @Test
+        @DisplayName("reset with fork URL sets up forked state")
+        void resetWithForkUrlSetsUpForkedState() {
+            // Use a public RPC or skip if not available
+            // We fork at a known block to verify the fork works
+            String forkRpcUrl = System.getProperty("brane.fork.rpc.url");
+
+            if (forkRpcUrl == null || forkRpcUrl.isEmpty()) {
+                // No external RPC configured - just verify reset() works
+                tester.mine(10);
+                tester.reset();
+                assertEquals(0, tester.getLatestBlock().number(),
+                        "Basic reset should work when fork RPC is not configured");
+                return;
+            }
+
+            // Fork at a historical block
+            long forkBlock = 18_000_000L;
+            tester.reset(forkRpcUrl, forkBlock);
+
+            // After fork, block number should be at the fork block
+            io.brane.core.model.BlockHeader blockAfterFork = tester.getLatestBlock();
+            assertEquals(forkBlock, blockAfterFork.number(),
+                    "Block number should be at fork block after reset with fork");
+        }
+
+        @Test
+        @DisplayName("reset with fork allows continued operations")
+        void resetWithForkAllowsContinuedOperations() {
+            String forkRpcUrl = System.getProperty("brane.fork.rpc.url");
+
+            if (forkRpcUrl == null || forkRpcUrl.isEmpty()) {
+                // No external RPC configured - verify reset + operations work
+                tester.reset();
+                tester.mine(5);
+                assertEquals(5, tester.getLatestBlock().number(),
+                        "Should be able to mine after reset when fork RPC is not configured");
+                return;
+            }
+
+            // Fork at a historical block
+            long forkBlock = 18_000_000L;
+            tester.reset(forkRpcUrl, forkBlock);
+
+            // Verify chain is operational after fork
+            tester.mine(5);
+            assertEquals(forkBlock + 5, tester.getLatestBlock().number(),
+                    "Should be able to mine blocks after fork reset");
+
+            // State manipulation should work
+            Wei testBalance = Wei.fromEther(new java.math.BigDecimal("500"));
+            tester.setBalance(TEST_ADDRESS, testBalance);
+            assertEquals(testBalance.value(), tester.getBalance(TEST_ADDRESS),
+                    "Should be able to set balance after fork reset");
+        }
+    }
 }
