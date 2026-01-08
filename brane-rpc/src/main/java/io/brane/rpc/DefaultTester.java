@@ -386,6 +386,7 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public void setNextBlockBaseFee(final Wei baseFee) {
+        java.util.Objects.requireNonNull(baseFee, "baseFee");
         final String baseFeeHex = "0x" + baseFee.value().toString(16);
         sendVoid(mode.prefix() + "setNextBlockBaseFeePerGas", List.of(baseFeeHex));
     }

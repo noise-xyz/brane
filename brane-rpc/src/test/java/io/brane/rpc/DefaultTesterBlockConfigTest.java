@@ -110,6 +110,18 @@ class DefaultTesterBlockConfigTest {
         assertEquals(-32000, ex.code());
     }
 
+    @Test
+    void setNextBlockBaseFeeWithNullThrowsNullPointerException() {
+        Brane.Tester tester = Brane.builder()
+                .provider(provider)
+                .signer(signer)
+                .buildTester();
+
+        assertThrows(
+                NullPointerException.class,
+                () -> tester.setNextBlockBaseFee(null));
+    }
+
     // ==================== setBlockGasLimit Tests ====================
 
     @Test
