@@ -191,7 +191,7 @@ public final class MulticallBatch {
      *
      * <p>The returned proxy records all method invocations without executing them.
      * Calls are batched and executed together when {@link #execute()} is called.
-     * Method return values are wrapped in {@link CompletableFuture} to retrieve
+     * Method return values are wrapped in {@link java.util.concurrent.CompletableFuture} to retrieve
      * results after batch execution.
      *
      * <p><strong>Example usage:</strong>

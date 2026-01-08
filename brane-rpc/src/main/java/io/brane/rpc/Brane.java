@@ -201,15 +201,15 @@ import io.brane.core.types.HexData;
  *
  * <p>All methods may throw:
  * <ul>
- *   <li>{@link io.brane.core.exceptions.RpcException} - JSON-RPC communication failures</li>
- *   <li>{@link io.brane.core.exceptions.RevertException} - EVM execution reverts (for calls)</li>
+ *   <li>{@link io.brane.core.error.RpcException} - JSON-RPC communication failures</li>
+ *   <li>{@link io.brane.core.error.RevertException} - EVM execution reverts (for calls)</li>
  *   <li>{@link IllegalStateException} - If the client has been closed</li>
  * </ul>
  *
  * <p>Transaction methods ({@link Signer#sendTransaction}, {@link Signer#sendTransactionAndWait})
  * may additionally throw:
  * <ul>
- *   <li>{@link io.brane.core.exceptions.TxnException} - Transaction-specific failures</li>
+ *   <li>{@link io.brane.core.error.TxnException} - Transaction-specific failures</li>
  * </ul>
  *
  * @see Brane.Reader
@@ -833,7 +833,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      *   <tr><td>{@link #rpcUrl(String)}</td><td>HTTP/HTTPS RPC endpoint URL</td><td>Yes (unless provider set)</td></tr>
      *   <tr><td>{@link #wsUrl(String)}</td><td>WebSocket endpoint for subscriptions</td><td>No</td></tr>
      *   <tr><td>{@link #provider(BraneProvider)}</td><td>Custom provider instance</td><td>Alternative to rpcUrl</td></tr>
-     *   <tr><td>{@link #signer(Signer)}</td><td>Transaction signer</td><td>Yes for Signer client</td></tr>
+     *   <tr><td>{@link #signer(io.brane.core.crypto.Signer)}</td><td>Transaction signer</td><td>Yes for Signer client</td></tr>
      *   <tr><td>{@link #chain(ChainProfile)}</td><td>Chain-specific configuration</td><td>No</td></tr>
      *   <tr><td>{@link #retries(int)}</td><td>Max retry attempts</td><td>No (default: 3)</td></tr>
      *   <tr><td>{@link #retryConfig(RpcRetryConfig)}</td><td>Retry backoff settings</td><td>No</td></tr>
@@ -1067,7 +1067,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          *
          * <p>This method returns:
          * <ul>
-         *   <li>A {@link Brane.Signer} if a signer was configured via {@link #signer(Signer)}</li>
+         *   <li>A {@link Brane.Signer} if a signer was configured via {@link #signer(io.brane.core.crypto.Signer)}</li>
          *   <li>A {@link Brane.Reader} if no signer was configured</li>
          * </ul>
          *

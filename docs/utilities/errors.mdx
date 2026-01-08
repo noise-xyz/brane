@@ -13,6 +13,7 @@ All Brane exceptions extend `BraneException`, which is a sealed class:
 BraneException (sealed root)
 ├── AbiDecodingException - ABI decoding failures
 ├── AbiEncodingException - ABI encoding failures
+├── Eip712Exception - EIP-712 typed data failures
 ├── RevertException - EVM execution reverts
 ├── RpcException - JSON-RPC communication failures
 └── TxnException - Transaction-specific failures (non-sealed)
@@ -115,6 +116,28 @@ try {
     System.err.println("Decoding failed: " + e.getMessage());
 }
 ```
+
+## Eip712Exception
+
+Thrown when EIP-712 typed data encoding, parsing, or validation fails. This includes invalid JSON format, missing required fields, unknown types, and value encoding errors.
+
+```java
+import io.brane.core.crypto.eip712.TypedDataJson;
+import io.brane.core.error.Eip712Exception;
+
+try {
+    TypedData<?> typedData = TypedDataJson.parseAndValidate(jsonFromDapp);
+} catch (Eip712Exception e) {
+    System.err.println("EIP-712 error: " + e.getMessage());
+    // Examples:
+    // "Invalid EIP-712 JSON: ..."
+    // "Unknown EIP-712 type: InvalidType"
+    // "Missing field 'owner' in type 'Permit'"
+    // "Value out of range for 'uint8': 256 (exceeds 8 bits)"
+}
+```
+
+See [EIP-712 Typed Data](/brane-signer/eip712) for details on typed data signing.
 
 ## Transaction Exceptions
 

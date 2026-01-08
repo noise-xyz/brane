@@ -147,6 +147,9 @@ public class SmokeApp {
                 testComplexNestedStructs(); // Scenario O
                 testWebSocket(); // Scenario P
                 testSimulateCalls(); // Scenario Q
+                testEip712TypeSafeSigning(); // Scenario R
+                testEip712DynamicSigning(); // Scenario S
+                testEip712JsonParsing(); // Scenario T
             }
 
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
@@ -881,5 +884,262 @@ public class SmokeApp {
         } catch (Exception e) {
             throw new RuntimeException("Simulation test failed", e);
         }
+    }
+
+    // EIP-712 Permit record for type-safe signing test
+    public record Eip712Permit(
+            Address owner,
+            Address spender,
+            BigInteger value,
+            BigInteger nonce,
+            BigInteger deadline) {
+
+        public static final io.brane.core.crypto.eip712.TypeDefinition<Eip712Permit> DEFINITION =
+                io.brane.core.crypto.eip712.TypeDefinition.forRecord(
+                        Eip712Permit.class,
+                        "Permit",
+                        Map.of("Permit", List.of(
+                                io.brane.core.crypto.eip712.TypedDataField.of("owner", "address"),
+                                io.brane.core.crypto.eip712.TypedDataField.of("spender", "address"),
+                                io.brane.core.crypto.eip712.TypedDataField.of("value", "uint256"),
+                                io.brane.core.crypto.eip712.TypedDataField.of("nonce", "uint256"),
+                                io.brane.core.crypto.eip712.TypedDataField.of("deadline", "uint256"))));
+    }
+
+    /**
+     * Scenario R: EIP-712 Type-Safe Signing.
+     * <p>
+     * Tests the TypedData.create() API with sign() and verifies that
+     * signature recovery matches the signer's address.
+     */
+    private static void testEip712TypeSafeSigning() {
+        System.out.println("\n[Scenario R] EIP-712 Type-Safe Signing");
+
+        // Create a signer from the test private key
+        PrivateKeySigner signer = new PrivateKeySigner(PRIVATE_KEY);
+        Address signerAddress = signer.address();
+        System.out.println("  Signer Address: " + signerAddress.value());
+
+        // Define the EIP-712 domain (simulating a token contract)
+        io.brane.core.crypto.eip712.Eip712Domain domain = io.brane.core.crypto.eip712.Eip712Domain.builder()
+                .name("TestToken")
+                .version("1")
+                .chainId(31337L)
+                .verifyingContract(RECIPIENT) // Using RECIPIENT as a placeholder contract address
+                .build();
+
+        // Create a permit message
+        Eip712Permit permit = new Eip712Permit(
+                signerAddress,
+                RECIPIENT,
+                BigInteger.valueOf(1_000_000_000_000_000_000L), // 1 token (18 decimals)
+                BigInteger.ZERO,
+                BigInteger.valueOf(1893456000L) // Far future deadline
+        );
+
+        // Create TypedData and sign
+        io.brane.core.crypto.eip712.TypedData<Eip712Permit> typedData =
+                io.brane.core.crypto.eip712.TypedData.create(domain, Eip712Permit.DEFINITION, permit);
+
+        io.brane.core.types.Hash hash = typedData.hash();
+        System.out.println("  EIP-712 Hash: " + hash.value());
+
+        Signature signature = typedData.sign(signer);
+        System.out.println("  Signature v: " + signature.v());
+
+        // Verify v is 27 or 28 (EIP-712 standard)
+        if (signature.v() != 27 && signature.v() != 28) {
+            throw new RuntimeException("Signature v should be 27 or 28, got: " + signature.v());
+        }
+
+        // Recover the signer address from the signature
+        Address recovered = io.brane.core.crypto.PrivateKey.recoverAddress(hash.toBytes(), signature);
+        System.out.println("  Recovered Address: " + recovered.value());
+
+        // Verify recovered address matches original signer
+        if (!recovered.value().equalsIgnoreCase(signerAddress.value())) {
+            throw new RuntimeException("Recovered address does not match signer: expected "
+                    + signerAddress.value() + ", got " + recovered.value());
+        }
+
+        System.out.println("  ✓ EIP-712 sign/recover verified");
+        System.out.println("  ✅ Scenario R: EIP-712 Type-Safe Signing PASSED");
+    }
+
+    /**
+     * Scenario S: EIP-712 Dynamic Signing (Map-based API).
+     * <p>
+     * Tests TypedDataSigner.signTypedData() with Map-based message construction
+     * for dynamic use cases where type structure is determined at runtime
+     * (JSON from dapps, scripting, runtime-generated types).
+     */
+    private static void testEip712DynamicSigning() {
+        System.out.println("\n[Scenario S] EIP-712 Dynamic Signing (Map-based API)");
+
+        // Create a signer from the test private key
+        PrivateKeySigner signer = new PrivateKeySigner(PRIVATE_KEY);
+        Address signerAddress = signer.address();
+        System.out.println("  Signer Address: " + signerAddress.value());
+
+        // Define the EIP-712 domain (simulating a token contract)
+        io.brane.core.crypto.eip712.Eip712Domain domain = io.brane.core.crypto.eip712.Eip712Domain.builder()
+                .name("TestToken")
+                .version("1")
+                .chainId(31337L)
+                .verifyingContract(RECIPIENT) // Using RECIPIENT as a placeholder contract address
+                .build();
+
+        // Define types as Map (runtime/dynamic approach)
+        var types = new java.util.LinkedHashMap<String, List<io.brane.core.crypto.eip712.TypedDataField>>();
+        types.put("Permit", List.of(
+                io.brane.core.crypto.eip712.TypedDataField.of("owner", "address"),
+                io.brane.core.crypto.eip712.TypedDataField.of("spender", "address"),
+                io.brane.core.crypto.eip712.TypedDataField.of("value", "uint256"),
+                io.brane.core.crypto.eip712.TypedDataField.of("nonce", "uint256"),
+                io.brane.core.crypto.eip712.TypedDataField.of("deadline", "uint256")
+        ));
+
+        // Construct message as Map (how data arrives from JSON/dapps)
+        var message = new java.util.LinkedHashMap<String, Object>();
+        message.put("owner", signerAddress);
+        message.put("spender", RECIPIENT);
+        message.put("value", BigInteger.valueOf(1_000_000_000_000_000_000L)); // 1 token
+        message.put("nonce", BigInteger.ZERO);
+        message.put("deadline", BigInteger.valueOf(1893456000L)); // Far future
+
+        // Sign using TypedDataSigner (static utility API)
+        io.brane.core.types.Hash hash = io.brane.core.crypto.eip712.TypedDataSigner.hashTypedData(
+                domain, "Permit", types, message);
+        System.out.println("  EIP-712 Hash: " + hash.value());
+
+        Signature signature = io.brane.core.crypto.eip712.TypedDataSigner.signTypedData(
+                domain, "Permit", types, message, signer);
+        System.out.println("  Signature v: " + signature.v());
+
+        // Verify v is 27 or 28 (EIP-712 standard)
+        if (signature.v() != 27 && signature.v() != 28) {
+            throw new RuntimeException("Signature v should be 27 or 28, got: " + signature.v());
+        }
+
+        // Recover the signer address from the signature
+        Address recovered = io.brane.core.crypto.PrivateKey.recoverAddress(hash.toBytes(), signature);
+        System.out.println("  Recovered Address: " + recovered.value());
+
+        // Verify recovered address matches original signer
+        if (!recovered.value().equalsIgnoreCase(signerAddress.value())) {
+            throw new RuntimeException("Recovered address does not match signer: expected "
+                    + signerAddress.value() + ", got " + recovered.value());
+        }
+
+        System.out.println("  ✓ EIP-712 dynamic sign/recover verified");
+        System.out.println("  ✅ Scenario S: EIP-712 Dynamic Signing PASSED");
+    }
+
+    /**
+     * Scenario T: EIP-712 JSON Parsing.
+     * <p>
+     * Tests TypedDataJson.parse() for parsing EIP-712 JSON payloads
+     * (WalletConnect/dapp style), then sign() and verify signature recovery.
+     */
+    private static void testEip712JsonParsing() {
+        System.out.println("\n[Scenario T] EIP-712 JSON Parsing");
+
+        // Create a signer from the test private key
+        PrivateKeySigner signer = new PrivateKeySigner(PRIVATE_KEY);
+        Address signerAddress = signer.address();
+        System.out.println("  Signer Address: " + signerAddress.value());
+
+        // EIP-712 JSON payload (eth_signTypedData_v4 format from dapps/WalletConnect)
+        String permitJson = """
+                {
+                    "domain": {
+                        "name": "TestToken",
+                        "version": "1",
+                        "chainId": 31337,
+                        "verifyingContract": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+                    },
+                    "primaryType": "Permit",
+                    "types": {
+                        "EIP712Domain": [
+                            {"name": "name", "type": "string"},
+                            {"name": "version", "type": "string"},
+                            {"name": "chainId", "type": "uint256"},
+                            {"name": "verifyingContract", "type": "address"}
+                        ],
+                        "Permit": [
+                            {"name": "owner", "type": "address"},
+                            {"name": "spender", "type": "address"},
+                            {"name": "value", "type": "uint256"},
+                            {"name": "nonce", "type": "uint256"},
+                            {"name": "deadline", "type": "uint256"}
+                        ]
+                    },
+                    "message": {
+                        "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+                        "spender": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8",
+                        "value": "1000000000000000000",
+                        "nonce": "0",
+                        "deadline": "1893456000"
+                    }
+                }
+                """;
+
+        // Parse the JSON using TypedDataJson.parse()
+        io.brane.core.crypto.eip712.TypedDataPayload payload =
+                io.brane.core.crypto.eip712.TypedDataJson.parse(permitJson);
+
+        // Verify the parsed payload
+        if (!"Permit".equals(payload.primaryType())) {
+            throw new RuntimeException("Primary type mismatch: expected Permit, got " + payload.primaryType());
+        }
+        if (!"TestToken".equals(payload.domain().name())) {
+            throw new RuntimeException("Domain name mismatch: expected TestToken, got " + payload.domain().name());
+        }
+        if (payload.domain().chainId() != 31337L) {
+            throw new RuntimeException("Chain ID mismatch: expected 31337, got " + payload.domain().chainId());
+        }
+        System.out.println("  ✓ JSON parsed successfully");
+        System.out.println("    Domain: " + payload.domain().name());
+        System.out.println("    Primary Type: " + payload.primaryType());
+
+        // Create TypedData from parsed payload and sign
+        io.brane.core.crypto.eip712.TypedData<?> typedData =
+                io.brane.core.crypto.eip712.TypedData.fromPayload(payload);
+
+        io.brane.core.types.Hash hash = typedData.hash();
+        System.out.println("  EIP-712 Hash: " + hash.value());
+
+        Signature signature = typedData.sign(signer);
+        System.out.println("  Signature v: " + signature.v());
+
+        // Verify v is 27 or 28 (EIP-712 standard)
+        if (signature.v() != 27 && signature.v() != 28) {
+            throw new RuntimeException("Signature v should be 27 or 28, got: " + signature.v());
+        }
+
+        // Recover the signer address from the signature
+        Address recovered = io.brane.core.crypto.PrivateKey.recoverAddress(hash.toBytes(), signature);
+        System.out.println("  Recovered Address: " + recovered.value());
+
+        // Verify recovered address matches original signer
+        if (!recovered.value().equalsIgnoreCase(signerAddress.value())) {
+            throw new RuntimeException("Recovered address does not match signer: expected "
+                    + signerAddress.value() + ", got " + recovered.value());
+        }
+
+        System.out.println("  ✓ EIP-712 JSON parse/sign/recover verified");
+
+        // Also test parseAndValidate() shorthand
+        io.brane.core.crypto.eip712.TypedData<?> typedData2 =
+                io.brane.core.crypto.eip712.TypedDataJson.parseAndValidate(permitJson);
+        io.brane.core.types.Hash hash2 = typedData2.hash();
+
+        // Verify both methods produce the same hash
+        if (!hash.value().equals(hash2.value())) {
+            throw new RuntimeException("Hash mismatch between parse() and parseAndValidate()");
+        }
+        System.out.println("  ✓ parseAndValidate() produces same hash");
+
+        System.out.println("  ✅ Scenario T: EIP-712 JSON Parsing PASSED");
     }
 }
