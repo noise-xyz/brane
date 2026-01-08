@@ -337,4 +337,184 @@ class TypedDataTest {
         assertSame(PERMIT_DEFINITION, typedData.definition());
         assertEquals(PERMIT_TYPES, typedData.definition().types());
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // fromPayload() tests
+    // ═══════════════════════════════════════════════════════════════
+
+    @Test
+    void fromPayload_createsTypedData() {
+        var domain = Eip712Domain.builder()
+            .name("TestToken")
+            .version("1")
+            .chainId(1)
+            .verifyingContract(new Address("0x1234567890123456789012345678901234567890"))
+            .build();
+
+        var message = Map.<String, Object>of(
+            "owner", new Address("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            "spender", new Address("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+            "value", BigInteger.valueOf(1000),
+            "nonce", BigInteger.ZERO,
+            "deadline", BigInteger.valueOf(1234567890)
+        );
+
+        var payload = new TypedDataPayload(domain, "Permit", PERMIT_TYPES, message);
+        var typedData = TypedData.fromPayload(payload);
+
+        assertNotNull(typedData);
+        assertEquals(domain, typedData.domain());
+        assertEquals("Permit", typedData.primaryType());
+        assertEquals(message, typedData.message());
+    }
+
+    @Test
+    void fromPayload_nullPayload_throws() {
+        assertThrows(NullPointerException.class, () -> TypedData.fromPayload(null));
+    }
+
+    @Test
+    void fromPayload_hashConsistentWithCreate() {
+        var domain = Eip712Domain.builder()
+            .name("TestToken")
+            .version("1")
+            .chainId(1)
+            .build();
+
+        // Create with record-based approach
+        var permit = new Permit(
+            new Address("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            new Address("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+            BigInteger.valueOf(1000),
+            BigInteger.ZERO,
+            BigInteger.valueOf(1234567890)
+        );
+        var typedDataFromRecord = TypedData.create(domain, PERMIT_DEFINITION, permit);
+
+        // Create with payload-based approach (Map message)
+        var message = Map.<String, Object>of(
+            "owner", new Address("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            "spender", new Address("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+            "value", BigInteger.valueOf(1000),
+            "nonce", BigInteger.ZERO,
+            "deadline", BigInteger.valueOf(1234567890)
+        );
+        var payload = new TypedDataPayload(domain, "Permit", PERMIT_TYPES, message);
+        var typedDataFromPayload = TypedData.fromPayload(payload);
+
+        // Both should produce the same hash
+        assertEquals(typedDataFromRecord.hash(), typedDataFromPayload.hash());
+    }
+
+    @Test
+    void fromPayload_signatureRecovery() {
+        var signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
+        var expectedAddress = signer.address();
+
+        var domain = Eip712Domain.builder()
+            .name("TestToken")
+            .version("1")
+            .chainId(1)
+            .build();
+
+        var message = Map.<String, Object>of(
+            "owner", new Address("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            "spender", new Address("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+            "value", BigInteger.valueOf(1000),
+            "nonce", BigInteger.ZERO,
+            "deadline", BigInteger.valueOf(1234567890)
+        );
+
+        var payload = new TypedDataPayload(domain, "Permit", PERMIT_TYPES, message);
+        var typedData = TypedData.fromPayload(payload);
+
+        Hash hash = typedData.hash();
+        Signature sig = typedData.sign(signer);
+
+        Address recovered = PrivateKey.recoverAddress(hash.toBytes(), sig);
+        assertEquals(expectedAddress, recovered);
+    }
+
+    // ═══════════════════════════════════════════════════════════════
+    // TypeDefinition.forRecord() extraction tests (integration)
+    // ═══════════════════════════════════════════════════════════════
+
+    @Test
+    void forRecord_extractsFieldsCorrectly() {
+        var permit = new Permit(
+            new Address("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            new Address("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+            BigInteger.valueOf(1000),
+            BigInteger.ZERO,
+            BigInteger.valueOf(1234567890)
+        );
+
+        var extracted = PERMIT_DEFINITION.extractor().apply(permit);
+
+        assertEquals(new Address("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"), extracted.get("owner"));
+        assertEquals(new Address("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"), extracted.get("spender"));
+        assertEquals(BigInteger.valueOf(1000), extracted.get("value"));
+        assertEquals(BigInteger.ZERO, extracted.get("nonce"));
+        assertEquals(BigInteger.valueOf(1234567890), extracted.get("deadline"));
+        assertEquals(5, extracted.size());
+    }
+
+    @Test
+    void forRecord_extractionPreservesFieldOrder() {
+        var permit = new Permit(
+            new Address("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            new Address("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+            BigInteger.ONE,
+            BigInteger.ZERO,
+            BigInteger.TEN
+        );
+
+        var extracted = PERMIT_DEFINITION.extractor().apply(permit);
+        var keys = extracted.keySet().toArray(String[]::new);
+
+        // Record components should preserve declaration order
+        assertArrayEquals(new String[]{"owner", "spender", "value", "nonce", "deadline"}, keys);
+    }
+
+    @Test
+    void forRecord_mailExtractionWorks() {
+        var mail = new Mail(
+            new Address("0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826"),
+            new Address("0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB"),
+            "Hello, Bob!"
+        );
+
+        var extracted = MAIL_DEFINITION.extractor().apply(mail);
+
+        assertEquals(new Address("0xCD2a3d9F938E13CD947Ec05AbC7FE734Df8DD826"), extracted.get("from"));
+        assertEquals(new Address("0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB"), extracted.get("to"));
+        assertEquals("Hello, Bob!", extracted.get("contents"));
+    }
+
+    @Test
+    void forRecord_hashStableAcrossExtractions() {
+        var domain = Eip712Domain.builder()
+            .name("TestToken")
+            .version("1")
+            .chainId(1)
+            .build();
+
+        var permit = new Permit(
+            new Address("0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"),
+            new Address("0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"),
+            BigInteger.valueOf(1000),
+            BigInteger.ZERO,
+            BigInteger.TEN
+        );
+
+        // Create new definition instances (each with own extractor)
+        var definition1 = TypeDefinition.forRecord(Permit.class, "Permit", PERMIT_TYPES);
+        var definition2 = TypeDefinition.forRecord(Permit.class, "Permit", PERMIT_TYPES);
+
+        var typedData1 = TypedData.create(domain, definition1, permit);
+        var typedData2 = TypedData.create(domain, definition2, permit);
+
+        // Hashes should be identical even with different definition instances
+        assertEquals(typedData1.hash(), typedData2.hash());
+    }
 }
