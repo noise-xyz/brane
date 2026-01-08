@@ -148,6 +148,7 @@ public class SmokeApp {
                 testWebSocket(); // Scenario P
                 testSimulateCalls(); // Scenario Q
                 testEip712TypeSafeSigning(); // Scenario R
+                testEip712DynamicSigning(); // Scenario S
             }
 
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
@@ -962,5 +963,74 @@ public class SmokeApp {
 
         System.out.println("  ✓ EIP-712 sign/recover verified");
         System.out.println("  ✅ Scenario R: EIP-712 Type-Safe Signing PASSED");
+    }
+
+    /**
+     * Scenario S: EIP-712 Dynamic Signing (Map-based API).
+     * <p>
+     * Tests TypedDataSigner.signTypedData() with Map-based message construction
+     * for dynamic use cases where type structure is determined at runtime
+     * (JSON from dapps, scripting, runtime-generated types).
+     */
+    private static void testEip712DynamicSigning() {
+        System.out.println("\n[Scenario S] EIP-712 Dynamic Signing (Map-based API)");
+
+        // Create a signer from the test private key
+        PrivateKeySigner signer = new PrivateKeySigner(PRIVATE_KEY);
+        Address signerAddress = signer.address();
+        System.out.println("  Signer Address: " + signerAddress.value());
+
+        // Define the EIP-712 domain (simulating a token contract)
+        io.brane.core.crypto.eip712.Eip712Domain domain = io.brane.core.crypto.eip712.Eip712Domain.builder()
+                .name("TestToken")
+                .version("1")
+                .chainId(31337L)
+                .verifyingContract(RECIPIENT) // Using RECIPIENT as a placeholder contract address
+                .build();
+
+        // Define types as Map (runtime/dynamic approach)
+        var types = new java.util.LinkedHashMap<String, List<io.brane.core.crypto.eip712.TypedDataField>>();
+        types.put("Permit", List.of(
+                io.brane.core.crypto.eip712.TypedDataField.of("owner", "address"),
+                io.brane.core.crypto.eip712.TypedDataField.of("spender", "address"),
+                io.brane.core.crypto.eip712.TypedDataField.of("value", "uint256"),
+                io.brane.core.crypto.eip712.TypedDataField.of("nonce", "uint256"),
+                io.brane.core.crypto.eip712.TypedDataField.of("deadline", "uint256")
+        ));
+
+        // Construct message as Map (how data arrives from JSON/dapps)
+        var message = new java.util.LinkedHashMap<String, Object>();
+        message.put("owner", signerAddress);
+        message.put("spender", RECIPIENT);
+        message.put("value", BigInteger.valueOf(1_000_000_000_000_000_000L)); // 1 token
+        message.put("nonce", BigInteger.ZERO);
+        message.put("deadline", BigInteger.valueOf(1893456000L)); // Far future
+
+        // Sign using TypedDataSigner (static utility API)
+        io.brane.core.types.Hash hash = io.brane.core.crypto.eip712.TypedDataSigner.hashTypedData(
+                domain, "Permit", types, message);
+        System.out.println("  EIP-712 Hash: " + hash.value());
+
+        Signature signature = io.brane.core.crypto.eip712.TypedDataSigner.signTypedData(
+                domain, "Permit", types, message, signer);
+        System.out.println("  Signature v: " + signature.v());
+
+        // Verify v is 27 or 28 (EIP-712 standard)
+        if (signature.v() != 27 && signature.v() != 28) {
+            throw new RuntimeException("Signature v should be 27 or 28, got: " + signature.v());
+        }
+
+        // Recover the signer address from the signature
+        Address recovered = io.brane.core.crypto.PrivateKey.recoverAddress(hash.toBytes(), signature);
+        System.out.println("  Recovered Address: " + recovered.value());
+
+        // Verify recovered address matches original signer
+        if (!recovered.value().equalsIgnoreCase(signerAddress.value())) {
+            throw new RuntimeException("Recovered address does not match signer: expected "
+                    + signerAddress.value() + ", got " + recovered.value());
+        }
+
+        System.out.println("  ✓ EIP-712 dynamic sign/recover verified");
+        System.out.println("  ✅ Scenario S: EIP-712 Dynamic Signing PASSED");
     }
 }
