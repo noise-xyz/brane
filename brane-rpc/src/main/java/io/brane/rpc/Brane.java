@@ -493,8 +493,8 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * Returns whether this client has transaction signing capability.
      *
      * <p>This is a convenience method for type checking. Clients implementing
-     * {@link Signer} return {@code true}; clients implementing only {@link Reader}
-     * return {@code false}.
+     * {@link Signer} or {@link Tester} return {@code true}; clients implementing
+     * only {@link Reader} return {@code false}.
      *
      * <p><strong>Example:</strong>
      * <pre>{@code
@@ -508,7 +508,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @since 0.1.0
      */
     default boolean canSign() {
-        return this instanceof Signer;
+        return this instanceof Signer || this instanceof Tester;
     }
 
     /**
