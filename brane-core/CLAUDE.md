@@ -9,6 +9,7 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 | `io.brane.core.types` | Value objects: `Address`, `Wei`, `Hash`, `HexData` |
 | `io.brane.core.abi` | ABI encoding/decoding: `Abi`, `AbiEncoder`, `AbiDecoder` |
 | `io.brane.core.crypto` | ECDSA: `PrivateKey`, `Signer`, `Signature`, `Keccak256` |
+| `io.brane.core.crypto.eip712` | EIP-712: `TypedData`, `Eip712Domain`, `TypedDataSigner`, `TypedDataJson` |
 | `io.brane.core.builder` | Transaction builders: `TxBuilder`, `Eip1559Builder`, `LegacyBuilder` |
 | `io.brane.core.model` | Data models: `TransactionRequest`, `TransactionReceipt`, `BlockHeader` |
 | `io.brane.core.tx` | Transaction types: `LegacyTransaction`, `Eip1559Transaction` |
@@ -35,6 +36,14 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 - **`Signer`** - Interface for signing (allows remote signers)
 - **`Signature`** - ECDSA signature with r, s, v components (defensive copies)
 - **`Keccak256`** - Hash utility with ThreadLocal caching - **call `cleanup()` in pooled threads**
+
+### EIP-712 (`io.brane.core.crypto.eip712`)
+- **`TypedData<T>`** - Primary API for type-safe EIP-712 signing with records
+- **`Eip712Domain`** - Domain separator fields (name, version, chainId, verifyingContract, salt)
+- **`TypedDataSigner`** - Static utility for dynamic/runtime EIP-712 signing
+- **`TypedDataJson`** - JSON parsing for eth_signTypedData_v4 format (WalletConnect, MetaMask)
+- **`TypeDefinition<T>`** - Type schema with field mappings and extractor
+- **`TypedDataField`** - Single field definition (name + Solidity type)
 
 ### Builders (`io.brane.core.builder`)
 - **`TxBuilder`** - Sealed interface for transaction building
@@ -81,6 +90,25 @@ try {
 } finally {
     key.destroy();  // Clear sensitive data
 }
+```
+
+### EIP-712 Typed Data Signing
+```java
+// Build domain
+var domain = Eip712Domain.builder()
+    .name("MyDapp")
+    .version("1")
+    .chainId(1L)
+    .verifyingContract(contractAddress)
+    .build();
+
+// Type-safe API with records (compile-time safety)
+var typedData = TypedData.create(domain, Permit.DEFINITION, permit);
+Signature sig = typedData.sign(signer);
+
+// Dynamic API for runtime types (JSON from dapps)
+TypedData<?> fromJson = TypedDataJson.parseAndValidate(jsonString);
+Signature sig2 = fromJson.sign(signer);
 ```
 
 ### ThreadLocal Cleanup in Pooled Threads

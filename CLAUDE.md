@@ -7,7 +7,7 @@ Modern, type-safe Java 21 SDK for Ethereum/EVM. Inspired by viem (TS) and alloy 
 | Module | Purpose | Key Classes |
 |--------|---------|-------------|
 | `brane-primitives` | Hex/RLP utilities (zero deps) | `Hex`, `Rlp` |
-| `brane-core` | Types, ABI, crypto, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `TxBuilder` |
+| `brane-core` | Types, ABI, crypto, EIP-712, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `TypedData`, `TxBuilder` |
 | `brane-rpc` | JSON-RPC client layer | `Brane`, `Brane.Reader`, `Brane.Signer`, `BraneProvider` |
 | `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `ReadOnlyContract` |
 | `brane-examples` | Usage examples & integration tests | Various `*Example.java` |
@@ -72,6 +72,24 @@ Eip1559Builder.create()
     .value(Wei.fromEther("0.1"))
     .data(calldata)
     .build(signer, client);
+```
+
+### EIP-712 Typed Data Signing
+```java
+var domain = Eip712Domain.builder()
+    .name("MyDapp")
+    .version("1")
+    .chainId(1L)
+    .verifyingContract(contractAddress)
+    .build();
+
+// Type-safe signing with records
+var typedData = TypedData.create(domain, Permit.DEFINITION, permit);
+Signature sig = typedData.sign(signer);
+Hash hash = typedData.hash();
+
+// JSON parsing (WalletConnect, dapp requests)
+TypedData<?> fromJson = TypedDataJson.parseAndValidate(jsonString);
 ```
 
 ## Error Hierarchy
