@@ -147,6 +147,7 @@ public class SmokeApp {
                 testComplexNestedStructs(); // Scenario O
                 testWebSocket(); // Scenario P
                 testSimulateCalls(); // Scenario Q
+                testEip712TypeSafeSigning(); // Scenario R
             }
 
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
@@ -881,5 +882,85 @@ public class SmokeApp {
         } catch (Exception e) {
             throw new RuntimeException("Simulation test failed", e);
         }
+    }
+
+    // EIP-712 Permit record for type-safe signing test
+    public record Eip712Permit(
+            Address owner,
+            Address spender,
+            BigInteger value,
+            BigInteger nonce,
+            BigInteger deadline) {
+
+        public static final io.brane.core.crypto.eip712.TypeDefinition<Eip712Permit> DEFINITION =
+                io.brane.core.crypto.eip712.TypeDefinition.forRecord(
+                        Eip712Permit.class,
+                        "Permit",
+                        Map.of("Permit", List.of(
+                                io.brane.core.crypto.eip712.TypedDataField.of("owner", "address"),
+                                io.brane.core.crypto.eip712.TypedDataField.of("spender", "address"),
+                                io.brane.core.crypto.eip712.TypedDataField.of("value", "uint256"),
+                                io.brane.core.crypto.eip712.TypedDataField.of("nonce", "uint256"),
+                                io.brane.core.crypto.eip712.TypedDataField.of("deadline", "uint256"))));
+    }
+
+    /**
+     * Scenario R: EIP-712 Type-Safe Signing.
+     * <p>
+     * Tests the TypedData.create() API with sign() and verifies that
+     * signature recovery matches the signer's address.
+     */
+    private static void testEip712TypeSafeSigning() {
+        System.out.println("\n[Scenario R] EIP-712 Type-Safe Signing");
+
+        // Create a signer from the test private key
+        PrivateKeySigner signer = new PrivateKeySigner(PRIVATE_KEY);
+        Address signerAddress = signer.address();
+        System.out.println("  Signer Address: " + signerAddress.value());
+
+        // Define the EIP-712 domain (simulating a token contract)
+        io.brane.core.crypto.eip712.Eip712Domain domain = io.brane.core.crypto.eip712.Eip712Domain.builder()
+                .name("TestToken")
+                .version("1")
+                .chainId(31337L)
+                .verifyingContract(RECIPIENT) // Using RECIPIENT as a placeholder contract address
+                .build();
+
+        // Create a permit message
+        Eip712Permit permit = new Eip712Permit(
+                signerAddress,
+                RECIPIENT,
+                BigInteger.valueOf(1_000_000_000_000_000_000L), // 1 token (18 decimals)
+                BigInteger.ZERO,
+                BigInteger.valueOf(1893456000L) // Far future deadline
+        );
+
+        // Create TypedData and sign
+        io.brane.core.crypto.eip712.TypedData<Eip712Permit> typedData =
+                io.brane.core.crypto.eip712.TypedData.create(domain, Eip712Permit.DEFINITION, permit);
+
+        io.brane.core.types.Hash hash = typedData.hash();
+        System.out.println("  EIP-712 Hash: " + hash.value());
+
+        Signature signature = typedData.sign(signer);
+        System.out.println("  Signature v: " + signature.v());
+
+        // Verify v is 27 or 28 (EIP-712 standard)
+        if (signature.v() != 27 && signature.v() != 28) {
+            throw new RuntimeException("Signature v should be 27 or 28, got: " + signature.v());
+        }
+
+        // Recover the signer address from the signature
+        Address recovered = io.brane.core.crypto.PrivateKey.recoverAddress(hash.toBytes(), signature);
+        System.out.println("  Recovered Address: " + recovered.value());
+
+        // Verify recovered address matches original signer
+        if (!recovered.value().equalsIgnoreCase(signerAddress.value())) {
+            throw new RuntimeException("Recovered address does not match signer: expected "
+                    + signerAddress.value() + ", got " + recovered.value());
+        }
+
+        System.out.println("  ✓ EIP-712 sign/recover verified");
+        System.out.println("  ✅ Scenario R: EIP-712 Type-Safe Signing PASSED");
     }
 }
