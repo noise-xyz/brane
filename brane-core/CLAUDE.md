@@ -39,7 +39,7 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 
 ### EIP-712 (`io.brane.core.crypto.eip712`)
 - **`TypedData<T>`** - Primary API for type-safe EIP-712 signing with records
-- **`Eip712Domain`** - Domain separator fields (name, version, chainId, verifyingContract, salt)
+- **`Eip712Domain`** - Domain separator fields with `separator()` method for computing domain hash
 - **`TypedDataSigner`** - Static utility for dynamic/runtime EIP-712 signing
 - **`TypedDataJson`** - JSON parsing for eth_signTypedData_v4 format (WalletConnect, MetaMask)
 - **`TypeDefinition<T>`** - Type schema with field mappings and extractor
