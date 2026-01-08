@@ -440,7 +440,7 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public boolean loadState(final HexData state) {
-        java.util.Objects.requireNonNull(state, "state must not be null");
+        java.util.Objects.requireNonNull(state, "state");
         if (mode != TestNodeMode.ANVIL) {
             throw new UnsupportedOperationException("loadState is only supported by Anvil");
         }
