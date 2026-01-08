@@ -53,7 +53,7 @@ import io.brane.core.error.RpcException;
  *
  * <p><b>Thread Safety:</b> This class is thread-safe. Multiple threads can
  * safely call {@link #send}, {@link #sendAsync}, and {@link #sendAsyncBatch}
- * concurrently. Request tracking uses an {@link AtomicReferenceArray} with
+ * concurrently. Request tracking uses an {@link java.util.concurrent.atomic.AtomicReferenceArray} with
  * CAS-based slot allocation to prevent race conditions between the caller
  * threads, Disruptor thread, and Netty I/O thread.
  *
@@ -82,7 +82,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      *     |                           |
      *     | (failure)                 | (disconnect)
      *     v                           v
-     *   CLOSED <---------------  RECONNECTING
+     *   CLOSED &lt;---------------  RECONNECTING
      *     ^                           |
      *     |                           | (max retries or close())
      *     +---------------------------+
