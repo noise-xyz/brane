@@ -163,6 +163,28 @@ final class DefaultTester implements Brane.Tester {
         return signer;
     }
 
+    // ==================== Signer Method Delegation ====================
+
+    @Override
+    public Hash sendTransaction(final TransactionRequest request) {
+        return signer.sendTransaction(request);
+    }
+
+    @Override
+    public TransactionReceipt sendTransactionAndWait(
+            final TransactionRequest request,
+            final long timeoutMillis,
+            final long pollIntervalMillis) {
+        return signer.sendTransactionAndWait(request, timeoutMillis, pollIntervalMillis);
+    }
+
+    @Override
+    public io.brane.core.crypto.Signer signer() {
+        return signer.signer();
+    }
+
+    // ==================== Snapshot Methods ====================
+
     @Override
     public SnapshotId snapshot() {
         final String method = mode == TestNodeMode.ANVIL ? "evm_snapshot" : mode.prefix() + "snapshot";

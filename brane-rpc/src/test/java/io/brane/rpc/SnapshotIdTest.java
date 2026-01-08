@@ -135,6 +135,22 @@ class SnapshotIdTest {
         }
 
         @Override
+        public io.brane.core.types.Hash sendTransaction(io.brane.core.model.TransactionRequest request) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public io.brane.core.model.TransactionReceipt sendTransactionAndWait(
+                io.brane.core.model.TransactionRequest request, long timeoutMillis, long pollIntervalMillis) {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
+        public io.brane.core.crypto.Signer signer() {
+            throw new UnsupportedOperationException("Mock tester");
+        }
+
+        @Override
         public ImpersonationSession impersonate(io.brane.core.types.Address address) {
             throw new UnsupportedOperationException("Mock tester");
         }

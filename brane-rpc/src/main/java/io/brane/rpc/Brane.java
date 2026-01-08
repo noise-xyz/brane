@@ -1015,6 +1015,56 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          */
         Signer asSigner();
 
+        // ==================== Transaction Methods (Signer delegation) ====================
+
+        /**
+         * Submits a transaction to the blockchain and returns immediately.
+         *
+         * <p>This method delegates to the underlying signer. See {@link Signer#sendTransaction}
+         * for full details.
+         *
+         * @param request the transaction request
+         * @return the transaction hash
+         * @see Signer#sendTransaction
+         */
+        Hash sendTransaction(TransactionRequest request);
+
+        /**
+         * Submits a transaction and waits for confirmation using default settings.
+         *
+         * <p>Uses default timeout (60 seconds) and poll interval (1 second).
+         * Delegates to {@link Signer#sendTransactionAndWait}.
+         *
+         * @param request the transaction request
+         * @return the transaction receipt once confirmed
+         * @see Signer#sendTransactionAndWait(TransactionRequest)
+         */
+        default TransactionReceipt sendTransactionAndWait(TransactionRequest request) {
+            return sendTransactionAndWait(request, Signer.DEFAULT_TIMEOUT_MILLIS, Signer.DEFAULT_POLL_INTERVAL_MILLIS);
+        }
+
+        /**
+         * Submits a transaction and waits for confirmation with custom settings.
+         *
+         * <p>Delegates to {@link Signer#sendTransactionAndWait(TransactionRequest, long, long)}.
+         *
+         * @param request            the transaction request
+         * @param timeoutMillis      maximum wait time in milliseconds
+         * @param pollIntervalMillis poll interval in milliseconds
+         * @return the transaction receipt once confirmed
+         * @see Signer#sendTransactionAndWait(TransactionRequest, long, long)
+         */
+        TransactionReceipt sendTransactionAndWait(
+                TransactionRequest request, long timeoutMillis, long pollIntervalMillis);
+
+        /**
+         * Returns the signer instance used by this tester.
+         *
+         * @return the signer
+         * @see Signer#signer()
+         */
+        io.brane.core.crypto.Signer signer();
+
         // ==================== Snapshot Methods ====================
 
         /**
