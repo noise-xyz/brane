@@ -304,6 +304,26 @@ Eip712Domain domainWithSalt = Eip712Domain.builder()
         .build();
 ```
 
+### Computing the Domain Separator Hash
+
+Use `separator()` to compute the domain separator hash. This is useful for verifying against a contract's `DOMAIN_SEPARATOR` constant:
+
+```java
+Eip712Domain domain = Eip712Domain.builder()
+        .name("Dai Stablecoin")
+        .version("1")
+        .chainId(1L)
+        .verifyingContract(new Address("0x6B175474E89094C44Da98b954EecdeAC495271dF"))
+        .build();
+
+// Get the domain separator hash
+Hash domainSeparator = domain.separator();
+
+// Compare with contract's DOMAIN_SEPARATOR
+// Hash contractSeparator = contract.DOMAIN_SEPARATOR();
+// assert domainSeparator.equals(contractSeparator);
+```
+
 <Warning>
 The domain fields must exactly match what the verifying contract uses in its `DOMAIN_SEPARATOR`. Mismatched domains will produce invalid signatures.
 </Warning>
