@@ -26,7 +26,7 @@ import java.util.regex.Pattern;
  * }</pre>
  *
  * @param value the hex-encoded snapshot ID (must start with "0x")
- * @since 0.1.0-alpha
+ * @since 0.2.0
  */
 public record SnapshotId(@com.fasterxml.jackson.annotation.JsonValue String value) {
 
