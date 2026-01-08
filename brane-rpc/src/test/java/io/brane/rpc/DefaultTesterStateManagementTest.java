@@ -134,7 +134,7 @@ class DefaultTesterStateManagementTest {
         NullPointerException ex = assertThrows(
                 NullPointerException.class,
                 () -> tester.loadState(null));
-        assertEquals("state", ex.getMessage());
+        assertEquals("state must not be null", ex.getMessage());
     }
 
     @Test

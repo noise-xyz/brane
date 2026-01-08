@@ -198,7 +198,7 @@ class DefaultTesterTest {
             NullPointerException ex = assertThrows(
                     NullPointerException.class,
                     () -> tester.setBlockGasLimit(null));
-            assertEquals("gasLimit", ex.getMessage());
+            assertEquals("gasLimit must not be null", ex.getMessage());
         }
     }
 
@@ -215,7 +215,7 @@ class DefaultTesterTest {
             NullPointerException ex = assertThrows(
                     NullPointerException.class,
                     () -> tester.loadState(null));
-            assertEquals("state", ex.getMessage());
+            assertEquals("state must not be null", ex.getMessage());
         }
     }
 
@@ -355,7 +355,7 @@ class DefaultTesterTest {
             NullPointerException ex = assertThrows(
                     NullPointerException.class,
                     () -> tester.setCoinbase(null));
-            assertEquals("coinbase", ex.getMessage());
+            assertEquals("coinbase must not be null", ex.getMessage());
         }
 
         @Test
@@ -398,7 +398,7 @@ class DefaultTesterTest {
             NullPointerException ex = assertThrows(
                     NullPointerException.class,
                     () -> tester.setNextBlockBaseFee(null));
-            assertEquals("baseFee", ex.getMessage());
+            assertEquals("baseFee must not be null", ex.getMessage());
         }
 
         @Test
