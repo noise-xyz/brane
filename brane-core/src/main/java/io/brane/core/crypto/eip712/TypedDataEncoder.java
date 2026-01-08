@@ -158,7 +158,15 @@ final class TypedDataEncoder {
 
     /**
      * Encodes struct data according to EIP-712.
-     * Returns concatenated 32-byte encoded field values.
+     * <p>
+     * Returns concatenated 32-byte encoded field values for all fields in the struct.
+     * Each field is encoded according to its type as specified in EIP-712.
+     *
+     * @param typeName the struct type name
+     * @param types all type definitions
+     * @param data the field name to value map
+     * @return concatenated 32-byte encoded field values
+     * @throws Eip712Exception if a required field is missing from the data
      */
     static byte[] encodeData(
             String typeName,
@@ -318,7 +326,13 @@ final class TypedDataEncoder {
     }
 
     /**
-     * string encoding: keccak256(value)
+     * Encodes a string value according to EIP-712.
+     * <p>
+     * String encoding is defined as {@code keccak256(value)}.
+     *
+     * @param value the value to encode, must be a {@link String}
+     * @return the 32-byte keccak256 hash of the UTF-8 encoded string
+     * @throws Eip712Exception if the value is not a String instance
      */
     private static byte[] encodeString(Object value) {
         if (value instanceof String str) {

@@ -131,6 +131,14 @@ public final class TypedDataSigner {
 
     /**
      * Signs a raw hash and adjusts v to 27/28 for EIP-712 compatibility.
+     * <p>
+     * This is a package-private utility shared by EIP-712 signing implementations.
+     * The v value is adjusted from 0/1 to 27/28 as required by EIP-712.
+     *
+     * @param signer the signer to use, must be a {@link PrivateKeySigner}
+     * @param hash the 32-byte hash to sign
+     * @return the signature with v=27 or v=28
+     * @throws UnsupportedOperationException if the signer is not a PrivateKeySigner
      */
     static Signature signHash(Signer signer, byte[] hash) {
         if (signer instanceof PrivateKeySigner pks) {

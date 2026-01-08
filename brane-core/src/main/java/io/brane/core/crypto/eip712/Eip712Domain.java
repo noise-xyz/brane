@@ -38,8 +38,12 @@ public record Eip712Domain(
      * <p>
      * The domain separator is computed as:
      * {@code keccak256(encodeType("EIP712Domain") || encodeData(domain))}
+     * <p>
+     * This value uniquely identifies the signing context and is used as
+     * part of the EIP-712 hash computation to prevent cross-domain replay attacks.
      *
      * @return the 32-byte domain separator hash
+     * @see <a href="https://eips.ethereum.org/EIPS/eip-712#definition-of-domainseparator">EIP-712 Domain Separator</a>
      */
     public Hash separator() {
         return TypedDataEncoder.hashDomain(this);
