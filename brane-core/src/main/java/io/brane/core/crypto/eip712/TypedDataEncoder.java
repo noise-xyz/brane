@@ -169,6 +169,9 @@ final class TypedDataEncoder {
 
         for (var field : fields) {
             var value = data.get(field.name());
+            if (value == null && !data.containsKey(field.name())) {
+                throw Eip712Exception.missingField(typeName, field.name());
+            }
             var fieldEncoded = encodeField(field.type(), value, types);
             encoded.writeBytes(fieldEncoded);
         }
