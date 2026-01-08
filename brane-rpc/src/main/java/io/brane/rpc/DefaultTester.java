@@ -204,12 +204,7 @@ final class DefaultTester implements Brane.Tester {
     @Override
     public boolean revert(final SnapshotId snapshotId) {
         final String method = mode == TestNodeMode.ANVIL ? "evm_revert" : mode.prefix() + "revert";
-        final JsonRpcResponse response = sendWithRetry(method, List.of(snapshotId.value()));
-        if (response.hasError()) {
-            return false;
-        }
-        final Object result = response.result();
-        return result != null && Boolean.TRUE.equals(result);
+        return sendBoolResult(method, List.of(snapshotId.value()));
     }
 
     @Override
@@ -225,12 +220,7 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public void stopImpersonating(final Address address) {
-        final String method = mode.prefix() + "stopImpersonatingAccount";
-        final JsonRpcResponse response = sendWithRetry(method, List.of(address.value()));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "stopImpersonatingAccount", List.of(address.value()));
     }
 
     @Override
@@ -238,11 +228,7 @@ final class DefaultTester implements Brane.Tester {
         if (mode != TestNodeMode.ANVIL) {
             throw new UnsupportedOperationException("Auto-impersonate is only supported by Anvil");
         }
-        final JsonRpcResponse response = sendWithRetry("anvil_autoImpersonateAccount", List.of(true));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid("anvil_autoImpersonateAccount", List.of(true));
     }
 
     @Override
@@ -250,48 +236,29 @@ final class DefaultTester implements Brane.Tester {
         if (mode != TestNodeMode.ANVIL) {
             throw new UnsupportedOperationException("Auto-impersonate is only supported by Anvil");
         }
-        final JsonRpcResponse response = sendWithRetry("anvil_autoImpersonateAccount", List.of(false));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid("anvil_autoImpersonateAccount", List.of(false));
     }
 
     @Override
     public void setBalance(final Address address, final Wei balance) {
         java.util.Objects.requireNonNull(address, "address must not be null");
         java.util.Objects.requireNonNull(balance, "balance must not be null");
-        final String method = mode.prefix() + "setBalance";
         final String balanceHex = "0x" + balance.value().toString(16);
-        final JsonRpcResponse response = sendWithRetry(method, List.of(address.value(), balanceHex));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "setBalance", List.of(address.value(), balanceHex));
     }
 
     @Override
     public void setCode(final Address address, final HexData code) {
         java.util.Objects.requireNonNull(address, "address must not be null");
         java.util.Objects.requireNonNull(code, "code must not be null");
-        final String method = mode.prefix() + "setCode";
-        final JsonRpcResponse response = sendWithRetry(method, List.of(address.value(), code.value()));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "setCode", List.of(address.value(), code.value()));
     }
 
     @Override
     public void setNonce(final Address address, final long nonce) {
         java.util.Objects.requireNonNull(address, "address must not be null");
-        final String method = mode.prefix() + "setNonce";
         final String nonceHex = "0x" + Long.toHexString(nonce);
-        final JsonRpcResponse response = sendWithRetry(method, List.of(address.value(), nonceHex));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "setNonce", List.of(address.value(), nonceHex));
     }
 
     @Override
@@ -299,12 +266,7 @@ final class DefaultTester implements Brane.Tester {
         java.util.Objects.requireNonNull(address, "address must not be null");
         java.util.Objects.requireNonNull(slot, "slot must not be null");
         java.util.Objects.requireNonNull(value, "value must not be null");
-        final String method = mode.prefix() + "setStorageAt";
-        final JsonRpcResponse response = sendWithRetry(method, List.of(address.value(), slot.value(), value.value()));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "setStorageAt", List.of(address.value(), slot.value(), value.value()));
     }
 
     @Override
@@ -314,37 +276,22 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public void mine(final long blocks) {
-        final String method = mode.prefix() + "mine";
         final String blocksHex = "0x" + Long.toHexString(blocks);
-        final JsonRpcResponse response = sendWithRetry(method, List.of(blocksHex));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "mine", List.of(blocksHex));
     }
 
     @Override
     public void mine(final long blocks, final long intervalSeconds) {
-        final String method = mode.prefix() + "mine";
         final String blocksHex = "0x" + Long.toHexString(blocks);
         final String intervalHex = "0x" + Long.toHexString(intervalSeconds);
-        final JsonRpcResponse response = sendWithRetry(method, List.of(blocksHex, intervalHex));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "mine", List.of(blocksHex, intervalHex));
     }
 
     @Override
     public void mineAt(final long timestamp) {
-        final String method = mode.prefix() + "mine";
         final String timestampHex = "0x" + Long.toHexString(timestamp);
         // Anvil's anvil_mine accepts (blocks, timestamp) or just timestamp via mine(1, timestamp)
-        final JsonRpcResponse response = sendWithRetry(method, List.of("0x1", timestampHex));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "mine", List.of("0x1", timestampHex));
     }
 
     @Override
@@ -369,11 +316,7 @@ final class DefaultTester implements Brane.Tester {
         final String method = mode == TestNodeMode.ANVIL
                 ? "evm_setAutomine"
                 : mode.prefix() + "setAutomine";
-        final JsonRpcResponse response = sendWithRetry(method, List.of(enabled));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(method, List.of(enabled));
     }
 
     @Override
@@ -381,11 +324,7 @@ final class DefaultTester implements Brane.Tester {
         final String method = mode == TestNodeMode.ANVIL
                 ? "evm_setIntervalMining"
                 : mode.prefix() + "setIntervalMining";
-        final JsonRpcResponse response = sendWithRetry(method, List.of(intervalMs));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(method, List.of(intervalMs));
     }
 
     @Override
@@ -394,11 +333,7 @@ final class DefaultTester implements Brane.Tester {
                 ? "evm_setNextBlockTimestamp"
                 : mode.prefix() + "setNextBlockTimestamp";
         final String timestampHex = "0x" + Long.toHexString(timestamp);
-        final JsonRpcResponse response = sendWithRetry(method, List.of(timestampHex));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(method, List.of(timestampHex));
     }
 
     @Override
@@ -407,68 +342,39 @@ final class DefaultTester implements Brane.Tester {
                 ? "evm_increaseTime"
                 : mode.prefix() + "increaseTime";
         final String secondsHex = "0x" + Long.toHexString(seconds);
-        final JsonRpcResponse response = sendWithRetry(method, List.of(secondsHex));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(method, List.of(secondsHex));
     }
 
     @Override
     public void setNextBlockBaseFee(final Wei baseFee) {
-        final String method = mode.prefix() + "setNextBlockBaseFeePerGas";
         final String baseFeeHex = "0x" + baseFee.value().toString(16);
-        final JsonRpcResponse response = sendWithRetry(method, List.of(baseFeeHex));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "setNextBlockBaseFeePerGas", List.of(baseFeeHex));
     }
 
     @Override
     public void setBlockGasLimit(final java.math.BigInteger gasLimit) {
         java.util.Objects.requireNonNull(gasLimit, "gasLimit must not be null");
-        final String method = mode.prefix() + "setBlockGasLimit";
         final String gasLimitHex = "0x" + gasLimit.toString(16);
-        final JsonRpcResponse response = sendWithRetry(method, List.of(gasLimitHex));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "setBlockGasLimit", List.of(gasLimitHex));
     }
 
     @Override
     public void setCoinbase(final Address coinbase) {
-        final String method = mode.prefix() + "setCoinbase";
-        final JsonRpcResponse response = sendWithRetry(method, List.of(coinbase.value()));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "setCoinbase", List.of(coinbase.value()));
     }
 
     @Override
     public void reset() {
-        final String method = mode.prefix() + "reset";
-        final JsonRpcResponse response = sendWithRetry(method, List.of());
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "reset", List.of());
     }
 
     @Override
     public void reset(final String forkUrl, final long blockNumber) {
-        final String method = mode.prefix() + "reset";
         final var params = java.util.Map.of(
                 "forking", java.util.Map.of(
                         "jsonRpcUrl", forkUrl,
                         "blockNumber", blockNumber));
-        final JsonRpcResponse response = sendWithRetry(method, List.of(params));
-        if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
-        }
+        sendVoid(mode.prefix() + "reset", List.of(params));
     }
 
     // ==================== State Management Methods ====================
@@ -496,12 +402,7 @@ final class DefaultTester implements Brane.Tester {
         if (mode != TestNodeMode.ANVIL) {
             throw new UnsupportedOperationException("loadState is only supported by Anvil");
         }
-        final JsonRpcResponse response = sendWithRetry("anvil_loadState", List.of(state.value()));
-        if (response.hasError()) {
-            return false;
-        }
-        final Object result = response.result();
-        return result != null && Boolean.TRUE.equals(result);
+        return sendBoolResult("anvil_loadState", List.of(state.value()));
     }
 
     // ==================== Transaction Pool Methods ====================
@@ -512,21 +413,65 @@ final class DefaultTester implements Brane.Tester {
         if (mode != TestNodeMode.ANVIL) {
             throw new UnsupportedOperationException("dropTransaction is only supported by Anvil");
         }
-        final JsonRpcResponse response = sendWithRetry("anvil_dropTransaction", List.of(txHash.value()));
-        if (response.hasError()) {
-            return false;
-        }
-        final Object result = response.result();
-        return result != null && Boolean.TRUE.equals(result);
+        return sendBoolResult("anvil_dropTransaction", List.of(txHash.value()));
     }
 
     // ==================== Internal Helpers ====================
 
     /**
-     * Sends an RPC request with automatic retry on transient failures.
+     * Returns the test node mode used by this tester.
+     *
+     * @return the test node mode
      */
-    private JsonRpcResponse sendWithRetry(final String method, final List<?> params) {
+    TestNodeMode testMode() {
+        return mode;
+    }
+
+    /**
+     * Sends an RPC request with automatic retry on transient failures.
+     *
+     * @param method the RPC method name
+     * @param params the method parameters
+     * @return the JSON-RPC response
+     */
+    JsonRpcResponse sendWithRetry(final String method, final List<?> params) {
         return RpcRetry.runRpc(() -> provider.send(method, params), maxRetries + 1, retryConfig);
+    }
+
+    /**
+     * Sends an RPC request that returns void on success, throwing on error.
+     *
+     * <p>This helper reduces boilerplate for methods that don't need the response result.
+     *
+     * @param method the RPC method name
+     * @param params the method parameters
+     * @throws RpcException if the RPC call fails
+     */
+    void sendVoid(final String method, final List<?> params) {
+        final JsonRpcResponse response = sendWithRetry(method, params);
+        if (response.hasError()) {
+            final JsonRpcError err = response.error();
+            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+        }
+    }
+
+    /**
+     * Sends an RPC request that returns a boolean result.
+     *
+     * <p>Returns false on RPC error or null result, returns the boolean result otherwise.
+     * This is used for operations like revert() and loadState() that return success status.
+     *
+     * @param method the RPC method name
+     * @param params the method parameters
+     * @return true if the operation succeeded, false otherwise
+     */
+    boolean sendBoolResult(final String method, final List<?> params) {
+        final JsonRpcResponse response = sendWithRetry(method, params);
+        if (response.hasError()) {
+            return false;
+        }
+        final Object result = response.result();
+        return result != null && Boolean.TRUE.equals(result);
     }
 
     // ==================== Receipt Waiting ====================
@@ -630,7 +575,7 @@ final class DefaultTester implements Brane.Tester {
                 tx.put("nonce", RpcUtils.toQuantityHex(BigInteger.valueOf(request.nonce())));
             }
 
-            final JsonRpcResponse response = sendWithRetry("eth_sendTransaction", List.of(tx));
+            final JsonRpcResponse response = tester.sendWithRetry("eth_sendTransaction", List.of(tx));
             if (response.hasError()) {
                 final JsonRpcError err = response.error();
                 throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
@@ -701,13 +646,6 @@ final class DefaultTester implements Brane.Tester {
             if (closed.get()) {
                 throw new IllegalStateException("ImpersonationSession has been closed");
             }
-        }
-
-        private JsonRpcResponse sendWithRetry(final String method, final List<?> params) {
-            return RpcRetry.runRpc(
-                    () -> tester.provider.send(method, params),
-                    tester.maxRetries + 1,
-                    tester.retryConfig);
         }
     }
 }
