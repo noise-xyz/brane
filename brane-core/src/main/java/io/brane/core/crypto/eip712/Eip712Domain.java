@@ -40,11 +40,9 @@ public record Eip712Domain(
      * {@code keccak256(encodeType("EIP712Domain") || encodeData(domain))}
      *
      * @return the 32-byte domain separator hash
-     * @throws UnsupportedOperationException until TypedDataEncoder is implemented
      */
     public Hash separator() {
-        // TODO: Implement when TypedDataEncoder is available
-        throw new UnsupportedOperationException("TypedDataEncoder not yet implemented");
+        return TypedDataEncoder.hashDomain(this);
     }
 
     /**

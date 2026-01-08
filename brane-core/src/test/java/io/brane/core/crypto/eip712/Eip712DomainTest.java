@@ -247,17 +247,21 @@ class Eip712DomainTest {
     class SeparatorTests {
 
         @Test
-        void separator_throwsUntilImplemented() {
+        void separator_returnsCorrectHash() {
             var domain = Eip712Domain.builder()
                     .name("Test")
                     .version("1")
                     .build();
 
-            var ex = assertThrows(UnsupportedOperationException.class, domain::separator);
-            assertTrue(ex.getMessage().contains("TypedDataEncoder"));
+            Hash separator = domain.separator();
+
+            assertNotNull(separator);
+            assertEquals(32, separator.toBytes().length);
+            // Verify it matches the direct TypedDataEncoder call
+            assertEquals(TypedDataEncoder.hashDomain(domain), separator);
         }
 
-        // These tests use TypedDataEncoder.hashDomain() directly since separator() is not yet connected
+        // Additional tests use TypedDataEncoder.hashDomain() directly for thorough coverage
         @Test
         void hashDomain_fullDomain_eip712SpecVector() {
             // From EIP-712 spec example:
