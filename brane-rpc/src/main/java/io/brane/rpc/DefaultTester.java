@@ -31,6 +31,38 @@ import io.brane.rpc.internal.RpcUtils;
  *
  * <p>Supports Anvil, Hardhat, and Ganache test nodes through {@link TestNodeMode}.
  *
+ * <h2>Implementation Notes</h2>
+ *
+ * <h3>Delegation Pattern</h3>
+ * <p>This class uses composition-based delegation rather than inheritance. It wraps a
+ * {@link DefaultSigner} instance internally and delegates all {@link Brane.Reader} and
+ * {@link Brane.Signer} operations to it. This approach:
+ * <ul>
+ *   <li>Avoids diamond inheritance issues (Tester extends both Reader and Signer)</li>
+ *   <li>Allows reuse of proven Reader/Signer implementations</li>
+ *   <li>Keeps test-specific logic isolated in this class</li>
+ * </ul>
+ *
+ * <h3>RPC Naming Convention</h3>
+ * <p>Test node RPC methods follow different naming conventions across implementations:
+ * <ul>
+ *   <li><b>Anvil:</b> Uses {@code anvil_*} prefix (e.g., {@code anvil_mine}, {@code anvil_setBalance}),
+ *       except for EVM methods which use {@code evm_*} (e.g., {@code evm_snapshot}, {@code evm_setAutomine})</li>
+ *   <li><b>Hardhat:</b> Uses {@code hardhat_*} prefix (e.g., {@code hardhat_mine})</li>
+ *   <li><b>Ganache:</b> Uses {@code evm_*} prefix (e.g., {@code evm_mine})</li>
+ * </ul>
+ * <p>The {@link TestNodeMode#prefix()} method returns the appropriate prefix for each mode.
+ * Some methods (like {@code snapshot}, {@code setAutomine}) require special handling because
+ * Anvil uses {@code evm_*} while other nodes use their standard prefix.
+ *
+ * <h3>Helper Methods</h3>
+ * <p>Three internal helper methods reduce boilerplate for RPC calls:
+ * <ul>
+ *   <li>{@link #sendWithRetry(String, List)} - Core retry wrapper with exponential backoff</li>
+ *   <li>{@link #sendVoid(String, List)} - For methods that don't return meaningful results</li>
+ *   <li>{@link #sendBoolResult(String, List)} - For methods returning success/failure boolean</li>
+ * </ul>
+ *
  * @since 0.3.0
  */
 final class DefaultTester implements Brane.Tester {
@@ -65,7 +97,10 @@ final class DefaultTester implements Brane.Tester {
         this.retryConfig = retryConfig;
     }
 
-    // ==================== Brane Interface Delegation ====================
+    // ==================== Brane.Reader Interface Delegation ====================
+    // All read operations are delegated to the internal DefaultSigner, which
+    // itself delegates to DefaultReader. This ensures consistent behavior across
+    // all client types (Reader, Signer, Tester).
 
     @Override
     public BigInteger chainId() {
@@ -158,13 +193,15 @@ final class DefaultTester implements Brane.Tester {
     }
 
     // ==================== Tester Interface Implementation ====================
+    // Tester-specific methods that are not part of Reader or Signer interfaces.
 
     @Override
     public Brane.Signer asSigner() {
         return signer;
     }
 
-    // ==================== Signer Method Delegation ====================
+    // ==================== Brane.Signer Method Delegation ====================
+    // Transaction signing operations delegated to internal DefaultSigner.
 
     @Override
     public Hash sendTransaction(final TransactionRequest request) {
@@ -185,6 +222,8 @@ final class DefaultTester implements Brane.Tester {
     }
 
     // ==================== Snapshot Methods ====================
+    // State snapshot and revert capabilities for test isolation.
+    // Note: Anvil uses evm_snapshot/evm_revert, others use their prefix.
 
     @Override
     public SnapshotId snapshot() {
@@ -378,6 +417,7 @@ final class DefaultTester implements Brane.Tester {
     }
 
     // ==================== State Management Methods ====================
+    // Full state dump/load for Anvil only. Useful for sharing test state.
 
     @Override
     public HexData dumpState() {
@@ -406,6 +446,7 @@ final class DefaultTester implements Brane.Tester {
     }
 
     // ==================== Transaction Pool Methods ====================
+    // Pending transaction manipulation for Anvil only.
 
     @Override
     public boolean dropTransaction(final Hash txHash) {
@@ -417,6 +458,8 @@ final class DefaultTester implements Brane.Tester {
     }
 
     // ==================== Internal Helpers ====================
+    // Private utility methods for RPC communication. These reduce boilerplate and
+    // centralize retry logic, error handling, and response parsing.
 
     /**
      * Returns the test node mode used by this tester.
@@ -475,6 +518,7 @@ final class DefaultTester implements Brane.Tester {
     }
 
     // ==================== Receipt Waiting ====================
+    // Transaction receipt polling with exponential backoff.
 
     /** Maximum poll interval for exponential backoff (10 seconds). */
     private static final long MAX_POLL_INTERVAL_MILLIS = 10_000L;
@@ -513,6 +557,7 @@ final class DefaultTester implements Brane.Tester {
     }
 
     // ==================== Inner Classes ====================
+    // Nested classes that require access to DefaultTester's internal state.
 
     /**
      * Default implementation of {@link ImpersonationSession} for test nodes.
