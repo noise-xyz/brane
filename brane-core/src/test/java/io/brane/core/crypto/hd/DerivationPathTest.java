@@ -27,6 +27,21 @@ class DerivationPathTest {
         assertEquals(DerivationPath.MAX_INDEX, path.addressIndex());
     }
 
+    /**
+     * Verifies that the constructor Javadoc accurately reflects its validation behavior.
+     * The constructor only rejects negative values; MAX_INDEX is accepted as a valid upper bound.
+     * This matches the Javadoc which states: "@throws IllegalArgumentException if account or addressIndex is negative"
+     */
+    @Test
+    void testConstructorJavadocMatchesBehavior() {
+        // Constructor accepts MAX_INDEX (documented upper bound)
+        assertDoesNotThrow(() -> new DerivationPath(DerivationPath.MAX_INDEX, DerivationPath.MAX_INDEX));
+
+        // Constructor rejects negative values (as documented)
+        assertThrows(IllegalArgumentException.class, () -> new DerivationPath(-1, 0));
+        assertThrows(IllegalArgumentException.class, () -> new DerivationPath(0, -1));
+    }
+
     @Test
     void testConstructorRejectsNegativeAccount() {
         var ex = assertThrows(IllegalArgumentException.class,
