@@ -37,14 +37,8 @@ public record DerivationPath(int account, int addressIndex) {
         if (account < 0) {
             throw new IllegalArgumentException("Account index cannot be negative: " + account);
         }
-        if (account > MAX_INDEX) {
-            throw new IllegalArgumentException("Account index exceeds maximum: " + account);
-        }
         if (addressIndex < 0) {
             throw new IllegalArgumentException("Address index cannot be negative: " + addressIndex);
-        }
-        if (addressIndex > MAX_INDEX) {
-            throw new IllegalArgumentException("Address index exceeds maximum: " + addressIndex);
         }
     }
 
