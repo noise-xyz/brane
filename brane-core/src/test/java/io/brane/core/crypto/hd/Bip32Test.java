@@ -262,6 +262,35 @@ class Bip32Test {
                 () -> new Bip32.ExtendedKey(new byte[32], new byte[16]));
     }
 
+    @Test
+    void testExtendedKeyImmutability() {
+        byte[] keyBytes = new byte[32];
+        byte[] chainCode = new byte[32];
+        keyBytes[0] = 0x42;
+        chainCode[0] = 0x24;
+
+        Bip32.ExtendedKey key = new Bip32.ExtendedKey(keyBytes, chainCode);
+
+        // Get the keyBytes and mutate the returned array
+        byte[] retrievedKeyBytes = key.keyBytes();
+        byte originalKeyByte = retrievedKeyBytes[0];
+        retrievedKeyBytes[0] = (byte) 0xFF;
+
+        // Subsequent call should return the original value, not the mutated one
+        byte[] freshKeyBytes = key.keyBytes();
+        assertEquals(originalKeyByte, freshKeyBytes[0],
+                "Mutating keyBytes() result should not affect subsequent calls");
+
+        // Same test for chainCode
+        byte[] retrievedChainCode = key.chainCode();
+        byte originalChainCodeByte = retrievedChainCode[0];
+        retrievedChainCode[0] = (byte) 0xFF;
+
+        byte[] freshChainCode = key.chainCode();
+        assertEquals(originalChainCodeByte, freshChainCode[0],
+                "Mutating chainCode() result should not affect subsequent calls");
+    }
+
     private static boolean isAllZeros(byte[] bytes) {
         for (byte b : bytes) {
             if (b != 0) {
