@@ -389,9 +389,11 @@ class MnemonicWalletTest {
         masterKeyField.setAccessible(true);
         Object masterKey = masterKeyField.get(wallet);
 
-        // Get keyBytes and chainCode from ExtendedKey
-        var keyBytesMethod = masterKey.getClass().getMethod("keyBytes");
-        var chainCodeMethod = masterKey.getClass().getMethod("chainCode");
+        // Get keyBytes and chainCode from ExtendedKey (package-private methods)
+        var keyBytesMethod = masterKey.getClass().getDeclaredMethod("keyBytes");
+        var chainCodeMethod = masterKey.getClass().getDeclaredMethod("chainCode");
+        keyBytesMethod.setAccessible(true);
+        chainCodeMethod.setAccessible(true);
         byte[] keyBytes = (byte[]) keyBytesMethod.invoke(masterKey);
         byte[] chainCode = (byte[]) chainCodeMethod.invoke(masterKey);
 

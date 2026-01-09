@@ -253,18 +253,28 @@ final class Bip32 {
 
     /**
      * Extended key containing private key bytes and chain code.
-     *
-     * @param keyBytes  32-byte private key
-     * @param chainCode 32-byte chain code
      */
-    record ExtendedKey(byte[] keyBytes, byte[] chainCode) {
-        ExtendedKey {
+    static final class ExtendedKey {
+        private final byte[] keyBytes;
+        private final byte[] chainCode;
+
+        ExtendedKey(byte[] keyBytes, byte[] chainCode) {
             if (keyBytes == null || keyBytes.length != 32) {
                 throw new IllegalArgumentException("Key bytes must be 32 bytes");
             }
             if (chainCode == null || chainCode.length != 32) {
                 throw new IllegalArgumentException("Chain code must be 32 bytes");
             }
+            this.keyBytes = keyBytes;
+            this.chainCode = chainCode;
+        }
+
+        byte[] keyBytes() {
+            return keyBytes;
+        }
+
+        byte[] chainCode() {
+            return chainCode;
         }
     }
 }
