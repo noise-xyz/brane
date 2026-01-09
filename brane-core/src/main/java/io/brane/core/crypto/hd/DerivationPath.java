@@ -18,6 +18,7 @@ package io.brane.core.crypto.hd;
  * @param account      the account index (0 to MAX_INDEX)
  * @param addressIndex the address index within the account (0 to MAX_INDEX)
  * @see <a href="https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki">BIP-44</a>
+ * @since 0.3.0
  */
 public record DerivationPath(int account, int addressIndex) {
 
