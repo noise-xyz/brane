@@ -175,9 +175,6 @@ public final class MnemonicWallet implements Destroyable {
      * @throws IllegalStateException    if the wallet has been destroyed
      */
     public Signer derive(int addressIndex) {
-        if (destroyed) {
-            throw new IllegalStateException("MnemonicWallet has been destroyed");
-        }
         return derive(DerivationPath.of(addressIndex));
     }
 
