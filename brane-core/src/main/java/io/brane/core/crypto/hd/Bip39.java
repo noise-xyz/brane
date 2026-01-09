@@ -102,6 +102,10 @@ final class Bip39 {
      * Derives a 64-byte seed from a mnemonic phrase and passphrase using PBKDF2-HMAC-SHA512.
      *
      * <p>
+     * Does not validate mnemonic format. Any string produces a valid seed per BIP-39
+     * specification. Use {@link #isValid(String)} first if validation is required.
+     *
+     * <p>
      * Both the mnemonic and passphrase are NFKD-normalized before processing, as required
      * by BIP-39.
      *
