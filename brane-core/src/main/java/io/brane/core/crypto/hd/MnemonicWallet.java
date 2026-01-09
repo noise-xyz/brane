@@ -197,10 +197,13 @@ public final class MnemonicWallet implements Destroyable {
 
         String fullPath = path.toPath();
         Bip32.ExtendedKey derivedKey = Bip32.derivePath(masterKey, fullPath);
-
-        // Clone bytes since fromBytes() zeros its input for security
-        PrivateKey privateKey = PrivateKey.fromBytes(derivedKey.keyBytes().clone());
-        return PrivateKeySigner.fromPrivateKey(privateKey);
+        try {
+            // keyBytes() returns a defensive copy, safe for fromBytes() which zeros its input
+            PrivateKey privateKey = PrivateKey.fromBytes(derivedKey.keyBytes());
+            return PrivateKeySigner.fromPrivateKey(privateKey);
+        } finally {
+            derivedKey.destroy();
+        }
     }
 
     /**
