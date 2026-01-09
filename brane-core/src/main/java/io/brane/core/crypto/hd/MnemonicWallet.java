@@ -58,6 +58,7 @@ import io.brane.core.crypto.Signer;
  * @see DerivationPath
  * @see <a href="https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki">BIP-39</a>
  * @see <a href="https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki">BIP-44</a>
+ * @since 0.3.0
  */
 public final class MnemonicWallet implements Destroyable {
 
