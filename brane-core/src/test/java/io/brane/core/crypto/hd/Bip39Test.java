@@ -77,6 +77,13 @@ class Bip39Test {
                 "abandon  abandon   abandon abandon abandon abandon abandon abandon abandon abandon abandon about"));
     }
 
+    @Test
+    void testIsValidWithLeadingTrailingWhitespace() {
+        // Leading and trailing whitespace should be handled via trim()
+        assertTrue(Bip39.isValid(
+                "  abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about  "));
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {12, 15, 18, 21, 24})
     void testGenerateValidWordCounts(int wordCount) {
