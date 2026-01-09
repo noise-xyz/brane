@@ -295,6 +295,7 @@ final class Bip32 {
          * After calling this method, the key is marked as destroyed.
          */
         void destroy() {
+            if (destroyed) return;
             Arrays.fill(keyBytes, (byte) 0);
             Arrays.fill(chainCode, (byte) 0);
             destroyed = true;
