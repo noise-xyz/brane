@@ -241,7 +241,7 @@ final class Bip39 {
         try {
             return java.security.MessageDigest.getInstance("SHA-256").digest(input);
         } catch (java.security.NoSuchAlgorithmException e) {
-            throw new RuntimeException("SHA-256 not available", e);
+            throw new IllegalStateException("SHA-256 unavailable - JVM misconfigured", e);
         }
     }
 
