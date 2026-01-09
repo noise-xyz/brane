@@ -423,4 +423,52 @@ class MnemonicWalletTest {
         }
         return true;
     }
+
+    // ========== Concurrency Tests ==========
+
+    @Test
+    void testConcurrentDerivation() throws Exception {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(ANVIL_MNEMONIC);
+        int threadCount = 10;
+        int derivationsPerThread = 100;
+
+        // Pre-compute expected addresses for indices 0-9
+        String[] expectedAddresses = new String[threadCount];
+        for (int i = 0; i < threadCount; i++) {
+            expectedAddresses[i] = wallet.derive(i).address().value();
+        }
+
+        var executor = java.util.concurrent.Executors.newFixedThreadPool(threadCount);
+        var latch = new java.util.concurrent.CountDownLatch(1);
+        var futures = new java.util.ArrayList<java.util.concurrent.Future<Void>>();
+
+        try {
+            for (int t = 0; t < threadCount; t++) {
+                int threadIndex = t;
+                futures.add(executor.submit(() -> {
+                    latch.await(); // Wait for all threads to be ready
+                    for (int i = 0; i < derivationsPerThread; i++) {
+                        Signer signer = wallet.derive(threadIndex);
+                        String actualAddress = signer.address().value();
+                        if (!expectedAddresses[threadIndex].equals(actualAddress)) {
+                            throw new AssertionError(
+                                    "Thread " + threadIndex + " iteration " + i + ": expected "
+                                            + expectedAddresses[threadIndex] + " but got " + actualAddress);
+                        }
+                    }
+                    return null;
+                }));
+            }
+
+            // Start all threads simultaneously
+            latch.countDown();
+
+            // Wait for all threads to complete and check for exceptions
+            for (var future : futures) {
+                future.get(); // Throws ExecutionException if thread failed
+            }
+        } finally {
+            executor.shutdown();
+        }
+    }
 }
