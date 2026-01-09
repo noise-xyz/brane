@@ -63,7 +63,11 @@ public final class MnemonicWallet {
     private MnemonicWallet(String phrase, String passphrase) {
         this.phrase = phrase;
         byte[] seed = Bip39.toSeed(phrase, passphrase);
-        this.masterKey = Bip32.masterKey(seed);
+        try {
+            this.masterKey = Bip32.masterKey(seed);
+        } finally {
+            java.util.Arrays.fill(seed, (byte) 0);
+        }
     }
 
     /**
