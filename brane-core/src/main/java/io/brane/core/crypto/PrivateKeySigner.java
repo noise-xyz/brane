@@ -35,6 +35,19 @@ public final class PrivateKeySigner implements Signer, Destroyable {
         this.address = privateKey.toAddress();
     }
 
+    /**
+     * Creates a signer from an existing private key.
+     *
+     * <p>Package-private to support HD wallet derivation without hex roundtrip.
+     *
+     * @param privateKey the private key (must not be null)
+     * @throws NullPointerException if privateKey is null
+     */
+    PrivateKeySigner(final PrivateKey privateKey) {
+        this.privateKey = java.util.Objects.requireNonNull(privateKey, "privateKey cannot be null");
+        this.address = privateKey.toAddress();
+    }
+
     @Override
     public Address address() {
         return address;
