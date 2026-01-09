@@ -240,8 +240,7 @@ public final class MnemonicWallet implements Destroyable {
      */
     @Override
     public void destroy() {
-        java.util.Arrays.fill(masterKey.keyBytes(), (byte) 0);
-        java.util.Arrays.fill(masterKey.chainCode(), (byte) 0);
+        masterKey.destroy();
         destroyed = true;
     }
 

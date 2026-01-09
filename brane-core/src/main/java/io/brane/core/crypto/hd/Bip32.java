@@ -270,11 +270,19 @@ final class Bip32 {
         }
 
         byte[] keyBytes() {
-            return keyBytes;
+            return keyBytes.clone();
         }
 
         byte[] chainCode() {
-            return chainCode;
+            return chainCode.clone();
+        }
+
+        /**
+         * Zeros the internal key material for secure destruction.
+         */
+        void destroy() {
+            Arrays.fill(keyBytes, (byte) 0);
+            Arrays.fill(chainCode, (byte) 0);
         }
     }
 }

@@ -389,13 +389,13 @@ class MnemonicWalletTest {
         masterKeyField.setAccessible(true);
         Object masterKey = masterKeyField.get(wallet);
 
-        // Get keyBytes and chainCode from ExtendedKey (package-private methods)
-        var keyBytesMethod = masterKey.getClass().getDeclaredMethod("keyBytes");
-        var chainCodeMethod = masterKey.getClass().getDeclaredMethod("chainCode");
-        keyBytesMethod.setAccessible(true);
-        chainCodeMethod.setAccessible(true);
-        byte[] keyBytes = (byte[]) keyBytesMethod.invoke(masterKey);
-        byte[] chainCode = (byte[]) chainCodeMethod.invoke(masterKey);
+        // Get keyBytes and chainCode fields from ExtendedKey directly (accessors return defensive copies)
+        var keyBytesField = masterKey.getClass().getDeclaredField("keyBytes");
+        var chainCodeField = masterKey.getClass().getDeclaredField("chainCode");
+        keyBytesField.setAccessible(true);
+        chainCodeField.setAccessible(true);
+        byte[] keyBytes = (byte[]) keyBytesField.get(masterKey);
+        byte[] chainCode = (byte[]) chainCodeField.get(masterKey);
 
         // Verify key material is non-zero before destroy
         assertFalse(isAllZeros(keyBytes), "keyBytes should not be all zeros before destroy");
