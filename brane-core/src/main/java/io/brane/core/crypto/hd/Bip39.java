@@ -56,14 +56,7 @@ final class Bip39 {
             return false;
         }
 
-        // Check all words are in the wordlist
-        for (String word : words) {
-            if (!EnglishWordlist.contains(word)) {
-                return false;
-            }
-        }
-
-        // Verify checksum
+        // Verify checksum (also validates all words are in wordlist)
         return verifyChecksum(words);
     }
 
@@ -194,6 +187,9 @@ final class Bip39 {
 
     /**
      * Verifies the checksum of a mnemonic.
+     *
+     * <p>
+     * Returns false if any word is not in the BIP-39 wordlist.
      */
     private static boolean verifyChecksum(String[] words) {
         int wordCount = words.length;
@@ -205,7 +201,13 @@ final class Bip39 {
         // Convert words to bits
         boolean[] bits = new boolean[totalBits];
         for (int i = 0; i < wordCount; i++) {
-            int index = EnglishWordlist.getIndex(words[i]);
+            int index;
+            try {
+                index = EnglishWordlist.getIndex(words[i]);
+            } catch (IllegalArgumentException e) {
+                // Word not in wordlist
+                return false;
+            }
             for (int j = 0; j < 11; j++) {
                 bits[i * 11 + j] = (index & (1 << (10 - j))) != 0;
             }
