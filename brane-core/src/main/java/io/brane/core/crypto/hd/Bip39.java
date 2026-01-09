@@ -141,7 +141,7 @@ final class Bip39 {
             spec.clearPassword();
             return seed;
         } catch (GeneralSecurityException e) {
-            throw new RuntimeException("PBKDF2 derivation failed", e);
+            throw new IllegalStateException("PBKDF2WithHmacSHA512 unavailable - JVM misconfigured", e);
         }
     }
 
