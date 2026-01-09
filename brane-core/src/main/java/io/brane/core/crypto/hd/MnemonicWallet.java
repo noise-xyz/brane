@@ -3,6 +3,8 @@ package io.brane.core.crypto.hd;
 import java.security.SecureRandom;
 import java.util.Objects;
 
+import javax.security.auth.Destroyable;
+
 import io.brane.core.crypto.PrivateKey;
 import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.crypto.Signer;
@@ -53,9 +55,11 @@ import io.brane.core.crypto.Signer;
  * @see <a href="https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki">BIP-39</a>
  * @see <a href="https://github.com/bitcoin/bips/blob/master/bip-0044.mediawiki">BIP-44</a>
  */
-public final class MnemonicWallet {
+public final class MnemonicWallet implements Destroyable {
 
     private static final int DEFAULT_WORD_COUNT = 12;
+
+    private volatile boolean destroyed = false;
 
     private final String phrase;
     private final Bip32.ExtendedKey masterKey;
