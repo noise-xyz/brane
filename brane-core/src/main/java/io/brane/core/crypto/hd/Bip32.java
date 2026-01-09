@@ -257,6 +257,7 @@ final class Bip32 {
     static final class ExtendedKey {
         private final byte[] keyBytes;
         private final byte[] chainCode;
+        private boolean destroyed;
 
         ExtendedKey(byte[] keyBytes, byte[] chainCode) {
             if (keyBytes == null || keyBytes.length != 32) {
@@ -279,10 +280,21 @@ final class Bip32 {
 
         /**
          * Zeros the internal key material for secure destruction.
+         * After calling this method, the key is marked as destroyed.
          */
         void destroy() {
             Arrays.fill(keyBytes, (byte) 0);
             Arrays.fill(chainCode, (byte) 0);
+            destroyed = true;
+        }
+
+        /**
+         * Returns whether this key has been destroyed.
+         *
+         * @return true if {@link #destroy()} has been called
+         */
+        boolean isDestroyed() {
+            return destroyed;
         }
 
         @Override
