@@ -223,4 +223,135 @@ class MnemonicWalletTest {
         assertTrue(wallet12.toString().contains("12"));
         assertTrue(wallet24.toString().contains("24"));
     }
+
+    // ========== Anvil Compatibility Tests ==========
+
+    // Anvil's default mnemonic - 12 words
+    private static final String ANVIL_MNEMONIC =
+            "test test test test test test test test test test test junk";
+
+    // Expected addresses from Anvil for the test mnemonic (lowercase for comparison)
+    // m/44'/60'/0'/0/0
+    private static final String ANVIL_ADDRESS_0 = "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266";
+    // m/44'/60'/0'/0/1
+    private static final String ANVIL_ADDRESS_1 = "0x70997970c51812dc3a010c7d01b50e0d17dc79c8";
+
+    @Test
+    void testAnvilMnemonicDeriveIndex0() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(ANVIL_MNEMONIC);
+        Signer signer = wallet.derive(0);
+
+        // Address values are stored lowercase
+        assertEquals(ANVIL_ADDRESS_0, signer.address().value());
+    }
+
+    @Test
+    void testAnvilMnemonicDeriveIndex1() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(ANVIL_MNEMONIC);
+        Signer signer = wallet.derive(1);
+
+        assertEquals(ANVIL_ADDRESS_1, signer.address().value());
+    }
+
+    @Test
+    void testAnvilMnemonicIsValid() {
+        assertTrue(MnemonicWallet.isValidPhrase(ANVIL_MNEMONIC));
+    }
+
+    // ========== Derive Independence Tests ==========
+
+    @Test
+    void testDeriveReturnsIndependentSigners() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(ANVIL_MNEMONIC);
+
+        Signer signer0a = wallet.derive(0);
+        Signer signer0b = wallet.derive(0);
+
+        // Both signers should have the same address
+        assertEquals(signer0a.address(), signer0b.address());
+
+        // But they should be different instances
+        assertNotSame(signer0a, signer0b);
+
+        // Each can sign independently
+        byte[] message = "test".getBytes();
+        var sig0a = signer0a.signMessage(message);
+        var sig0b = signer0b.signMessage(message);
+
+        // Same key should produce same signatures (deterministic signing)
+        assertArrayEquals(sig0a.r(), sig0b.r());
+        assertArrayEquals(sig0a.s(), sig0b.s());
+        assertEquals(sig0a.v(), sig0b.v());
+    }
+
+    @Test
+    void testMultipleDeriveCallsDoNotInterfere() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(ANVIL_MNEMONIC);
+
+        // Derive multiple signers
+        Signer signer0 = wallet.derive(0);
+        Signer signer1 = wallet.derive(1);
+        Signer signer2 = wallet.derive(2);
+
+        // Verify each has unique address
+        assertNotEquals(signer0.address(), signer1.address());
+        assertNotEquals(signer1.address(), signer2.address());
+        assertNotEquals(signer0.address(), signer2.address());
+
+        // Verify they match expected addresses
+        assertEquals(ANVIL_ADDRESS_0, signer0.address().value());
+        assertEquals(ANVIL_ADDRESS_1, signer1.address().value());
+    }
+
+    // ========== Signer Destroy Tests ==========
+
+    @Test
+    void testDerivedSignerCanBeDestroyed() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(ANVIL_MNEMONIC);
+        Signer signer = wallet.derive(0);
+
+        // Signer should be a PrivateKeySigner which implements Destroyable
+        assertInstanceOf(io.brane.core.crypto.PrivateKeySigner.class, signer);
+
+        var privateKeySigner = (io.brane.core.crypto.PrivateKeySigner) signer;
+        assertFalse(privateKeySigner.isDestroyed());
+
+        privateKeySigner.destroy();
+        assertTrue(privateKeySigner.isDestroyed());
+    }
+
+    @Test
+    void testDestroyedSignerThrowsOnSign() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(ANVIL_MNEMONIC);
+        Signer signer = wallet.derive(0);
+
+        var privateKeySigner = (io.brane.core.crypto.PrivateKeySigner) signer;
+        privateKeySigner.destroy();
+
+        // Signing after destroy should throw
+        byte[] message = "test".getBytes();
+        assertThrows(IllegalStateException.class, () -> signer.signMessage(message));
+    }
+
+    @Test
+    void testDestroyingOneSignerDoesNotAffectOthers() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(ANVIL_MNEMONIC);
+
+        Signer signer0 = wallet.derive(0);
+        Signer signer1 = wallet.derive(1);
+
+        // Destroy signer0
+        ((io.brane.core.crypto.PrivateKeySigner) signer0).destroy();
+
+        // signer1 should still work
+        byte[] message = "test".getBytes();
+        var signature = signer1.signMessage(message);
+        assertNotNull(signature);
+
+        // And we can still derive new signers
+        Signer signer0Again = wallet.derive(0);
+        assertFalse(((io.brane.core.crypto.PrivateKeySigner) signer0Again).isDestroyed());
+        var sig = signer0Again.signMessage(message);
+        assertNotNull(sig);
+    }
 }
