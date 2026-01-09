@@ -74,43 +74,27 @@ public record DerivationPath(int account, int addressIndex) {
      * @throws IllegalArgumentException if the path is null, empty, or not in the expected format
      */
     public static DerivationPath parse(String path) {
-        if (path == null || path.isEmpty()) {
-            throw new IllegalArgumentException("Path cannot be null or empty");
-        }
+        require(path != null && !path.isEmpty(), "Path cannot be null or empty");
 
         String[] components = path.split("/");
-        if (components.length != 6) {
-            throw new IllegalArgumentException(
-                    "Invalid path format. Expected m/44'/60'/account'/0/index, got: " + path);
-        }
-
-        if (!components[0].equals("m")) {
-            throw new IllegalArgumentException("Path must start with 'm', got: " + path);
-        }
-
-        if (!isHardenedComponent(components[1], BIP44_PURPOSE)) {
-            throw new IllegalArgumentException(
-                    "Path must have purpose 44' (BIP-44), got: " + components[1]);
-        }
-
-        if (!isHardenedComponent(components[2], ETH_COIN_TYPE)) {
-            throw new IllegalArgumentException(
-                    "Path must have coin type 60' (Ethereum), got: " + components[2]);
-        }
+        require(components.length == 6,
+                "Invalid path format. Expected m/44'/60'/account'/0/index, got: " + path);
+        require(components[0].equals("m"),
+                "Path must start with 'm', got: " + path);
+        require(isHardenedComponent(components[1], BIP44_PURPOSE),
+                "Path must have purpose 44' (BIP-44), got: " + components[1]);
+        require(isHardenedComponent(components[2], ETH_COIN_TYPE),
+                "Path must have coin type 60' (Ethereum), got: " + components[2]);
 
         // Parse account (hardened)
         String accountStr = components[3];
-        if (!accountStr.endsWith("'") && !accountStr.endsWith("h")) {
-            throw new IllegalArgumentException(
-                    "Account must be hardened (end with ' or h), got: " + accountStr);
-        }
+        require(accountStr.endsWith("'") || accountStr.endsWith("h"),
+                "Account must be hardened (end with ' or h), got: " + accountStr);
         int account = parseIndex(accountStr.substring(0, accountStr.length() - 1), "account");
 
         // Change must be 0 (external chain)
-        if (!components[4].equals(EXTERNAL_CHAIN)) {
-            throw new IllegalArgumentException(
-                    "Change must be 0 (external chain), got: " + components[4]);
-        }
+        require(components[4].equals(EXTERNAL_CHAIN),
+                "Change must be 0 (external chain), got: " + components[4]);
 
         // Parse address index (non-hardened)
         int addressIndex = parseIndex(components[5], "address index");
@@ -145,5 +129,11 @@ public record DerivationPath(int account, int addressIndex) {
 
     private static boolean isHardenedComponent(String component, String expected) {
         return component.equals(expected + "'") || component.equals(expected + "h");
+    }
+
+    private static void require(boolean condition, String message) {
+        if (!condition) {
+            throw new IllegalArgumentException(message);
+        }
     }
 }
