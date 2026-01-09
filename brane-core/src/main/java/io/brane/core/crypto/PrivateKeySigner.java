@@ -2,6 +2,7 @@ package io.brane.core.crypto;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 import javax.security.auth.Destroyable;
 
@@ -43,7 +44,7 @@ public final class PrivateKeySigner implements Signer, Destroyable {
      * @throws NullPointerException if privateKey is null
      */
     PrivateKeySigner(final PrivateKey privateKey) {
-        this.privateKey = java.util.Objects.requireNonNull(privateKey, "privateKey cannot be null");
+        this.privateKey = Objects.requireNonNull(privateKey, "privateKey cannot be null");
         this.address = privateKey.toAddress();
     }
 
@@ -81,7 +82,7 @@ public final class PrivateKeySigner implements Signer, Destroyable {
 
     @Override
     public Signature signMessage(final byte[] message) {
-        java.util.Objects.requireNonNull(message, "message cannot be null");
+        Objects.requireNonNull(message, "message cannot be null");
         // EIP-191 style signing (Ethereum Signed Message)
         // \x19Ethereum Signed Message:\n + length + message
         byte[] prefix = ("\u0019Ethereum Signed Message:\n" + message.length)
@@ -108,7 +109,7 @@ public final class PrivateKeySigner implements Signer, Destroyable {
      * @throws IllegalArgumentException if hash is not 32 bytes
      */
     public Signature signRawHash(final byte[] hash) {
-        java.util.Objects.requireNonNull(hash, "hash cannot be null");
+        Objects.requireNonNull(hash, "hash cannot be null");
         if (hash.length != 32) {
             throw new IllegalArgumentException("Hash must be 32 bytes, got " + hash.length);
         }
