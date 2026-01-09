@@ -22,6 +22,10 @@ import io.brane.core.crypto.Signer;
  *   <li><b>Mnemonic phrases are highly sensitive.</b> The phrase returned by {@link #phrase()}
  *       provides complete access to all derived keys. Store securely and never log or transmit
  *       over insecure channels.</li>
+ *   <li><b>Phrase cannot be cleared from memory.</b> Due to Java String immutability, the mnemonic
+ *       phrase stored internally cannot be zeroed when {@link #destroy()} is called. Keep wallet
+ *       instances short-lived and ensure the phrase is not retained elsewhere in your application.
+ *       Derived {@link Signer} instances are independent and can be held longer.</li>
  *   <li><b>Passphrase adds security layer.</b> Using a passphrase with {@link #fromPhrase(String, String)}
  *       provides plausible deniability and protection against mnemonic theft. However, a forgotten
  *       passphrase means permanent loss of access.</li>
