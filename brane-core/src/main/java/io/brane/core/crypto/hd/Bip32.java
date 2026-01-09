@@ -205,7 +205,13 @@ final class Bip32 {
                 index |= HARDENED_OFFSET;
             }
 
+            ExtendedKey previous = current;
             current = deriveChild(current, index);
+            // Destroy intermediate keys to prevent sensitive data from lingering in memory.
+            // Don't destroy the original masterKey passed by the caller.
+            if (previous != masterKey) {
+                previous.destroy();
+            }
         }
 
         return current;
