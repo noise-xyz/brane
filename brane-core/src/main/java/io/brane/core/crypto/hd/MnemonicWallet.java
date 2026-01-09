@@ -67,10 +67,12 @@ public final class MnemonicWallet implements Destroyable {
     private volatile boolean destroyed = false;
 
     private final String phrase;
+    private final int wordCount;
     private final Bip32.ExtendedKey masterKey;
 
     private MnemonicWallet(String phrase, String passphrase) {
         this.phrase = phrase;
+        this.wordCount = phrase.split("\\s+").length;
         byte[] seed = Bip39.toSeed(phrase, passphrase);
         try {
             this.masterKey = Bip32.masterKey(seed);
@@ -225,7 +227,6 @@ public final class MnemonicWallet implements Destroyable {
      */
     @Override
     public String toString() {
-        int wordCount = phrase.split("\\s+").length;
         return "MnemonicWallet[" + wordCount + " words]";
     }
 
