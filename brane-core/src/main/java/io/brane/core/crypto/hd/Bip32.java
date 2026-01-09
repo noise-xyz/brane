@@ -265,8 +265,8 @@ final class Bip32 {
             if (chainCode == null || chainCode.length != 32) {
                 throw new IllegalArgumentException("Chain code must be 32 bytes");
             }
-            this.keyBytes = keyBytes;
-            this.chainCode = chainCode;
+            this.keyBytes = keyBytes.clone();
+            this.chainCode = chainCode.clone();
         }
 
         byte[] keyBytes() {
