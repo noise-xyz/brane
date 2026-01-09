@@ -375,4 +375,50 @@ class MnemonicWalletTest {
         var sig = signer0Again.signMessage(message);
         assertNotNull(sig);
     }
+
+    @Test
+    void testDestroyZerosMasterKeyAndPreventsDerive() throws Exception {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(ANVIL_MNEMONIC);
+
+        // Verify wallet works before destroy
+        Signer signerBefore = wallet.derive(0);
+        assertEquals(ANVIL_ADDRESS_0, signerBefore.address().value());
+
+        // Use reflection to access the private masterKey field
+        var masterKeyField = MnemonicWallet.class.getDeclaredField("masterKey");
+        masterKeyField.setAccessible(true);
+        Object masterKey = masterKeyField.get(wallet);
+
+        // Get keyBytes and chainCode from ExtendedKey
+        var keyBytesMethod = masterKey.getClass().getMethod("keyBytes");
+        var chainCodeMethod = masterKey.getClass().getMethod("chainCode");
+        byte[] keyBytes = (byte[]) keyBytesMethod.invoke(masterKey);
+        byte[] chainCode = (byte[]) chainCodeMethod.invoke(masterKey);
+
+        // Verify key material is non-zero before destroy
+        assertFalse(isAllZeros(keyBytes), "keyBytes should not be all zeros before destroy");
+        assertFalse(isAllZeros(chainCode), "chainCode should not be all zeros before destroy");
+
+        // Destroy the wallet
+        assertFalse(wallet.isDestroyed());
+        wallet.destroy();
+        assertTrue(wallet.isDestroyed());
+
+        // Verify key material is zeroed after destroy
+        assertTrue(isAllZeros(keyBytes), "keyBytes should be all zeros after destroy");
+        assertTrue(isAllZeros(chainCode), "chainCode should be all zeros after destroy");
+
+        // Verify derive throws IllegalStateException after destroy
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> wallet.derive(0));
+        assertEquals("MnemonicWallet has been destroyed", ex.getMessage());
+    }
+
+    private static boolean isAllZeros(byte[] bytes) {
+        for (byte b : bytes) {
+            if (b != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
