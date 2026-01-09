@@ -11,6 +11,7 @@ on:
       - '.github/workflows/deploy.yml'
       - 'overview.html'
       - 'brane-*/src/main/java/**/*.java'
+      - 'build.gradle'
   workflow_dispatch:
 
 jobs:
