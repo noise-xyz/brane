@@ -303,6 +303,27 @@ class MnemonicWalletTest {
         assertEquals(ANVIL_ADDRESS_1, signer1.address().value());
     }
 
+    // ========== Wallet Destroy Tests ==========
+
+    @Test
+    void testDeriveByIndexAfterDestroyThrows() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(ANVIL_MNEMONIC);
+        wallet.destroy();
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> wallet.derive(0));
+        assertEquals("MnemonicWallet has been destroyed", ex.getMessage());
+    }
+
+    @Test
+    void testDeriveByPathAfterDestroyThrows() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(ANVIL_MNEMONIC);
+        wallet.destroy();
+
+        IllegalStateException ex =
+                assertThrows(IllegalStateException.class, () -> wallet.derive(DerivationPath.of(0, 0)));
+        assertEquals("MnemonicWallet has been destroyed", ex.getMessage());
+    }
+
     // ========== Signer Destroy Tests ==========
 
     @Test

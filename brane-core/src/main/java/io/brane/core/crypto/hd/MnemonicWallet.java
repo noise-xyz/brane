@@ -162,8 +162,12 @@ public final class MnemonicWallet implements Destroyable {
      * @param addressIndex the address index (0 to {@link DerivationPath#MAX_INDEX})
      * @return a signer for the derived address
      * @throws IllegalArgumentException if addressIndex is negative or exceeds maximum
+     * @throws IllegalStateException    if the wallet has been destroyed
      */
     public Signer derive(int addressIndex) {
+        if (destroyed) {
+            throw new IllegalStateException("MnemonicWallet has been destroyed");
+        }
         return derive(DerivationPath.of(addressIndex));
     }
 
@@ -172,9 +176,13 @@ public final class MnemonicWallet implements Destroyable {
      *
      * @param path the full derivation path
      * @return a signer for the derived address
-     * @throws NullPointerException if path is null
+     * @throws NullPointerException  if path is null
+     * @throws IllegalStateException if the wallet has been destroyed
      */
     public Signer derive(DerivationPath path) {
+        if (destroyed) {
+            throw new IllegalStateException("MnemonicWallet has been destroyed");
+        }
         Objects.requireNonNull(path, "path cannot be null");
 
         String fullPath = path.toPath();
