@@ -32,3 +32,11 @@
 - **Primitives**: `Address`, `Wei`, `HexData`.
 - **ABI Encoding**: `FastAbiEncoder` (Low-level usage).
 - **Error Handling**: Decoding reverts and RPC errors.
+
+## 8. Testing (Brane.Tester)
+- **Overview**: Introduction to `Brane.Tester` for local test node interaction.
+- **Setup**: `connectTest()` factory methods, `TestNodeMode`, `AnvilSigners`.
+- **Account Manipulation**: `setBalance`, `setCode`, `setNonce`, `setStorageAt`.
+- **Impersonation**: `impersonate()`, `ImpersonationSession`, whale testing patterns.
+- **State Management**: `snapshot`/`revert`, `dumpState`/`loadState`, `reset()` for fork testing.
+- **Mining & Time Control**: `mine()`, automine, interval mining, `increaseTime`, `setNextBlockTimestamp`.

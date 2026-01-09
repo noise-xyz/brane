@@ -69,6 +69,7 @@ public final class BranePatternMatchingExample {
             String clientType = switch (readOnlyClient) {
                 case Brane.Reader r -> "Read-only client (Reader)";
                 case Brane.Signer s -> "Signing client (Signer)";
+                case Brane.Tester t -> "Test client (Tester)";
             };
             System.out.println("Client type: " + clientType);
         } finally {
@@ -82,6 +83,7 @@ public final class BranePatternMatchingExample {
             String clientType = switch (signingClient) {
                 case Brane.Reader r -> "Read-only client (Reader)";
                 case Brane.Signer s -> "Signing client (Signer)";
+                case Brane.Tester t -> "Test client (Tester)";
             };
             System.out.println("Client type: " + clientType);
         } finally {
@@ -112,6 +114,10 @@ public final class BranePatternMatchingExample {
                 case Brane.Signer s -> {
                     System.out.println("Extracted signer with address: " + s.signer().address());
                     yield s.signer().address();
+                }
+                case Brane.Tester t -> {
+                    System.out.println("Extracted tester with signer address: " + t.signer().address());
+                    yield t.signer().address();
                 }
             };
 
@@ -169,6 +175,9 @@ public final class BranePatternMatchingExample {
             case Brane.Signer s -> String.format(
                     "Signing client on chain %d - signer address: %s, can send transactions",
                     chainId, s.signer().address());
+            case Brane.Tester t -> String.format(
+                    "Test client on chain %d - signer address: %s, can test node operations",
+                    chainId, t.signer().address());
         };
 
         System.out.println(description);

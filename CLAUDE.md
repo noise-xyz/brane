@@ -8,7 +8,7 @@ Modern, type-safe Java 21 SDK for Ethereum/EVM. Inspired by viem (TS) and alloy 
 |--------|---------|-------------|
 | `brane-primitives` | Hex/RLP utilities (zero deps) | `Hex`, `Rlp` |
 | `brane-core` | Types, ABI, crypto, EIP-712, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `TypedData`, `TxBuilder` |
-| `brane-rpc` | JSON-RPC client layer | `Brane`, `Brane.Reader`, `Brane.Signer`, `BraneProvider` |
+| `brane-rpc` | JSON-RPC client layer | `Brane`, `Brane.Reader`, `Brane.Signer`, `Brane.Tester`, `BraneProvider` |
 | `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `ReadOnlyContract` |
 | `brane-examples` | Usage examples & integration tests | Various `*Example.java` |
 | `brane-benchmark` | JMH performance benchmarks | `*Benchmark.java` |
@@ -90,6 +90,30 @@ Hash hash = typedData.hash();
 
 // JSON parsing (WalletConnect, dapp requests)
 TypedData<?> fromJson = TypedDataJson.parseAndValidate(jsonString);
+```
+
+### Integration Testing with Brane.Tester
+```java
+// Connect to local Anvil
+Brane.Tester tester = Brane.connectTest();
+
+// Snapshot/revert for test isolation
+SnapshotId snapshot = tester.snapshot();
+try {
+    tester.setBalance(address, Wei.fromEther("1000"));
+    // ... test operations ...
+} finally {
+    tester.revert(snapshot);
+}
+
+// Impersonate any address (no private key needed)
+try (ImpersonationSession session = tester.impersonate(whaleAddress)) {
+    session.sendTransactionAndWait(request);
+}
+
+// Time manipulation for testing locks/vesting
+tester.increaseTime(86400); // 1 day
+tester.mine();
 ```
 
 ## Error Hierarchy

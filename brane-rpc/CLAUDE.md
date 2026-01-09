@@ -16,6 +16,7 @@ JSON-RPC client layer with HTTP and WebSocket transports.
 - **`Brane`** - Sealed interface entry point for blockchain interaction
 - **`Brane.Reader`** - Read-only client (queries, calls, subscriptions)
 - **`Brane.Signer`** - Full client with transaction signing capability
+- **`Brane.Tester`** - Test node client (Anvil/Hardhat) with state manipulation
 - **`DefaultReader`** - Implementation of `Brane.Reader`
 - **`DefaultSigner`** - Implementation of `Brane.Signer`
 
@@ -33,6 +34,8 @@ JSON-RPC client layer with HTTP and WebSocket transports.
 - **`MulticallBatch`** - Batches multiple calls into single `eth_call` via Multicall3
 - **`CallRequest`** - Type-safe builder for `eth_call` parameters
 - **`SimulateRequest`** / **`SimulateResult`** - `eth_simulateV1` support
+- **`SnapshotId`** - Blockchain state snapshot identifier for `Tester`
+- **`ImpersonationSession`** - AutoCloseable session for impersonating addresses
 
 ### Internal
 - **`RpcUtils`** - Shared hex encoding, URL validation, ObjectMapper
@@ -43,8 +46,10 @@ JSON-RPC client layer with HTTP and WebSocket transports.
 Brane (sealed interface)
 ├── Brane.Reader (read-only operations)
 │   └── DefaultReader
-└── Brane.Signer (extends Reader + transaction signing)
-    └── DefaultSigner
+├── Brane.Signer (extends Reader + transaction signing)
+│   └── DefaultSigner
+└── Brane.Tester (test node operations: mining, time, state manipulation)
+    └── DefaultTester
 ```
 
 ## Patterns
@@ -177,6 +182,47 @@ System.out.println("Balance 1: " + balance1.get().data());
 System.out.println("Balance 2: " + balance2.get().data());
 ```
 
+### Tester Operations (Anvil/Hardhat)
+
+```java
+// Connect to test node with default funded signer
+try (Brane.Tester tester = Brane.connectTest("http://127.0.0.1:8545")) {
+    // Snapshot and revert (isolated test cases)
+    SnapshotId snapshot = tester.snapshot();
+    // ... perform test operations ...
+    tester.revert(snapshot);
+
+    // Account manipulation
+    tester.setBalance(address, Wei.fromEther("1000"));
+    tester.setNonce(address, 42);
+    tester.setCode(address, bytecode);
+    tester.setStorageAt(address, slot, value);
+
+    // Impersonation (send as any address without private key)
+    try (ImpersonationSession session = tester.impersonate(whaleAddress)) {
+        session.sendTransactionAndWait(request);
+    } // Impersonation automatically stopped
+
+    // Time manipulation
+    tester.increaseTime(86400); // Advance 1 day
+    tester.setNextBlockTimestamp(futureTimestamp);
+
+    // Mining control
+    tester.mine();           // Single block
+    tester.mine(10);         // Multiple blocks
+    tester.mine(5, 12);      // 5 blocks, 12 seconds apart
+    tester.setAutomine(false); // Disable auto-mining
+
+    // State dump/load (persist test fixtures)
+    HexData state = tester.dumpState();
+    tester.loadState(state);
+
+    // Reset chain
+    tester.reset();
+    tester.reset(forkUrl, blockNumber);
+}
+```
+
 ## Gotchas
 
 - **Virtual threads**: HTTP provider uses virtual threads - don't block with synchronized
@@ -187,6 +233,8 @@ System.out.println("Balance 2: " + balance2.get().data());
 - **Closed client state**: Calling methods on a closed `Brane` instance throws `IllegalStateException`
 - **WebSocket state machine**: Check `getConnectionState()` before operations - `RECONNECTING` state may cause temporary failures
 - **Subscription errors**: `unsubscribe()` is idempotent and swallows errors (logged at WARN level)
+- **Tester snapshots**: Snapshots are consumed on revert - take a new snapshot if you need to revert multiple times
+- **Tester impersonation cleanup**: Always use try-with-resources for `ImpersonationSession` to ensure cleanup
 
 ## Dependencies
 

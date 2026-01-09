@@ -1,0 +1,357 @@
+---
+title: Testing Overview
+description: 'Use Brane.Tester to interact with local test nodes for integration testing.'
+---
+
+## What is Brane.Tester?
+
+`Brane.Tester` is a specialized client for interacting with local test nodes like Anvil, Hardhat, and Ganache. It extends the standard Brane capabilities with test-specific operations that are only available on development networks.
+
+```java
+import io.brane.rpc.Brane;
+
+// Connect to local Anvil with default test key
+Brane.Tester tester = Brane.connectTest();
+```
+
+## When to Use Brane.Tester
+
+Use `Brane.Tester` when you need:
+
+- **State snapshots**: Save and restore chain state for test isolation
+- **Account impersonation**: Send transactions from any address without its private key
+- **Time manipulation**: Advance blockchain time for testing time-dependent logic
+- **Account manipulation**: Set balances, nonces, code, and storage directly
+- **Mining control**: Manual block mining, disable automine, configure intervals
+
+<Warning>
+Test node features only work on local development networks. These methods will fail on mainnet or public testnets.
+</Warning>
+
+## Supported Test Nodes
+
+| Node | Mode | Documentation |
+|------|------|---------------|
+| **Anvil** (Recommended) | `TestNodeMode.ANVIL` | [Foundry Anvil](https://book.getfoundry.sh/anvil/) |
+| Hardhat Network | `TestNodeMode.HARDHAT` | [Hardhat Network](https://hardhat.org/hardhat-network/docs/overview) |
+| Ganache | `TestNodeMode.GANACHE` | [Ganache](https://trufflesuite.com/ganache/) |
+
+Anvil is recommended for the best feature support and performance.
+
+## Quick Example
+
+```java
+import io.brane.rpc.Brane;
+import io.brane.rpc.SnapshotId;
+import io.brane.rpc.ImpersonationSession;
+import io.brane.core.types.Address;
+import io.brane.core.types.Wei;
+
+public class TesterExample {
+    public static void main(String[] args) {
+        // 1. Connect to local Anvil
+        Brane.Tester tester = Brane.connectTest();
+
+        // 2. Take a snapshot before tests
+        SnapshotId snapshot = tester.snapshot();
+        try {
+            // 3. Manipulate account state
+            Address testAccount = Address.from("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
+            tester.setBalance(testAccount, Wei.fromEther("1000"));
+
+            // 4. Impersonate any address
+            Address whale = Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+            tester.setBalance(whale, Wei.fromEther("10000"));
+
+            try (ImpersonationSession session = tester.impersonate(whale)) {
+                var request = TransactionRequest.builder()
+                    .to(testAccount)
+                    .value(Wei.fromEther("100"))
+                    .build();
+                var receipt = session.sendTransactionAndWait(request);
+                System.out.println("Transfer from whale: " + receipt.transactionHash());
+            }
+
+            // 5. Advance time (for testing vesting, locks, etc.)
+            tester.increaseTime(86400); // 1 day in seconds
+            tester.mine();
+
+        } finally {
+            // 6. Restore original state
+            tester.revert(snapshot);
+        }
+    }
+}
+```
+
+## Creating a Tester Client
+
+### Default Connection (Local Anvil)
+
+The simplest way to create a tester connects to Anvil at `http://127.0.0.1:8545` with the default test key:
+
+```java
+Brane.Tester tester = Brane.connectTest();
+```
+
+### With Custom Signer
+
+Use a specific Anvil test account:
+
+```java
+import io.brane.rpc.AnvilSigners;
+
+// Use the 4th test account (index 3)
+var signer = AnvilSigners.keyAt(3);
+Brane.Tester tester = Brane.connectTest(signer);
+```
+
+### With Custom URL
+
+Connect to a remote or custom-port Anvil instance:
+
+```java
+Brane.Tester tester = Brane.connectTest("http://192.168.1.100:8545");
+```
+
+### With Different Test Node
+
+Use Hardhat or Ganache instead of Anvil:
+
+```java
+import io.brane.rpc.TestNodeMode;
+import io.brane.core.crypto.PrivateKey;
+
+var signer = PrivateKey.fromHex("0x...");
+Brane.Tester tester = Brane.connectTest(
+    "http://localhost:8545",
+    signer,
+    TestNodeMode.HARDHAT
+);
+```
+
+### Full Builder Configuration
+
+```java
+Brane.Tester tester = Brane.builder()
+    .rpcUrl("http://localhost:8545")
+    .signer(AnvilSigners.defaultKey())
+    .testMode(TestNodeMode.ANVIL)
+    .retries(3)
+    .buildTester();
+```
+
+## Core Features
+
+### Snapshots and Revert
+
+Snapshots save the entire chain state, allowing you to restore it later. This is essential for test isolation.
+
+```java
+// Take snapshot at test start
+SnapshotId snapshot = tester.snapshot();
+try {
+    // Run test operations that modify state
+    tester.setBalance(address, Wei.fromEther("1000"));
+    tester.sendTransactionAndWait(request);
+} finally {
+    // Always restore - ensures clean state for next test
+    tester.revert(snapshot);
+}
+```
+
+<Note>
+After reverting, the snapshot is consumed. Take a new snapshot if you need to revert again.
+</Note>
+
+### Account Impersonation
+
+Impersonation lets you send transactions from any address without possessing its private key. This is invaluable for testing interactions with whale accounts, DAO contracts, or protocol admins.
+
+```java
+Address whale = Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+
+// Fund the address first (impersonation doesn't create ETH)
+tester.setBalance(whale, Wei.fromEther("10000"));
+
+try (ImpersonationSession session = tester.impersonate(whale)) {
+    var request = TransactionRequest.builder()
+        .to(recipient)
+        .value(Wei.fromEther("1000"))
+        .build();
+
+    // Transaction sent as whale, without whale's private key
+    var receipt = session.sendTransactionAndWait(request);
+}
+// Impersonation automatically stops when session closes
+```
+
+### Time Manipulation
+
+Test time-dependent logic like vesting schedules, lock periods, or auction deadlines:
+
+```java
+// Advance by specific duration
+tester.increaseTime(86400); // 1 day in seconds
+tester.mine(); // Mine block with new timestamp
+
+// Or set exact timestamp for next block
+long futureTimestamp = System.currentTimeMillis() / 1000 + 30 * 86400; // 30 days from now
+tester.setNextBlockTimestamp(futureTimestamp);
+tester.mine();
+```
+
+### Account State Manipulation
+
+Directly modify account state without transactions:
+
+```java
+// Set ETH balance
+tester.setBalance(address, Wei.fromEther("1000"));
+
+// Set nonce (useful for testing nonce-dependent logic)
+tester.setNonce(address, 42);
+
+// Deploy bytecode at address
+tester.setCode(address, HexData.from("0x608060405234..."));
+
+// Set storage slot
+Hash slot = Hash.from("0x0000...0000");
+Hash value = Hash.from("0x0000...002a");
+tester.setStorageAt(contractAddress, slot, value);
+```
+
+### Mining Control
+
+Control when and how blocks are produced:
+
+```java
+// Mine single block
+tester.mine();
+
+// Mine multiple blocks
+tester.mine(100);
+
+// Mine with time interval between blocks
+tester.mine(10, 12); // 10 blocks, 12 seconds apart
+
+// Disable automine for batching transactions
+tester.setAutomine(false);
+Hash tx1 = tester.sendTransaction(request1);
+Hash tx2 = tester.sendTransaction(request2);
+tester.mine(); // Both transactions in same block
+tester.setAutomine(true);
+
+// Set interval mining (automatic mining at fixed intervals)
+tester.setIntervalMining(12_000); // Mine every 12 seconds
+tester.setIntervalMining(0); // Disable interval mining
+```
+
+## Anvil Test Keys
+
+Anvil starts with 10 pre-funded accounts (10,000 ETH each). Access them via `AnvilSigners`:
+
+```java
+import io.brane.rpc.AnvilSigners;
+
+// Default key (account 0)
+var signer = AnvilSigners.defaultKey();
+
+// Specific account (0-9)
+var signer3 = AnvilSigners.keyAt(3);
+
+// Number of available accounts
+int count = AnvilSigners.count(); // 10
+```
+
+<Warning>
+**Security Warning**: These keys are derived from a well-known test mnemonic and are publicly known. Never use them on mainnet or any network with real value.
+</Warning>
+
+## Type Hierarchy
+
+`Brane.Tester` is a sibling to `Brane.Reader` and `Brane.Signer` in the sealed type hierarchy:
+
+```java
+// Exhaustive pattern matching
+switch (client) {
+    case Brane.Reader r  -> handleReadOnly(r);
+    case Brane.Signer s  -> handleSigner(s);
+    case Brane.Tester t  -> handleTester(t);
+}
+
+// Tester includes signing capabilities
+Hash txHash = tester.sendTransaction(request);
+TransactionReceipt receipt = tester.sendTransactionAndWait(request);
+
+// Get a Signer view if needed
+Brane.Signer signer = tester.asSigner();
+```
+
+## Best Practices
+
+### Test Isolation with Snapshots
+
+Always use snapshots to ensure tests don't affect each other:
+
+```java
+class MyContractTest {
+    private static Brane.Tester tester;
+    private SnapshotId snapshot;
+
+    @BeforeAll
+    static void setup() {
+        tester = Brane.connectTest();
+    }
+
+    @BeforeEach
+    void createSnapshot() {
+        snapshot = tester.snapshot();
+    }
+
+    @AfterEach
+    void revertSnapshot() {
+        tester.revert(snapshot);
+    }
+
+    @Test
+    void testTransfer() {
+        // Test code here - state will be reverted after
+    }
+}
+```
+
+### Parallel Test Considerations
+
+When running tests in parallel on the same Anvil instance:
+
+- Each test should take its own snapshot and revert in a finally block
+- Use distinct addresses for different tests to avoid nonce conflicts
+- Run time manipulation tests serially or on separate Anvil instances
+
+### Forking from Live Networks
+
+Reset and fork from a live network for testing against real state:
+
+```java
+// Fork mainnet at a specific block
+tester.reset("https://eth-mainnet.alchemyapi.io/v2/YOUR_KEY", 18_000_000L);
+
+// Now you can interact with mainnet state locally
+BigInteger balance = tester.getBalance(uniswapRouter);
+```
+
+## Prerequisites
+
+To use `Brane.Tester`, you need a local test node running. Start Anvil with:
+
+```bash
+# Install Foundry if you haven't
+curl -L https://foundry.paradigm.xyz | bash
+foundryup
+
+# Start Anvil
+anvil
+```
+
+Anvil will start at `http://127.0.0.1:8545` with 10 pre-funded test accounts.

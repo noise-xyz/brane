@@ -1,0 +1,368 @@
+---
+title: Account Impersonation
+description: 'Send transactions as any address without its private key using impersonate() and ImpersonationSession.'
+---
+
+## Overview
+
+Account impersonation allows you to send transactions from any address without possessing its private key. This is invaluable for testing scenarios involving:
+
+- **Whale accounts**: Test large transfers without controlling the actual whale's key
+- **DAO contracts**: Simulate governance actions from multisig or timelock contracts
+- **Protocol admins**: Test admin-only functions from privileged addresses
+- **External users**: Simulate realistic user interactions in integration tests
+
+<Warning>
+Impersonation only works on test nodes (Anvil, Hardhat, Ganache). Attempting to use these methods on mainnet or public testnets will fail.
+</Warning>
+
+## Using impersonate() with try-with-resources
+
+The recommended way to use impersonation is with Java's try-with-resources pattern. This ensures the impersonation is automatically stopped when the session ends, preventing resource leaks.
+
+```java
+import io.brane.rpc.Brane;
+import io.brane.rpc.ImpersonationSession;
+import io.brane.core.types.Address;
+import io.brane.core.types.Wei;
+import io.brane.core.model.TransactionRequest;
+
+Brane.Tester tester = Brane.connectTest();
+
+// Address to impersonate (no private key needed)
+Address whale = Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+
+// Fund the address first (impersonation doesn't create ETH)
+tester.setBalance(whale, Wei.fromEther("10000"));
+
+// Impersonate with automatic cleanup
+try (ImpersonationSession session = tester.impersonate(whale)) {
+    TransactionRequest request = TransactionRequest.builder()
+        .to(recipient)
+        .value(Wei.fromEther("1000"))
+        .build();
+
+    // Transaction is sent from the whale address
+    TransactionReceipt receipt = session.sendTransactionAndWait(request);
+    System.out.println("Transfer confirmed: " + receipt.transactionHash());
+}
+// Impersonation automatically stopped when session closes
+```
+
+### ImpersonationSession API
+
+The `ImpersonationSession` interface provides methods for sending transactions as the impersonated address:
+
+| Method | Description |
+|--------|-------------|
+| `address()` | Returns the impersonated address |
+| `sendTransaction(request)` | Sends a transaction, returns immediately with hash |
+| `sendTransactionAndWait(request)` | Sends and waits for confirmation (60s timeout) |
+| `sendTransactionAndWait(request, timeout, poll)` | Sends with custom timeout settings |
+| `close()` | Stops impersonation (called automatically with try-with-resources) |
+
+### How ImpersonationSession Works
+
+When you call `tester.impersonate(address)`:
+
+1. Brane calls the test node's impersonation RPC method (e.g., `anvil_impersonateAccount`)
+2. The test node allows transactions from that address without signature verification
+3. An `ImpersonationSession` is returned that wraps the impersonated address
+4. Transactions sent via the session use `eth_sendTransaction` with `from` set to the impersonated address
+5. When the session closes, Brane calls the stop impersonation RPC (e.g., `anvil_stopImpersonatingAccount`)
+
+```java
+// The session automatically sets the 'from' field
+try (ImpersonationSession session = tester.impersonate(whale)) {
+    // This request doesn't need to specify 'from'
+    TransactionRequest request = TransactionRequest.builder()
+        .to(recipient)
+        .value(Wei.fromEther("100"))
+        .data(calldata)
+        .build();
+
+    // Session adds from=whale automatically
+    Hash txHash = session.sendTransaction(request);
+}
+```
+
+## Whale Testing Pattern
+
+A common use case is testing interactions with whale accounts - addresses holding large token balances on mainnet. Here's a complete pattern:
+
+```java
+import io.brane.rpc.Brane;
+import io.brane.rpc.ImpersonationSession;
+import io.brane.rpc.SnapshotId;
+import io.brane.core.types.Address;
+import io.brane.core.types.Wei;
+
+public class WhaleTestExample {
+    // Known whale addresses (example: Binance hot wallet)
+    private static final Address BINANCE_WHALE =
+        Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+
+    public void testLargeTransfer(Brane.Tester tester) {
+        // 1. Take snapshot for test isolation
+        SnapshotId snapshot = tester.snapshot();
+        try {
+            Address recipient = Address.from("0x...");
+
+            // 2. Fund the whale with ETH for gas
+            tester.setBalance(BINANCE_WHALE, Wei.fromEther("100"));
+
+            // 3. Impersonate and execute
+            try (ImpersonationSession session = tester.impersonate(BINANCE_WHALE)) {
+                TransactionRequest request = TransactionRequest.builder()
+                    .to(recipient)
+                    .value(Wei.fromEther("50"))
+                    .build();
+
+                TransactionReceipt receipt = session.sendTransactionAndWait(request);
+
+                // 4. Verify the transfer
+                BigInteger recipientBalance = tester.getBalance(recipient);
+                assert recipientBalance.compareTo(Wei.fromEther("50").value()) >= 0;
+            }
+        } finally {
+            // 5. Restore state for next test
+            tester.revert(snapshot);
+        }
+    }
+}
+```
+
+### Forking with Real Whale Balances
+
+For more realistic testing, fork from mainnet to use actual whale balances:
+
+```java
+// Fork mainnet at a specific block
+tester.reset("https://eth-mainnet.alchemyapi.io/v2/YOUR_KEY", 18_000_000L);
+
+// Now impersonate a real whale with their actual balance
+Address usdcWhale = Address.from("0x...");
+try (ImpersonationSession session = tester.impersonate(usdcWhale)) {
+    // Whale already has tokens - no need to set balance
+    // Execute ERC20 transfer...
+}
+```
+
+## sendImpersonatedTransaction
+
+For simple one-off transactions, you can manually manage impersonation without the session pattern. However, the try-with-resources pattern is strongly recommended.
+
+### Manual Impersonation (Not Recommended)
+
+```java
+Address target = Address.from("0x...");
+
+// Start impersonation
+ImpersonationSession session = tester.impersonate(target);
+try {
+    // Send transaction
+    TransactionRequest request = TransactionRequest.builder()
+        .to(recipient)
+        .value(Wei.fromEther("1"))
+        .build();
+    Hash txHash = session.sendTransaction(request);
+
+    // Wait for confirmation
+    TransactionReceipt receipt = tester.waitForReceipt(txHash, 60_000, 1_000);
+} finally {
+    // Must manually close!
+    session.close();
+}
+```
+
+### stopImpersonating
+
+You can also stop impersonation directly via the tester:
+
+```java
+Address target = Address.from("0x...");
+
+// Start impersonation (without session)
+tester.impersonate(target);
+
+// ... do work ...
+
+// Stop impersonation explicitly
+tester.stopImpersonating(target);
+```
+
+<Warning>
+Forgetting to call `stopImpersonating()` or `close()` leaves the address impersonated on the test node. While this usually doesn't cause issues in tests, it's poor practice. Always prefer try-with-resources.
+</Warning>
+
+## Auto-Impersonation (Anvil Only)
+
+Anvil supports automatic impersonation where any address can send transactions without explicit impersonation calls. This is useful for rapid prototyping but should be used carefully.
+
+```java
+// Enable auto-impersonate (Anvil only)
+tester.enableAutoImpersonate();
+
+// Now any address can send transactions via eth_sendTransaction
+// without calling impersonate() first
+
+// Disable when done
+tester.disableAutoImpersonate();
+```
+
+<Note>
+Auto-impersonation is only supported by Anvil. Calling these methods on Hardhat or Ganache throws `UnsupportedOperationException`.
+</Note>
+
+## Test Node Compatibility
+
+Impersonation works across all supported test nodes with different RPC method prefixes:
+
+| Operation | Anvil | Hardhat | Ganache |
+|-----------|-------|---------|---------|
+| Start impersonation | `anvil_impersonateAccount` | `hardhat_impersonateAccount` | `evm_impersonateAccount` |
+| Stop impersonation | `anvil_stopImpersonatingAccount` | `hardhat_stopImpersonatingAccount` | `evm_stopImpersonatingAccount` |
+| Auto-impersonate | `anvil_autoImpersonateAccount` | Not supported | Not supported |
+
+The correct RPC method is selected automatically based on `TestNodeMode`.
+
+## Common Patterns
+
+### Testing Contract Admin Functions
+
+```java
+// Impersonate the contract owner
+Address owner = Address.from("0x..."); // Read from contract
+try (ImpersonationSession session = tester.impersonate(owner)) {
+    // Call admin-only function
+    HexData calldata = abi.encode("setFee", newFee);
+    TransactionRequest request = TransactionRequest.builder()
+        .to(contractAddress)
+        .data(calldata)
+        .build();
+    session.sendTransactionAndWait(request);
+}
+```
+
+### Testing DAO Governance
+
+```java
+// Impersonate a timelock contract
+Address timelock = Address.from("0x...");
+tester.setBalance(timelock, Wei.fromEther("1")); // For gas
+
+try (ImpersonationSession session = tester.impersonate(timelock)) {
+    // Execute queued governance proposal
+    HexData executeCalldata = abi.encode("execute", proposalId);
+    TransactionRequest request = TransactionRequest.builder()
+        .to(governorAddress)
+        .data(executeCalldata)
+        .build();
+    session.sendTransactionAndWait(request);
+}
+```
+
+### Multiple Impersonations
+
+You can have multiple impersonation sessions, but only one per address:
+
+```java
+Address alice = Address.from("0xAlice...");
+Address bob = Address.from("0xBob...");
+
+tester.setBalance(alice, Wei.fromEther("10"));
+tester.setBalance(bob, Wei.fromEther("10"));
+
+// Sequential impersonations
+try (ImpersonationSession aliceSession = tester.impersonate(alice)) {
+    aliceSession.sendTransactionAndWait(aliceRequest);
+}
+
+try (ImpersonationSession bobSession = tester.impersonate(bob)) {
+    bobSession.sendTransactionAndWait(bobRequest);
+}
+```
+
+## Error Handling
+
+### RpcException on Impersonation Failure
+
+```java
+try (ImpersonationSession session = tester.impersonate(address)) {
+    session.sendTransactionAndWait(request);
+} catch (RpcException e) {
+    // Handle RPC errors (network issues, invalid params)
+    System.err.println("RPC error: " + e.getMessage());
+} catch (RevertException e) {
+    // Handle transaction reverts
+    System.err.println("Transaction reverted: " + e.getMessage());
+}
+```
+
+### Session Already Closed
+
+```java
+ImpersonationSession session = tester.impersonate(address);
+session.close();
+
+// This throws IllegalStateException
+session.sendTransaction(request); // ERROR: ImpersonationSession has been closed
+```
+
+## Best Practices
+
+### Always Use try-with-resources
+
+```java
+// Good - automatic cleanup
+try (ImpersonationSession session = tester.impersonate(address)) {
+    session.sendTransactionAndWait(request);
+}
+
+// Bad - manual cleanup prone to leaks
+ImpersonationSession session = tester.impersonate(address);
+session.sendTransactionAndWait(request);
+session.close(); // Easy to forget, especially with exceptions
+```
+
+### Fund Addresses Before Impersonating
+
+```java
+// Good - fund first
+tester.setBalance(whale, Wei.fromEther("100"));
+try (ImpersonationSession session = tester.impersonate(whale)) {
+    session.sendTransactionAndWait(request);
+}
+
+// Bad - transaction may fail with insufficient funds
+try (ImpersonationSession session = tester.impersonate(whale)) {
+    session.sendTransactionAndWait(request); // May fail!
+}
+```
+
+### Combine with Snapshots for Isolation
+
+```java
+SnapshotId snapshot = tester.snapshot();
+try {
+    tester.setBalance(whale, Wei.fromEther("1000"));
+    try (ImpersonationSession session = tester.impersonate(whale)) {
+        session.sendTransactionAndWait(request);
+    }
+    // Assert results...
+} finally {
+    tester.revert(snapshot); // Clean state for next test
+}
+```
+
+### Document the Address Being Impersonated
+
+```java
+// Good - clear context
+// Impersonate Uniswap V3 Router for swap testing
+Address uniswapRouter = Address.from("0xE592427A0AEce92De3Edee1F18E0157C05861564");
+try (ImpersonationSession session = tester.impersonate(uniswapRouter)) {
+    // ...
+}
+```
+

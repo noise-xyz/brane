@@ -103,8 +103,8 @@ if [[ ! -f "$TASKS_FILE" ]]; then
     exit 1
 fi
 
-# Count tasks
-TOTAL=$(grep -c ':' "$TASKS_FILE" 2>/dev/null || echo 0)
+# Count tasks (excluding comments and empty lines)
+TOTAL=$(grep -v '^[[:space:]]*#' "$TASKS_FILE" | grep -v '^[[:space:]]*$' | grep -c ':' 2>/dev/null || echo 0)
 
 echo "========================================"
 echo "Autonomous Claude Task Runner"
@@ -134,7 +134,7 @@ while IFS=':' read -r task_id task_desc || [[ -n "$task_id" ]]; do
 
     prompt=$(build_prompt "$task_id" "$task_desc")
 
-    if $CLAUDE_CMD -p "$prompt" --dangerously-skip-permissions --print 2>&1 | tee "$log_file"; then
+    if $CLAUDE_CMD -p "$prompt" --dangerously-skip-permissions --print < /dev/null 2>&1 | tee "$log_file"; then
         echo ""
         echo "[$task_id] Completed"
         mark_done "$task_id"
@@ -154,7 +154,7 @@ echo "All tasks processed. Running final verification..."
 echo "========================================"
 
 # Final verification - run full test suite once
-$CLAUDE_CMD -p "Run ./gradlew test to verify all fixes. If any tests fail, fix them." --dangerously-skip-permissions --print 2>&1 | tee "$LOG_DIR/final_verification.log"
+$CLAUDE_CMD -p "Run ./gradlew test to verify all fixes. If any tests fail, fix them." --dangerously-skip-permissions --print < /dev/null 2>&1 | tee "$LOG_DIR/final_verification.log"
 
 echo "========================================"
 echo "Run complete: $TASK_NUM tasks processed"

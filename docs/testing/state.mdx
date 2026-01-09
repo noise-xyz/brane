@@ -1,0 +1,567 @@
+---
+title: State Management
+description: 'Use snapshot/revert for test isolation, dumpState/loadState for fixtures, and reset() for fork testing.'
+---
+
+## Overview
+
+`Brane.Tester` provides several mechanisms for managing blockchain state during testing:
+
+- **Snapshots**: In-memory state checkpoints for fast test isolation
+- **Dump/Load State**: Serialize chain state to files for test fixtures
+- **Reset**: Clear chain state or fork from live networks
+
+These features enable isolated, reproducible, and realistic integration tests.
+
+## Snapshot and Revert
+
+Snapshots save the entire blockchain state (accounts, balances, storage, blocks) and allow instant restoration. This is the primary mechanism for test isolation.
+
+### Basic Usage
+
+```java
+import io.brane.rpc.Brane;
+import io.brane.rpc.SnapshotId;
+
+Brane.Tester tester = Brane.connectTest();
+
+// Take snapshot before test operations
+SnapshotId snapshot = tester.snapshot();
+try {
+    // Modify state
+    tester.setBalance(testAccount, Wei.fromEther("1000"));
+    Hash txHash = tester.sendTransaction(request);
+
+    // Run assertions...
+
+} finally {
+    // Restore original state
+    tester.revert(snapshot);
+}
+```
+
+### How Snapshots Work
+
+When you call `snapshot()`:
+
+1. The test node saves all current state to memory
+2. A unique `SnapshotId` is returned (typically a hex string like `"0x1"`)
+3. All subsequent operations modify state as normal
+
+When you call `revert(snapshotId)`:
+
+1. All state changes since the snapshot are discarded
+2. Blocks mined since the snapshot are removed
+3. Account balances, nonces, and storage return to snapshot values
+4. The snapshot is **consumed** and cannot be reused
+
+<Warning>
+Snapshots are consumed on revert. If you need to revert to the same state multiple times, take a fresh snapshot after each revert.
+</Warning>
+
+### Nested Snapshots
+
+You can nest snapshots for complex test scenarios:
+
+```java
+SnapshotId outerSnapshot = tester.snapshot();
+try {
+    // Setup shared state
+    tester.setBalance(contractOwner, Wei.fromEther("100"));
+    deployContract();
+
+    SnapshotId innerSnapshot = tester.snapshot();
+    try {
+        // Test case 1
+        tester.sendTransaction(action1);
+        // assertions...
+    } finally {
+        tester.revert(innerSnapshot);
+    }
+
+    // Take new snapshot for next test (innerSnapshot was consumed)
+    SnapshotId innerSnapshot2 = tester.snapshot();
+    try {
+        // Test case 2
+        tester.sendTransaction(action2);
+        // assertions...
+    } finally {
+        tester.revert(innerSnapshot2);
+    }
+
+} finally {
+    tester.revert(outerSnapshot);
+}
+```
+
+## JUnit Integration Pattern
+
+The recommended pattern for JUnit 5 uses `@BeforeEach` and `@AfterEach` to automatically snapshot and revert around each test.
+
+### Basic JUnit Pattern
+
+```java
+import io.brane.rpc.Brane;
+import io.brane.rpc.SnapshotId;
+import org.junit.jupiter.api.*;
+
+class MyContractTest {
+    private static Brane.Tester tester;
+    private SnapshotId snapshot;
+
+    @BeforeAll
+    static void setupClient() {
+        // Create tester once for all tests
+        tester = Brane.connectTest();
+    }
+
+    @AfterAll
+    static void teardown() {
+        if (tester != null) {
+            tester.close();
+        }
+    }
+
+    @BeforeEach
+    void createSnapshot() {
+        // Snapshot before each test
+        snapshot = tester.snapshot();
+    }
+
+    @AfterEach
+    void revertSnapshot() {
+        // Revert after each test (cleanup runs even if test fails)
+        if (snapshot != null) {
+            tester.revert(snapshot);
+        }
+    }
+
+    @Test
+    void testDeposit() {
+        // Test modifies state freely - will be reverted
+        tester.setBalance(user, Wei.fromEther("100"));
+        TransactionReceipt receipt = tester.sendTransactionAndWait(depositRequest);
+
+        assertThat(receipt.status()).isTrue();
+        assertThat(contract.balanceOf(user)).isEqualTo(depositAmount);
+    }
+
+    @Test
+    void testWithdraw() {
+        // Previous test's state changes are already reverted
+        // This test starts with clean state
+        tester.setBalance(user, Wei.fromEther("50"));
+        // ...
+    }
+}
+```
+
+### With Shared Setup State
+
+For tests that share common setup (deployed contracts, funded accounts), snapshot after setup:
+
+```java
+class TokenContractTest {
+    private static Brane.Tester tester;
+    private static Address tokenContract;
+    private static SnapshotId baseSnapshot;
+    private SnapshotId testSnapshot;
+
+    @BeforeAll
+    static void setup() {
+        tester = Brane.connectTest();
+
+        // Deploy contracts and set up initial state
+        tokenContract = deployToken(tester);
+        mintInitialSupply(tokenContract, tester);
+
+        // Snapshot AFTER setup - all tests start from this state
+        baseSnapshot = tester.snapshot();
+    }
+
+    @AfterAll
+    static void teardown() {
+        if (tester != null) {
+            tester.close();
+        }
+    }
+
+    @BeforeEach
+    void createTestSnapshot() {
+        // Each test gets its own snapshot from base state
+        testSnapshot = tester.snapshot();
+    }
+
+    @AfterEach
+    void revertTestSnapshot() {
+        // Revert to base state (contract deployed, tokens minted)
+        if (testSnapshot != null) {
+            tester.revert(testSnapshot);
+        }
+    }
+
+    @Test
+    void testTransfer() {
+        // Token contract already deployed, initial supply minted
+        var receipt = transfer(tokenContract, recipient, amount);
+        assertThat(receipt.status()).isTrue();
+    }
+}
+```
+
+### Parallel Test Execution
+
+When running tests in parallel, each test class should use its own snapshot chain:
+
+```java
+@Execution(ExecutionMode.CONCURRENT)
+class ParallelTestA {
+    private Brane.Tester tester;
+    private SnapshotId snapshot;
+
+    @BeforeEach
+    void setup() {
+        // Each test instance creates its own client and snapshot
+        tester = Brane.connectTest();
+        snapshot = tester.snapshot();
+    }
+
+    @AfterEach
+    void cleanup() {
+        tester.revert(snapshot);
+        tester.close();
+    }
+}
+```
+
+<Note>
+Parallel tests on the same Anvil instance share global state like block number and timestamp. For true isolation, run parallel tests against separate Anvil instances.
+</Note>
+
+## Dump and Load State
+
+For scenarios where you need to persist chain state to disk or share it between test runs, use `dumpState()` and `loadState()`.
+
+### Dumping State
+
+```java
+import io.brane.core.types.HexData;
+import java.nio.file.Files;
+import java.nio.file.Path;
+
+// Set up test state
+tester.setBalance(account1, Wei.fromEther("1000"));
+tester.setBalance(account2, Wei.fromEther("500"));
+deployContracts();
+
+// Dump entire chain state to hex string
+HexData state = tester.dumpState();
+
+// Save to file
+Files.writeString(Path.of("test-fixture.hex"), state.value());
+System.out.println("State saved: " + state.value().length() + " bytes");
+```
+
+### Loading State
+
+```java
+// Read saved state
+String savedState = Files.readString(Path.of("test-fixture.hex"));
+HexData state = HexData.from(savedState);
+
+// Load into Anvil - merges with current state
+boolean success = tester.loadState(state);
+if (success) {
+    System.out.println("State loaded successfully");
+}
+```
+
+### Use Cases for Dump/Load
+
+**Pre-computed test fixtures:**
+```java
+class FixtureBasedTest {
+    private static final Path FIXTURE_PATH = Path.of("src/test/resources/fixtures/deployed-contracts.hex");
+
+    @BeforeAll
+    static void loadFixture() throws IOException {
+        tester = Brane.connectTest();
+        String savedState = Files.readString(FIXTURE_PATH);
+        tester.loadState(HexData.from(savedState));
+    }
+
+    @Test
+    void testContractInteraction() {
+        // Contracts already deployed from fixture
+        // No deployment time in each test run
+    }
+}
+```
+
+**Sharing state between processes:**
+```java
+// Process 1: Setup and save
+HexData state = setupComplexState(tester);
+Files.writeString(Path.of("/tmp/shared-state.hex"), state.value());
+
+// Process 2: Load and test
+String loaded = Files.readString(Path.of("/tmp/shared-state.hex"));
+tester.loadState(HexData.from(loaded));
+```
+
+**CI/CD fixture generation:**
+```bash
+# Generate fixtures during build
+./gradlew generateTestFixtures
+
+# Tests load pre-built fixtures
+./gradlew test
+```
+
+### Dump/Load vs Snapshots
+
+| Feature | snapshot/revert | dumpState/loadState |
+|---------|-----------------|---------------------|
+| Speed | Very fast (in-memory) | Slower (serialization) |
+| Persistence | Session only | Can save to disk |
+| Cross-process | No | Yes |
+| Use case | Test isolation | Fixtures, sharing |
+| Availability | All test nodes | Anvil only |
+
+<Warning>
+`dumpState()` and `loadState()` are only supported by Anvil. Calling these methods with Hardhat or Ganache throws `UnsupportedOperationException`.
+</Warning>
+
+## Reset for Fork Testing
+
+The `reset()` method clears chain state or forks from a live network. This is essential for testing against real protocol state.
+
+### Simple Reset
+
+Reset the chain to its initial state (genesis block, funded accounts):
+
+```java
+// Clear all state and start fresh
+tester.reset();
+
+// Chain is now at block 0 with default funded accounts
+BlockHeader genesis = tester.getLatestBlock();
+assertThat(genesis.number()).isEqualTo(0L);
+```
+
+### Fork from Live Network
+
+Fork from mainnet or any EVM network at a specific block:
+
+```java
+// Fork mainnet at block 18,000,000
+String mainnetRpc = "https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY";
+tester.reset(mainnetRpc, 18_000_000L);
+
+// Now you have mainnet state at that block
+// Query real contract state
+Address uniswapRouter = Address.from("0xE592427A0AEce92De3Edee1F18E0157C05861564");
+BigInteger balance = tester.getBalance(uniswapRouter);
+```
+
+### Fork Testing Pattern
+
+Test against real protocol state by forking:
+
+```java
+class UniswapIntegrationTest {
+    private static final String MAINNET_RPC = System.getenv("MAINNET_RPC_URL");
+    private static final long FORK_BLOCK = 18_500_000L;
+
+    private Brane.Tester tester;
+    private SnapshotId snapshot;
+
+    // Known mainnet addresses
+    private static final Address UNISWAP_ROUTER =
+        Address.from("0xE592427A0AEce92De3Edee1F18E0157C05861564");
+    private static final Address USDC =
+        Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+    private static final Address WETH =
+        Address.from("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2");
+
+    @BeforeAll
+    static void fork() {
+        tester = Brane.connectTest();
+        tester.reset(MAINNET_RPC, FORK_BLOCK);
+    }
+
+    @BeforeEach
+    void createSnapshot() {
+        snapshot = tester.snapshot();
+    }
+
+    @AfterEach
+    void revertSnapshot() {
+        tester.revert(snapshot);
+    }
+
+    @Test
+    void testSwapOnMainnetFork() {
+        // Fund test account with real USDC from a whale
+        Address usdcWhale = Address.from("0x...");
+        tester.setBalance(usdcWhale, Wei.fromEther("1")); // For gas
+
+        try (ImpersonationSession session = tester.impersonate(usdcWhale)) {
+            // Transfer USDC to our test account
+            // ...
+        }
+
+        // Execute swap against real Uniswap state
+        TransactionReceipt receipt = executeSwap(UNISWAP_ROUTER, USDC, WETH, amount);
+        assertThat(receipt.status()).isTrue();
+    }
+}
+```
+
+### Re-forking During Tests
+
+You can re-fork to different blocks during a test run:
+
+```java
+@Test
+void testProtocolAcrossDifferentBlocks() {
+    // Test at block 18,000,000
+    tester.reset(MAINNET_RPC, 18_000_000L);
+    BigInteger tvlBefore = queryProtocolTVL();
+
+    // Test at block 19,000,000 (later point in time)
+    tester.reset(MAINNET_RPC, 19_000_000L);
+    BigInteger tvlAfter = queryProtocolTVL();
+
+    // Compare protocol state across time
+    assertThat(tvlAfter).isGreaterThan(tvlBefore);
+}
+```
+
+### Fork with Impersonation
+
+Combine forking with impersonation to test as whale accounts:
+
+```java
+@Test
+void testWhaleInteraction() {
+    // Fork mainnet
+    tester.reset(MAINNET_RPC, FORK_BLOCK);
+
+    // Known whale with large USDC balance
+    Address whale = Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+
+    // Fund whale with ETH for gas (they may have tokens but no ETH)
+    tester.setBalance(whale, Wei.fromEther("10"));
+
+    // Impersonate and execute
+    try (ImpersonationSession session = tester.impersonate(whale)) {
+        // Whale's token balances are real mainnet balances
+        // Execute transactions as the whale
+        TransactionReceipt receipt = session.sendTransactionAndWait(
+            TransactionRequest.builder()
+                .to(protocolContract)
+                .data(encodeDeposit(whale, largeAmount))
+                .build()
+        );
+
+        assertThat(receipt.status()).isTrue();
+    }
+}
+```
+
+## Test Node Compatibility
+
+| Method | Anvil | Hardhat | Ganache |
+|--------|-------|---------|---------|
+| `snapshot()` | `evm_snapshot` | `hardhat_snapshot` | `evm_snapshot` |
+| `revert()` | `evm_revert` | `hardhat_revert` | `evm_revert` |
+| `dumpState()` | `anvil_dumpState` | Not supported | Not supported |
+| `loadState()` | `anvil_loadState` | Not supported | Not supported |
+| `reset()` | `anvil_reset` | `hardhat_reset` | `evm_reset` |
+| `reset(url, block)` | `anvil_reset` | `hardhat_reset` | `evm_reset` |
+
+The correct RPC method is selected automatically based on the `TestNodeMode` configured when creating the tester.
+
+## Best Practices
+
+### Always Use try-finally
+
+Ensure snapshots are reverted even when tests fail:
+
+```java
+SnapshotId snapshot = tester.snapshot();
+try {
+    // Test code that might throw
+} finally {
+    tester.revert(snapshot); // Always executes
+}
+```
+
+### Prefer Snapshots Over Reset
+
+Snapshots are much faster than reset for test isolation:
+
+```java
+// Good - fast, in-memory state restoration
+SnapshotId snapshot = tester.snapshot();
+// ... test ...
+tester.revert(snapshot);
+
+// Slower - re-initializes entire chain
+tester.reset();
+```
+
+### Use Fixtures for Expensive Setup
+
+If setup is slow (many contract deployments), save state once:
+
+```java
+// Generate fixture once
+@Test
+@Disabled("Run manually to generate fixtures")
+void generateFixture() throws IOException {
+    deployAllContracts();
+    setupInitialState();
+
+    HexData state = tester.dumpState();
+    Files.writeString(Path.of("fixture.hex"), state.value());
+}
+
+// Load fixture in tests
+@BeforeAll
+static void loadFixture() throws IOException {
+    tester.loadState(HexData.from(Files.readString(Path.of("fixture.hex"))));
+}
+```
+
+### Pin Fork Block Numbers
+
+Always specify exact block numbers when forking:
+
+```java
+// Good - reproducible across runs
+tester.reset(MAINNET_RPC, 18_500_000L);
+
+// Bad - different state each run
+// tester.reset(MAINNET_RPC, latestBlock);
+```
+
+### Document Fork Dependencies
+
+Note which mainnet state your tests depend on:
+
+```java
+/**
+ * Tests Uniswap V3 USDC/WETH pool at block 18,500,000.
+ *
+ * Fork state requirements:
+ * - Pool at 0x... has ~$500M TVL
+ * - USDC whale at 0x... has >$10M balance
+ * - No active governance proposals
+ */
+class UniswapPoolTest {
+    private static final long FORK_BLOCK = 18_500_000L;
+    // ...
+}
+```

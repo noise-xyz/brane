@@ -14,12 +14,12 @@ flowchart TD
 
     subgraph BRANE["Brane (sealed interface)"]
         direction LR
-        READER["Brane.Reader<br/><i>read-only operations</i>"] ~~~ SIGNER["Brane.Signer<br/><i>read + write operations</i>"]
+        READER["Brane.Reader<br/><i>read-only operations</i>"] ~~~ SIGNER["Brane.Signer<br/><i>read + write operations</i>"] ~~~ TESTER["Brane.Tester<br/><i>test node operations</i>"]
     end
 
     subgraph IMPLS["Implementations"]
         direction LR
-        DEFAULT_READER["DefaultReader<br/><i>implements Reader</i>"] ~~~ DEFAULT_SIGNER["DefaultSigner<br/><i>implements Signer</i>"]
+        DEFAULT_READER["DefaultReader<br/><i>implements Reader</i>"] ~~~ DEFAULT_SIGNER["DefaultSigner<br/><i>implements Signer</i>"] ~~~ DEFAULT_TESTER["DefaultTester<br/><i>implements Tester</i>"]
     end
 
     subgraph PROVIDER["BraneProvider (interface)"]
@@ -32,6 +32,7 @@ flowchart TD
     APP --> BRANE
     BRANE --> IMPLS
     DEFAULT_SIGNER -.->|delegates to| DEFAULT_READER
+    DEFAULT_TESTER -.->|delegates to| DEFAULT_SIGNER
     IMPLS --> PROVIDER
     PROVIDER --> NODE
 ```
@@ -42,8 +43,9 @@ The `Brane` sealed interface is the main entry point:
 
 - **`Brane.Reader`** - Read-only operations: balance queries, block fetching, `eth_call`, event logs
 - **`Brane.Signer`** - All Reader operations plus transaction signing and sending
+- **`Brane.Tester`** - All Signer operations plus test node manipulation (snapshots, impersonation, time control)
 
-`DefaultSigner` delegates read operations to an internal `DefaultReader` instance.
+`DefaultSigner` delegates read operations to an internal `DefaultReader` instance. `DefaultTester` delegates signing operations to an internal `DefaultSigner` instance.
 
 ## Provider Layer
 

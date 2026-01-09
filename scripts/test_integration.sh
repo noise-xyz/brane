@@ -78,14 +78,24 @@ run_example() {
 
 # Find all *Example.java and *IntegrationTest.java files
 # We use find to get the paths, then sed to convert to package.ClassName
+# Sort alphabetically for predictable ordering
+# Run TesterIntegrationTest and TesterForkExample LAST since they reset the chain
 CLASSES=$(find brane-examples/src/main/java/io/brane/examples -name "*Example.java" -o -name "*IntegrationTest.java" | \
     sed 's|brane-examples/src/main/java/||' | \
     sed 's|/|.|g' | \
-    sed 's|.java||')
+    sed 's|.java||' | \
+    sort | \
+    grep -v "TesterIntegrationTest\|TesterForkExample")
 
+# Run main examples first (those that depend on deployed contracts)
 for class in $CLASSES; do
     run_example "$class"
 done
+
+# Run tests that reset the chain LAST
+echo "   Running tests that reset chain state (run last)..."
+run_example "io.brane.examples.TesterForkExample"
+run_example "io.brane.examples.TesterIntegrationTest"
 
 # 4. Run Sanity Checks with I/O (skipped - RequestIdSanityCheck not implemented)
 # echo "   Running Sanity Checks with I/O..."

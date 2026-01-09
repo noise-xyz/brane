@@ -95,12 +95,40 @@ HexData encodedArgs = abi.encodeConstructor(arg1, arg2);
 String deployData = bytecode + encodedArgs.value().substring(2);
 ```
 
+### 5. Integration Testing
+First-class support for local test nodes (Anvil, Hardhat, Ganache).
+
+```java
+// Connect to local Anvil with default test key
+Brane.Tester tester = Brane.connectTest();
+
+// Snapshot/revert for test isolation
+SnapshotId snapshot = tester.snapshot();
+try {
+    tester.setBalance(account, Wei.fromEther("1000"));
+    // ... run test ...
+} finally {
+    tester.revert(snapshot);
+}
+
+// Impersonate any address without private key
+try (ImpersonationSession session = tester.impersonate(whaleAddress)) {
+    session.sendTransactionAndWait(transferRequest);
+}
+
+// Time manipulation for testing locks, vesting, etc.
+tester.increaseTime(86400); // Advance 1 day
+tester.mine();
+```
+[See full example](brane-examples/src/main/java/io/brane/examples/TesterBasicExample.java)
+
 ## Why Brane?
 
 *   **Typed Errors**: Distinct `RevertException` (with automatic decoding) and `RpcException`. No more parsing generic strings.
 *   **Modern Defaults**: EIP-1559 by default. Automatic access lists (EIP-2930). Smart gas estimation.
 *   **Zero-Codegen**: Runtime binding of interfaces (`BraneContract.bind`) speeds up iteration.
 *   **Clean API**: Minimal surface area. Zero dependency on web3j (native crypto & RLP).
+*   **First-Class Testing**: `Brane.Tester` provides snapshots, impersonation, and time manipulation for integration tests.
 
 ## Concurrency & Async
 
@@ -161,7 +189,7 @@ asyncClient.sendAsync("eth_chainId", List.of())
 ## Project Structure
 
 *   `brane-core`: Core types (`Address`, `Wei`, `HexData`), native ABI system (`io.brane.core.abi`), error model, and chain profiles.
-*   `brane-rpc`: JSON-RPC client, `Brane`, `Brane.Reader`, `Brane.Signer`.
+*   `brane-rpc`: JSON-RPC client, `Brane`, `Brane.Reader`, `Brane.Signer`, `Brane.Tester`.
 *   `brane-contract`: High-level ABI utilities, `BraneContract` runtime binding.
 *   `brane-primitives`: Zero-dependency Hex and RLP utilities.
 *   `brane-benchmark`: JMH benchmarks for performance critical paths.

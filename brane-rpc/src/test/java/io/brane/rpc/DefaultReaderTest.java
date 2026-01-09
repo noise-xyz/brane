@@ -214,6 +214,63 @@ class DefaultReaderTest {
         assertTrue(ex.getMessage().contains("closed"));
     }
 
+    // ==================== getCode() Tests ====================
+
+    @Test
+    void getCodeReturnsCodeFromProvider() {
+        // Given: provider returns contract bytecode
+        Address address = new Address("0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48");
+        String bytecode = "0x608060405234801561001057600080fd5b506004361061002b5760003560e01c8063";
+        JsonRpcResponse response = new JsonRpcResponse("2.0", bytecode, null, "1");
+        when(provider.send(eq("eth_getCode"), any())).thenReturn(response);
+
+        // When
+        HexData code = reader.getCode(address);
+
+        // Then
+        assertEquals(bytecode, code.value());
+        verify(provider).send(eq("eth_getCode"), eq(List.of(address.value(), "latest")));
+    }
+
+    @Test
+    void getCodeReturnsEmptyForEOA() {
+        // Given: provider returns "0x" for externally owned account (no code)
+        Address address = new Address("0x742d35Cc6634C0532925a3b844Bc9e7595f9e9e9");
+        JsonRpcResponse response = new JsonRpcResponse("2.0", "0x", null, "1");
+        when(provider.send(eq("eth_getCode"), any())).thenReturn(response);
+
+        // When
+        HexData code = reader.getCode(address);
+
+        // Then
+        assertEquals(HexData.EMPTY, code);
+    }
+
+    @Test
+    void getCodeReturnsEmptyWhenResultIsNull() {
+        // Given: provider returns null result
+        Address address = new Address("0x742d35Cc6634C0532925a3b844Bc9e7595f9e9e9");
+        JsonRpcResponse response = new JsonRpcResponse("2.0", null, null, "1");
+        when(provider.send(eq("eth_getCode"), any())).thenReturn(response);
+
+        // When
+        HexData code = reader.getCode(address);
+
+        // Then
+        assertEquals(HexData.EMPTY, code);
+    }
+
+    @Test
+    void getCodeThrowsAfterClose() {
+        // Given: reader is closed
+        reader.close();
+        Address address = new Address("0x742d35Cc6634C0532925a3b844Bc9e7595f9e9e9");
+
+        // When/Then
+        IllegalStateException ex = assertThrows(IllegalStateException.class, () -> reader.getCode(address));
+        assertTrue(ex.getMessage().contains("closed"));
+    }
+
     // ==================== getLatestBlock() Tests ====================
 
     @Test

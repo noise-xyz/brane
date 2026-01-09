@@ -32,6 +32,7 @@ import io.brane.core.types.HexData;
  * <ul>
  *   <li>{@link Reader} - Read-only operations (queries, calls, subscriptions)</li>
  *   <li>{@link Signer} - Full operations including transaction signing and sending</li>
+ *   <li>{@link Tester} - Test node operations (snapshots, impersonation, time manipulation)</li>
  * </ul>
  *
  * <p>The sealed hierarchy enables exhaustive pattern matching and compile-time type safety
@@ -87,6 +88,10 @@ import io.brane.core.types.HexData;
  *     case Brane.Signer s -> {
  *         // Full operations including transactions
  *         Hash hash = s.sendTransaction(request);
+ *     }
+ *     case Brane.Tester t -> {
+ *         // Test node operations
+ *         SnapshotId snapshot = t.snapshot();
  *     }
  * }
  * }</pre>
@@ -214,11 +219,12 @@ import io.brane.core.types.HexData;
  *
  * @see Brane.Reader
  * @see Brane.Signer
+ * @see Brane.Tester
  * @see Brane.Builder
  * @see BraneProvider
  * @since 0.1.0
  */
-public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.Signer {
+public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.Signer, Brane.Tester {
 
     /**
      * Returns the chain ID of the connected network.
@@ -236,6 +242,51 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @since 0.1.0
      */
     BigInteger getBalance(Address address);
+
+    /**
+     * Retrieves the bytecode at an address.
+     *
+     * <p>This method returns the contract bytecode deployed at the specified address.
+     * For externally owned accounts (EOAs) with no code, this returns empty hex data.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Address contractAddress = Address.from("0x...");
+     * HexData code = client.getCode(contractAddress);
+     * if (code.byteLength() > 0) {
+     *     System.out.println("Contract code: " + code.value());
+     * } else {
+     *     System.out.println("No code at this address (EOA or empty contract)");
+     * }
+     * }</pre>
+     *
+     * @param address the address to query
+     * @return the bytecode at the address, or empty hex data if none
+     * @since 0.1.0
+     */
+    HexData getCode(Address address);
+
+    /**
+     * Retrieves the value stored at a specific storage slot of an address.
+     *
+     * <p>This method queries the storage of a contract at the specified slot position.
+     * Storage slots are 32-byte values. For addresses without code (EOAs) or
+     * uninitialized slots, this returns a zero-padded 32-byte hex value.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Address contractAddress = Address.from("0x...");
+     * BigInteger slot = BigInteger.ZERO; // First storage slot
+     * HexData value = client.getStorageAt(contractAddress, slot);
+     * System.out.println("Storage slot 0: " + value.value());
+     * }</pre>
+     *
+     * @param address the contract address to query
+     * @param slot the storage slot position
+     * @return the 32-byte value at the storage slot
+     * @since 0.1.0
+     */
+    HexData getStorageAt(Address address, BigInteger slot);
 
     /**
      * Retrieves the latest block header.
@@ -487,8 +538,8 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * Returns whether this client has transaction signing capability.
      *
      * <p>This is a convenience method for type checking. Clients implementing
-     * {@link Signer} return {@code true}; clients implementing only {@link Reader}
-     * return {@code false}.
+     * {@link Signer} or {@link Tester} return {@code true}; clients implementing
+     * only {@link Reader} return {@code false}.
      *
      * <p><strong>Example:</strong>
      * <pre>{@code
@@ -502,7 +553,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @since 0.1.0
      */
     default boolean canSign() {
-        return this instanceof Signer;
+        return this instanceof Signer || this instanceof Tester;
     }
 
     /**
@@ -565,6 +616,128 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      */
     static Signer connect(String rpcUrl, io.brane.core.crypto.Signer signer) {
         return builder().rpcUrl(rpcUrl).signer(signer).buildSigner();
+    }
+
+    /** Default local Anvil RPC URL. */
+    String DEFAULT_ANVIL_URL = "http://127.0.0.1:8545";
+
+    /**
+     * Creates a test client connected to a local Anvil node with the default test key.
+     *
+     * <p>This is the simplest way to create a test client for local development.
+     * It connects to Anvil at {@code http://127.0.0.1:8545} using the default
+     * funded test account (index 0).
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Brane.Tester tester = Brane.connectTest();
+     *
+     * // Take a snapshot before test operations
+     * SnapshotId snapshot = tester.snapshot();
+     * try {
+     *     // Perform test operations
+     *     tester.setBalance(address, Wei.fromEther("1000"));
+     *     // ... more operations ...
+     * } finally {
+     *     tester.revert(snapshot);
+     * }
+     * }</pre>
+     *
+     * <p><strong>Prerequisites:</strong> Anvil must be running on localhost:8545.
+     * Start it with: {@code anvil}
+     *
+     * @return a new test client connected to local Anvil
+     * @since 0.3.0
+     * @see AnvilSigners#defaultKey()
+     */
+    static Tester connectTest() {
+        return connectTest(DEFAULT_ANVIL_URL);
+    }
+
+    /**
+     * Creates a test client connected to a local Anvil node with the specified test key.
+     *
+     * <p>Connects to Anvil at {@code http://127.0.0.1:8545} using the provided signer.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * // Use a specific Anvil test account
+     * Signer key = AnvilSigners.keyAt(3);
+     * Brane.Tester tester = Brane.connectTest(key);
+     * }</pre>
+     *
+     * @param signer the signer for transaction signing
+     * @return a new test client connected to local Anvil
+     * @since 0.3.0
+     */
+    static Tester connectTest(io.brane.core.crypto.Signer signer) {
+        return connectTest(DEFAULT_ANVIL_URL, signer);
+    }
+
+    /**
+     * Creates a test client connected to the specified RPC endpoint with the default test key.
+     *
+     * <p>Uses Anvil mode by default and the default funded test account (index 0).
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * // Connect to a remote Anvil instance
+     * Brane.Tester tester = Brane.connectTest("http://192.168.1.100:8545");
+     * }</pre>
+     *
+     * @param rpcUrl the HTTP/HTTPS RPC endpoint URL
+     * @return a new test client with ANVIL mode
+     * @since 0.3.0
+     */
+    static Tester connectTest(String rpcUrl) {
+        return builder().rpcUrl(rpcUrl).signer(AnvilSigners.defaultKey()).buildTester();
+    }
+
+    /**
+     * Creates a test client connected to the specified RPC endpoint with the provided signer.
+     *
+     * <p>Uses Anvil mode by default.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Signer key = PrivateKey.fromHex("0x...");
+     * Brane.Tester tester = Brane.connectTest("http://localhost:8545", key);
+     *
+     * // Impersonate a whale for testing
+     * Address whale = Address.from("0x...");
+     * try (ImpersonationSession session = tester.impersonate(whale)) {
+     *     session.sendTransactionAndWait(request);
+     * }
+     * }</pre>
+     *
+     * @param rpcUrl the HTTP/HTTPS RPC endpoint URL
+     * @param signer the signer for transaction signing
+     * @return a new test client with ANVIL mode
+     * @since 0.3.0
+     */
+    static Tester connectTest(String rpcUrl, io.brane.core.crypto.Signer signer) {
+        return builder().rpcUrl(rpcUrl).signer(signer).buildTester();
+    }
+
+    /**
+     * Creates a test client connected to the specified RPC endpoint with the specified test node mode.
+     *
+     * <p>Use this method when connecting to non-Anvil test nodes like Hardhat or Ganache.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Signer key = PrivateKey.fromHex("0x...");
+     * Brane.Tester tester = Brane.connectTest("http://localhost:8545", key, TestNodeMode.HARDHAT);
+     * }</pre>
+     *
+     * @param rpcUrl the HTTP/HTTPS RPC endpoint URL
+     * @param signer the signer for transaction signing
+     * @param mode   the test node mode (Anvil, Hardhat, or Ganache)
+     * @return a new test client with the specified mode
+     * @since 0.3.0
+     */
+    static Tester connectTest(String rpcUrl, io.brane.core.crypto.Signer signer, TestNodeMode mode) {
+        return builder().rpcUrl(rpcUrl).signer(signer).testMode(mode).buildTester();
     }
 
     /**
@@ -820,6 +993,765 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
     }
 
     /**
+     * Testing interface for interacting with test nodes (Anvil, Hardhat, Ganache).
+     *
+     * <p>{@code Tester} provides test-specific operations like snapshots, time manipulation,
+     * account impersonation, and state management that are only available on local test networks.
+     * This is the client type to use for integration tests, fuzz testing, and local development.
+     *
+     * <h2>Type Hierarchy Design</h2>
+     *
+     * <p>{@code Tester} is a <strong>sibling</strong> to {@link Reader} and {@link Signer} in
+     * the sealed type hierarchy, rather than extending {@code Signer}. This design enables
+     * exhaustive pattern matching across all three client types:
+     *
+     * <pre>{@code
+     * // Compile-time guarantee of exhaustive handling
+     * switch (client) {
+     *     case Brane.Reader r  -> handleReadOnly(r);
+     *     case Brane.Signer s  -> handleSigner(s);
+     *     case Brane.Tester t  -> handleTester(t);
+     * }
+     * }</pre>
+     *
+     * <p>If {@code Tester} extended {@code Signer}, pattern matching would require checking
+     * {@code Tester} before {@code Signer} to avoid dead code, and the type hierarchy would
+     * not be truly sealed (future subtypes could break exhaustiveness).
+     *
+     * <p>To use signing operations, call {@link #asSigner()} to obtain a {@link Signer} view,
+     * or use the convenience delegation methods like {@link #sendTransaction(TransactionRequest)}
+     * directly on the tester.
+     *
+     * <h2>Capabilities Overview</h2>
+     *
+     * <ul>
+     *   <li><strong>Signing:</strong> {@link #asSigner()}, {@link #sendTransaction},
+     *       {@link #sendTransactionAndWait} - Transaction sending</li>
+     *   <li><strong>Snapshots:</strong> {@link #snapshot()}, {@link #revert(SnapshotId)} -
+     *       Save/restore chain state</li>
+     *   <li><strong>Impersonation:</strong> {@link #impersonate(Address)},
+     *       {@link #stopImpersonating(Address)} - Act as any address without private key</li>
+     *   <li><strong>Account Manipulation:</strong> {@link #setBalance(Address, Wei)},
+     *       {@link #setCode(Address, HexData)}, {@link #setNonce(Address, long)},
+     *       {@link #setStorageAt(Address, Hash, Hash)}</li>
+     *   <li><strong>Mining:</strong> {@link #mine()}, {@link #mine(long)},
+     *       {@link #setAutomine(boolean)}, {@link #setIntervalMining(long)}</li>
+     *   <li><strong>Time:</strong> {@link #setNextBlockTimestamp(long)},
+     *       {@link #increaseTime(long)}</li>
+     *   <li><strong>Block Config:</strong> {@link #setNextBlockBaseFee(Wei)},
+     *       {@link #setCoinbase(Address)}, {@link #setBlockGasLimit(java.math.BigInteger)}</li>
+     *   <li><strong>State:</strong> {@link #dumpState()}, {@link #loadState(HexData)} -
+     *       Serialize/deserialize chain state</li>
+     *   <li><strong>Reset:</strong> {@link #reset()}, {@link #reset(String, long)} -
+     *       Reset chain or fork from live network</li>
+     * </ul>
+     *
+     * <h2>Creating a Tester</h2>
+     *
+     * <pre>{@code
+     * // Simplest: connect to local Anvil with default test key
+     * Brane.Tester tester = Brane.connectTest();
+     *
+     * // With custom signer
+     * Signer key = AnvilSigners.keyAt(3);  // Use 4th test account
+     * Brane.Tester tester = Brane.connectTest(key);
+     *
+     * // With custom URL and mode
+     * Brane.Tester tester = Brane.connectTest(
+     *     "http://localhost:8545",
+     *     PrivateKey.fromHex("0x..."),
+     *     TestNodeMode.HARDHAT
+     * );
+     *
+     * // Via builder for full configuration
+     * Brane.Tester tester = Brane.builder()
+     *     .rpcUrl("http://localhost:8545")
+     *     .signer(AnvilSigners.defaultKey())
+     *     .testMode(TestNodeMode.ANVIL)
+     *     .buildTester();
+     * }</pre>
+     *
+     * <h2>Common Patterns</h2>
+     *
+     * <p><strong>Snapshot and restore (recommended for test isolation):</strong>
+     * <pre>{@code
+     * // Take snapshot at start of test
+     * SnapshotId snapshot = tester.snapshot();
+     * try {
+     *     // Test operations that modify state
+     *     tester.setBalance(testAccount, Wei.fromEther("1000"));
+     *     Hash txHash = tester.sendTransaction(request);
+     *     // ... assertions ...
+     * } finally {
+     *     // Always restore to clean state
+     *     tester.revert(snapshot);
+     * }
+     * }</pre>
+     *
+     * <p><strong>Impersonation (act as any address):</strong>
+     * <pre>{@code
+     * // Impersonate a whale address to test large transfers
+     * Address whale = Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+     * try (ImpersonationSession session = tester.impersonate(whale)) {
+     *     TransactionRequest request = TransactionRequest.builder()
+     *         .to(recipient)
+     *         .value(Wei.fromEther("10000"))
+     *         .build();
+     *     TransactionReceipt receipt = session.sendTransactionAndWait(request);
+     *     assertThat(receipt.status()).isEqualTo(1);
+     * }
+     * // Impersonation automatically stopped when session closes
+     * }</pre>
+     *
+     * <p><strong>Time manipulation (test time-dependent logic):</strong>
+     * <pre>{@code
+     * // Test a vesting contract that unlocks after 30 days
+     * long thirtyDaysInSeconds = 30 * 24 * 60 * 60;
+     * tester.increaseTime(thirtyDaysInSeconds);
+     * tester.mine();  // Mine a block with the new timestamp
+     *
+     * // Now the vesting contract should allow withdrawal
+     * TransactionReceipt receipt = tester.sendTransactionAndWait(withdrawRequest);
+     * }</pre>
+     *
+     * <p><strong>Batching transactions in a single block:</strong>
+     * <pre>{@code
+     * // Save current automine state, then disable it
+     * boolean wasAutomine = tester.getAutomine();
+     * tester.setAutomine(false);
+     * try {
+     *     // All these transactions go into the mempool
+     *     Hash tx1 = tester.sendTransaction(request1);
+     *     Hash tx2 = tester.sendTransaction(request2);
+     *     Hash tx3 = tester.sendTransaction(request3);
+     *
+     *     // Mine them all in a single block
+     *     tester.mine();
+     *
+     *     // All three receipts should have the same block number
+     *     TransactionReceipt r1 = tester.waitForReceipt(tx1);
+     *     TransactionReceipt r2 = tester.waitForReceipt(tx2);
+     *     assertThat(r1.blockNumber()).isEqualTo(r2.blockNumber());
+     * } finally {
+     *     tester.setAutomine(wasAutomine);  // Restore original automine state
+     * }
+     * }</pre>
+     *
+     * <h2>Thread Safety</h2>
+     *
+     * <p>All {@code Tester} implementations are thread-safe. Multiple threads can safely
+     * share a single tester instance for concurrent test operations. However, test-specific
+     * operations like snapshots, time manipulation, and impersonation affect the <em>global</em>
+     * state of the test node, so concurrent tests sharing the same node should coordinate
+     * their state modifications to avoid interference.
+     *
+     * <p><strong>Recommended approach for parallel tests:</strong>
+     * <ul>
+     *   <li>Each test takes its own snapshot at the start and reverts in a finally block</li>
+     *   <li>Tests use distinct addresses to avoid nonce conflicts</li>
+     *   <li>Time manipulation tests run serially or on separate Anvil instances</li>
+     * </ul>
+     *
+     * <h2>Test Node Compatibility</h2>
+     *
+     * <p>{@code Tester} supports multiple test node implementations via {@link TestNodeMode}:
+     * <ul>
+     *   <li>{@link TestNodeMode#ANVIL} - Foundry's Anvil (recommended, full feature support)</li>
+     *   <li>{@link TestNodeMode#HARDHAT} - Hardhat Network</li>
+     *   <li>{@link TestNodeMode#GANACHE} - Truffle's Ganache</li>
+     * </ul>
+     *
+     * <p>Some methods are only available on specific test nodes (e.g., {@link #dumpState()}
+     * is Anvil-only). See individual method documentation for compatibility notes.
+     *
+     * @see Brane
+     * @see Brane.Reader
+     * @see Brane.Signer
+     * @see SnapshotId
+     * @see ImpersonationSession
+     * @see TestNodeMode
+     * @see AnvilSigners
+     * @since 0.2.0
+     */
+    sealed interface Tester extends Brane permits DefaultTester {
+
+        // ==================== Signer Conversion ====================
+
+        /**
+         * Returns this tester as a {@link Signer} for transaction sending.
+         *
+         * <p>The returned signer uses the underlying signer configured for this tester,
+         * allowing standard transaction operations while retaining access to test-specific
+         * methods through the original tester reference.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * Brane.Signer signer = tester.asSigner();
+         * Hash txHash = signer.sendTransaction(request);
+         * }</pre>
+         *
+         * @return a signer view of this tester
+         * @since 0.2.0
+         */
+        Signer asSigner();
+
+        // ==================== Transaction Methods (Signer delegation) ====================
+
+        /**
+         * Submits a transaction to the blockchain and returns immediately.
+         *
+         * <p>This method delegates to the underlying signer. See {@link Signer#sendTransaction}
+         * for full details.
+         *
+         * @param request the transaction request
+         * @return the transaction hash
+         * @see Signer#sendTransaction
+         * @since 0.2.0
+         */
+        Hash sendTransaction(TransactionRequest request);
+
+        /**
+         * Submits a transaction and waits for confirmation using default settings.
+         *
+         * <p>Uses default timeout (60 seconds) and poll interval (1 second).
+         * Delegates to {@link Signer#sendTransactionAndWait}.
+         *
+         * @param request the transaction request
+         * @return the transaction receipt once confirmed
+         * @see Signer#sendTransactionAndWait(TransactionRequest)
+         * @since 0.2.0
+         */
+        default TransactionReceipt sendTransactionAndWait(TransactionRequest request) {
+            return sendTransactionAndWait(request, Signer.DEFAULT_TIMEOUT_MILLIS, Signer.DEFAULT_POLL_INTERVAL_MILLIS);
+        }
+
+        /**
+         * Submits a transaction and waits for confirmation with custom settings.
+         *
+         * <p>Delegates to {@link Signer#sendTransactionAndWait(TransactionRequest, long, long)}.
+         *
+         * @param request            the transaction request
+         * @param timeoutMillis      maximum wait time in milliseconds
+         * @param pollIntervalMillis poll interval in milliseconds
+         * @return the transaction receipt once confirmed
+         * @see Signer#sendTransactionAndWait(TransactionRequest, long, long)
+         * @since 0.2.0
+         */
+        TransactionReceipt sendTransactionAndWait(
+                TransactionRequest request, long timeoutMillis, long pollIntervalMillis);
+
+        /**
+         * Returns the signer instance used by this tester.
+         *
+         * @return the signer
+         * @see Signer#signer()
+         * @since 0.2.0
+         */
+        io.brane.core.crypto.Signer signer();
+
+        // ==================== Snapshot Methods ====================
+
+        /**
+         * Creates a snapshot of the current blockchain state.
+         *
+         * <p>The returned {@link SnapshotId} can be used to revert the chain state
+         * back to this point using {@link #revert(SnapshotId)}.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * SnapshotId snapshot = tester.snapshot();
+         * // ... perform operations ...
+         * tester.revert(snapshot);
+         * }</pre>
+         *
+         * @return the snapshot ID
+         * @since 0.2.0
+         */
+        SnapshotId snapshot();
+
+        /**
+         * Reverts the blockchain state to a previously taken snapshot.
+         *
+         * <p><strong>Note:</strong> After reverting, the snapshot is consumed and cannot
+         * be reused. Take a new snapshot if you need to revert to the same state again.
+         *
+         * @param snapshotId the snapshot to revert to
+         * @return true if the revert succeeded, false otherwise
+         * @since 0.2.0
+         */
+        boolean revert(SnapshotId snapshotId);
+
+        // ==================== Impersonation Methods ====================
+
+        /**
+         * Starts impersonating the specified address.
+         *
+         * <p>Returns an {@link ImpersonationSession} that allows sending transactions
+         * from the impersonated address without possessing its private key. The session
+         * implements {@link AutoCloseable} for automatic cleanup.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * Address whale = Address.from("0x...");
+         * try (ImpersonationSession session = tester.impersonate(whale)) {
+         *     TransactionReceipt receipt = session.sendTransactionAndWait(request);
+         * }
+         * // Impersonation automatically stopped
+         * }</pre>
+         *
+         * @param address the address to impersonate
+         * @return an impersonation session for sending transactions
+         * @see #stopImpersonating(Address)
+         * @since 0.2.0
+         */
+        ImpersonationSession impersonate(Address address);
+
+        /**
+         * Stops impersonating the specified address.
+         *
+         * <p>This method is automatically called when an {@link ImpersonationSession}
+         * is closed. Direct calls are useful when managing impersonation manually.
+         *
+         * @param address the address to stop impersonating
+         * @since 0.2.0
+         */
+        void stopImpersonating(Address address);
+
+        /**
+         * Enables automatic impersonation for all addresses.
+         *
+         * <p>When enabled, any address can send transactions without explicit
+         * impersonation. This is useful for complex test scenarios requiring
+         * multiple addresses.
+         *
+         * <p><strong>Note:</strong> Only supported by Anvil ({@code anvil_autoImpersonateAccount}).
+         *
+         * @since 0.2.0
+         */
+        void enableAutoImpersonate();
+
+        /**
+         * Disables automatic impersonation.
+         *
+         * <p><strong>Note:</strong> Only supported by Anvil ({@code anvil_autoImpersonateAccount}).
+         *
+         * @since 0.2.0
+         */
+        void disableAutoImpersonate();
+
+        // ==================== Account Manipulation Methods ====================
+
+        /**
+         * Sets the ETH balance of an account.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.setBalance(address, Wei.fromEther("1000"));
+         * }</pre>
+         *
+         * @param address the account address
+         * @param balance the new balance in Wei
+         * @since 0.2.0
+         */
+        void setBalance(Address address, io.brane.core.types.Wei balance);
+
+        /**
+         * Sets the bytecode at an address.
+         *
+         * <p>This can be used to deploy arbitrary bytecode or modify existing contracts.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.setCode(contractAddress, HexData.from("0x608060405234..."));
+         * }</pre>
+         *
+         * @param address the address to set code at
+         * @param code    the bytecode to set
+         * @since 0.2.0
+         */
+        void setCode(Address address, HexData code);
+
+        /**
+         * Sets the nonce of an account.
+         *
+         * <p>The nonce affects the order and validity of transactions from this account.
+         *
+         * @param address the account address
+         * @param nonce   the new nonce value
+         * @since 0.2.0
+         */
+        void setNonce(Address address, long nonce);
+
+        /**
+         * Sets a storage slot value at an address.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * Hash slot = Hash.from("0x0000000000000000000000000000000000000000000000000000000000000000");
+         * Hash value = Hash.from("0x000000000000000000000000000000000000000000000000000000000000002a");
+         * tester.setStorageAt(contractAddress, slot, value);
+         * }</pre>
+         *
+         * @param address the contract address
+         * @param slot    the storage slot (32 bytes)
+         * @param value   the value to set (32 bytes)
+         * @since 0.2.0
+         */
+        void setStorageAt(Address address, Hash slot, Hash value);
+
+        // ==================== Mining Methods ====================
+
+        /**
+         * Mines a single block.
+         *
+         * <p>This is equivalent to {@code mine(1)}.
+         *
+         * @since 0.2.0
+         */
+        void mine();
+
+        /**
+         * Mines the specified number of blocks.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.mine(100); // Mine 100 blocks
+         * }</pre>
+         *
+         * @param blocks the number of blocks to mine
+         * @since 0.2.0
+         */
+        void mine(long blocks);
+
+        /**
+         * Mines the specified number of blocks with a time interval between each block.
+         *
+         * <p>This allows simulating realistic block production with consistent block times.
+         * The interval is applied between consecutive blocks, so the total time will be
+         * approximately {@code (blocks - 1) * intervalSeconds}.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.mine(10, 12); // Mine 10 blocks with 12 seconds between each
+         * }</pre>
+         *
+         * @param blocks          the number of blocks to mine
+         * @param intervalSeconds the time interval in seconds between each block
+         * @since 0.2.0
+         */
+        void mine(long blocks, long intervalSeconds);
+
+        /**
+         * Mines a single block with the specified timestamp.
+         *
+         * <p>This combines mining with time manipulation in a single operation.
+         *
+         * @param timestamp the Unix timestamp for the mined block
+         * @since 0.2.0
+         */
+        void mineAt(long timestamp);
+
+        /**
+         * Returns whether automine is currently enabled.
+         *
+         * <p>Automine controls whether transactions are mined immediately upon submission.
+         *
+         * @return true if automine is enabled, false otherwise
+         * @since 0.2.0
+         */
+        boolean getAutomine();
+
+        /**
+         * Enables or disables automatic mining.
+         *
+         * <p>When automine is enabled (default), transactions are mined immediately
+         * upon submission. When disabled, transactions remain in the mempool until
+         * {@link #mine()} is called explicitly.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.setAutomine(false);
+         * // Transactions now stay in mempool
+         * Hash tx1 = signer.sendTransaction(request1);
+         * Hash tx2 = signer.sendTransaction(request2);
+         * tester.mine(); // Both transactions mined in same block
+         * }</pre>
+         *
+         * @param enabled true to enable automine, false to disable
+         * @since 0.2.0
+         */
+        void setAutomine(boolean enabled);
+
+        /**
+         * Sets interval mining with the specified block time.
+         *
+         * <p>When interval mining is enabled, blocks are mined automatically at
+         * the specified interval, simulating real network behavior.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.setIntervalMining(12_000); // Mine every 12 seconds (like mainnet)
+         * }</pre>
+         *
+         * @param intervalMs the mining interval in milliseconds (0 to disable)
+         * @since 0.2.0
+         */
+        void setIntervalMining(long intervalMs);
+
+        // ==================== Time Manipulation Methods ====================
+
+        /**
+         * Sets the timestamp for the next block.
+         *
+         * <p>The timestamp must be greater than the current block's timestamp.
+         * This affects only the next block; subsequent blocks will increment
+         * normally from this timestamp.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * long futureTime = System.currentTimeMillis() / 1000 + 86400; // +1 day
+         * tester.setNextBlockTimestamp(futureTime);
+         * tester.mine();
+         * }</pre>
+         *
+         * @param timestamp the Unix timestamp (seconds since epoch)
+         * @since 0.2.0
+         */
+        void setNextBlockTimestamp(long timestamp);
+
+        /**
+         * Increases the blockchain time by the specified number of seconds.
+         *
+         * <p>Unlike {@link #setNextBlockTimestamp(long)}, this increments from
+         * the current time rather than setting an absolute value.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.increaseTime(3600); // Advance 1 hour
+         * tester.mine();
+         * }</pre>
+         *
+         * @param seconds the number of seconds to advance
+         * @since 0.2.0
+         */
+        void increaseTime(long seconds);
+
+        // ==================== Block Configuration Methods ====================
+
+        /**
+         * Sets the base fee for the next block.
+         *
+         * <p>This is useful for testing gas price edge cases and EIP-1559 behavior.
+         *
+         * @param baseFee the base fee in Wei
+         * @since 0.2.0
+         */
+        void setNextBlockBaseFee(io.brane.core.types.Wei baseFee);
+
+        /**
+         * Sets the gas limit for the next block.
+         *
+         * <p>This is useful for testing block gas limit edge cases and
+         * transaction gas requirements.
+         *
+         * @param gasLimit the gas limit for the next block
+         * @since 0.2.0
+         */
+        void setBlockGasLimit(java.math.BigInteger gasLimit);
+
+        /**
+         * Sets the coinbase (block reward recipient) address.
+         *
+         * <p>This affects the {@code block.coinbase} value in subsequent blocks.
+         *
+         * @param coinbase the coinbase address
+         * @since 0.2.0
+         */
+        void setCoinbase(Address coinbase);
+
+        // ==================== Reset Methods ====================
+
+        /**
+         * Resets the chain to its initial state.
+         *
+         * <p>This clears all transactions, blocks (except genesis), and restores
+         * the initial account states.
+         *
+         * @since 0.2.0
+         */
+        void reset();
+
+        /**
+         * Resets the chain and forks from the specified RPC endpoint at the given block.
+         *
+         * <p>This is useful for resetting to a specific state from a live network.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * tester.reset("https://eth-mainnet.g.alchemy.com/v2/...", 18_000_000L);
+         * }</pre>
+         *
+         * @param forkUrl     the RPC URL to fork from
+         * @param blockNumber the block number to fork at
+         * @since 0.2.0
+         */
+        void reset(String forkUrl, long blockNumber);
+
+        // ==================== State Management Methods ====================
+
+        /**
+         * Dumps the current chain state to a hex-encoded string.
+         *
+         * <p>The returned state can be used to restore the chain to this exact point
+         * using {@link #loadState(HexData)}. This is useful for:
+         * <ul>
+         *   <li>Saving test chain state to disk for later restoration</li>
+         *   <li>Sharing chain state between different test processes</li>
+         *   <li>Creating test fixtures with pre-configured state</li>
+         * </ul>
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * // Dump current state
+         * HexData state = tester.dumpState();
+         *
+         * // Save to file for later use
+         * Files.writeString(Path.of("test-state.hex"), state.value());
+         *
+         * // Later, restore in another process
+         * String savedState = Files.readString(Path.of("test-state.hex"));
+         * tester.loadState(HexData.from(savedState));
+         * }</pre>
+         *
+         * <p><strong>Note:</strong> Only supported by Anvil ({@code anvil_dumpState}).
+         * Other test nodes may not support this operation.
+         *
+         * @return the serialized chain state as hex-encoded data
+         * @throws UnsupportedOperationException if the test node does not support state dumping
+         * @see #loadState(HexData)
+         * @since 0.2.0
+         */
+        HexData dumpState();
+
+        /**
+         * Loads a previously dumped chain state.
+         *
+         * <p>This method restores chain state from data previously obtained via
+         * {@link #dumpState()}. The loaded state is merged into the current chain,
+         * overwriting any conflicting addresses or storage slots.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * // Load state from a file
+         * String savedState = Files.readString(Path.of("test-state.hex"));
+         * boolean success = tester.loadState(HexData.from(savedState));
+         *
+         * // Or load state dumped in the same session
+         * HexData state = tester.dumpState();
+         * // ... make some changes ...
+         * boolean restored = tester.loadState(state);
+         * }</pre>
+         *
+         * <p><strong>Note:</strong> Only supported by Anvil ({@code anvil_loadState}).
+         * Other test nodes may not support this operation.
+         *
+         * @param state the serialized chain state to load (from {@link #dumpState()})
+         * @return true if the state was loaded successfully, false otherwise
+         * @throws UnsupportedOperationException if the test node does not support state loading
+         * @see #dumpState()
+         * @since 0.2.0
+         */
+        boolean loadState(HexData state);
+
+        // ==================== Transaction Pool Methods ====================
+
+        /**
+         * Removes a transaction from the mempool.
+         *
+         * <p>This allows you to remove pending transactions that have not yet been mined.
+         * Useful for testing scenarios where you want to cancel or replace pending
+         * transactions in the mempool.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * // Disable automine to keep transaction in mempool
+         * tester.setAutomine(false);
+         * Hash txHash = signer.sendTransaction(request);
+         *
+         * // Drop the pending transaction
+         * boolean dropped = tester.dropTransaction(txHash);
+         *
+         * // Re-enable automine
+         * tester.setAutomine(true);
+         * }</pre>
+         *
+         * <p><strong>Note:</strong> Only supported by Anvil ({@code anvil_dropTransaction}).
+         * Other test nodes may not support this operation.
+         *
+         * @param txHash the transaction hash to drop
+         * @return true if the transaction was dropped, false otherwise
+         * @throws io.brane.core.error.RpcException if the RPC call fails
+         * @since 0.2.0
+         */
+        boolean dropTransaction(Hash txHash);
+
+        // ==================== Receipt Waiting Methods ====================
+
+        /** Default timeout for waiting for receipt: 60 seconds. */
+        long DEFAULT_WAIT_TIMEOUT_MILLIS = 60_000;
+
+        /** Default initial poll interval for waiting for receipt: 100 milliseconds. */
+        long DEFAULT_WAIT_POLL_INTERVAL_MILLIS = 100;
+
+        /**
+         * Waits for a transaction receipt to be available.
+         *
+         * <p>This method polls {@code eth_getTransactionReceipt} with exponential backoff
+         * until the receipt is available or the timeout is reached. The poll interval
+         * starts at the specified value and doubles after each poll, capped at 10 seconds.
+         *
+         * <p>Uses default timeout (60 seconds) and initial poll interval (100 milliseconds).
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * // Wait for a transaction sent elsewhere
+         * Hash txHash = session.sendTransaction(request);
+         * TransactionReceipt receipt = tester.waitForReceipt(txHash);
+         * }</pre>
+         *
+         * @param txHash the transaction hash to wait for
+         * @return the transaction receipt once available
+         * @throws io.brane.core.error.RpcException if timeout is reached or interrupted
+         * @since 0.2.0
+         */
+        default TransactionReceipt waitForReceipt(Hash txHash) {
+            return waitForReceipt(txHash, DEFAULT_WAIT_TIMEOUT_MILLIS, DEFAULT_WAIT_POLL_INTERVAL_MILLIS);
+        }
+
+        /**
+         * Waits for a transaction receipt to be available with custom timeout settings.
+         *
+         * <p>This method polls {@code eth_getTransactionReceipt} with exponential backoff
+         * until the receipt is available or the timeout is reached. The poll interval
+         * starts at the specified value and doubles after each poll, capped at 10 seconds.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * // Wait with custom settings
+         * TransactionReceipt receipt = tester.waitForReceipt(txHash, 120_000, 50);
+         * }</pre>
+         *
+         * @param txHash             the transaction hash to wait for
+         * @param timeoutMillis      maximum time to wait, in milliseconds
+         * @param pollIntervalMillis initial poll interval in milliseconds (doubles each poll, max 10s)
+         * @return the transaction receipt once available
+         * @throws io.brane.core.error.RpcException if timeout is reached or interrupted
+         * @since 0.2.0
+         */
+        TransactionReceipt waitForReceipt(Hash txHash, long timeoutMillis, long pollIntervalMillis);
+    }
+
+    /**
      * Builder for creating {@link Brane} client instances.
      *
      * <p>The builder provides fine-grained control over client configuration, including
@@ -912,6 +1844,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
         private @Nullable ChainProfile chain;
         private int retries = 3;
         private @Nullable RpcRetryConfig retryConfig;
+        private TestNodeMode testMode = TestNodeMode.ANVIL;
 
         /**
          * Creates a new builder instance.
@@ -1063,6 +1996,33 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
         }
 
         /**
+         * Sets the test node mode for tester clients.
+         *
+         * <p>This determines which RPC method prefixes to use for test-specific
+         * operations like snapshots, impersonation, and time manipulation.
+         *
+         * <p>Default is {@link TestNodeMode#ANVIL}.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * Brane.Tester tester = Brane.builder()
+         *     .rpcUrl("http://localhost:8545")
+         *     .signer(key)
+         *     .testMode(TestNodeMode.HARDHAT)
+         *     .buildTester();
+         * }</pre>
+         *
+         * @param testMode the test node mode
+         * @return this builder for chaining
+         * @since 0.3.0
+         * @see TestNodeMode
+         */
+        public Builder testMode(TestNodeMode testMode) {
+            this.testMode = testMode;
+            return this;
+        }
+
+        /**
          * Builds a {@link Brane} client based on the configured options.
          *
          * <p>This method returns:
@@ -1151,6 +2111,47 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
             BraneProvider resolvedProvider = resolveProvider();
             RpcRetryConfig resolvedRetryConfig = retryConfig != null ? retryConfig : RpcRetryConfig.defaults();
             return new DefaultSigner(resolvedProvider, resolvedSigner, chain, retries, resolvedRetryConfig);
+        }
+
+        /**
+         * Builds a test-capable {@link Brane.Tester} client.
+         *
+         * <p>Use this method when you need test node operations such as snapshots,
+         * impersonation, and time manipulation. Requires a signer to be configured.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * Brane.Tester tester = Brane.builder()
+         *     .rpcUrl("http://localhost:8545")
+         *     .signer(AnvilSigners.defaultKey())
+         *     .testMode(TestNodeMode.ANVIL)
+         *     .buildTester();
+         *
+         * // Take snapshot before test
+         * SnapshotId snapshot = tester.snapshot();
+         * try {
+         *     // Test operations...
+         * } finally {
+         *     tester.revert(snapshot);
+         * }
+         * }</pre>
+         *
+         * @return a new test-capable {@link Brane.Tester} instance
+         * @throws IllegalStateException if neither rpcUrl nor provider is configured
+         * @throws IllegalStateException if no signer is configured
+         * @since 0.3.0
+         * @see TestNodeMode
+         */
+        public Tester buildTester() {
+            validateProviderConfig();
+            final io.brane.core.crypto.Signer resolvedSigner = signer;
+            if (resolvedSigner == null) {
+                throw new IllegalStateException(
+                        "Cannot build Tester without a signer. Call signer() before buildTester().");
+            }
+            BraneProvider resolvedProvider = resolveProvider();
+            RpcRetryConfig resolvedRetryConfig = retryConfig != null ? retryConfig : RpcRetryConfig.defaults();
+            return new DefaultTester(resolvedProvider, resolvedSigner, chain, retries, resolvedRetryConfig, testMode);
         }
 
         /**

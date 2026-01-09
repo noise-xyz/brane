@@ -66,6 +66,17 @@
                 "utilities/threading",
                 "utilities/metrics"
             ]
+        },
+        {
+            "group": "Testing",
+            "pages": [
+                "testing/overview",
+                "testing/setup",
+                "testing/accounts",
+                "testing/impersonation",
+                "testing/state",
+                "testing/mining-time"
+            ]
         }
     ],
     "anchors": [
