@@ -150,6 +150,9 @@ public final class MnemonicWallet implements Destroyable {
         Objects.requireNonNull(phrase, "phrase cannot be null");
         Objects.requireNonNull(passphrase, "passphrase cannot be null");
 
+        // Note: NFKD normalization is performed twice - once in isValid() and once in toSeed().
+        // This is intentional: validation and seed derivation are independent operations per BIP-39,
+        // and each must normalize its input. Correctness over micro-optimization.
         if (!Bip39.isValid(phrase)) {
             throw new IllegalArgumentException("Invalid mnemonic phrase");
         }
