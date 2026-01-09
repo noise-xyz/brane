@@ -50,7 +50,7 @@ final class Bip39 {
         }
 
         String normalized = normalizeNfkd(mnemonic);
-        String[] words = normalized.split("\\s+");
+        String[] words = normalized.trim().split("\\s+");
 
         if (!VALID_WORD_COUNTS.contains(words.length)) {
             return false;
