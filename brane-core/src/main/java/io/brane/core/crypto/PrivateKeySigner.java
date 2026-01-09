@@ -51,8 +51,8 @@ public final class PrivateKeySigner implements Signer, Destroyable {
     /**
      * Creates a signer from an existing private key.
      *
-     * <p>This factory method is intended for HD wallet derivation in the
-     * {@code io.brane.core.crypto.hd} package, avoiding hex encoding roundtrips.
+     * <p>Advanced API for users who already have a PrivateKey instance.
+     * Most users should use the String constructor.
      *
      * @param privateKey the private key (must not be null)
      * @return a new signer backed by the given private key
