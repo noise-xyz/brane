@@ -132,7 +132,7 @@ class MnemonicWalletTest {
     void testDeriveByDerivationPath() {
         MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
 
-        DerivationPath path = DerivationPath.of(0, 0);
+        DerivationPath path = new DerivationPath(0, 0);
         Signer signer = wallet.derive(path);
 
         assertNotNull(signer);
@@ -147,9 +147,9 @@ class MnemonicWalletTest {
         MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
 
         // Account 0, address 0
-        Signer signer0 = wallet.derive(DerivationPath.of(0, 0));
+        Signer signer0 = wallet.derive(new DerivationPath(0, 0));
         // Account 1, address 0
-        Signer signer1 = wallet.derive(DerivationPath.of(1, 0));
+        Signer signer1 = wallet.derive(new DerivationPath(1, 0));
 
         assertNotEquals(signer0.address(), signer1.address());
     }
@@ -320,7 +320,7 @@ class MnemonicWalletTest {
         wallet.destroy();
 
         IllegalStateException ex =
-                assertThrows(IllegalStateException.class, () -> wallet.derive(DerivationPath.of(0, 0)));
+                assertThrows(IllegalStateException.class, () -> wallet.derive(new DerivationPath(0, 0)));
         assertEquals("MnemonicWallet has been destroyed", ex.getMessage());
     }
 

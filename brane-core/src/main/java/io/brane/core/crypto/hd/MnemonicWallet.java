@@ -51,7 +51,7 @@ import io.brane.core.crypto.Signer;
  * Signer account1 = wallet.derive(1); // m/44'/60'/0'/0/1
  *
  * // Use custom derivation path
- * Signer custom = wallet.derive(DerivationPath.of(1, 5)); // m/44'/60'/1'/0/5
+ * Signer custom = wallet.derive(new DerivationPath(1, 5)); // m/44'/60'/1'/0/5
  * }</pre>
  *
  * @see Bip39

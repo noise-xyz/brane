@@ -84,7 +84,7 @@ Signer account0 = wallet.derive(0);
 Signer account1 = wallet.derive(1);
 
 // Custom derivation path
-Signer custom = wallet.derive(DerivationPath.of(1, 5)); // m/44'/60'/1'/0/5
+Signer custom = wallet.derive(new DerivationPath(1, 5)); // m/44'/60'/1'/0/5
 
 // Generate new wallet (save phrase securely!)
 MnemonicWallet newWallet = MnemonicWallet.generatePhrase();

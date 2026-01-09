@@ -114,8 +114,8 @@ class DerivationPathTest {
     }
 
     @Test
-    void testOfWithAccountAndAddressIndex() {
-        var path = DerivationPath.of(3, 7);
+    void testConstructorWithAccountAndAddressIndex() {
+        var path = new DerivationPath(3, 7);
         assertEquals(3, path.account());
         assertEquals(7, path.addressIndex());
     }
@@ -123,8 +123,6 @@ class DerivationPathTest {
     @Test
     void testOfRejectsNegativeValues() {
         assertThrows(IllegalArgumentException.class, () -> DerivationPath.of(-1));
-        assertThrows(IllegalArgumentException.class, () -> DerivationPath.of(-1, 0));
-        assertThrows(IllegalArgumentException.class, () -> DerivationPath.of(0, -1));
     }
 
     @Test
@@ -189,7 +187,7 @@ class DerivationPathTest {
     void testToPath() {
         assertEquals("m/44'/60'/0'/0/0", new DerivationPath(0, 0).toPath());
         assertEquals("m/44'/60'/5'/0/10", new DerivationPath(5, 10).toPath());
-        assertEquals("m/44'/60'/100'/0/999", DerivationPath.of(100, 999).toPath());
+        assertEquals("m/44'/60'/100'/0/999", new DerivationPath(100, 999).toPath());
     }
 
     @Test

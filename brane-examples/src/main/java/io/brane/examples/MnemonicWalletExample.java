@@ -137,7 +137,7 @@ public final class MnemonicWalletExample {
         System.out.println("    Address: " + defaultSigner.address().value());
 
         // Different account: m/44'/60'/1'/0/0
-        DerivationPath account1Path = DerivationPath.of(1, 0);
+        DerivationPath account1Path = new DerivationPath(1, 0);
         Signer account1Signer = wallet.derive(account1Path);
         System.out.println("\n    Path: " + account1Path.toPath());
         System.out.println("    Address: " + account1Signer.address().value());

@@ -64,18 +64,6 @@ public record DerivationPath(int account, int addressIndex) {
     }
 
     /**
-     * Creates a derivation path with the specified account and address index.
-     *
-     * @param account      the account index
-     * @param addressIndex the address index
-     * @return a new DerivationPath
-     * @throws IllegalArgumentException if account or addressIndex is negative or exceeds MAX_INDEX
-     */
-    public static DerivationPath of(int account, int addressIndex) {
-        return new DerivationPath(account, addressIndex);
-    }
-
-    /**
      * Parses a derivation path string in BIP-44 Ethereum format.
      *
      * <p>
