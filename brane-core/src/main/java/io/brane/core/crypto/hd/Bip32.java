@@ -248,10 +248,11 @@ final class Bip32 {
      */
     private static byte[] toBytes32(BigInteger value) {
         byte[] bytes = value.toByteArray();
-        byte[] result = new byte[32];
         if (bytes.length == 32) {
             return bytes;
-        } else if (bytes.length < 32) {
+        }
+        byte[] result = new byte[32];
+        if (bytes.length < 32) {
             System.arraycopy(bytes, 0, result, 32 - bytes.length, bytes.length);
         } else {
             // Truncate leading zero byte from BigInteger's sign bit
