@@ -57,6 +57,7 @@ public final class PrivateKeySigner implements Signer, Destroyable {
      * @param privateKey the private key (must not be null)
      * @return a new signer backed by the given private key
      * @throws NullPointerException if privateKey is null
+     * @since 0.3.0
      */
     public static PrivateKeySigner fromPrivateKey(final PrivateKey privateKey) {
         return new PrivateKeySigner(privateKey);
