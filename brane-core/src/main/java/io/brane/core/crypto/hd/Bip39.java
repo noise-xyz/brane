@@ -4,6 +4,7 @@ import java.security.GeneralSecurityException;
 import java.security.SecureRandom;
 import java.text.Normalizer;
 import java.util.Arrays;
+import java.util.Set;
 
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.PBEKeySpec;
@@ -23,6 +24,7 @@ final class Bip39 {
     private static final int SEED_LENGTH_BYTES = 64;
     private static final String PBKDF2_ALGORITHM = "PBKDF2WithHmacSHA512";
     private static final String SALT_PREFIX = "mnemonic";
+    private static final Set<Integer> VALID_WORD_COUNTS = Set.of(12, 15, 18, 21, 24);
 
     private Bip39() {
         // Utility class
@@ -50,9 +52,7 @@ final class Bip39 {
         String normalized = normalizeNfkd(mnemonic);
         String[] words = normalized.split("\\s+");
 
-        // Valid word counts: 12, 15, 18, 21, 24
-        int wordCount = words.length;
-        if (wordCount != 12 && wordCount != 15 && wordCount != 18 && wordCount != 21 && wordCount != 24) {
+        if (!VALID_WORD_COUNTS.contains(words.length)) {
             return false;
         }
 
@@ -76,7 +76,7 @@ final class Bip39 {
      * @throws IllegalArgumentException if wordCount is not valid
      */
     static String generate(int wordCount, SecureRandom random) {
-        if (wordCount != 12 && wordCount != 15 && wordCount != 18 && wordCount != 21 && wordCount != 24) {
+        if (!VALID_WORD_COUNTS.contains(wordCount)) {
             throw new IllegalArgumentException(
                     "Word count must be 12, 15, 18, 21, or 24, got " + wordCount);
         }
