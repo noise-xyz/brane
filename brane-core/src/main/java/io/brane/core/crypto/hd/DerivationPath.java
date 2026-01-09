@@ -21,6 +21,15 @@ package io.brane.core.crypto.hd;
  */
 public record DerivationPath(int account, int addressIndex) {
 
+    /** BIP-44 purpose constant. */
+    private static final String BIP44_PURPOSE = "44";
+
+    /** Ethereum coin type (SLIP-44). */
+    private static final String ETH_COIN_TYPE = "60";
+
+    /** External chain (receiving addresses, not change). */
+    private static final String EXTERNAL_CHAIN = "0";
+
     /**
      * Maximum valid index value (2^31 - 1).
      * BIP-32 uses the high bit to indicate hardened derivation,
@@ -90,12 +99,12 @@ public record DerivationPath(int account, int addressIndex) {
             throw new IllegalArgumentException("Path must start with 'm', got: " + path);
         }
 
-        if (!isHardenedComponent(components[1], "44")) {
+        if (!isHardenedComponent(components[1], BIP44_PURPOSE)) {
             throw new IllegalArgumentException(
                     "Path must have purpose 44' (BIP-44), got: " + components[1]);
         }
 
-        if (!isHardenedComponent(components[2], "60")) {
+        if (!isHardenedComponent(components[2], ETH_COIN_TYPE)) {
             throw new IllegalArgumentException(
                     "Path must have coin type 60' (Ethereum), got: " + components[2]);
         }
@@ -109,7 +118,7 @@ public record DerivationPath(int account, int addressIndex) {
         int account = parseIndex(accountStr.substring(0, accountStr.length() - 1), "account");
 
         // Change must be 0 (external chain)
-        if (!components[4].equals("0")) {
+        if (!components[4].equals(EXTERNAL_CHAIN)) {
             throw new IllegalArgumentException(
                     "Change must be 0 (external chain), got: " + components[4]);
         }
@@ -126,7 +135,7 @@ public record DerivationPath(int account, int addressIndex) {
      * @return the path string in format m/44'/60'/account'/0/addressIndex
      */
     public String toPath() {
-        return "m/44'/60'/" + account + "'/0/" + addressIndex;
+        return "m/" + BIP44_PURPOSE + "'/" + ETH_COIN_TYPE + "'/" + account + "'/" + EXTERNAL_CHAIN + "/" + addressIndex;
     }
 
     private static int parseIndex(String str, String name) {
