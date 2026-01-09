@@ -68,4 +68,46 @@ class PrivateKeySignerTest {
                 () -> signer.signMessage(null));
         assertTrue(ex.getMessage().contains("message"));
     }
+
+    @Test
+    void destroyClearsKeyMaterial() {
+        PrivateKeySigner signer = new PrivateKeySigner(
+                "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
+
+        // Verify signer works before destroy
+        org.junit.jupiter.api.Assertions.assertFalse(signer.isDestroyed());
+        assertNotNull(signer.address());
+
+        // Destroy the signer
+        signer.destroy();
+
+        // Verify signer is destroyed
+        assertTrue(signer.isDestroyed());
+
+        // Verify signing fails after destroy
+        assertThrows(IllegalStateException.class, () ->
+                signer.signMessage("test".getBytes()));
+    }
+
+    @Test
+    void constructorFromPrivateKeyWorks() {
+        // Package-private constructor for HD wallet derivation
+        PrivateKey privateKey = PrivateKey.fromHex(
+                "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80");
+
+        PrivateKeySigner signer = new PrivateKeySigner(privateKey);
+
+        // Should derive the same address
+        assertEquals("0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266", signer.address().value());
+
+        // Should be able to sign
+        Signature sig = signer.signMessage("test".getBytes());
+        assertNotNull(sig);
+        assertTrue(sig.v() == 27 || sig.v() == 28);
+    }
+
+    @Test
+    void constructorFromPrivateKeyRejectsNull() {
+        assertThrows(NullPointerException.class, () -> new PrivateKeySigner((PrivateKey) null));
+    }
 }

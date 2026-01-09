@@ -2,6 +2,9 @@ package io.brane.core.crypto;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+
+import javax.security.auth.Destroyable;
 
 import io.brane.core.crypto.eip712.Eip712Domain;
 import io.brane.core.crypto.eip712.TypedDataField;
@@ -12,8 +15,12 @@ import io.brane.core.types.Address;
  * Transaction signer backed by a raw private key.
  * <p>
  * This implementation uses Brane's native crypto primitives for signing.
+ * <p>
+ * Implements {@link Destroyable} to allow clearing sensitive key material
+ * from memory when no longer needed. Call {@link #destroy()} when the signer
+ * is no longer required.
  */
-public final class PrivateKeySigner implements Signer {
+public final class PrivateKeySigner implements Signer, Destroyable {
 
     private final PrivateKey privateKey;
     private final Address address;
@@ -25,8 +32,35 @@ public final class PrivateKeySigner implements Signer {
      * @throws IllegalArgumentException if the private key is invalid
      */
     public PrivateKeySigner(final String privateKeyHex) {
-        this.privateKey = PrivateKey.fromHex(privateKeyHex);
+        this(PrivateKey.fromHex(privateKeyHex));
+    }
+
+    /**
+     * Creates a signer from an existing private key.
+     *
+     * <p>Package-private to support HD wallet derivation without hex roundtrip.
+     *
+     * @param privateKey the private key (must not be null)
+     * @throws NullPointerException if privateKey is null
+     */
+    PrivateKeySigner(final PrivateKey privateKey) {
+        this.privateKey = Objects.requireNonNull(privateKey, "privateKey cannot be null");
         this.address = privateKey.toAddress();
+    }
+
+    /**
+     * Creates a signer from an existing private key.
+     *
+     * <p>Advanced API for users who already have a PrivateKey instance.
+     * Most users should use the String constructor.
+     *
+     * @param privateKey the private key (must not be null)
+     * @return a new signer backed by the given private key
+     * @throws NullPointerException if privateKey is null
+     * @since 0.3.0
+     */
+    public static PrivateKeySigner fromPrivateKey(final PrivateKey privateKey) {
+        return new PrivateKeySigner(privateKey);
     }
 
     @Override
@@ -48,7 +82,7 @@ public final class PrivateKeySigner implements Signer {
 
     @Override
     public Signature signMessage(final byte[] message) {
-        java.util.Objects.requireNonNull(message, "message cannot be null");
+        Objects.requireNonNull(message, "message cannot be null");
         // EIP-191 style signing (Ethereum Signed Message)
         // \x19Ethereum Signed Message:\n + length + message
         byte[] prefix = ("\u0019Ethereum Signed Message:\n" + message.length)
@@ -75,7 +109,7 @@ public final class PrivateKeySigner implements Signer {
      * @throws IllegalArgumentException if hash is not 32 bytes
      */
     public Signature signRawHash(final byte[] hash) {
-        java.util.Objects.requireNonNull(hash, "hash cannot be null");
+        Objects.requireNonNull(hash, "hash cannot be null");
         if (hash.length != 32) {
             throw new IllegalArgumentException("Hash must be 32 bytes, got " + hash.length);
         }
@@ -101,5 +135,26 @@ public final class PrivateKeySigner implements Signer {
 
         // Adjust v to 27 or 28 for EIP-712/EIP-191 compatibility
         return new Signature(sig.r(), sig.s(), sig.v() + 27);
+    }
+
+    /**
+     * Destroys the underlying private key material.
+     * <p>
+     * After calling this method, any attempt to use this signer will throw
+     * an {@link IllegalStateException}.
+     */
+    @Override
+    public void destroy() {
+        privateKey.destroy();
+    }
+
+    /**
+     * Returns whether the underlying private key has been destroyed.
+     *
+     * @return true if {@link #destroy()} has been called
+     */
+    @Override
+    public boolean isDestroyed() {
+        return privateKey.isDestroyed();
     }
 }

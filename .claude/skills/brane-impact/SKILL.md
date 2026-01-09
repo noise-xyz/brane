@@ -58,14 +58,14 @@ git diff --name-only | grep '\.java$'
 
 ```bash
 # Full analysis with recommendations
-./scripts/verify_change.sh
+./.claude/scripts/verify_change.sh
 
 # Analyze specific file or class
-./scripts/verify_change.sh Address
-./scripts/verify_change.sh brane-core/src/main/java/io/brane/core/types/Address.java
+./.claude/scripts/verify_change.sh Address
+./.claude/scripts/verify_change.sh brane-core/src/main/java/io/brane/core/types/Address.java
 
 # Run with tests
-./scripts/verify_change.sh --run
+./.claude/scripts/verify_change.sh --run
 ```
 
 ---
@@ -256,7 +256,7 @@ Produce a report with:
 ### Phase 5: Optionally Execute
 If `--run` is specified:
 ```bash
-./scripts/verify_change.sh --run
+./.claude/scripts/verify_change.sh --run
 ```
 
 ---

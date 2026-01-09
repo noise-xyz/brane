@@ -40,6 +40,29 @@ var signer = new PrivateKeySigner("0x...");
 System.out.println("Address: " + signer.address());
 ```
 
+## HD Wallets (MnemonicWallet)
+
+For managing multiple accounts from a single mnemonic phrase, use `MnemonicWallet`:
+
+```java
+import io.brane.core.crypto.hd.MnemonicWallet;
+
+// Generate a new 12-word phrase
+MnemonicWallet wallet = MnemonicWallet.generatePhrase();
+String phrase = wallet.phrase(); // Save this securely!
+
+// Or restore from existing phrase
+MnemonicWallet restored = MnemonicWallet.fromPhrase(
+    "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+);
+
+// Derive signers for different addresses
+Signer account0 = wallet.derive(0); // m/44'/60'/0'/0/0
+Signer account1 = wallet.derive(1); // m/44'/60'/0'/0/1
+```
+
+HD wallets follow BIP-39 for mnemonic phrases and BIP-44 for Ethereum key derivation. For comprehensive documentation including passphrases, custom derivation paths, and security best practices, see [HD Wallets](/brane-signer/hd-wallets).
+
 ## PrivateKey
 
 The underlying `PrivateKey` class handles secp256k1 key operations directly.

@@ -7,7 +7,7 @@ Modern, type-safe Java 21 SDK for Ethereum/EVM. Inspired by viem (TS) and alloy 
 | Module | Purpose | Key Classes |
 |--------|---------|-------------|
 | `brane-primitives` | Hex/RLP utilities (zero deps) | `Hex`, `Rlp` |
-| `brane-core` | Types, ABI, crypto, EIP-712, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `TypedData`, `TxBuilder` |
+| `brane-core` | Types, ABI, crypto, EIP-712, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `MnemonicWallet`, `TypedData`, `TxBuilder` |
 | `brane-rpc` | JSON-RPC client layer | `Brane`, `Brane.Reader`, `Brane.Signer`, `Brane.Tester`, `BraneProvider` |
 | `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `ReadOnlyContract` |
 | `brane-examples` | Usage examples & integration tests | Various `*Example.java` |
@@ -72,6 +72,23 @@ Eip1559Builder.create()
     .value(Wei.fromEther("0.1"))
     .data(calldata)
     .build(signer, client);
+```
+
+### HD Wallet (BIP-39/BIP-44)
+```java
+// Restore wallet from mnemonic phrase
+MnemonicWallet wallet = MnemonicWallet.fromPhrase("abandon abandon ... about");
+
+// Derive signers for different addresses (m/44'/60'/0'/0/N)
+Signer account0 = wallet.derive(0);
+Signer account1 = wallet.derive(1);
+
+// Custom derivation path
+Signer custom = wallet.derive(new DerivationPath(1, 5)); // m/44'/60'/1'/0/5
+
+// Generate new wallet (save phrase securely!)
+MnemonicWallet newWallet = MnemonicWallet.generatePhrase();
+String phrase = newWallet.phrase();
 ```
 
 ### EIP-712 Typed Data Signing
@@ -143,6 +160,7 @@ BraneException (sealed root)
 
 - **Keccak256 ThreadLocal**: Call `Keccak256.cleanup()` in pooled/web threads to prevent memory leaks
 - **PrivateKey security**: Call `key.destroy()` when done; `fromBytes()` zeros input array
+- **MnemonicWallet seed lifetime**: Keep wallet instances short-lived; the mnemonic phrase in memory provides access to all derived keys. Derived `Signer` instances are independent and can be held longer
 - **Anvil required**: Integration tests need `anvil` running on `127.0.0.1:8545`
 - **Default test key**: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
 
