@@ -92,6 +92,30 @@ Hash hash = typedData.hash();
 TypedData<?> fromJson = TypedDataJson.parseAndValidate(jsonString);
 ```
 
+### Integration Testing with Brane.Tester
+```java
+// Connect to local Anvil
+Brane.Tester tester = Brane.connectTest();
+
+// Snapshot/revert for test isolation
+SnapshotId snapshot = tester.snapshot();
+try {
+    tester.setBalance(address, Wei.fromEther("1000"));
+    // ... test operations ...
+} finally {
+    tester.revert(snapshot);
+}
+
+// Impersonate any address (no private key needed)
+try (ImpersonationSession session = tester.impersonate(whaleAddress)) {
+    session.sendTransactionAndWait(request);
+}
+
+// Time manipulation for testing locks/vesting
+tester.increaseTime(86400); // 1 day
+tester.mine();
+```
+
 ## Error Hierarchy
 
 ```
