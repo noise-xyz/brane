@@ -10,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * BIP-39 English wordlist for mnemonic seed phrase generation.
@@ -70,6 +71,7 @@ final class EnglishWordlist {
      * @throws IllegalArgumentException if the word is not in the wordlist
      */
     static int getIndex(String word) {
+        Objects.requireNonNull(word, "word cannot be null");
         Integer index = WORD_TO_INDEX.get(word);
         if (index == null) {
             throw new IllegalArgumentException("Word not found in BIP-39 wordlist: " + word);
