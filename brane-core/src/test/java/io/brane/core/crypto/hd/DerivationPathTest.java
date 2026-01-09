@@ -42,6 +42,50 @@ class DerivationPathTest {
     }
 
     @Test
+    void testConstructorRejectsOverflowAccount() {
+        // Since MAX_INDEX == Integer.MAX_VALUE, we can't exceed it with int
+        // But we can test the edge case where MAX_INDEX + 1 would be negative due to overflow
+        // The validation catches negative values, so Integer.MIN_VALUE should fail
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> new DerivationPath(Integer.MIN_VALUE, 0));
+        assertTrue(ex.getMessage().contains("Account index cannot be negative"));
+    }
+
+    @Test
+    void testConstructorRejectsOverflowAddressIndex() {
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> new DerivationPath(0, Integer.MIN_VALUE));
+        assertTrue(ex.getMessage().contains("Address index cannot be negative"));
+    }
+
+    @Test
+    void testParseRejectsOverflowIndex() {
+        // Test that parsing a value larger than MAX_INDEX throws
+        String overflowAccount = "m/44'/60'/2147483648'/0/0"; // MAX_INDEX + 1
+        var ex1 = assertThrows(IllegalArgumentException.class,
+                () -> DerivationPath.parse(overflowAccount));
+        assertTrue(ex1.getMessage().contains("exceeds maximum"));
+
+        String overflowAddress = "m/44'/60'/0'/0/2147483648"; // MAX_INDEX + 1
+        var ex2 = assertThrows(IllegalArgumentException.class,
+                () -> DerivationPath.parse(overflowAddress));
+        assertTrue(ex2.getMessage().contains("exceeds maximum"));
+    }
+
+    @Test
+    void testParseRejectsNegativeIndex() {
+        String negativeAccount = "m/44'/60'/-1'/0/0";
+        var ex1 = assertThrows(IllegalArgumentException.class,
+                () -> DerivationPath.parse(negativeAccount));
+        assertTrue(ex1.getMessage().contains("negative"));
+
+        String negativeAddress = "m/44'/60'/0'/0/-1";
+        var ex2 = assertThrows(IllegalArgumentException.class,
+                () -> DerivationPath.parse(negativeAddress));
+        assertTrue(ex2.getMessage().contains("negative"));
+    }
+
+    @Test
     void testMaxIndexConstant() {
         assertEquals(0x7FFFFFFF, DerivationPath.MAX_INDEX);
         assertEquals(Integer.MAX_VALUE, DerivationPath.MAX_INDEX);
