@@ -150,30 +150,7 @@ var logSub = client.onLogs(filter, log -> { ... });
 
 ### Subscription Lifecycle
 
-```mermaid
-sequenceDiagram
-    participant App
-    participant Client
-    participant WebSocket
-    participant Node
-    
-    App->>Client: onNewHeads()
-    Client->>WebSocket: eth_subscribe("newHeads")
-    WebSocket->>Node: Subscribe
-    Node-->>WebSocket: subscription_id
-    WebSocket-->>Client: Subscription
-    Client-->>App: Subscription
-    
-    loop On each new block
-        Node-->>WebSocket: Block header
-        WebSocket-->>Client: Notification
-        Client-->>App: callback(header)
-    end
-    
-    App->>Client: subscription.unsubscribe()
-    Client->>WebSocket: eth_unsubscribe(id)
-    WebSocket->>Node: Unsubscribe
-```
+<img src="/images/subscription-flow.svg" alt="Subscription Lifecycle" />
 
 ---
 
