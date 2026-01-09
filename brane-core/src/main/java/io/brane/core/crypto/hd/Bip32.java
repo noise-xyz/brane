@@ -284,5 +284,24 @@ final class Bip32 {
             Arrays.fill(keyBytes, (byte) 0);
             Arrays.fill(chainCode, (byte) 0);
         }
+
+        @Override
+        public boolean equals(Object obj) {
+            if (this == obj) {
+                return true;
+            }
+            if (!(obj instanceof ExtendedKey other)) {
+                return false;
+            }
+            return Arrays.equals(keyBytes, other.keyBytes)
+                    && Arrays.equals(chainCode, other.chainCode);
+        }
+
+        @Override
+        public int hashCode() {
+            int result = Arrays.hashCode(keyBytes);
+            result = 31 * result + Arrays.hashCode(chainCode);
+            return result;
+        }
     }
 }
