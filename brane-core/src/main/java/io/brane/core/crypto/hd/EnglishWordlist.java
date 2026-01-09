@@ -56,10 +56,6 @@ final class EnglishWordlist {
      * @throws IndexOutOfBoundsException if index is not in range [0, 2047]
      */
     static String getWord(int index) {
-        if (index < 0 || index >= WORDLIST_SIZE) {
-            throw new IndexOutOfBoundsException(
-                    "Index " + index + " is out of bounds for wordlist size " + WORDLIST_SIZE);
-        }
         return WORDS.get(index);
     }
 
