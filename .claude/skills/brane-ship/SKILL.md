@@ -46,7 +46,7 @@ Determine the primary module(s) affected and severity:
 Run the impact analysis script (leverages `brane-impact` skill knowledge):
 
 ```bash
-./scripts/verify_change.sh
+./.claude/scripts/verify_change.sh
 ```
 
 This shows:
@@ -94,7 +94,7 @@ Run full E2E smoke tests:
 Run the pre-commit verification:
 
 ```bash
-./scripts/pre_commit_check.sh
+./.claude/scripts/pre_commit_check.sh
 ```
 
 This ensures all affected modules compile and tests pass.
@@ -144,10 +144,10 @@ When module X changes, all modules below X in the graph must be tested.
 
 ```bash
 # Full workflow (analyze + test + check)
-./scripts/verify_change.sh --run
+./.claude/scripts/verify_change.sh --run
 
 # Quick (compile only, skip tests)
-./scripts/pre_commit_check.sh --quick
+./.claude/scripts/pre_commit_check.sh --quick
 
 # Single module test
 ./gradlew :brane-rpc:test
@@ -172,7 +172,7 @@ When `/brane-ship` is invoked, follow these steps:
 4. Report findings to user
 
 ### Phase 2: Impact Analysis
-1. Run `./scripts/verify_change.sh`
+1. Run `./.claude/scripts/verify_change.sh`
 2. Summarize the transitive dependencies affected
 
 ### Phase 3: Testing (ALL LAYERS MANDATORY)
@@ -187,7 +187,7 @@ When `/brane-ship` is invoked, follow these steps:
 **CRITICAL: Never skip integration or smoke tests. All three layers are equally important.**
 
 ### Phase 4: Pre-Commit Validation
-1. Run `./scripts/pre_commit_check.sh`
+1. Run `./.claude/scripts/pre_commit_check.sh`
 2. Ensure all checks pass
 
 ### Phase 5: Commit Preparation
