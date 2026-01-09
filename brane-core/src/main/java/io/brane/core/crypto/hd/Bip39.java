@@ -225,11 +225,7 @@ final class Bip39 {
         byte[] hash = sha256(entropy);
 
         try {
-            // Security: Use constant-time comparison to prevent timing attacks.
-            // An early-return comparison would leak timing information about how many
-            // checksum bits match, potentially allowing an attacker with partial mnemonic
-            // knowledge to narrow down candidates by measuring validation time.
-            // XOR accumulator ensures all bits are always compared regardless of match.
+            // Constant-time comparison to prevent timing attacks
             int mismatch = 0;
             for (int i = 0; i < checksumBits; i++) {
                 boolean expectedBit = (hash[i / 8] & (1 << (7 - (i % 8)))) != 0;
