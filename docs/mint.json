@@ -1,5 +1,6 @@
 {
     "name": "Brane",
+    "mermaid": true,
     "logo": {
         "light": "/logo/light.svg",
         "dark": "/logo/dark.svg"
