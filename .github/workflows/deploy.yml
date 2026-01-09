@@ -9,6 +9,8 @@ on:
       - 'website/**'
       - 'scripts/cloudflare-build.sh'
       - '.github/workflows/deploy.yml'
+      - 'overview.html'
+      - 'brane-*/src/main/java/**/*.java'
   workflow_dispatch:
 
 jobs:
