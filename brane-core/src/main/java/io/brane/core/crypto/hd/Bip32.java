@@ -207,7 +207,10 @@ final class Bip32 {
 
             ExtendedKey previous = current;
             current = deriveChild(current, index);
-            // Destroy intermediate keys to prevent sensitive data from lingering in memory.
+            // Security: Zero intermediate keys immediately after use to minimize exposure window.
+            // Each intermediate key in the derivation chain (e.g., m/44', m/44'/60') can derive
+            // all keys below it in the hierarchy. By destroying them promptly, we reduce the risk
+            // of key material being recovered from memory dumps, swap files, or cold-boot attacks.
             // Don't destroy the original masterKey passed by the caller.
             if (previous != masterKey) {
                 previous.destroy();
