@@ -214,15 +214,17 @@ final class Bip39 {
         // Calculate expected checksum
         byte[] hash = sha256(entropy);
 
-        // Compare checksums
+        // Compare checksums using constant-time XOR accumulator
+        // This prevents timing attacks by always comparing all bits
+        int mismatch = 0;
         for (int i = 0; i < checksumBits; i++) {
             boolean expectedBit = (hash[i / 8] & (1 << (7 - (i % 8)))) != 0;
-            if (bits[entropyBits + i] != expectedBit) {
-                return false;
-            }
+            boolean actualBit = bits[entropyBits + i];
+            // XOR the boolean values: different values produce 1, same values produce 0
+            mismatch |= (expectedBit ? 1 : 0) ^ (actualBit ? 1 : 0);
         }
 
-        return true;
+        return mismatch == 0;
     }
 
     /**
