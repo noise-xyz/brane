@@ -118,10 +118,10 @@ import io.brane.core.crypto.hd.DerivationPath;
 DerivationPath path1 = DerivationPath.of(5);
 
 // m/44'/60'/1'/0/0 - First address of account 1
-DerivationPath path2 = DerivationPath.of(1, 0);
+DerivationPath path2 = new DerivationPath(1, 0);
 
 // m/44'/60'/2'/0/3 - Address index 3 of account 2
-DerivationPath path3 = DerivationPath.of(2, 3);
+DerivationPath path3 = new DerivationPath(2, 3);
 
 Signer signer = wallet.derive(path2);
 ```
@@ -252,7 +252,7 @@ public class HdWalletExample {
             // Derive multiple accounts
             Signer mainAccount = wallet.derive(0);
             Signer savingsAccount = wallet.derive(1);
-            Signer tradingAccount = wallet.derive(DerivationPath.of(2, 0));
+            Signer tradingAccount = wallet.derive(new DerivationPath(2, 0));
 
             System.out.println("Main account:    " + mainAccount.address());
             System.out.println("Savings account: " + savingsAccount.address());
@@ -291,7 +291,7 @@ public class HdWalletExample {
 | Method | Description |
 |--------|-------------|
 | `of(int addressIndex)` | Create path with account 0 |
-| `of(int account, int addressIndex)` | Create path with custom account |
+| `new DerivationPath(int account, int addressIndex)` | Create path with custom account |
 | `parse(String path)` | Parse path string (e.g., "m/44'/60'/0'/0/0") |
 | `toPath()` | Get path as string |
 | `account()` | Get account index |

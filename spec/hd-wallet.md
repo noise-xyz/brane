@@ -524,7 +524,7 @@ List<Signer> liquidationBots = IntStream.range(0, 10)
 
 // Account isolation for different strategies
 List<Signer> arbBots = IntStream.range(0, 10)
-    .mapToObj(i -> wallet.derive(DerivationPath.of(1, i)))  // account 1
+    .mapToObj(i -> wallet.derive(new DerivationPath(1, i)))  // account 1
     .toList();
 
 // Use with Brane client
@@ -551,8 +551,8 @@ assert depositAddress.equals(sameSigner.address());
 MnemonicWallet wallet = MnemonicWallet.fromPhrase(mnemonic);
 
 // Tenant isolation via account index
-Signer tenant1 = wallet.derive(DerivationPath.of(1, 0));  // m/44'/60'/1'/0/0
-Signer tenant2 = wallet.derive(DerivationPath.of(2, 0));  // m/44'/60'/2'/0/0
+Signer tenant1 = wallet.derive(new DerivationPath(1, 0));  // m/44'/60'/1'/0/0
+Signer tenant2 = wallet.derive(new DerivationPath(2, 0));  // m/44'/60'/2'/0/0
 ```
 
 ### Secure Lifecycle Management
