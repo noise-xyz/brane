@@ -1,0 +1,298 @@
+---
+title: HD Wallets
+description: 'Generate and manage hierarchical deterministic wallets with BIP-39 mnemonic phrases.'
+---
+
+## Overview
+
+Brane provides full support for BIP-39/BIP-44 hierarchical deterministic (HD) wallets through the `MnemonicWallet` class. HD wallets allow you to:
+
+- Generate a single mnemonic phrase that controls unlimited addresses
+- Restore all accounts from a single backup phrase
+- Derive addresses deterministically using standard paths
+- Use passphrases for additional security layers
+
+<Note>
+HD wallet support was added in version 0.3.0.
+</Note>
+
+## Generating a New Wallet
+
+Create a new wallet with a randomly generated mnemonic phrase:
+
+```java
+import io.brane.core.crypto.hd.MnemonicWallet;
+
+// Generate a 12-word phrase (default, 128 bits of entropy)
+MnemonicWallet wallet = MnemonicWallet.generatePhrase();
+
+// Generate a 24-word phrase (256 bits of entropy)
+MnemonicWallet wallet24 = MnemonicWallet.generatePhrase(24);
+
+// Get the phrase - store this securely!
+String phrase = wallet.phrase();
+```
+
+Supported word counts: 12, 15, 18, 21, or 24 words. More words provide more entropy but are harder to back up manually.
+
+<Warning>
+The mnemonic phrase provides complete access to all derived keys. Never log it, display it without user consent, or transmit it over insecure channels.
+</Warning>
+
+## Restoring from a Phrase
+
+Restore a wallet from an existing mnemonic phrase:
+
+```java
+// Restore without passphrase
+MnemonicWallet wallet = MnemonicWallet.fromPhrase(
+    "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about"
+);
+
+// Restore with passphrase (creates different keys from same phrase)
+MnemonicWallet walletWithPass = MnemonicWallet.fromPhrase(
+    "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about",
+    "my-secret-passphrase"
+);
+```
+
+### Passphrases
+
+A passphrase provides an additional security layer:
+
+- Different passphrases derive completely different keys from the same mnemonic
+- Enables plausible deniability (reveal a decoy passphrase if coerced)
+- A forgotten passphrase means permanent loss of access to those keys
+
+```java
+// Same phrase, different passphrases = different addresses
+MnemonicWallet wallet1 = MnemonicWallet.fromPhrase(phrase, "");
+MnemonicWallet wallet2 = MnemonicWallet.fromPhrase(phrase, "secret");
+
+wallet1.derive(0).address(); // 0x1234...
+wallet2.derive(0).address(); // 0xABCD... (completely different!)
+```
+
+### Validating Phrases
+
+Check if a phrase is valid before attempting to restore:
+
+```java
+boolean isValid = MnemonicWallet.isValidPhrase(phrase);
+if (!isValid) {
+    throw new IllegalArgumentException("Invalid mnemonic phrase");
+}
+```
+
+Validation checks:
+- Word count (12, 15, 18, 21, or 24)
+- All words are in the BIP-39 English wordlist
+- Checksum is correct
+
+## Deriving Addresses
+
+### Simple Derivation
+
+Derive signers using an address index (uses account 0):
+
+```java
+MnemonicWallet wallet = MnemonicWallet.fromPhrase(phrase);
+
+// Derive first 5 addresses: m/44'/60'/0'/0/0 through m/44'/60'/0'/0/4
+Signer account0 = wallet.derive(0);
+Signer account1 = wallet.derive(1);
+Signer account2 = wallet.derive(2);
+
+System.out.println(account0.address()); // First address
+System.out.println(account1.address()); // Second address
+```
+
+### Custom Derivation Paths
+
+Use `DerivationPath` for full control over the BIP-44 path:
+
+```java
+import io.brane.core.crypto.hd.DerivationPath;
+
+// m/44'/60'/0'/0/5 - Address index 5 of account 0
+DerivationPath path1 = DerivationPath.of(5);
+
+// m/44'/60'/1'/0/0 - First address of account 1
+DerivationPath path2 = DerivationPath.of(1, 0);
+
+// m/44'/60'/2'/0/3 - Address index 3 of account 2
+DerivationPath path3 = DerivationPath.of(2, 3);
+
+Signer signer = wallet.derive(path2);
+```
+
+### Parsing Path Strings
+
+Parse standard BIP-44 path strings:
+
+```java
+// Parse from string format
+DerivationPath path = DerivationPath.parse("m/44'/60'/0'/0/0");
+
+// Get path string
+String pathStr = path.toPath(); // "m/44'/60'/0'/0/0"
+```
+
+<Note>
+Brane follows the standard Ethereum BIP-44 path format: `m/44'/60'/account'/0/addressIndex`. The coin type (60) and change index (0) are fixed for Ethereum compatibility.
+</Note>
+
+## Using with Brane.Signer
+
+Derived signers work seamlessly with `Brane.Signer` for transactions:
+
+```java
+import io.brane.rpc.Brane;
+import io.brane.core.types.Wei;
+
+// Create wallet and derive signer
+MnemonicWallet wallet = MnemonicWallet.fromPhrase(phrase);
+Signer signer = wallet.derive(0);
+
+// Connect to chain
+Brane.Signer client = Brane.connect("http://127.0.0.1:8545", signer);
+
+// Send transaction
+var receipt = client.sendTransactionAndWait(TransactionRequest.builder()
+    .to(recipient)
+    .value(Wei.fromEther("0.1"))
+    .build());
+```
+
+## Security Considerations
+
+### Phrase Storage
+
+- Store phrases offline (paper, metal backup, hardware wallet)
+- Never store in plain text files, environment variables, or version control
+- Consider splitting with Shamir's Secret Sharing for high-value wallets
+
+### Lifecycle Management
+
+`MnemonicWallet` implements `Destroyable` for explicit cleanup:
+
+```java
+MnemonicWallet wallet = MnemonicWallet.fromPhrase(phrase);
+try {
+    Signer signer = wallet.derive(0);
+    // Use signer...
+} finally {
+    wallet.destroy();
+}
+
+// After destroy(), derive() throws IllegalStateException
+wallet.derive(1); // throws!
+```
+
+### String Immutability Caveat
+
+<Warning>
+Due to Java String immutability, the mnemonic phrase stored internally cannot be zeroed when `destroy()` is called. Keep wallet instances short-lived and ensure the phrase is not retained elsewhere in your application.
+</Warning>
+
+The `destroy()` method zeros the master private key bytes and chain code, but the phrase String remains in memory until garbage collected.
+
+### Derived Signers Are Independent
+
+Derived `Signer` instances are independent of the wallet:
+
+```java
+MnemonicWallet wallet = MnemonicWallet.fromPhrase(phrase);
+Signer signer0 = wallet.derive(0);
+Signer signer1 = wallet.derive(1);
+
+// Destroy wallet - signers still work
+wallet.destroy();
+
+signer0.address();     // Still works
+signer0.signMessage(); // Still works
+
+// But can't derive new signers
+wallet.derive(2);      // throws IllegalStateException
+```
+
+This allows you to derive needed signers early, then destroy the wallet to minimize exposure.
+
+### Signer Cleanup
+
+Derived signers are `PrivateKeySigner` instances that also support `Destroyable`:
+
+```java
+Signer signer = wallet.derive(0);
+PrivateKeySigner pks = (PrivateKeySigner) signer;
+
+// When done with this signer
+pks.destroy();
+
+pks.signMessage(msg); // throws IllegalStateException
+```
+
+## Complete Example
+
+```java
+import io.brane.core.crypto.Signer;
+import io.brane.core.crypto.hd.DerivationPath;
+import io.brane.core.crypto.hd.MnemonicWallet;
+import io.brane.rpc.Brane;
+
+public class HdWalletExample {
+    public static void main(String[] args) {
+        // Generate new wallet (in production, restore from secure storage)
+        MnemonicWallet wallet = MnemonicWallet.generatePhrase();
+
+        try {
+            // IMPORTANT: Save this phrase securely!
+            System.out.println("Backup phrase: " + wallet.phrase());
+
+            // Derive multiple accounts
+            Signer mainAccount = wallet.derive(0);
+            Signer savingsAccount = wallet.derive(1);
+            Signer tradingAccount = wallet.derive(DerivationPath.of(2, 0));
+
+            System.out.println("Main account:    " + mainAccount.address());
+            System.out.println("Savings account: " + savingsAccount.address());
+            System.out.println("Trading account: " + tradingAccount.address());
+
+            // Connect and transact
+            Brane.Signer client = Brane.connect("http://127.0.0.1:8545", mainAccount);
+            System.out.println("Balance: " + client.getBalance(mainAccount.address()));
+
+        } finally {
+            wallet.destroy();
+        }
+    }
+}
+```
+
+## API Reference
+
+### MnemonicWallet
+
+| Method | Description |
+|--------|-------------|
+| `generatePhrase()` | Generate wallet with 12-word phrase |
+| `generatePhrase(int wordCount)` | Generate wallet with specified word count |
+| `fromPhrase(String phrase)` | Restore wallet from phrase |
+| `fromPhrase(String phrase, String passphrase)` | Restore with passphrase |
+| `isValidPhrase(String phrase)` | Validate a mnemonic phrase |
+| `derive(int addressIndex)` | Derive signer at index (account 0) |
+| `derive(DerivationPath path)` | Derive signer at custom path |
+| `phrase()` | Get the mnemonic phrase |
+| `destroy()` | Zero sensitive key material |
+| `isDestroyed()` | Check if destroyed |
+
+### DerivationPath
+
+| Method | Description |
+|--------|-------------|
+| `of(int addressIndex)` | Create path with account 0 |
+| `of(int account, int addressIndex)` | Create path with custom account |
+| `parse(String path)` | Parse path string (e.g., "m/44'/60'/0'/0/0") |
+| `toPath()` | Get path as string |
+| `account()` | Get account index |
+| `addressIndex()` | Get address index |
