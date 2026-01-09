@@ -212,4 +212,34 @@ public final class MnemonicWallet implements Destroyable {
         int wordCount = phrase.split("\\s+").length;
         return "MnemonicWallet[" + wordCount + " words]";
     }
+
+    /**
+     * Destroys the wallet by zeroing sensitive key material.
+     *
+     * <p>
+     * This method zeros the master private key bytes and chain code. After calling
+     * this method, the wallet can no longer derive keys and {@link #isDestroyed()}
+     * will return {@code true}.
+     *
+     * <p>
+     * <b>Note:</b> The mnemonic phrase cannot be zeroed due to Java String immutability.
+     * For maximum security, minimize the lifetime of MnemonicWallet instances and
+     * ensure phrases are not retained elsewhere in memory.
+     */
+    @Override
+    public void destroy() {
+        java.util.Arrays.fill(masterKey.keyBytes(), (byte) 0);
+        java.util.Arrays.fill(masterKey.chainCode(), (byte) 0);
+        destroyed = true;
+    }
+
+    /**
+     * Returns whether this wallet has been destroyed.
+     *
+     * @return {@code true} if {@link #destroy()} has been called, {@code false} otherwise
+     */
+    @Override
+    public boolean isDestroyed() {
+        return destroyed;
+    }
 }
