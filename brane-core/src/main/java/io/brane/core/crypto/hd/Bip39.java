@@ -186,6 +186,9 @@ final class Bip39 {
             words.append(EnglishWordlist.getWord(index));
         }
 
+        // Clear sensitive data
+        Arrays.fill(hash, (byte) 0);
+
         return words.toString();
     }
 
