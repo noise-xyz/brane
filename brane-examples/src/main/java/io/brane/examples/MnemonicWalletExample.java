@@ -31,6 +31,10 @@ import io.brane.core.crypto.hd.MnemonicWallet;
  */
 public final class MnemonicWalletExample {
 
+    /** Anvil's default test mnemonic (DO NOT use in production!). */
+    private static final String TEST_PHRASE =
+            "test test test test test test test test test test test junk";
+
     private MnemonicWalletExample() {
         // Prevent instantiation
     }
@@ -86,11 +90,8 @@ public final class MnemonicWalletExample {
     private static void demonstrateRestoreFromPhrase() {
         System.out.println("[2] Restore Wallet from Existing Phrase");
 
-        // Using Anvil's default test mnemonic (DO NOT use in production!)
-        String testPhrase = "test test test test test test test test test test test junk";
-
         // Restore without passphrase
-        MnemonicWallet wallet = MnemonicWallet.fromPhrase(testPhrase);
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_PHRASE);
         System.out.println("    Restored wallet from phrase");
         System.out.println("    Phrase word count: " + wallet.phrase().split(" ").length);
 
@@ -98,7 +99,7 @@ public final class MnemonicWalletExample {
         System.out.println("    Address[0]: " + signer.address().value());
 
         // Restore with passphrase (creates different keys from same phrase)
-        MnemonicWallet walletWithPass = MnemonicWallet.fromPhrase(testPhrase, "my-secret-passphrase");
+        MnemonicWallet walletWithPass = MnemonicWallet.fromPhrase(TEST_PHRASE, "my-secret-passphrase");
         Signer signerWithPass = walletWithPass.derive(0);
         System.out.println("\n    With passphrase - Address[0]: " + signerWithPass.address().value());
         System.out.println("    (Different address due to passphrase!)");
@@ -111,8 +112,7 @@ public final class MnemonicWalletExample {
     private static void demonstrateDeriveMultipleAddresses() {
         System.out.println("[3] Derive Multiple Addresses");
 
-        String testPhrase = "test test test test test test test test test test test junk";
-        MnemonicWallet wallet = MnemonicWallet.fromPhrase(testPhrase);
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_PHRASE);
 
         System.out.println("    Deriving first 5 addresses (m/44'/60'/0'/0/i):");
         for (int i = 0; i < 5; i++) {
@@ -128,8 +128,7 @@ public final class MnemonicWalletExample {
     private static void demonstrateCustomDerivationPaths() {
         System.out.println("[4] Custom Derivation Paths");
 
-        String testPhrase = "test test test test test test test test test test test junk";
-        MnemonicWallet wallet = MnemonicWallet.fromPhrase(testPhrase);
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_PHRASE);
 
         // Default path: m/44'/60'/0'/0/0
         DerivationPath defaultPath = DerivationPath.of(0);
@@ -157,8 +156,7 @@ public final class MnemonicWalletExample {
     private static void demonstrateLifecycleManagement() {
         System.out.println("[5] Lifecycle Management (destroy)");
 
-        String testPhrase = "test test test test test test test test test test test junk";
-        MnemonicWallet wallet = MnemonicWallet.fromPhrase(testPhrase);
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_PHRASE);
 
         // Derive signers
         Signer signer0 = wallet.derive(0);
