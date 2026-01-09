@@ -30,12 +30,4 @@ The `Brane` sealed interface is the main entry point:
 
 ## Module Dependencies
 
-```mermaid
-flowchart TD
-    PRIMITIVES["📦 brane-primitives<br/><i>no dependencies</i>"]
-    CORE["📦 brane-core<br/><i>BouncyCastle, Jackson</i>"]
-    RPC["📦 brane-rpc<br/><i>Netty, Disruptor</i>"]
-    CONTRACT["📦 brane-contract"]
-
-    PRIMITIVES --> CORE --> RPC --> CONTRACT
-```
+<img src="/images/module-dependencies.svg" alt="Module Dependencies" />
