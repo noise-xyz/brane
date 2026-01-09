@@ -7,35 +7,7 @@ description: 'Understanding the Brane SDK structure.'
 
 Brane provides a layered architecture separating client APIs from transport providers.
 
-```mermaid
-%%{init: {'flowchart': {'nodeSpacing': 30, 'rankSpacing': 50}}}%%
-flowchart TD
-    APP["🖥️ USER APPLICATION"]
-
-    subgraph BRANE["Brane (sealed interface)"]
-        direction LR
-        READER["Brane.Reader<br/><i>read-only operations</i>"] ~~~ SIGNER["Brane.Signer<br/><i>read + write operations</i>"] ~~~ TESTER["Brane.Tester<br/><i>test node operations</i>"]
-    end
-
-    subgraph IMPLS["Implementations"]
-        direction LR
-        DEFAULT_READER["DefaultReader<br/><i>implements Reader</i>"] ~~~ DEFAULT_SIGNER["DefaultSigner<br/><i>implements Signer</i>"] ~~~ DEFAULT_TESTER["DefaultTester<br/><i>implements Tester</i>"]
-    end
-
-    subgraph PROVIDER["BraneProvider (interface)"]
-        direction LR
-        HTTP["HttpBraneProvider<br/>• HttpClient<br/>• Stateless"] ~~~ WS["WebSocketProvider<br/>• Netty / Disruptor<br/>• Subscriptions"]
-    end
-
-    NODE["⛓️ ETHEREUM NODE (JSON-RPC)"]
-
-    APP --> BRANE
-    BRANE --> IMPLS
-    DEFAULT_SIGNER -.->|delegates to| DEFAULT_READER
-    DEFAULT_TESTER -.->|delegates to| DEFAULT_SIGNER
-    IMPLS --> PROVIDER
-    PROVIDER --> NODE
-```
+<img src="/images/architecture-overview.svg" alt="Brane SDK Architecture" />
 
 ## Client Layer
 
