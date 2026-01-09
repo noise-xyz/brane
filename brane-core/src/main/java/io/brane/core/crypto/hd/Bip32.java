@@ -98,9 +98,11 @@ final class Bip32 {
 
         byte[] data = new byte[37];
 
+        // In Java's signed 32-bit arithmetic, index < 0 detects hardened derivation because
+        // HARDENED_OFFSET (0x80000000) sets the sign bit, making any hardened index negative.
         if (index < 0) {
-            // Hardened derivation (index has high bit set when viewed as unsigned)
-            // Use private key: 0x00 || ser256(kpar) || ser32(i)
+            // Hardened derivation: use private key directly
+            // Data format: 0x00 || ser256(kpar) || ser32(i)
             data[0] = 0x00;
             System.arraycopy(parent.keyBytes(), 0, data, 1, 32);
         } else {
