@@ -31,8 +31,7 @@ public final class PrivateKeySigner implements Signer, Destroyable {
      * @throws IllegalArgumentException if the private key is invalid
      */
     public PrivateKeySigner(final String privateKeyHex) {
-        this.privateKey = PrivateKey.fromHex(privateKeyHex);
-        this.address = privateKey.toAddress();
+        this(PrivateKey.fromHex(privateKeyHex));
     }
 
     /**
