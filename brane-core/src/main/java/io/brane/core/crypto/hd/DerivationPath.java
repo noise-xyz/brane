@@ -90,12 +90,12 @@ public record DerivationPath(int account, int addressIndex) {
             throw new IllegalArgumentException("Path must start with 'm', got: " + path);
         }
 
-        if (!components[1].equals("44'") && !components[1].equals("44h")) {
+        if (!isHardenedComponent(components[1], "44")) {
             throw new IllegalArgumentException(
                     "Path must have purpose 44' (BIP-44), got: " + components[1]);
         }
 
-        if (!components[2].equals("60'") && !components[2].equals("60h")) {
+        if (!isHardenedComponent(components[2], "60")) {
             throw new IllegalArgumentException(
                     "Path must have coin type 60' (Ethereum), got: " + components[2]);
         }
@@ -143,5 +143,9 @@ public record DerivationPath(int account, int addressIndex) {
             throw new IllegalArgumentException(name + " exceeds maximum: " + value);
         }
         return (int) value;
+    }
+
+    private static boolean isHardenedComponent(String component, String expected) {
+        return component.equals(expected + "'") || component.equals(expected + "h");
     }
 }
