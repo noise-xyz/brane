@@ -77,6 +77,16 @@ final class EnglishWordlist {
         return index;
     }
 
+    /**
+     * Checks if the specified word is in the wordlist.
+     *
+     * @param word the word to check
+     * @return true if the word is in the wordlist, false otherwise
+     */
+    static boolean contains(String word) {
+        return WORD_TO_INDEX.containsKey(word);
+    }
+
     private static List<String> loadWordlist() throws IOException {
         try (InputStream is = EnglishWordlist.class.getResourceAsStream(RESOURCE_PATH)) {
             if (is == null) {
