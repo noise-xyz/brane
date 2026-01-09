@@ -1,0 +1,226 @@
+package io.brane.core.crypto.hd;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+
+import io.brane.core.crypto.Signer;
+
+/**
+ * Tests for MnemonicWallet HD wallet functionality.
+ */
+class MnemonicWalletTest {
+
+    // Standard BIP-39 test vector
+    private static final String TEST_MNEMONIC =
+            "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon about";
+
+    // Expected address for m/44'/60'/0'/0/0 from test mnemonic (no passphrase)
+    // This is a well-known test vector address
+    private static final String EXPECTED_ADDRESS_0 = "0x9858effd232b4033e47d90003d41ec34ecaeda94";
+
+    @Test
+    void testIsValidPhraseWithValidMnemonic() {
+        assertTrue(MnemonicWallet.isValidPhrase(TEST_MNEMONIC));
+    }
+
+    @Test
+    void testIsValidPhraseWithNull() {
+        assertFalse(MnemonicWallet.isValidPhrase(null));
+    }
+
+    @Test
+    void testIsValidPhraseWithInvalidMnemonic() {
+        assertFalse(MnemonicWallet.isValidPhrase("invalid mnemonic phrase"));
+    }
+
+    @Test
+    void testIsValidPhraseWithInvalidChecksum() {
+        // Valid words but invalid checksum
+        assertFalse(MnemonicWallet.isValidPhrase(
+                "abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon abandon"));
+    }
+
+    @Test
+    void testGeneratePhraseDefault() {
+        MnemonicWallet wallet = MnemonicWallet.generatePhrase();
+
+        assertNotNull(wallet);
+        assertNotNull(wallet.phrase());
+        assertEquals(12, wallet.phrase().split(" ").length);
+        assertTrue(MnemonicWallet.isValidPhrase(wallet.phrase()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {12, 15, 18, 21, 24})
+    void testGeneratePhraseWithWordCount(int wordCount) {
+        MnemonicWallet wallet = MnemonicWallet.generatePhrase(wordCount);
+
+        assertNotNull(wallet);
+        assertEquals(wordCount, wallet.phrase().split(" ").length);
+        assertTrue(MnemonicWallet.isValidPhrase(wallet.phrase()));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 1, 11, 13, 25})
+    void testGeneratePhraseWithInvalidWordCount(int wordCount) {
+        assertThrows(IllegalArgumentException.class, () -> MnemonicWallet.generatePhrase(wordCount));
+    }
+
+    @Test
+    void testGeneratePhraseProducesDifferentPhrases() {
+        MnemonicWallet wallet1 = MnemonicWallet.generatePhrase();
+        MnemonicWallet wallet2 = MnemonicWallet.generatePhrase();
+
+        assertNotEquals(wallet1.phrase(), wallet2.phrase());
+    }
+
+    @Test
+    void testFromPhraseWithValidMnemonic() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
+
+        assertNotNull(wallet);
+        assertEquals(TEST_MNEMONIC, wallet.phrase());
+    }
+
+    @Test
+    void testFromPhraseWithPassphrase() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_MNEMONIC, "TREZOR");
+
+        assertNotNull(wallet);
+        assertEquals(TEST_MNEMONIC, wallet.phrase());
+
+        // Different passphrase should produce different derived address
+        MnemonicWallet walletNoPass = MnemonicWallet.fromPhrase(TEST_MNEMONIC, "");
+        assertNotEquals(
+                wallet.derive(0).address().value(),
+                walletNoPass.derive(0).address().value());
+    }
+
+    @Test
+    void testFromPhraseWithNullPhrase() {
+        assertThrows(NullPointerException.class, () -> MnemonicWallet.fromPhrase(null));
+    }
+
+    @Test
+    void testFromPhraseWithNullPassphrase() {
+        assertThrows(NullPointerException.class, () -> MnemonicWallet.fromPhrase(TEST_MNEMONIC, null));
+    }
+
+    @Test
+    void testFromPhraseWithInvalidMnemonic() {
+        assertThrows(IllegalArgumentException.class, () -> MnemonicWallet.fromPhrase("invalid mnemonic"));
+    }
+
+    @Test
+    void testDeriveByAddressIndex() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
+
+        Signer signer0 = wallet.derive(0);
+        Signer signer1 = wallet.derive(1);
+
+        assertNotNull(signer0);
+        assertNotNull(signer1);
+        assertNotNull(signer0.address());
+        assertNotNull(signer1.address());
+        assertNotEquals(signer0.address(), signer1.address());
+    }
+
+    @Test
+    void testDeriveByDerivationPath() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
+
+        DerivationPath path = DerivationPath.of(0, 0);
+        Signer signer = wallet.derive(path);
+
+        assertNotNull(signer);
+        assertNotNull(signer.address());
+
+        // Should match the signer from derive(0)
+        assertEquals(wallet.derive(0).address(), signer.address());
+    }
+
+    @Test
+    void testDeriveByDerivationPathDifferentAccount() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
+
+        // Account 0, address 0
+        Signer signer0 = wallet.derive(DerivationPath.of(0, 0));
+        // Account 1, address 0
+        Signer signer1 = wallet.derive(DerivationPath.of(1, 0));
+
+        assertNotEquals(signer0.address(), signer1.address());
+    }
+
+    @Test
+    void testDeriveWithNullPath() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
+
+        assertThrows(NullPointerException.class, () -> wallet.derive(null));
+    }
+
+    @Test
+    void testDeriveWithNegativeIndex() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
+
+        assertThrows(IllegalArgumentException.class, () -> wallet.derive(-1));
+    }
+
+    @Test
+    void testDeriveProducesKnownAddress() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
+
+        Signer signer = wallet.derive(0);
+        String actualAddress = signer.address().value().toLowerCase();
+
+        assertEquals(EXPECTED_ADDRESS_0, actualAddress);
+    }
+
+    @Test
+    void testDerivedSignerCanSign() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
+        Signer signer = wallet.derive(0);
+
+        // Should be able to sign a message without exception
+        byte[] message = "Hello, World!".getBytes();
+        var signature = signer.signMessage(message);
+
+        assertNotNull(signature);
+        assertNotNull(signature.r());
+        assertNotNull(signature.s());
+        assertTrue(signature.v() == 27 || signature.v() == 28);
+    }
+
+    @Test
+    void testDerivedSignerIsDeterministic() {
+        MnemonicWallet wallet1 = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
+        MnemonicWallet wallet2 = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
+
+        Signer signer1 = wallet1.derive(5);
+        Signer signer2 = wallet2.derive(5);
+
+        assertEquals(signer1.address(), signer2.address());
+    }
+
+    @Test
+    void testToStringDoesNotExposePhrase() {
+        MnemonicWallet wallet = MnemonicWallet.fromPhrase(TEST_MNEMONIC);
+
+        String str = wallet.toString();
+
+        assertNotNull(str);
+        assertFalse(str.contains("abandon"), "toString should not contain mnemonic words");
+        assertTrue(str.contains("12"), "toString should indicate word count");
+    }
+
+    @Test
+    void testToStringWithDifferentWordCounts() {
+        MnemonicWallet wallet12 = MnemonicWallet.generatePhrase(12);
+        MnemonicWallet wallet24 = MnemonicWallet.generatePhrase(24);
+
+        assertTrue(wallet12.toString().contains("12"));
+        assertTrue(wallet24.toString().contains("24"));
+    }
+}

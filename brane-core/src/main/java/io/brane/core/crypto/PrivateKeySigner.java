@@ -48,6 +48,20 @@ public final class PrivateKeySigner implements Signer, Destroyable {
         this.address = privateKey.toAddress();
     }
 
+    /**
+     * Creates a signer from an existing private key.
+     *
+     * <p>This factory method is intended for HD wallet derivation in the
+     * {@code io.brane.core.crypto.hd} package, avoiding hex encoding roundtrips.
+     *
+     * @param privateKey the private key (must not be null)
+     * @return a new signer backed by the given private key
+     * @throws NullPointerException if privateKey is null
+     */
+    public static PrivateKeySigner fromPrivateKey(final PrivateKey privateKey) {
+        return new PrivateKeySigner(privateKey);
+    }
+
     @Override
     public Address address() {
         return address;
