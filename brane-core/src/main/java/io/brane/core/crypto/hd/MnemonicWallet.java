@@ -172,7 +172,7 @@ public final class MnemonicWallet {
         String fullPath = path.toPath();
         Bip32.ExtendedKey derivedKey = Bip32.derivePath(masterKey, fullPath);
 
-        // Use fromPrivateKey factory which internally uses the package-private constructor
+        // Clone bytes since fromBytes() zeros its input for security
         PrivateKey privateKey = PrivateKey.fromBytes(derivedKey.keyBytes().clone());
         return PrivateKeySigner.fromPrivateKey(privateKey);
     }
