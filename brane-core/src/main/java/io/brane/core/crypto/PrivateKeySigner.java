@@ -3,6 +3,8 @@ package io.brane.core.crypto;
 import java.util.List;
 import java.util.Map;
 
+import javax.security.auth.Destroyable;
+
 import io.brane.core.crypto.eip712.Eip712Domain;
 import io.brane.core.crypto.eip712.TypedDataField;
 import io.brane.core.tx.UnsignedTransaction;
@@ -12,8 +14,12 @@ import io.brane.core.types.Address;
  * Transaction signer backed by a raw private key.
  * <p>
  * This implementation uses Brane's native crypto primitives for signing.
+ * <p>
+ * Implements {@link Destroyable} to allow clearing sensitive key material
+ * from memory when no longer needed. Call {@link #destroy()} when the signer
+ * is no longer required.
  */
-public final class PrivateKeySigner implements Signer {
+public final class PrivateKeySigner implements Signer, Destroyable {
 
     private final PrivateKey privateKey;
     private final Address address;
@@ -101,5 +107,26 @@ public final class PrivateKeySigner implements Signer {
 
         // Adjust v to 27 or 28 for EIP-712/EIP-191 compatibility
         return new Signature(sig.r(), sig.s(), sig.v() + 27);
+    }
+
+    /**
+     * Destroys the underlying private key material.
+     * <p>
+     * After calling this method, any attempt to use this signer will throw
+     * an {@link IllegalStateException}.
+     */
+    @Override
+    public void destroy() {
+        privateKey.destroy();
+    }
+
+    /**
+     * Returns whether the underlying private key has been destroyed.
+     *
+     * @return true if {@link #destroy()} has been called
+     */
+    @Override
+    public boolean isDestroyed() {
+        return privateKey.isDestroyed();
     }
 }
