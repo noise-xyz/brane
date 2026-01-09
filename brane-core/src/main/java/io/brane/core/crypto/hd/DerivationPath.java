@@ -31,7 +31,7 @@ public record DerivationPath(int account, int addressIndex) {
     /**
      * Constructs a derivation path with validation.
      *
-     * @throws IllegalArgumentException if account or addressIndex is negative or exceeds MAX_INDEX
+     * @throws IllegalArgumentException if account or addressIndex is negative
      */
     public DerivationPath {
         if (account < 0) {
