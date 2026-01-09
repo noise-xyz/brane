@@ -113,6 +113,7 @@ final class Bip39 {
      * @param passphrase the passphrase (can be empty string, but not null)
      * @return 64-byte seed suitable for HD key derivation
      * @throws IllegalArgumentException if mnemonic is null or passphrase is null
+     * @throws IllegalStateException    if JVM lacks required PBKDF2WithHmacSHA512 algorithm
      */
     static byte[] toSeed(String mnemonic, String passphrase) {
         if (mnemonic == null) {
