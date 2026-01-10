@@ -3,6 +3,7 @@ package io.brane.core.tx;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Function;
 
 import io.brane.core.crypto.Signature;
 import io.brane.core.model.AccessListEntry;
@@ -245,7 +246,7 @@ public record Eip4844Transaction(
      * @return RLP list of blob bytes
      */
     private static RlpItem encodeBlobList(final List<Blob> blobs) {
-        return new RlpList(blobs.stream().<RlpItem>map(blob -> new RlpString(blob.toBytes())).toList());
+        return encodeBytesList(blobs, Blob::toBytes);
     }
 
     /**
@@ -255,7 +256,7 @@ public record Eip4844Transaction(
      * @return RLP list of commitment bytes
      */
     private static RlpItem encodeCommitmentList(final List<KzgCommitment> commitments) {
-        return new RlpList(commitments.stream().<RlpItem>map(c -> new RlpString(c.toBytes())).toList());
+        return encodeBytesList(commitments, KzgCommitment::toBytes);
     }
 
     /**
@@ -265,7 +266,19 @@ public record Eip4844Transaction(
      * @return RLP list of proof bytes
      */
     private static RlpItem encodeProofList(final List<KzgProof> proofs) {
-        return new RlpList(proofs.stream().<RlpItem>map(p -> new RlpString(p.toBytes())).toList());
+        return encodeBytesList(proofs, KzgProof::toBytes);
+    }
+
+    /**
+     * Generic helper to encode a list of items as RLP bytes list.
+     *
+     * @param items     the items to encode
+     * @param extractor function to extract bytes from each item
+     * @param <T>       the item type
+     * @return RLP list of bytes
+     */
+    private static <T> RlpItem encodeBytesList(List<T> items, Function<T, byte[]> extractor) {
+        return new RlpList(items.stream().<RlpItem>map(item -> new RlpString(extractor.apply(item))).toList());
     }
 
     /**
