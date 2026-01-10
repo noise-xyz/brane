@@ -71,7 +71,7 @@ When benchmarking against public RPC endpoints (Base, Arbitrum, Ethereum):
 | web3j `encodeFunction` | ~400,000 ops/s |
 | **Brane Speedup** | **6.3x** |
 
-See [brane-benchmark/RESULTS.md](../brane-benchmark/RESULTS.md) for detailed ABI results.
+See `brane-benchmark/RESULTS.md` in the repository for detailed ABI results.
 
 ## Signer Performance
 
