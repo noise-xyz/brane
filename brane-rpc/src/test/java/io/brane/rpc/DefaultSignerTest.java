@@ -711,6 +711,7 @@ class DefaultSignerTest {
             return switch (lastTx) {
                 case io.brane.core.tx.LegacyTransaction tx -> tx.nonce();
                 case io.brane.core.tx.Eip1559Transaction tx -> tx.nonce();
+                case io.brane.core.tx.Eip4844Transaction tx -> tx.nonce();
             };
         }
 
@@ -718,6 +719,7 @@ class DefaultSignerTest {
             return switch (lastTx) {
                 case io.brane.core.tx.LegacyTransaction tx -> tx.gasLimit();
                 case io.brane.core.tx.Eip1559Transaction tx -> tx.gasLimit();
+                case io.brane.core.tx.Eip4844Transaction tx -> tx.gasLimit();
             };
         }
 
@@ -746,6 +748,7 @@ class DefaultSignerTest {
             return switch (lastTx) {
                 case io.brane.core.tx.LegacyTransaction tx -> "LEGACY";
                 case io.brane.core.tx.Eip1559Transaction tx -> "EIP1559";
+                case io.brane.core.tx.Eip4844Transaction tx -> "EIP4844";
             };
         }
     }
