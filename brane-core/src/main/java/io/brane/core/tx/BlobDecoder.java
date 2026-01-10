@@ -33,13 +33,23 @@ public final class BlobDecoder {
      * Decodes the original data from a list of blobs.
      * <p>
      * This method reverses the encoding performed by {@link SidecarBuilder#from(byte[])}.
-     * It extracts the 31 usable bytes from each field element, reads the length prefix,
-     * and returns the original data bytes.
+     *
+     * <h3>Decoding Scheme</h3>
+     * <p>
+     * Each blob consists of 4096 field elements (32 bytes each). Due to the BLS modulus
+     * constraint, the first byte of each field element is a {@code 0x00} prefix byte,
+     * leaving only 31 usable bytes per field element. The decoding process:
+     * <ol>
+     *   <li>Extracts 31 bytes from each 32-byte field element (skipping the {@code 0x00} prefix byte)</li>
+     *   <li>Reads the 8-byte big-endian length prefix from the first bytes of the extracted data</li>
+     *   <li>Returns exactly that many bytes of original data following the length prefix</li>
+     * </ol>
      *
      * @param blobs the list of blobs to decode, must not be null or empty
      * @return the original data bytes that were encoded into the blobs
      * @throws NullPointerException if blobs is null or contains null elements
      * @throws IllegalArgumentException if blobs is empty or if the encoded length is invalid
+     * @see SidecarBuilder#from(byte[]) for the encoding scheme
      */
     public static byte[] decode(final List<Blob> blobs) {
         Objects.requireNonNull(blobs, "blobs");
