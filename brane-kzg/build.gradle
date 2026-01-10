@@ -1,0 +1,5 @@
+dependencies {
+    api project(":brane-core")
+    implementation "io.consensys.protocols:jc-kzg-4844:2.1.5"
+    testImplementation "ch.qos.logback:logback-classic:1.5.6"
+}
