@@ -29,6 +29,7 @@ fix_logs/
 
 # Logs and Benchmarks
 *.txt
+!**/trusted_setup.txt
 benchmark_output.txt
 
 # Security
