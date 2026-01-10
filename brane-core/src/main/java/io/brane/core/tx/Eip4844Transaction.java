@@ -255,11 +255,7 @@ public record Eip4844Transaction(
      * @return RLP list of commitment bytes
      */
     private static RlpItem encodeCommitmentList(final List<KzgCommitment> commitments) {
-        final List<RlpItem> items = new ArrayList<>(commitments.size());
-        for (KzgCommitment commitment : commitments) {
-            items.add(new RlpString(commitment.toBytes()));
-        }
-        return new RlpList(items);
+        return new RlpList(commitments.stream().<RlpItem>map(c -> new RlpString(c.toBytes())).toList());
     }
 
     /**
