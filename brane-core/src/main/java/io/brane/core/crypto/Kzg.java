@@ -16,9 +16,42 @@ import io.brane.core.types.KzgProof;
  * (e.g., from the Ethereum KZG ceremony) to initialize the cryptographic
  * parameters.
  *
+ * <h2>Thread Safety</h2>
+ * Implementations of this interface MUST be thread-safe. All methods may be
+ * called concurrently from multiple threads without external synchronization.
+ * Implementations should document any internal synchronization mechanisms
+ * or state management that ensures thread safety.
+ *
  * @since 0.2.0
  */
 public interface Kzg {
+
+    /**
+     * Computes a KZG commitment for the given blob.
+     * <p>
+     * The commitment is a 48-byte compressed G1 point on the BLS12-381 curve
+     * that uniquely represents the blob data.
+     *
+     * @param blob the blob to commit to
+     * @return the KZG commitment for the blob
+     * @throws KzgException if commitment computation fails
+     * @throws NullPointerException if blob is null
+     */
+    KzgCommitment blobToCommitment(Blob blob);
+
+    /**
+     * Computes a KZG proof for the given blob and commitment.
+     * <p>
+     * The proof enables verification that the blob corresponds to the
+     * given commitment without requiring the full blob data.
+     *
+     * @param blob the blob data
+     * @param commitment the KZG commitment for the blob
+     * @return the KZG proof
+     * @throws KzgException if proof computation fails
+     * @throws NullPointerException if any argument is null
+     */
+    KzgProof computeProof(Blob blob, KzgCommitment commitment);
 
     /**
      * Verifies that a KZG proof is valid for the given blob and commitment.

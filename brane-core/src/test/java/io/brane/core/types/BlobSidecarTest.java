@@ -252,6 +252,16 @@ class BlobSidecarTest {
 
         Kzg validKzg = new Kzg() {
             @Override
+            public KzgCommitment blobToCommitment(Blob blob) {
+                return commitment1;
+            }
+
+            @Override
+            public KzgProof computeProof(Blob blob, KzgCommitment commitment) {
+                return proof1;
+            }
+
+            @Override
             public boolean verifyBlobKzgProof(Blob blob, KzgCommitment commitment, KzgProof proof) {
                 return true;
             }
@@ -274,6 +284,16 @@ class BlobSidecarTest {
                 List.of(proof1));
 
         Kzg invalidKzg = new Kzg() {
+            @Override
+            public KzgCommitment blobToCommitment(Blob blob) {
+                return commitment1;
+            }
+
+            @Override
+            public KzgProof computeProof(Blob blob, KzgCommitment commitment) {
+                return proof1;
+            }
+
             @Override
             public boolean verifyBlobKzgProof(Blob blob, KzgCommitment commitment, KzgProof proof) {
                 return false;
