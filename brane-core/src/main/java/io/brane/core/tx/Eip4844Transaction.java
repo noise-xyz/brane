@@ -245,11 +245,7 @@ public record Eip4844Transaction(
      * @return RLP list of blob bytes
      */
     private static RlpItem encodeBlobList(final List<Blob> blobs) {
-        final List<RlpItem> items = new ArrayList<>(blobs.size());
-        for (Blob blob : blobs) {
-            items.add(new RlpString(blob.toBytes()));
-        }
-        return new RlpList(items);
+        return new RlpList(blobs.stream().<RlpItem>map(blob -> new RlpString(blob.toBytes())).toList());
     }
 
     /**
