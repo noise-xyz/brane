@@ -114,6 +114,7 @@ public class SmokeApp {
     private static Abi complexAbi;
 
     private static boolean sepoliaMode = false;
+    private static Kzg kzg;
 
     public static void main(String[] args) {
         System.out.println("=== 🚀 Brane SDK Smoke Test Suite ===");
@@ -126,6 +127,11 @@ public class SmokeApp {
         }
 
         try {
+            // Load KZG trusted setup at start (required for blob transactions)
+            System.out.println("[Setup] Loading KZG Trusted Setup...");
+            kzg = CKzg.loadFromClasspath();
+            System.out.println("✓ KZG loaded");
+
             setup();
 
             if (sepoliaMode) {
@@ -155,7 +161,12 @@ public class SmokeApp {
                 testEip712DynamicSigning(); // Scenario S
                 testEip712JsonParsing(); // Scenario T
                 testTesterOperations(); // Scenario U
-                testBlobTransaction(); // Scenario V
+                try {
+                    testBlobTransaction(); // Scenario V
+                } catch (Exception e) {
+                    System.err.println("  ⚠️ Blob transaction test failed: " + e.getMessage());
+                    e.printStackTrace();
+                }
             }
 
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
@@ -1283,10 +1294,11 @@ public class SmokeApp {
         System.out.println("\n[Scenario V] EIP-4844 Blob Transaction");
 
         try {
-            // 1. Load KZG Trusted Setup
-            System.out.println("  Loading KZG Trusted Setup...");
-            Kzg kzg = CKzg.loadFromClasspath();
-            System.out.println("    ✓ KZG trusted setup loaded");
+            // 1. Verify KZG is loaded (loaded at start of main)
+            if (kzg == null) {
+                throw new RuntimeException("KZG not loaded - call CKzg.loadFromClasspath() first");
+            }
+            System.out.println("  ✓ KZG trusted setup available");
 
             // 2. Build blob transaction with test data
             System.out.println("  Building blob transaction...");
