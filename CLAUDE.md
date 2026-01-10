@@ -8,6 +8,7 @@ Modern, type-safe Java 21 SDK for Ethereum/EVM. Inspired by viem (TS) and alloy 
 |--------|---------|-------------|
 | `brane-primitives` | Hex/RLP utilities (zero deps) | `Hex`, `Rlp` |
 | `brane-core` | Types, ABI, crypto, EIP-712, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `MnemonicWallet`, `TypedData`, `TxBuilder`, `Blob`, `BlobSidecar`, `Eip4844Builder` |
+| `brane-kzg` | KZG commitments for EIP-4844 blobs | `CKzg`, `Kzg` |
 | `brane-rpc` | JSON-RPC client layer | `Brane`, `Brane.Reader`, `Brane.Signer`, `Brane.Tester`, `BraneProvider` |
 | `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `ReadOnlyContract` |
 | `brane-examples` | Usage examples & integration tests | Various `*Example.java` |
@@ -29,9 +30,10 @@ brane-primitives (no deps)
        ↓
    brane-core (BouncyCastle, Jackson)
        ↓
-    brane-rpc (Netty, Disruptor)
-       ↓
-  brane-contract
+   ┌───┴───┐
+brane-kzg  brane-rpc (Netty, Disruptor)
+(c-kzg)        ↓
+          brane-contract
 ```
 
 ## Common Commands
