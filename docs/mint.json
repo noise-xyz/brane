@@ -34,6 +34,7 @@
                 "brane-signer/signers",
                 "brane-signer/hd-wallets",
                 "brane-signer/eip712",
+                "brane-signer/blobs",
                 "brane-signer/custom-signers"
             ]
         },
