@@ -265,11 +265,7 @@ public record Eip4844Transaction(
      * @return RLP list of proof bytes
      */
     private static RlpItem encodeProofList(final List<KzgProof> proofs) {
-        final List<RlpItem> items = new ArrayList<>(proofs.size());
-        for (KzgProof proof : proofs) {
-            items.add(new RlpString(proof.toBytes()));
-        }
-        return new RlpList(items);
+        return new RlpList(proofs.stream().<RlpItem>map(p -> new RlpString(p.toBytes())).toList());
     }
 
     /**
