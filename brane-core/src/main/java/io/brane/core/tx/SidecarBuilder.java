@@ -53,7 +53,87 @@ public final class SidecarBuilder {
 
     private final List<Blob> blobs;
 
-    private SidecarBuilder() {
-        this.blobs = new ArrayList<>();
+    private SidecarBuilder(List<Blob> blobs) {
+        this.blobs = blobs;
+    }
+
+    /**
+     * Creates a SidecarBuilder from raw data by encoding it into blobs.
+     * <p>
+     * The encoding process:
+     * <ol>
+     *   <li>Prepends an 8-byte big-endian length prefix</li>
+     *   <li>Encodes data into field elements (0x00 prefix + 31 bytes per element)</li>
+     *   <li>Creates blob(s) from field elements, padding the last blob if necessary</li>
+     * </ol>
+     *
+     * @param data the raw data to encode, must not exceed {@value #MAX_DATA_SIZE} bytes
+     * @return a new SidecarBuilder containing the encoded blobs
+     * @throws NullPointerException if data is null
+     * @throws IllegalArgumentException if data exceeds {@value #MAX_DATA_SIZE} bytes
+     */
+    public static SidecarBuilder from(final byte[] data) {
+        java.util.Objects.requireNonNull(data, "data");
+        if (data.length > MAX_DATA_SIZE) {
+            throw new IllegalArgumentException(
+                    "Data size " + data.length + " exceeds maximum " + MAX_DATA_SIZE + " bytes");
+        }
+
+        // Create prefixed data: 8-byte big-endian length + original data
+        int totalLength = LENGTH_PREFIX_SIZE + data.length;
+        byte[] prefixedData = new byte[totalLength];
+
+        // Write 8-byte big-endian length prefix
+        long length = data.length;
+        for (int i = 0; i < LENGTH_PREFIX_SIZE; i++) {
+            prefixedData[LENGTH_PREFIX_SIZE - 1 - i] = (byte) (length & 0xFF);
+            length >>>= 8;
+        }
+
+        // Copy original data after prefix
+        System.arraycopy(data, 0, prefixedData, LENGTH_PREFIX_SIZE, data.length);
+
+        // Calculate number of field elements needed
+        int fieldElementsNeeded = (totalLength + USABLE_BYTES_PER_FIELD_ELEMENT - 1) / USABLE_BYTES_PER_FIELD_ELEMENT;
+
+        // Calculate number of blobs needed
+        int blobsNeeded = (fieldElementsNeeded + FIELD_ELEMENTS_PER_BLOB - 1) / FIELD_ELEMENTS_PER_BLOB;
+
+        List<Blob> blobs = new ArrayList<>(blobsNeeded);
+        int dataOffset = 0;
+
+        for (int blobIndex = 0; blobIndex < blobsNeeded; blobIndex++) {
+            byte[] blobData = new byte[Blob.SIZE];
+
+            for (int fe = 0; fe < FIELD_ELEMENTS_PER_BLOB; fe++) {
+                int blobOffset = fe * Blob.BYTES_PER_FIELD_ELEMENT;
+
+                // First byte of field element is always 0x00 (high byte constraint)
+                blobData[blobOffset] = 0x00;
+
+                // Copy up to 31 bytes of data into the remaining 31 bytes
+                int bytesToCopy = Math.min(USABLE_BYTES_PER_FIELD_ELEMENT, totalLength - dataOffset);
+                if (bytesToCopy > 0) {
+                    System.arraycopy(prefixedData, dataOffset, blobData, blobOffset + 1, bytesToCopy);
+                    dataOffset += bytesToCopy;
+                }
+                // Remaining bytes in the field element stay as 0x00 (zero-padded)
+            }
+
+            blobs.add(new Blob(blobData));
+        }
+
+        return new SidecarBuilder(blobs);
+    }
+
+    /**
+     * Returns the list of blobs in this builder.
+     * <p>
+     * Package-private for internal use and testing.
+     *
+     * @return unmodifiable list of blobs
+     */
+    List<Blob> blobs() {
+        return List.copyOf(blobs);
     }
 }
