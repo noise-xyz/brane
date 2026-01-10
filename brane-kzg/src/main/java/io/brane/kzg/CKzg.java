@@ -130,6 +130,8 @@ public final class CKzg implements Kzg {
         Objects.requireNonNull(blob, "blob");
 
         try {
+            // TODO: Use blob.toBytesUnsafe() for performance - native library doesn't modify input.
+            // toBytesUnsafe() is package-private in io.brane.core.types; would need internal API.
             byte[] commitment = CKZG4844JNI.blobToKzgCommitment(blob.toBytes());
             return new KzgCommitment(commitment);
         } catch (Exception e) {
