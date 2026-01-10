@@ -7,8 +7,12 @@ import java.util.Objects;
 import io.brane.core.crypto.Signature;
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.types.Address;
+import io.brane.core.types.Blob;
+import io.brane.core.types.BlobSidecar;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
+import io.brane.core.types.KzgCommitment;
+import io.brane.core.types.KzgProof;
 import io.brane.core.types.Wei;
 import io.brane.primitives.Hex;
 import io.brane.primitives.rlp.Rlp;
@@ -152,6 +156,128 @@ public record Eip4844Transaction(
         System.arraycopy(rlpPayload, 0, result, 1, rlpPayload.length);
 
         return result;
+    }
+
+    /**
+     * Encodes the transaction with blob sidecar for network transmission.
+     * <p>
+     * Network wrapper format:
+     * <pre>
+     * 0x03 || RLP([[signed tx fields], blobs, commitments, proofs])
+     * </pre>
+     * <p>
+     * The signed transaction fields are wrapped in an inner list, followed by
+     * the blob sidecar arrays at the outer level.
+     *
+     * @param signature the transaction signature
+     * @param sidecar   the blob sidecar containing blobs, commitments, and proofs
+     * @return the network wrapper encoded bytes
+     * @throws NullPointerException     if signature or sidecar is null
+     * @throws IllegalArgumentException if sidecar versioned hashes don't match
+     *                                  this transaction's blobVersionedHashes
+     */
+    public byte[] encodeAsNetworkWrapper(final Signature signature, final BlobSidecar sidecar) {
+        Objects.requireNonNull(signature, "signature cannot be null");
+        Objects.requireNonNull(sidecar, "sidecar cannot be null");
+
+        // Validate that sidecar hashes match transaction's blobVersionedHashes
+        sidecar.validateHashes(blobVersionedHashes);
+
+        final byte[] rlpPayload = encodeNetworkWrapperPayload(signature, sidecar);
+
+        // Prepend type byte
+        final byte[] result = new byte[rlpPayload.length + 1];
+        result[0] = EIP4844_TYPE;
+        System.arraycopy(rlpPayload, 0, result, 1, rlpPayload.length);
+
+        return result;
+    }
+
+    /**
+     * Encodes the network wrapper RLP payload (without type byte prefix).
+     * <p>
+     * Format: RLP([[signed tx fields], blobs, commitments, proofs])
+     *
+     * @param signature the transaction signature
+     * @param sidecar   the blob sidecar
+     * @return RLP-encoded network wrapper payload
+     */
+    private byte[] encodeNetworkWrapperPayload(final Signature signature, final BlobSidecar sidecar) {
+        // Build the signed transaction fields list (inner list)
+        final List<RlpItem> signedTxItems = new ArrayList<>(14);
+
+        signedTxItems.add(RlpNumeric.encodeLongUnsignedItem(chainId));
+        signedTxItems.add(RlpNumeric.encodeLongUnsignedItem(nonce));
+        signedTxItems.add(RlpNumeric.encodeBigIntegerUnsignedItem(maxPriorityFeePerGas.value()));
+        signedTxItems.add(RlpNumeric.encodeBigIntegerUnsignedItem(maxFeePerGas.value()));
+        signedTxItems.add(RlpNumeric.encodeLongUnsignedItem(gasLimit));
+        signedTxItems.add(new RlpString(to.toBytes()));
+        signedTxItems.add(RlpNumeric.encodeBigIntegerUnsignedItem(value.value()));
+        signedTxItems.add(new RlpString(data.toBytes()));
+        signedTxItems.add(encodeAccessList());
+        signedTxItems.add(RlpNumeric.encodeBigIntegerUnsignedItem(maxFeePerBlobGas.value()));
+        signedTxItems.add(encodeBlobVersionedHashes());
+
+        // Add signature (yParity must be 0 or 1)
+        final int yParity = signature.v();
+        if (yParity != 0 && yParity != 1) {
+            throw new IllegalArgumentException(
+                    "EIP-4844 signature v must be yParity (0 or 1), got: " + yParity);
+        }
+        signedTxItems.add(RlpNumeric.encodeLongUnsignedItem(yParity));
+        signedTxItems.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.r())));
+        signedTxItems.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.s())));
+
+        // Build outer list: [signedTxList, blobs, commitments, proofs]
+        final List<RlpItem> outerItems = new ArrayList<>(4);
+        outerItems.add(new RlpList(signedTxItems));
+        outerItems.add(encodeBlobList(sidecar.blobs()));
+        outerItems.add(encodeCommitmentList(sidecar.commitments()));
+        outerItems.add(encodeProofList(sidecar.proofs()));
+
+        return Rlp.encodeList(outerItems);
+    }
+
+    /**
+     * Encodes the blob list as RLP.
+     *
+     * @param blobs the blobs to encode
+     * @return RLP list of blob bytes
+     */
+    private static RlpItem encodeBlobList(final List<Blob> blobs) {
+        final List<RlpItem> items = new ArrayList<>(blobs.size());
+        for (Blob blob : blobs) {
+            items.add(new RlpString(blob.toBytes()));
+        }
+        return new RlpList(items);
+    }
+
+    /**
+     * Encodes the commitment list as RLP.
+     *
+     * @param commitments the commitments to encode
+     * @return RLP list of commitment bytes
+     */
+    private static RlpItem encodeCommitmentList(final List<KzgCommitment> commitments) {
+        final List<RlpItem> items = new ArrayList<>(commitments.size());
+        for (KzgCommitment commitment : commitments) {
+            items.add(new RlpString(commitment.toBytes()));
+        }
+        return new RlpList(items);
+    }
+
+    /**
+     * Encodes the proof list as RLP.
+     *
+     * @param proofs the proofs to encode
+     * @return RLP list of proof bytes
+     */
+    private static RlpItem encodeProofList(final List<KzgProof> proofs) {
+        final List<RlpItem> items = new ArrayList<>(proofs.size());
+        for (KzgProof proof : proofs) {
+            items.add(new RlpString(proof.toBytes()));
+        }
+        return new RlpList(items);
     }
 
     /**

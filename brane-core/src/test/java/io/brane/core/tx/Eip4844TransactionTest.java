@@ -11,8 +11,12 @@ import io.brane.core.crypto.PrivateKey;
 import io.brane.core.crypto.Signature;
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.types.Address;
+import io.brane.core.types.Blob;
+import io.brane.core.types.BlobSidecar;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
+import io.brane.core.types.KzgCommitment;
+import io.brane.core.types.KzgProof;
 import io.brane.core.types.Wei;
 import io.brane.primitives.Hex;
 
@@ -444,6 +448,259 @@ class Eip4844TransactionTest {
         // Access list should be immutable - attempting to modify should fail
         assertThrows(UnsupportedOperationException.class, () -> tx.accessList().add(
                 new AccessListEntry(contractAddr, List.of())));
+    }
+
+    @Test
+    void testEncodeAsNetworkWrapperStartsWithType() {
+        // Create a KzgCommitment that produces BLOB_HASH_1 when converted to versioned hash
+        // For testing, we create a commitment whose SHA-256 hash starts with 0x01
+        // Since KzgCommitment.toVersionedHash() replaces first byte with 0x01, we need to
+        // create matching commitment
+        final byte[] commitmentBytes = new byte[48];
+        // Set bytes so SHA-256 hash bytes 1-31 match BLOB_HASH_1 bytes 1-31
+        // For this test, we create a sidecar whose versioned hash matches
+        final KzgCommitment commitment = createCommitmentForHash(BLOB_HASH_1);
+        final Hash versionedHash = commitment.toVersionedHash();
+
+        final Eip4844Transaction tx = new Eip4844Transaction(
+                1L,
+                0L,
+                Wei.of(2000000000L),
+                Wei.of(100000000000L),
+                21000L,
+                Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
+                Wei.of(1000000000000000000L),
+                HexData.EMPTY,
+                List.of(),
+                Wei.of(1000000000L),
+                List.of(versionedHash));
+
+        final BlobSidecar sidecar = new BlobSidecar(
+                List.of(new Blob(new byte[Blob.SIZE])),
+                List.of(commitment),
+                List.of(new KzgProof(new byte[48])));
+
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+        r[0] = 0x01;
+        s[0] = 0x02;
+        final Signature signature = new Signature(r, s, 0);
+
+        final byte[] wrapper = tx.encodeAsNetworkWrapper(signature, sidecar);
+
+        assertNotNull(wrapper);
+        assertTrue(wrapper.length > 0);
+        assertEquals(0x03, wrapper[0], "Network wrapper must start with type 0x03");
+    }
+
+    @Test
+    void testEncodeAsNetworkWrapperWithMultipleBlobs() {
+        final KzgCommitment commitment1 = createCommitmentForHash(BLOB_HASH_1);
+        final KzgCommitment commitment2 = createCommitmentForHash(BLOB_HASH_2);
+
+        final Eip4844Transaction tx = new Eip4844Transaction(
+                1L,
+                0L,
+                Wei.of(2000000000L),
+                Wei.of(100000000000L),
+                21000L,
+                Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
+                Wei.of(0),
+                HexData.EMPTY,
+                List.of(),
+                Wei.of(1000000000L),
+                List.of(commitment1.toVersionedHash(), commitment2.toVersionedHash()));
+
+        final BlobSidecar sidecar = new BlobSidecar(
+                List.of(new Blob(new byte[Blob.SIZE]), new Blob(new byte[Blob.SIZE])),
+                List.of(commitment1, commitment2),
+                List.of(new KzgProof(new byte[48]), new KzgProof(new byte[48])));
+
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+        r[0] = 0x01;
+        s[0] = 0x02;
+        final Signature signature = new Signature(r, s, 1);
+
+        final byte[] wrapper = tx.encodeAsNetworkWrapper(signature, sidecar);
+
+        assertNotNull(wrapper);
+        assertEquals(0x03, wrapper[0]);
+        // Wrapper should be significantly larger than envelope due to blob data
+        final byte[] envelope = tx.encodeAsEnvelope(signature);
+        assertTrue(wrapper.length > envelope.length,
+                "Network wrapper should be larger than envelope due to blob data");
+    }
+
+    @Test
+    void testEncodeAsNetworkWrapperValidatesHashMismatch() {
+        // Create a sidecar whose versioned hashes don't match
+        final KzgCommitment commitment = createCommitmentForHash(BLOB_HASH_1);
+        final Hash mismatchedHash = commitment.toVersionedHash();
+
+        // Transaction uses BLOB_HASH_2, but sidecar produces hash from commitment
+        final Eip4844Transaction tx = new Eip4844Transaction(
+                1L,
+                0L,
+                Wei.of(2000000000L),
+                Wei.of(100000000000L),
+                21000L,
+                Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
+                Wei.of(0),
+                HexData.EMPTY,
+                List.of(),
+                Wei.of(1000000000L),
+                List.of(BLOB_HASH_2)); // Different from commitment's versioned hash
+
+        final BlobSidecar sidecar = new BlobSidecar(
+                List.of(new Blob(new byte[Blob.SIZE])),
+                List.of(commitment),
+                List.of(new KzgProof(new byte[48])));
+
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+        r[0] = 0x01;
+        s[0] = 0x02;
+        final Signature signature = new Signature(r, s, 0);
+
+        // Should throw because sidecar's versioned hashes don't match transaction's
+        assertThrows(IllegalArgumentException.class,
+                () -> tx.encodeAsNetworkWrapper(signature, sidecar));
+    }
+
+    @Test
+    void testEncodeAsNetworkWrapperNullSignature() {
+        final KzgCommitment commitment = createCommitmentForHash(BLOB_HASH_1);
+
+        final Eip4844Transaction tx = new Eip4844Transaction(
+                1L,
+                0L,
+                Wei.of(2000000000L),
+                Wei.of(100000000000L),
+                21000L,
+                Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
+                Wei.of(0),
+                HexData.EMPTY,
+                List.of(),
+                Wei.of(1000000000L),
+                List.of(commitment.toVersionedHash()));
+
+        final BlobSidecar sidecar = new BlobSidecar(
+                List.of(new Blob(new byte[Blob.SIZE])),
+                List.of(commitment),
+                List.of(new KzgProof(new byte[48])));
+
+        assertThrows(NullPointerException.class,
+                () -> tx.encodeAsNetworkWrapper(null, sidecar));
+    }
+
+    @Test
+    void testEncodeAsNetworkWrapperNullSidecar() {
+        final Eip4844Transaction tx = new Eip4844Transaction(
+                1L,
+                0L,
+                Wei.of(2000000000L),
+                Wei.of(100000000000L),
+                21000L,
+                Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
+                Wei.of(0),
+                HexData.EMPTY,
+                List.of(),
+                Wei.of(1000000000L),
+                List.of(BLOB_HASH_1));
+
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+        r[0] = 0x01;
+        s[0] = 0x02;
+        final Signature signature = new Signature(r, s, 0);
+
+        assertThrows(NullPointerException.class,
+                () -> tx.encodeAsNetworkWrapper(signature, null));
+    }
+
+    @Test
+    void testEncodeAsNetworkWrapperInvalidYParity() {
+        final KzgCommitment commitment = createCommitmentForHash(BLOB_HASH_1);
+
+        final Eip4844Transaction tx = new Eip4844Transaction(
+                1L,
+                0L,
+                Wei.of(2000000000L),
+                Wei.of(100000000000L),
+                21000L,
+                Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
+                Wei.of(0),
+                HexData.EMPTY,
+                List.of(),
+                Wei.of(1000000000L),
+                List.of(commitment.toVersionedHash()));
+
+        final BlobSidecar sidecar = new BlobSidecar(
+                List.of(new Blob(new byte[Blob.SIZE])),
+                List.of(commitment),
+                List.of(new KzgProof(new byte[48])));
+
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+        r[0] = 0x01;
+        s[0] = 0x02;
+        final Signature invalidSig = new Signature(r, s, 27); // Invalid yParity
+
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class,
+                () -> tx.encodeAsNetworkWrapper(invalidSig, sidecar));
+        assertTrue(exception.getMessage().contains("yParity"));
+    }
+
+    @Test
+    void testEncodeAsNetworkWrapperDeterministic() {
+        final KzgCommitment commitment = createCommitmentForHash(BLOB_HASH_1);
+
+        final Eip4844Transaction tx = new Eip4844Transaction(
+                1L,
+                5L,
+                Wei.of(2500000000L),
+                Wei.of(95000000000L),
+                21000L,
+                Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
+                Wei.of(500000000000000000L),
+                HexData.EMPTY,
+                List.of(),
+                Wei.of(1000000000L),
+                List.of(commitment.toVersionedHash()));
+
+        final BlobSidecar sidecar = new BlobSidecar(
+                List.of(new Blob(new byte[Blob.SIZE])),
+                List.of(commitment),
+                List.of(new KzgProof(new byte[48])));
+
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+        r[0] = 0x01;
+        s[0] = 0x02;
+        final Signature signature = new Signature(r, s, 0);
+
+        final byte[] wrapper1 = tx.encodeAsNetworkWrapper(signature, sidecar);
+        final byte[] wrapper2 = tx.encodeAsNetworkWrapper(signature, sidecar);
+
+        assertArrayEquals(wrapper1, wrapper2, "Network wrapper encoding must be deterministic");
+    }
+
+    /**
+     * Helper to create a KzgCommitment that produces a specific versioned hash.
+     * Since toVersionedHash() computes SHA-256 and replaces byte 0 with 0x01,
+     * we need to find bytes that hash to the expected result.
+     * For simplicity in tests, we just create a commitment and use its actual versioned hash.
+     */
+    private static KzgCommitment createCommitmentForHash(Hash expectedHash) {
+        // In real use, the commitment would come from KZG operations
+        // For testing, we create deterministic commitments based on the expected hash
+        // The important thing is that the versioned hash matches what the tx expects
+        byte[] commitmentBytes = new byte[48];
+        // Use the hash bytes to seed the commitment (just for test determinism)
+        byte[] hashBytes = Hex.decode(expectedHash.value());
+        System.arraycopy(hashBytes, 0, commitmentBytes, 0, Math.min(hashBytes.length, 48));
+        return new KzgCommitment(commitmentBytes);
     }
 
     // Helper method
