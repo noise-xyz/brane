@@ -196,6 +196,8 @@ public final class CKzg implements Kzg {
             byte[] commitmentsFlat = new byte[commitments.size() * KzgCommitment.SIZE];
             byte[] proofsFlat = new byte[proofs.size() * KzgProof.SIZE];
 
+            // TODO: Use toBytesUnsafe() for performance - native library doesn't modify input.
+            // toBytesUnsafe() is package-private in io.brane.core.types; would need internal API.
             for (int i = 0; i < blobs.size(); i++) {
                 System.arraycopy(blobs.get(i).toBytes(), 0, blobsFlat, i * Blob.SIZE, Blob.SIZE);
                 System.arraycopy(commitments.get(i).toBytes(), 0, commitmentsFlat,
