@@ -126,7 +126,10 @@ public final class BlobSidecar {
      * field and are derived from the KZG commitments using SHA-256 with a
      * version prefix.
      * <p>
-     * The result is cached for subsequent calls.
+     * The result is cached for subsequent calls. This uses a benign race pattern
+     * (like {@link String#hashCode()}). Multiple threads may compute the hashes
+     * simultaneously on first access, but all will produce the same result since
+     * the computation is idempotent.
      *
      * @return an unmodifiable list of versioned hashes
      */
