@@ -69,18 +69,26 @@ public final class SidecarBuilder {
 
     /**
      * Creates a SidecarBuilder from raw data by encoding it into blobs.
+     *
+     * <h3>Encoding Scheme</h3>
+     * <p>
+     * The data is encoded with an 8-byte big-endian length prefix followed by the raw data.
+     * Each blob consists of 4096 field elements (32 bytes each). Due to the BLS modulus
+     * constraint, the first byte of each field element must be {@code 0x00}, leaving only
+     * 31 usable bytes per field element. This gives 126,976 usable bytes per blob.
      * <p>
      * The encoding process:
      * <ol>
-     *   <li>Prepends an 8-byte big-endian length prefix</li>
-     *   <li>Encodes data into field elements (0x00 prefix + 31 bytes per element)</li>
-     *   <li>Creates blob(s) from field elements, padding the last blob if necessary</li>
+     *   <li>Prepends an 8-byte big-endian length prefix to support correct decoding</li>
+     *   <li>Encodes data into field elements ({@code 0x00} prefix + 31 data bytes per element)</li>
+     *   <li>Creates blob(s) from field elements, zero-padding the last blob if necessary</li>
      * </ol>
      *
      * @param data the raw data to encode, must not exceed {@value #MAX_DATA_SIZE} bytes
      * @return a new SidecarBuilder containing the encoded blobs
      * @throws NullPointerException if data is null
      * @throws IllegalArgumentException if data exceeds {@value #MAX_DATA_SIZE} bytes
+     * @see BlobDecoder#decode(java.util.List) for the inverse decoding operation
      */
     public static SidecarBuilder from(final byte[] data) {
         Objects.requireNonNull(data, "data");
