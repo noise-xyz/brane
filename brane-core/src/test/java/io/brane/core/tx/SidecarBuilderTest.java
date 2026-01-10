@@ -152,4 +152,95 @@ class SidecarBuilderTest {
         // MAX_DATA_SIZE + LENGTH_PREFIX_SIZE = 6 * USABLE_BYTES_PER_BLOB, so exactly 6 blobs
         assertEquals(6, blobs.size());
     }
+
+    // Tests for fromBlobs
+
+    @Test
+    void maxBlobsConstantIsCorrect() {
+        assertEquals(6, SidecarBuilder.MAX_BLOBS);
+    }
+
+    @Test
+    void fromBlobsRejectsNullArray() {
+        assertThrows(NullPointerException.class, () -> SidecarBuilder.fromBlobs((Blob[]) null));
+    }
+
+    @Test
+    void fromBlobsRejectsEmptyArray() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> SidecarBuilder.fromBlobs());
+        assertEquals("blobs must not be empty", ex.getMessage());
+    }
+
+    @Test
+    void fromBlobsRejectsNullElement() {
+        Blob validBlob = new Blob(new byte[Blob.SIZE]);
+        NullPointerException ex = assertThrows(NullPointerException.class,
+                () -> SidecarBuilder.fromBlobs(validBlob, null));
+        assertEquals("blobs[1] is null", ex.getMessage());
+    }
+
+    @Test
+    void fromBlobsRejectsNullFirstElement() {
+        NullPointerException ex = assertThrows(NullPointerException.class,
+                () -> SidecarBuilder.fromBlobs(null, new Blob(new byte[Blob.SIZE])));
+        assertEquals("blobs[0] is null", ex.getMessage());
+    }
+
+    @Test
+    void fromBlobsRejectsTooManyBlobs() {
+        Blob[] tooMany = new Blob[SidecarBuilder.MAX_BLOBS + 1];
+        for (int i = 0; i < tooMany.length; i++) {
+            tooMany[i] = new Blob(new byte[Blob.SIZE]);
+        }
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+                () -> SidecarBuilder.fromBlobs(tooMany));
+        assertEquals("blobs size 7 exceeds maximum 6", ex.getMessage());
+    }
+
+    @Test
+    void fromBlobsWithSingleBlob() {
+        Blob blob = new Blob(new byte[Blob.SIZE]);
+        SidecarBuilder builder = SidecarBuilder.fromBlobs(blob);
+
+        List<Blob> blobs = builder.blobs();
+        assertEquals(1, blobs.size());
+        assertEquals(blob, blobs.get(0));
+    }
+
+    @Test
+    void fromBlobsWithMaxBlobs() {
+        Blob[] maxBlobs = new Blob[SidecarBuilder.MAX_BLOBS];
+        for (int i = 0; i < maxBlobs.length; i++) {
+            byte[] data = new byte[Blob.SIZE];
+            data[0] = (byte) i; // Make each blob distinct
+            maxBlobs[i] = new Blob(data);
+        }
+
+        SidecarBuilder builder = SidecarBuilder.fromBlobs(maxBlobs);
+
+        List<Blob> blobs = builder.blobs();
+        assertEquals(SidecarBuilder.MAX_BLOBS, blobs.size());
+        for (int i = 0; i < maxBlobs.length; i++) {
+            assertEquals(maxBlobs[i], blobs.get(i));
+        }
+    }
+
+    @Test
+    void fromBlobsPreservesOrder() {
+        Blob[] blobs = new Blob[3];
+        for (int i = 0; i < blobs.length; i++) {
+            byte[] data = new byte[Blob.SIZE];
+            data[100] = (byte) (i + 1); // Mark each blob distinctly
+            blobs[i] = new Blob(data);
+        }
+
+        SidecarBuilder builder = SidecarBuilder.fromBlobs(blobs);
+
+        List<Blob> result = builder.blobs();
+        assertEquals(3, result.size());
+        for (int i = 0; i < blobs.length; i++) {
+            assertEquals(blobs[i], result.get(i));
+        }
+    }
 }

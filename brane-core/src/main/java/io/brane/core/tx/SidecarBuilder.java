@@ -51,6 +51,11 @@ public final class SidecarBuilder {
      */
     public static final int MAX_DATA_SIZE = (USABLE_BYTES_PER_BLOB * 6) - LENGTH_PREFIX_SIZE;
 
+    /**
+     * Maximum number of blobs per transaction (EIP-4844).
+     */
+    public static final int MAX_BLOBS = 6;
+
     private final List<Blob> blobs;
 
     private SidecarBuilder(List<Blob> blobs) {
@@ -124,6 +129,34 @@ public final class SidecarBuilder {
         }
 
         return new SidecarBuilder(blobs);
+    }
+
+    /**
+     * Creates a SidecarBuilder from pre-constructed blobs.
+     * <p>
+     * Use this method when you have already-constructed {@link Blob} instances,
+     * for example when receiving blobs from an external source or for testing.
+     *
+     * @param blobs the blobs to include, must not be empty and must not exceed {@value #MAX_BLOBS}
+     * @return a new SidecarBuilder containing the provided blobs
+     * @throws NullPointerException if blobs is null or contains null elements
+     * @throws IllegalArgumentException if blobs is empty or exceeds {@value #MAX_BLOBS} elements
+     */
+    public static SidecarBuilder fromBlobs(final Blob... blobs) {
+        java.util.Objects.requireNonNull(blobs, "blobs");
+        if (blobs.length == 0) {
+            throw new IllegalArgumentException("blobs must not be empty");
+        }
+        if (blobs.length > MAX_BLOBS) {
+            throw new IllegalArgumentException(
+                    "blobs size " + blobs.length + " exceeds maximum " + MAX_BLOBS);
+        }
+        for (int i = 0; i < blobs.length; i++) {
+            if (blobs[i] == null) {
+                throw new NullPointerException("blobs[" + i + "] is null");
+            }
+        }
+        return new SidecarBuilder(List.of(blobs));
     }
 
     /**
