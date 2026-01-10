@@ -1045,6 +1045,91 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          */
         Hash sendBlobTransaction(BlobTransactionRequest request);
 
+        /** Default poll interval for checking blob transaction receipt: 2 seconds. */
+        long DEFAULT_BLOB_POLL_INTERVAL_MILLIS = 2_000;
+
+        /**
+         * Submits an EIP-4844 blob transaction and waits for it to be confirmed using default settings.
+         *
+         * <p>This is a convenience method that uses default timeout (60 seconds) and poll
+         * interval (2 seconds). For custom settings, use
+         * {@link #sendBlobTransactionAndWait(BlobTransactionRequest, long, long)}.
+         *
+         * <p>This method combines {@link #sendBlobTransaction} with polling for the receipt.
+         * It will:
+         * <ol>
+         *   <li>Submit the blob transaction (same as {@link #sendBlobTransaction})</li>
+         *   <li>Poll {@code eth_getTransactionReceipt} every 2 seconds</li>
+         *   <li>Return the receipt once the transaction is included in a block</li>
+         *   <li>Throw an exception if 60 seconds is exceeded or transaction reverts</li>
+         * </ol>
+         *
+         * @param request the blob transaction request
+         * @return the transaction receipt once confirmed
+         * @since 0.4.0
+         */
+        default TransactionReceipt sendBlobTransactionAndWait(BlobTransactionRequest request) {
+            return sendBlobTransactionAndWait(request, DEFAULT_TIMEOUT_MILLIS, DEFAULT_BLOB_POLL_INTERVAL_MILLIS);
+        }
+
+        /**
+         * Submits an EIP-4844 blob transaction and waits for it to be confirmed in a block.
+         *
+         * <p>This method combines {@link #sendBlobTransaction} with polling for the receipt.
+         * It will:
+         * <ol>
+         *   <li>Submit the blob transaction (same as {@link #sendBlobTransaction})</li>
+         *   <li>Poll {@code eth_getTransactionReceipt} at the specified interval</li>
+         *   <li>Return the receipt once the transaction is included in a block</li>
+         *   <li>Throw an exception if timeout is reached or transaction reverts</li>
+         * </ol>
+         *
+         * @param request            the blob transaction request
+         * @param timeoutMillis      maximum time to wait for confirmation, in milliseconds
+         * @param pollIntervalMillis how often to poll for the receipt, in milliseconds
+         * @return the transaction receipt once confirmed
+         * @since 0.4.0
+         */
+        default TransactionReceipt sendBlobTransactionAndWait(
+                BlobTransactionRequest request, long timeoutMillis, long pollIntervalMillis) {
+            final Hash txHash = sendBlobTransaction(request);
+            final long deadlineNanos = System.nanoTime()
+                    + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+
+            // Exponential backoff: start with user-provided interval, double each time, cap at 10s
+            final long maxPollInterval = 10_000L;
+            long currentInterval = pollIntervalMillis;
+
+            while (System.nanoTime() - deadlineNanos < 0) {
+                final TransactionReceipt receipt = getTransactionReceipt(txHash);
+                if (receipt != null) {
+                    if (!receipt.status()) {
+                        throw new io.brane.core.error.RevertException(
+                                io.brane.core.RevertDecoder.RevertKind.UNKNOWN,
+                                "Blob transaction reverted (txHash: " + txHash.value() + ")",
+                                null,
+                                null);
+                    }
+                    return receipt;
+                }
+                try {
+                    Thread.sleep(currentInterval);
+                    currentInterval = Math.min(currentInterval * 2, maxPollInterval);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new io.brane.core.error.RpcException(
+                            -32000, "Interrupted while waiting for blob transaction receipt", null, e);
+                }
+            }
+
+            throw new io.brane.core.error.RpcException(
+                    -32000,
+                    "Timed out waiting for blob transaction receipt for " + txHash.value(),
+                    null,
+                    null,
+                    null);
+        }
+
         /**
          * Returns the signer instance used by this client.
          *
