@@ -546,13 +546,13 @@ final class DefaultSigner implements Brane.Signer {
                 maxFeePerGas,
                 gasLimit,
                 request.to(),
-                request.valueOpt().orElse(Wei.of(0)),
+                request.valueOpt().orElse(Wei.ZERO),
                 request.data() != null ? request.data() : HexData.EMPTY,
                 request.accessListOrEmpty(),
                 maxFeePerBlobGas,
                 request.blobVersionedHashes());
 
-        final Wei valueOrZero = request.valueOpt().orElse(Wei.of(0));
+        final Wei valueOrZero = request.valueOpt().orElse(Wei.ZERO);
         DebugLogger.logTx(LogFormatter.formatTxSend(
                 from.value(),
                 request.to().value(),
