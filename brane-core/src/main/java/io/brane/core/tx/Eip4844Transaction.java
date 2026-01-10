@@ -100,17 +100,17 @@ public record Eip4844Transaction(
         if (nonce < 0) {
             throw new IllegalArgumentException("Nonce cannot be negative");
         }
-        Objects.requireNonNull(maxPriorityFeePerGas, "maxPriorityFeePerGas cannot be null");
-        Objects.requireNonNull(maxFeePerGas, "maxFeePerGas cannot be null");
+        Objects.requireNonNull(maxPriorityFeePerGas, "maxPriorityFeePerGas");
+        Objects.requireNonNull(maxFeePerGas, "maxFeePerGas");
         if (gasLimit <= 0) {
             throw new IllegalArgumentException("gasLimit must be positive");
         }
         // EIP-4844 transactions cannot create contracts, to address is required
-        Objects.requireNonNull(to, "to address is required for EIP-4844 transactions");
-        Objects.requireNonNull(value, "value cannot be null");
-        Objects.requireNonNull(data, "data cannot be null");
-        Objects.requireNonNull(maxFeePerBlobGas, "maxFeePerBlobGas cannot be null");
-        Objects.requireNonNull(blobVersionedHashes, "blobVersionedHashes cannot be null");
+        Objects.requireNonNull(to, "to");
+        Objects.requireNonNull(value, "value");
+        Objects.requireNonNull(data, "data");
+        Objects.requireNonNull(maxFeePerBlobGas, "maxFeePerBlobGas");
+        Objects.requireNonNull(blobVersionedHashes, "blobVersionedHashes");
 
         if (blobVersionedHashes.size() < MIN_BLOB_HASHES || blobVersionedHashes.size() > MAX_BLOB_HASHES) {
             throw new IllegalArgumentException(
