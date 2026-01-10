@@ -2,8 +2,13 @@ package io.brane.core.tx;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
+import io.brane.core.crypto.Kzg;
 import io.brane.core.types.Blob;
+import io.brane.core.types.BlobSidecar;
+import io.brane.core.types.KzgCommitment;
+import io.brane.core.types.KzgProof;
 
 /**
  * Builder for creating EIP-4844 blob sidecars from raw data.
@@ -78,7 +83,7 @@ public final class SidecarBuilder {
      * @throws IllegalArgumentException if data exceeds {@value #MAX_DATA_SIZE} bytes
      */
     public static SidecarBuilder from(final byte[] data) {
-        java.util.Objects.requireNonNull(data, "data");
+        Objects.requireNonNull(data, "data");
         if (data.length > MAX_DATA_SIZE) {
             throw new IllegalArgumentException(
                     "Data size " + data.length + " exceeds maximum " + MAX_DATA_SIZE + " bytes");
@@ -143,7 +148,7 @@ public final class SidecarBuilder {
      * @throws IllegalArgumentException if blobs is empty or exceeds {@value #MAX_BLOBS} elements
      */
     public static SidecarBuilder fromBlobs(final Blob... blobs) {
-        java.util.Objects.requireNonNull(blobs, "blobs");
+        Objects.requireNonNull(blobs, "blobs");
         if (blobs.length == 0) {
             throw new IllegalArgumentException("blobs must not be empty");
         }
@@ -157,6 +162,40 @@ public final class SidecarBuilder {
             }
         }
         return new SidecarBuilder(List.of(blobs));
+    }
+
+    /**
+     * Builds a {@link BlobSidecar} by computing KZG commitments and proofs for all blobs.
+     * <p>
+     * For each blob in this builder, this method:
+     * <ol>
+     *   <li>Computes a KZG commitment using {@link Kzg#blobToCommitment(Blob)}</li>
+     *   <li>Computes a KZG proof using {@link Kzg#computeProof(Blob, KzgCommitment)}</li>
+     * </ol>
+     *
+     * @param kzg the KZG implementation to use for computing commitments and proofs
+     * @return a new BlobSidecar containing the blobs with their commitments and proofs
+     * @throws NullPointerException if kzg is null
+     * @throws IllegalStateException if this builder has no blobs
+     * @throws io.brane.core.error.KzgException if commitment or proof computation fails
+     */
+    public BlobSidecar build(final Kzg kzg) {
+        Objects.requireNonNull(kzg, "kzg");
+        if (blobs.isEmpty()) {
+            throw new IllegalStateException("blobs must not be empty");
+        }
+
+        var commitments = new ArrayList<KzgCommitment>(blobs.size());
+        var proofs = new ArrayList<KzgProof>(blobs.size());
+
+        for (Blob blob : blobs) {
+            KzgCommitment commitment = kzg.blobToCommitment(blob);
+            KzgProof proof = kzg.computeProof(blob, commitment);
+            commitments.add(commitment);
+            proofs.add(proof);
+        }
+
+        return new BlobSidecar(blobs, commitments, proofs);
     }
 
     /**

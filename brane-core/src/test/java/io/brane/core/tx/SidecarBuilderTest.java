@@ -8,7 +8,11 @@ import java.util.List;
 
 import org.junit.jupiter.api.Test;
 
+import io.brane.core.crypto.Kzg;
 import io.brane.core.types.Blob;
+import io.brane.core.types.BlobSidecar;
+import io.brane.core.types.KzgCommitment;
+import io.brane.core.types.KzgProof;
 
 class SidecarBuilderTest {
 
@@ -242,5 +246,180 @@ class SidecarBuilderTest {
         for (int i = 0; i < blobs.length; i++) {
             assertEquals(blobs[i], result.get(i));
         }
+    }
+
+    // Tests for build(Kzg)
+
+    /**
+     * Mock Kzg implementation for testing.
+     * Returns deterministic commitments and proofs based on blob content.
+     */
+    private static class MockKzg implements Kzg {
+        private int commitmentCallCount = 0;
+        private int proofCallCount = 0;
+
+        @Override
+        public KzgCommitment blobToCommitment(Blob blob) {
+            commitmentCallCount++;
+            // Create a deterministic commitment based on blob content
+            byte[] commitmentData = new byte[KzgCommitment.SIZE];
+            byte[] blobBytes = blob.toBytes();
+            // Use first few bytes of blob to make commitment distinct
+            System.arraycopy(blobBytes, 0, commitmentData, 0, Math.min(blobBytes.length, KzgCommitment.SIZE));
+            return new KzgCommitment(commitmentData);
+        }
+
+        @Override
+        public KzgProof computeProof(Blob blob, KzgCommitment commitment) {
+            proofCallCount++;
+            // Create a deterministic proof based on blob and commitment
+            byte[] proofData = new byte[KzgProof.SIZE];
+            byte[] blobBytes = blob.toBytes();
+            byte[] commitmentBytes = commitment.toBytes();
+            // XOR first bytes of blob and commitment to make proof distinct
+            for (int i = 0; i < KzgProof.SIZE; i++) {
+                proofData[i] = (byte) (blobBytes[i % blobBytes.length] ^ commitmentBytes[i % commitmentBytes.length]);
+            }
+            return new KzgProof(proofData);
+        }
+
+        @Override
+        public boolean verifyBlobKzgProof(Blob blob, KzgCommitment commitment, KzgProof proof) {
+            return true;
+        }
+
+        @Override
+        public boolean verifyBlobKzgProofBatch(List<Blob> blobs, List<KzgCommitment> commitments, List<KzgProof> proofs) {
+            return true;
+        }
+
+        int getCommitmentCallCount() {
+            return commitmentCallCount;
+        }
+
+        int getProofCallCount() {
+            return proofCallCount;
+        }
+    }
+
+    @Test
+    void buildRejectsNullKzg() {
+        SidecarBuilder builder = SidecarBuilder.from("test".getBytes());
+        NullPointerException ex = assertThrows(NullPointerException.class, () -> builder.build(null));
+        assertEquals("kzg", ex.getMessage());
+    }
+
+    @Test
+    void buildWithSingleBlob() {
+        byte[] data = "Hello, blobs!".getBytes();
+        SidecarBuilder builder = SidecarBuilder.from(data);
+        MockKzg kzg = new MockKzg();
+
+        BlobSidecar sidecar = builder.build(kzg);
+
+        assertNotNull(sidecar);
+        assertEquals(1, sidecar.size());
+        assertEquals(1, sidecar.blobs().size());
+        assertEquals(1, sidecar.commitments().size());
+        assertEquals(1, sidecar.proofs().size());
+        assertEquals(1, kzg.getCommitmentCallCount());
+        assertEquals(1, kzg.getProofCallCount());
+    }
+
+    @Test
+    void buildWithMultipleBlobs() {
+        // Create data requiring multiple blobs
+        int size = SidecarBuilder.USABLE_BYTES_PER_BLOB; // Will need 2 blobs
+        byte[] data = new byte[size];
+        SidecarBuilder builder = SidecarBuilder.from(data);
+        MockKzg kzg = new MockKzg();
+
+        BlobSidecar sidecar = builder.build(kzg);
+
+        assertNotNull(sidecar);
+        assertEquals(2, sidecar.size());
+        assertEquals(2, sidecar.blobs().size());
+        assertEquals(2, sidecar.commitments().size());
+        assertEquals(2, sidecar.proofs().size());
+        assertEquals(2, kzg.getCommitmentCallCount());
+        assertEquals(2, kzg.getProofCallCount());
+    }
+
+    @Test
+    void buildFromBlobsWithSingleBlob() {
+        Blob blob = new Blob(new byte[Blob.SIZE]);
+        SidecarBuilder builder = SidecarBuilder.fromBlobs(blob);
+        MockKzg kzg = new MockKzg();
+
+        BlobSidecar sidecar = builder.build(kzg);
+
+        assertNotNull(sidecar);
+        assertEquals(1, sidecar.size());
+        assertEquals(blob, sidecar.blobs().get(0));
+    }
+
+    @Test
+    void buildFromBlobsWithMultipleBlobs() {
+        Blob[] blobs = new Blob[3];
+        for (int i = 0; i < blobs.length; i++) {
+            byte[] data = new byte[Blob.SIZE];
+            data[0] = (byte) (i + 1);
+            blobs[i] = new Blob(data);
+        }
+        SidecarBuilder builder = SidecarBuilder.fromBlobs(blobs);
+        MockKzg kzg = new MockKzg();
+
+        BlobSidecar sidecar = builder.build(kzg);
+
+        assertNotNull(sidecar);
+        assertEquals(3, sidecar.size());
+        assertEquals(3, sidecar.blobs().size());
+        assertEquals(3, sidecar.commitments().size());
+        assertEquals(3, sidecar.proofs().size());
+        for (int i = 0; i < blobs.length; i++) {
+            assertEquals(blobs[i], sidecar.blobs().get(i));
+        }
+    }
+
+    @Test
+    void buildPreservesBlobOrder() {
+        Blob[] blobs = new Blob[3];
+        for (int i = 0; i < blobs.length; i++) {
+            byte[] data = new byte[Blob.SIZE];
+            data[100] = (byte) (i + 1);
+            blobs[i] = new Blob(data);
+        }
+        SidecarBuilder builder = SidecarBuilder.fromBlobs(blobs);
+        MockKzg kzg = new MockKzg();
+
+        BlobSidecar sidecar = builder.build(kzg);
+
+        for (int i = 0; i < blobs.length; i++) {
+            assertEquals(blobs[i], sidecar.blobs().get(i));
+        }
+    }
+
+    @Test
+    void buildComputesCommitmentAndProofForEachBlob() {
+        Blob[] blobs = new Blob[2];
+        for (int i = 0; i < blobs.length; i++) {
+            byte[] data = new byte[Blob.SIZE];
+            // Make blobs distinct
+            data[0] = (byte) (i + 10);
+            data[1] = (byte) (i + 20);
+            blobs[i] = new Blob(data);
+        }
+        SidecarBuilder builder = SidecarBuilder.fromBlobs(blobs);
+        MockKzg kzg = new MockKzg();
+
+        BlobSidecar sidecar = builder.build(kzg);
+
+        // Verify commitments are distinct (since blobs are distinct)
+        assertNotNull(sidecar.commitments().get(0));
+        assertNotNull(sidecar.commitments().get(1));
+
+        // Verify proofs are distinct
+        assertNotNull(sidecar.proofs().get(0));
+        assertNotNull(sidecar.proofs().get(1));
     }
 }
