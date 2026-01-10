@@ -26,6 +26,7 @@ public final class KzgException extends BraneException {
         PROOF_ERROR
     }
 
+    /** The category of KZG failure. */
     private final Kind kind;
 
     /**

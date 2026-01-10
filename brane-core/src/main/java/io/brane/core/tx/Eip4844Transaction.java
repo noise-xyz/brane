@@ -94,6 +94,12 @@ public record Eip4844Transaction(
      */
     private static final int MAX_BLOB_HASHES = 6;
 
+    /**
+     * Validates the transaction parameters.
+     *
+     * @throws IllegalArgumentException if chainId, nonce, or gasLimit is invalid
+     * @throws NullPointerException     if any required field is null
+     */
     public Eip4844Transaction {
         if (chainId <= 0) {
             throw new IllegalArgumentException("Chain ID must be positive");

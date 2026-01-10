@@ -70,7 +70,7 @@ public final class SidecarBuilder {
     /**
      * Creates a SidecarBuilder from raw data by encoding it into blobs.
      *
-     * <h3>Encoding Scheme</h3>
+     * <h4>Encoding Scheme</h4>
      * <p>
      * The data is encoded with an 8-byte big-endian length prefix followed by the raw data.
      * Each blob consists of 4096 field elements (32 bytes each). Due to the BLS modulus

@@ -95,30 +95,65 @@ public record BlobTransactionRequest(
         return sidecar.versionedHashes();
     }
 
+    /**
+     * Returns the value as an Optional.
+     *
+     * @return optional containing the value, or empty if null
+     */
     public Optional<Wei> valueOpt() {
         return Optional.ofNullable(value);
     }
 
+    /**
+     * Returns the gas limit as an Optional.
+     *
+     * @return optional containing the gas limit, or empty if null
+     */
     public Optional<Long> gasLimitOpt() {
         return Optional.ofNullable(gasLimit);
     }
 
+    /**
+     * Returns the max priority fee per gas as an Optional.
+     *
+     * @return optional containing the max priority fee, or empty if null
+     */
     public Optional<Wei> maxPriorityFeePerGasOpt() {
         return Optional.ofNullable(maxPriorityFeePerGas);
     }
 
+    /**
+     * Returns the max fee per gas as an Optional.
+     *
+     * @return optional containing the max fee, or empty if null
+     */
     public Optional<Wei> maxFeePerGasOpt() {
         return Optional.ofNullable(maxFeePerGas);
     }
 
+    /**
+     * Returns the max fee per blob gas as an Optional.
+     *
+     * @return optional containing the max blob fee, or empty if null
+     */
     public Optional<Wei> maxFeePerBlobGasOpt() {
         return Optional.ofNullable(maxFeePerBlobGas);
     }
 
+    /**
+     * Returns the nonce as an Optional.
+     *
+     * @return optional containing the nonce, or empty if null
+     */
     public Optional<Long> nonceOpt() {
         return Optional.ofNullable(nonce);
     }
 
+    /**
+     * Returns the access list, or an empty list if null.
+     *
+     * @return the access list or empty list
+     */
     public List<AccessListEntry> accessListOrEmpty() {
         return accessList == null ? List.of() : accessList;
     }

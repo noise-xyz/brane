@@ -34,7 +34,7 @@ public final class BlobDecoder {
      * <p>
      * This method reverses the encoding performed by {@link SidecarBuilder#from(byte[])}.
      *
-     * <h3>Decoding Scheme</h3>
+     * <h4>Decoding Scheme</h4>
      * <p>
      * Each blob consists of 4096 field elements (32 bytes each). Due to the BLS modulus
      * constraint, the first byte of each field element is a {@code 0x00} prefix byte,
