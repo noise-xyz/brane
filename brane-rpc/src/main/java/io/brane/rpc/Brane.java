@@ -18,6 +18,7 @@ import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
+import io.brane.core.types.Wei;
 
 /**
  * Unified entry point for interacting with Ethereum/EVM blockchains.
@@ -393,6 +394,26 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @since 0.1.0
      */
     BigInteger estimateGas(TransactionRequest request);
+
+    /**
+     * Retrieves the current blob base fee per gas.
+     *
+     * <p>This method returns the base fee per blob gas for EIP-4844 blob transactions
+     * in the current block. The blob base fee is calculated using an EIP-1559-like
+     * mechanism based on blob gas usage in previous blocks.
+     *
+     * <p>This method calls the {@code eth_blobBaseFee} JSON-RPC method.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Wei blobBaseFee = client.getBlobBaseFee();
+     * System.out.println("Current blob base fee: " + blobBaseFee.toGwei() + " gwei");
+     * }</pre>
+     *
+     * @return the current blob base fee per gas
+     * @since 0.4.0
+     */
+    Wei getBlobBaseFee();
 
     /**
      * Creates an access list for a transaction.

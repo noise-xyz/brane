@@ -388,6 +388,18 @@ final class DefaultReader implements Brane.Reader {
         return RpcUtils.decodeHexBigInteger(result.toString());
     }
 
+    @Override
+    public Wei getBlobBaseFee() {
+        ensureOpen();
+        final JsonRpcResponse response = sendWithRetry("eth_blobBaseFee", List.of());
+        final Object result = response.result();
+        if (result == null) {
+            throw new io.brane.core.error.RpcException(
+                    0, "eth_blobBaseFee returned null", (String) null, (Throwable) null);
+        }
+        return new Wei(RpcUtils.decodeHexBigInteger(result.toString()));
+    }
+
     /**
      * Builds the JSON-RPC parameters map for eth_estimateGas.
      *

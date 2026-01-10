@@ -163,6 +163,11 @@ final class DefaultTester implements Brane.Tester {
     }
 
     @Override
+    public Wei getBlobBaseFee() {
+        return signer.getBlobBaseFee();
+    }
+
+    @Override
     public AccessListWithGas createAccessList(final TransactionRequest request) {
         return signer.createAccessList(request);
     }

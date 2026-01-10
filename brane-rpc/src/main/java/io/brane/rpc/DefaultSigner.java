@@ -140,6 +140,11 @@ final class DefaultSigner implements Brane.Signer {
     }
 
     @Override
+    public Wei getBlobBaseFee() {
+        return reader.getBlobBaseFee();
+    }
+
+    @Override
     public AccessListWithGas createAccessList(final TransactionRequest request) {
         return reader.createAccessList(request);
     }
