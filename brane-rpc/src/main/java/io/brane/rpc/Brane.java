@@ -10,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.crypto.Signer;
 import io.brane.core.model.AccessListWithGas;
+import io.brane.core.model.BlobTransactionRequest;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.LogEntry;
 import io.brane.core.model.Transaction;
@@ -1005,6 +1006,46 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
                 TransactionRequest request, long timeoutMillis, long pollIntervalMillis);
 
         /**
+         * Submits an EIP-4844 blob transaction to the blockchain and returns immediately.
+         *
+         * <p>This method:
+         * <ol>
+         *   <li>Fills in missing gas/nonce fields if null in the request</li>
+         *   <li>Signs the transaction using the configured signer</li>
+         *   <li>Broadcasts via {@code eth_sendRawTransaction} with the blob sidecar</li>
+         *   <li>Returns the transaction hash without waiting for confirmation</li>
+         * </ol>
+         *
+         * <p><strong>Note:</strong> The transaction is submitted but NOT confirmed.
+         * Use {@link #getTransactionReceipt(Hash)} to check confirmation status.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * BlobSidecar sidecar = BlobSidecar.from(blobs, commitments, proofs);
+         * BlobTransactionRequest request = new BlobTransactionRequest(
+         *     null, // from (auto-filled from signer)
+         *     contractAddress,
+         *     null, // value
+         *     null, // gasLimit (auto-estimated)
+         *     null, // maxPriorityFeePerGas (auto-filled)
+         *     null, // maxFeePerGas (auto-filled)
+         *     null, // maxFeePerBlobGas (auto-filled)
+         *     null, // nonce (auto-fetched)
+         *     calldata,
+         *     null, // accessList
+         *     sidecar
+         * );
+         * Hash txHash = client.sendBlobTransaction(request);
+         * }</pre>
+         *
+         * @param request the blob transaction request with at minimum a {@code to} address
+         *                and {@code sidecar}; all other fields are optional and will be auto-filled
+         * @return the transaction hash of the submitted transaction
+         * @since 0.4.0
+         */
+        Hash sendBlobTransaction(BlobTransactionRequest request);
+
+        /**
          * Returns the signer instance used by this client.
          *
          * @return the signer
@@ -1260,6 +1301,18 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          */
         TransactionReceipt sendTransactionAndWait(
                 TransactionRequest request, long timeoutMillis, long pollIntervalMillis);
+
+        /**
+         * Submits an EIP-4844 blob transaction to the blockchain and returns immediately.
+         *
+         * <p>Delegates to {@link Signer#sendBlobTransaction(BlobTransactionRequest)}.
+         *
+         * @param request the blob transaction request
+         * @return the transaction hash
+         * @see Signer#sendBlobTransaction(BlobTransactionRequest)
+         * @since 0.4.0
+         */
+        Hash sendBlobTransaction(BlobTransactionRequest request);
 
         /**
          * Returns the signer instance used by this tester.

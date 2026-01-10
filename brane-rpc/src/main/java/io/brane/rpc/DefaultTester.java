@@ -11,6 +11,7 @@ import org.jspecify.annotations.Nullable;
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListWithGas;
+import io.brane.core.model.BlobTransactionRequest;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.LogEntry;
 import io.brane.core.model.Transaction;
@@ -229,6 +230,11 @@ final class DefaultTester implements Brane.Tester {
             final long timeoutMillis,
             final long pollIntervalMillis) {
         return signer.sendTransactionAndWait(request, timeoutMillis, pollIntervalMillis);
+    }
+
+    @Override
+    public Hash sendBlobTransaction(final BlobTransactionRequest request) {
+        return signer.sendBlobTransaction(request);
     }
 
     @Override

@@ -20,6 +20,7 @@ import io.brane.core.error.InvalidSenderException;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListWithGas;
+import io.brane.core.model.BlobTransactionRequest;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.LogEntry;
 import io.brane.core.model.Transaction;
@@ -475,6 +476,128 @@ final class DefaultSigner implements Brane.Signer {
                     null,
                     e);
         }
+    }
+
+    @Override
+    public Hash sendBlobTransaction(final BlobTransactionRequest request) {
+        final long chainId = fetchAndCacheChainId();
+        final Address from = request.from() != null ? request.from() : signer.address();
+
+        // Fetch nonce if not provided
+        final long nonce = request.nonceOpt()
+                .orElseGet(() -> fetchNonce(from).longValue());
+
+        // Use provided gas limit or estimate
+        final long gasLimit = request.gasLimitOpt()
+                .orElseGet(() -> {
+                    // Build a TransactionRequest for gas estimation
+                    final TransactionRequest estRequest = new TransactionRequest(
+                            from,
+                            request.to(),
+                            request.value(),
+                            null, // gasLimit (to be estimated)
+                            null, // gasPrice
+                            null, // maxPriorityFeePerGas
+                            null, // maxFeePerGas
+                            null, // nonce
+                            request.data(),
+                            true, // isEip1559 (EIP-4844 uses EIP-1559 fees)
+                            request.accessList());
+                    return reader.estimateGas(estRequest).longValue();
+                });
+
+        // Get fee parameters - use SmartGasStrategy for EIP-1559 fee estimation
+        final Wei maxPriorityFeePerGas;
+        final Wei maxFeePerGas;
+        if (request.maxPriorityFeePerGas() != null && request.maxFeePerGas() != null) {
+            maxPriorityFeePerGas = request.maxPriorityFeePerGas();
+            maxFeePerGas = request.maxFeePerGas();
+        } else {
+            // Create a dummy TransactionRequest to use SmartGasStrategy for fee estimation
+            final TransactionRequest dummyRequest = new TransactionRequest(
+                    from,
+                    request.to(),
+                    request.value(),
+                    gasLimit,
+                    null, // gasPrice
+                    request.maxPriorityFeePerGas(),
+                    request.maxFeePerGas(),
+                    nonce,
+                    request.data(),
+                    true, // isEip1559
+                    request.accessList());
+            final SmartGasStrategy.GasFilledRequest filled = gasStrategy.applyDefaults(dummyRequest, from);
+            maxPriorityFeePerGas = filled.request().maxPriorityFeePerGas();
+            maxFeePerGas = filled.request().maxFeePerGas();
+        }
+
+        final Wei maxFeePerBlobGas = request.maxFeePerBlobGasOpt()
+                .orElseGet(() -> {
+                    // Get current blob base fee and add buffer (2x)
+                    final Wei blobBaseFee = reader.getBlobBaseFee();
+                    return Wei.of(blobBaseFee.value().multiply(BigInteger.TWO));
+                });
+
+        // Build the unsigned EIP-4844 transaction
+        final io.brane.core.tx.Eip4844Transaction unsignedTx = new io.brane.core.tx.Eip4844Transaction(
+                chainId,
+                nonce,
+                maxPriorityFeePerGas,
+                maxFeePerGas,
+                gasLimit,
+                request.to(),
+                request.valueOpt().orElse(Wei.of(0)),
+                request.data() != null ? request.data() : HexData.EMPTY,
+                request.accessListOrEmpty(),
+                maxFeePerBlobGas,
+                request.blobVersionedHashes());
+
+        final Wei valueOrZero = request.valueOpt().orElse(Wei.of(0));
+        DebugLogger.logTx(LogFormatter.formatTxSend(
+                from.value(),
+                request.to().value(),
+                BigInteger.valueOf(nonce),
+                BigInteger.valueOf(gasLimit),
+                valueOrZero.value()));
+
+        // Sign the transaction
+        final io.brane.core.crypto.Signature signature = signer.signTransaction(unsignedTx, chainId);
+
+        // Encode with blob sidecar for network transmission
+        final byte[] envelope = unsignedTx.encodeAsNetworkWrapper(signature, request.sidecar());
+        final String signedHex = io.brane.primitives.Hex.encode(envelope);
+
+        final String txHash;
+        final long start = System.nanoTime();
+        try {
+            final JsonRpcResponse response = reader.sendWithRetry(
+                    "eth_sendRawTransaction", List.of(signedHex));
+            if (response.hasError()) {
+                final JsonRpcError err = response.error();
+                final String data = RpcUtils.extractErrorData(err.data());
+                handlePotentialRevert(data, err.message());
+                if (err.message() != null
+                        && err.message().toLowerCase().contains("invalid sender")) {
+                    throw new InvalidSenderException(err.message(), null);
+                }
+                throw new RpcException(err.code(), err.message(), data, (Long) null);
+            }
+            final Object result = response.result();
+            if (result == null) {
+                throw new RpcException(-32000, "eth_sendRawTransaction returned null", (String) null, (Throwable) null);
+            }
+            txHash = result.toString();
+        } catch (RpcException e) {
+            handlePotentialRevert(e.data(), e.getMessage());
+            if (e.getMessage() != null && e.getMessage().toLowerCase().contains("invalid sender")) {
+                throw new InvalidSenderException(e.getMessage(), e);
+            }
+            throw e;
+        }
+
+        final long durationMicros = (System.nanoTime() - start) / 1_000L;
+        DebugLogger.logTx(LogFormatter.formatTxHash(txHash, durationMicros));
+        return new Hash(txHash);
     }
 
     @Override
