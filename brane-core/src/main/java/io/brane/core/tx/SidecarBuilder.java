@@ -52,14 +52,14 @@ public final class SidecarBuilder {
     public static final int USABLE_BYTES_PER_BLOB = USABLE_BYTES_PER_FIELD_ELEMENT * FIELD_ELEMENTS_PER_BLOB;
 
     /**
-     * Maximum data size that can be encoded (6 blobs * 126,976 - 8 byte prefix).
-     */
-    public static final int MAX_DATA_SIZE = (USABLE_BYTES_PER_BLOB * 6) - LENGTH_PREFIX_SIZE;
-
-    /**
      * Maximum number of blobs per transaction (EIP-4844).
      */
     public static final int MAX_BLOBS = 6;
+
+    /**
+     * Maximum data size that can be encoded (6 blobs * 126,976 - 8 byte prefix).
+     */
+    public static final int MAX_DATA_SIZE = (USABLE_BYTES_PER_BLOB * MAX_BLOBS) - LENGTH_PREFIX_SIZE;
 
     private final List<Blob> blobs;
 
