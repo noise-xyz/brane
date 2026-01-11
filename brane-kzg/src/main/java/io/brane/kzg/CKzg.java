@@ -18,9 +18,22 @@ import io.brane.core.types.KzgProof;
  * operations for EIP-4844 blob transactions. A trusted setup must be loaded before
  * using any cryptographic operations.
  *
+ * <h2>Global State Warning</h2>
+ * <p>
+ * <b>Important:</b> The c-kzg-4844 native library maintains a single global trusted setup
+ * shared across all {@code CKzg} instances within the JVM. This has several implications:
+ * <ul>
+ *   <li>Multiple calls to {@link #loadFromClasspath()} or {@link #loadTrustedSetup(String)}
+ *       will reload the global trusted setup, affecting all existing instances</li>
+ *   <li>There is no per-instance state; all instances operate on the same native setup</li>
+ *   <li>In tests, loading a different trusted setup will affect all code using KZG</li>
+ *   <li>For typical applications, load the trusted setup once at startup and reuse the
+ *       instance throughout the application lifecycle</li>
+ * </ul>
+ *
  * <h2>Usage Example</h2>
  * <pre>{@code
- * // Load from classpath (recommended)
+ * // Load from classpath (recommended) - do this once at startup
  * Kzg kzg = CKzg.loadFromClasspath();
  *
  * // Or load from a custom path
