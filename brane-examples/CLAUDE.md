@@ -10,6 +10,10 @@ Comprehensive examples demonstrating SDK features. Also serves as integration te
 
 # Requires Anvil for most examples
 anvil  # In separate terminal
+
+# EIP-4844 blob examples require Cancun hardfork
+anvil --hardfork cancun
+./gradlew :brane-examples:run -PmainClass=io.brane.examples.BlobTransactionExample
 ```
 
 ## Canonical Examples (Start Here)
@@ -28,8 +32,10 @@ anvil  # In separate terminal
 | Example | Feature |
 |---------|---------|
 | `AccessListExample` | EIP-2930 access list optimization |
+| `BlobTransactionExample` | EIP-4844 blob transactions with KZG |
 | `GasEstimationDemo` | Gas estimation strategies |
 | `HighPerformanceExample` | Virtual thread performance |
+| `MnemonicWalletExample` | BIP-39/BIP-44 HD wallet derivation |
 | `TxBuilderExample` | Transaction builder patterns |
 | `Erc20TransferLogExample` | Event log decoding |
 | `MultiChainLatestBlockExample` | Multi-chain support |
@@ -70,4 +76,5 @@ anvil  # In separate terminal
 - brane-core
 - brane-rpc
 - brane-contract
+- brane-kzg (for EIP-4844 blob examples)
 - Requires Anvil for most examples

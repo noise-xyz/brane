@@ -159,6 +159,7 @@ tester.mine();
 BraneException (sealed root)
 ├── AbiDecodingException - ABI decoding failures
 ├── AbiEncodingException - ABI encoding failures
+├── KzgException - KZG proof/commitment failures
 ├── RevertException - EVM execution reverts (includes decoded reason)
 ├── RpcException - JSON-RPC communication failures
 └── TxnException - Transaction-specific failures (non-sealed)
@@ -182,6 +183,7 @@ BraneException (sealed root)
 - **PrivateKey security**: Call `key.destroy()` when done; `fromBytes()` zeros input array
 - **MnemonicWallet seed lifetime**: Keep wallet instances short-lived; the mnemonic phrase in memory provides access to all derived keys. Derived `Signer` instances are independent and can be held longer
 - **Anvil required**: Integration tests need `anvil` running on `127.0.0.1:8545`
+- **Blob transactions require Cancun**: Start Anvil with `anvil --hardfork cancun` for EIP-4844 support
 - **Default test key**: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
 
 ## For Full Details

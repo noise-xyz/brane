@@ -6,13 +6,14 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 
 | Package | Purpose |
 |---------|---------|
-| `io.brane.core.types` | Value objects: `Address`, `Wei`, `Hash`, `HexData` |
+| `io.brane.core.types` | Value objects: `Address`, `Wei`, `Hash`, `HexData`, `Blob`, `BlobSidecar`, `KzgCommitment`, `KzgProof` |
 | `io.brane.core.abi` | ABI encoding/decoding: `Abi`, `AbiEncoder`, `AbiDecoder` |
-| `io.brane.core.crypto` | ECDSA: `PrivateKey`, `Signer`, `Signature`, `Keccak256` |
+| `io.brane.core.crypto` | ECDSA: `PrivateKey`, `Signer`, `Signature`, `Keccak256`; KZG: `Kzg` interface |
+| `io.brane.core.crypto.hd` | HD Wallet (BIP-39/BIP-44): `MnemonicWallet`, `DerivationPath` |
 | `io.brane.core.crypto.eip712` | EIP-712: `TypedData`, `Eip712Domain`, `TypedDataSigner`, `TypedDataJson` |
-| `io.brane.core.builder` | Transaction builders: `TxBuilder`, `Eip1559Builder`, `LegacyBuilder` |
-| `io.brane.core.model` | Data models: `TransactionRequest`, `TransactionReceipt`, `BlockHeader` |
-| `io.brane.core.tx` | Transaction types: `LegacyTransaction`, `Eip1559Transaction` |
+| `io.brane.core.builder` | Transaction builders: `TxBuilder`, `Eip1559Builder`, `LegacyBuilder`, `Eip4844Builder` |
+| `io.brane.core.model` | Data models: `TransactionRequest`, `TransactionReceipt`, `BlockHeader`, `BlobTransactionRequest` |
+| `io.brane.core.tx` | Transaction types: `LegacyTransaction`, `Eip1559Transaction`, `Eip4844Transaction`; Blob utils: `SidecarBuilder`, `BlobDecoder` |
 | `io.brane.core.chain` | Chain profiles: `ChainProfiles.MAINNET`, etc. |
 | `io.brane.core.error` | Exception hierarchy: `BraneException`, `TxnException`, `RevertException` |
 | `io.brane.core.util` | Utilities: `Topics`, `MethodUtils` |
@@ -37,6 +38,12 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 - **`Signature`** - ECDSA signature with r, s, v components (defensive copies)
 - **`Keccak256`** - Hash utility with ThreadLocal caching - **call `cleanup()` in pooled threads**
 
+### HD Wallet (`io.brane.core.crypto.hd`)
+- **`MnemonicWallet`** - BIP-39/BIP-44 HD wallet with `fromPhrase()`, `generatePhrase()`, `derive()`
+- **`DerivationPath`** - Custom derivation path for non-standard account indices
+- **`Bip39`** - Internal BIP-39 mnemonic implementation
+- **`Bip32`** - Internal BIP-32 key derivation implementation
+
 ### EIP-712 (`io.brane.core.crypto.eip712`)
 - **`TypedData<T>`** - Primary API for type-safe EIP-712 signing with records
 - **`Eip712Domain`** - Domain separator fields with `separator()` method for computing domain hash
@@ -49,13 +56,25 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 - **`TxBuilder`** - Sealed interface for transaction building
 - **`Eip1559Builder`** - EIP-1559 transactions (recommended)
 - **`LegacyBuilder`** - Legacy (type 0) transactions
+- **`Eip4844Builder`** - EIP-4844 blob transactions with `blobData()` or `sidecar()` modes
 - **`BuilderValidation`** - Internal validation utility
+
+### EIP-4844 Blobs (`io.brane.core.types`, `io.brane.core.tx`, `io.brane.core.crypto`)
+- **`Blob`** - 128KB blob data (4096 field elements)
+- **`BlobSidecar`** - Container for blobs, KZG commitments, and proofs
+- **`KzgCommitment`** - 48-byte KZG commitment with `toVersionedHash()`
+- **`KzgProof`** - 48-byte KZG proof
+- **`SidecarBuilder`** - Encode raw bytes into blobs and build sidecars
+- **`BlobDecoder`** - Decode original data back from blobs
+- **`Kzg`** - Interface for KZG operations (implemented by `CKzg` in brane-kzg)
+- **`BlobTransactionRequest`** - Request model containing transaction fields and sidecar
 
 ### Error Hierarchy (`io.brane.core.error`)
 ```
 BraneException (sealed)
 ├── AbiDecodingException - ABI decoding failures
 ├── AbiEncodingException - ABI encoding failures
+├── KzgException - KZG proof/commitment failures
 ├── RevertException - EVM execution reverts
 ├── RpcException - JSON-RPC communication failures
 └── TxnException - Transaction-specific failures (non-sealed)
@@ -92,6 +111,26 @@ try {
 }
 ```
 
+### HD Wallet (BIP-39/BIP-44)
+```java
+// Generate new wallet (save phrase securely!)
+MnemonicWallet wallet = MnemonicWallet.generatePhrase();
+String phrase = wallet.phrase();
+
+// Restore wallet from existing phrase
+MnemonicWallet restored = MnemonicWallet.fromPhrase(phrase);
+
+// With passphrase for extra security
+MnemonicWallet secure = MnemonicWallet.fromPhrase(phrase, "my-passphrase");
+
+// Derive signers for different addresses (m/44'/60'/0'/0/N)
+Signer account0 = wallet.derive(0);
+Signer account1 = wallet.derive(1);
+
+// Custom derivation path
+Signer custom = wallet.derive(new DerivationPath(1, 5)); // m/44'/60'/1'/0/5
+```
+
 ### EIP-712 Typed Data Signing
 ```java
 // Build domain
@@ -123,17 +162,45 @@ executor.submit(() -> {
 });
 ```
 
+### EIP-4844 Blob Transactions
+```java
+// Build blob transaction from raw data (requires Kzg from brane-kzg)
+BlobTransactionRequest request = Eip4844Builder.create()
+    .to(recipient)
+    .value(Wei.fromEther("0.001"))
+    .blobData(rawBytes)  // Raw data to encode into blobs
+    .maxFeePerBlobGas(Wei.gwei(10))
+    .build(kzg);  // KZG instance for commitment/proof generation
+
+// Or build with pre-constructed sidecar (for reuse/fee bumping)
+BlobSidecar sidecar = SidecarBuilder.from(rawBytes).build(kzg);
+BlobTransactionRequest request2 = Eip4844Builder.create()
+    .to(recipient)
+    .sidecar(sidecar)  // Pre-built sidecar
+    .build();
+
+// Decode data back from blobs (round-trip verification)
+byte[] decoded = BlobDecoder.decode(request.sidecar().blobs());
+
+// Validate KZG proofs
+request.sidecar().validate(kzg);
+```
+
 ## Gotchas
 
 - **Keccak256 ThreadLocal**: Call `Keccak256.cleanup()` in pooled/web threads to prevent memory leaks
 - **PrivateKey.fromBytes()**: Input array is **zeroed** after construction for security
 - **PrivateKey implements Destroyable**: Call `destroy()` when done with key material
+- **MnemonicWallet seed lifetime**: Keep wallet instances short-lived; the mnemonic phrase in memory provides access to all derived keys. Derived `Signer` instances are independent and can be held longer
 - **Signature.r()/s()**: Return defensive copies - safe to expose
 - **HexData.fromBytes()**: Creates defensive copy - safe to modify original after
 - **Wei precision**: Use `BigInteger` or `BigDecimal` - never `double` for amounts
 - **Address checksums**: `Address.from()` validates EIP-55 checksums when mixed case
 - **TransactionReceipt.contractAddress**: Type is `Address` (not `HexData`)
 - **Record validation**: All model records validate in compact constructors - invalid data throws early
+- **BlobSidecar max blobs**: Maximum 6 blobs per transaction (EIP-4844 limit)
+- **Blob data encoding**: Use `SidecarBuilder.from(bytes)` - each blob holds ~126KB usable data
+- **Kzg instance**: Obtain from `brane-kzg` module via `CKzg.loadFromClasspath()`
 
 ## Dependencies
 

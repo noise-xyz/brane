@@ -118,6 +118,25 @@ TransactionReceipt receipt = client.sendTransactionAndWait(request);
 TransactionReceipt receipt = client.sendTransactionAndWait(request, 120_000, 2_000);
 ```
 
+### EIP-4844 Blob Transactions (Brane.Signer only)
+
+```java
+// Build blob transaction request (see brane-core for Eip4844Builder)
+BlobTransactionRequest blobRequest = Eip4844Builder.create()
+    .to(recipient)
+    .blobData(rawBytes)
+    .build(kzg);
+
+// Send blob transaction and wait for confirmation
+TransactionReceipt receipt = client.sendBlobTransactionAndWait(blobRequest);
+
+// Fire and forget (returns hash immediately)
+Hash txHash = client.sendBlobTransaction(blobRequest);
+
+// Custom timeout and poll interval
+TransactionReceipt receipt = client.sendBlobTransactionAndWait(blobRequest, 120_000, 2_000);
+```
+
 ### Simulation (eth_simulateV1)
 
 ```java
@@ -220,6 +239,14 @@ try (Brane.Tester tester = Brane.connectTest("http://127.0.0.1:8545")) {
     // Reset chain
     tester.reset();
     tester.reset(forkUrl, blockNumber);
+
+    // EIP-4844 blob transactions (requires Cancun fork)
+    // Start Anvil with: anvil --hardfork cancun
+    BlobTransactionRequest blobRequest = Eip4844Builder.create()
+        .to(recipient)
+        .blobData(rawBytes)
+        .build(kzg);
+    Hash txHash = tester.sendBlobTransaction(blobRequest);
 }
 ```
 
@@ -235,6 +262,7 @@ try (Brane.Tester tester = Brane.connectTest("http://127.0.0.1:8545")) {
 - **Subscription errors**: `unsubscribe()` is idempotent and swallows errors (logged at WARN level)
 - **Tester snapshots**: Snapshots are consumed on revert - take a new snapshot if you need to revert multiple times
 - **Tester impersonation cleanup**: Always use try-with-resources for `ImpersonationSession` to ensure cleanup
+- **Blob transactions require Cancun**: Anvil must be started with `--hardfork cancun` for EIP-4844 support
 
 ## Dependencies
 
