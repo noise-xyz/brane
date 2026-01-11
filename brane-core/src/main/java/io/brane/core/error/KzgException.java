@@ -136,4 +136,15 @@ public final class KzgException extends BraneException {
     public static KzgException proofError(final String message) {
         return new KzgException(Kind.PROOF_ERROR, message);
     }
+
+    /**
+     * Creates an exception for proof computation or verification errors with a cause.
+     *
+     * @param message description of the proof failure
+     * @param cause the underlying cause
+     * @return a new KzgException with kind PROOF_ERROR
+     */
+    public static KzgException proofError(final String message, final Throwable cause) {
+        return new KzgException(Kind.PROOF_ERROR, message, cause);
+    }
 }

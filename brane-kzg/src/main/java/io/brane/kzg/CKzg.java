@@ -150,7 +150,7 @@ public final class CKzg implements Kzg {
             byte[] proof = CKZG4844JNI.computeBlobKzgProof(blob.toBytes(), commitment.toBytes());
             return new KzgProof(proof);
         } catch (Exception e) {
-            throw KzgException.proofError("Failed to compute KZG proof: " + e.getMessage());
+            throw KzgException.proofError("Failed to compute KZG proof: " + e.getMessage(), e);
         }
     }
 
@@ -166,7 +166,7 @@ public final class CKzg implements Kzg {
                     commitment.toBytes(),
                     proof.toBytes());
         } catch (Exception e) {
-            throw KzgException.proofError("Failed to verify KZG proof: " + e.getMessage());
+            throw KzgException.proofError("Failed to verify KZG proof: " + e.getMessage(), e);
         }
     }
 
@@ -212,7 +212,7 @@ public final class CKzg implements Kzg {
                     proofsFlat,
                     blobs.size());
         } catch (Exception e) {
-            throw KzgException.proofError("Failed to verify KZG proof batch: " + e.getMessage());
+            throw KzgException.proofError("Failed to verify KZG proof batch: " + e.getMessage(), e);
         }
     }
 }
