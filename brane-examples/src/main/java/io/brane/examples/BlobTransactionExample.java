@@ -68,6 +68,8 @@ public final class BlobTransactionExample {
             System.out.println("[1] Loading KZG Trusted Setup...");
             System.out.println("    Using CKzg.loadFromClasspath() to load bundled setup");
 
+            // CKzg uses a global native setup that remains in memory for the JVM lifetime.
+            // No cleanup is needed - the Kzg interface does not extend AutoCloseable.
             Kzg kzg = CKzg.loadFromClasspath();
 
             System.out.println(AnsiColors.success("KZG trusted setup loaded successfully"));
