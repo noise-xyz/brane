@@ -482,6 +482,239 @@ class DefaultSignerTest {
         assertTrue(ex.getMessage().contains("reverted"));
     }
 
+    // ==================== sendBlobTransaction() Tests ====================
+
+    @Test
+    void sendBlobTransactionReturnsHash() {
+        // Given: provider returns successful responses for all required calls
+        stubChainId("0x1");
+        stubLatestBlock(20_000_000_000L); // baseFee = 20 gwei
+        stubEstimateGas("0x5208"); // 21000
+        stubNonce("0x5");
+        stubBlobBaseFee("0x1"); // 1 wei blob base fee
+        stubSendRawTransaction(TX_HASH.value());
+
+        io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
+                null, // from (defaults to signer.address())
+                RECIPIENT,
+                Wei.of(1_000_000_000_000_000_000L), // 1 ETH
+                null, // gasLimit (auto)
+                null, // maxPriorityFeePerGas (auto)
+                null, // maxFeePerGas (auto)
+                null, // maxFeePerBlobGas (auto)
+                null, // nonce (auto)
+                null, // data
+                null, // accessList
+                createTestSidecar());
+
+        // When
+        Hash hash = signer.sendBlobTransaction(request);
+
+        // Then
+        assertEquals(TX_HASH.value(), hash.value());
+        verify(provider).send(eq("eth_sendRawTransaction"), any());
+    }
+
+    @Test
+    void sendBlobTransactionUsesSignerAddress() {
+        // Given
+        stubChainId("0x1");
+        stubLatestBlock(10_000_000_000L);
+        stubEstimateGas("0x5208");
+        stubNonce("0x0");
+        stubBlobBaseFee("0x1");
+        stubSendRawTransaction(TX_HASH.value());
+
+        io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
+                null, // from defaults to signer.address()
+                RECIPIENT,
+                Wei.of(0),
+                null, null, null, null, null, null, null,
+                createTestSidecar());
+
+        // When
+        signer.sendBlobTransaction(request);
+
+        // Then: verify nonce was fetched for signer address
+        verify(provider).send(eq("eth_getTransactionCount"), eq(List.of(SENDER.value(), "pending")));
+    }
+
+    @Test
+    void sendBlobTransactionBuildsEip4844Transaction() {
+        // Given
+        stubChainId("0x1");
+        stubLatestBlock(10_000_000_000L);
+        stubEstimateGas("0x5208");
+        stubNonce("0x3");
+        stubBlobBaseFee("0x1");
+        stubSendRawTransaction(TX_HASH.value());
+
+        io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
+                null,
+                RECIPIENT,
+                Wei.of(1_000_000_000L),
+                null, null, null, null, null, null, null,
+                createTestSidecar());
+
+        // When
+        signer.sendBlobTransaction(request);
+
+        // Then
+        assertEquals("EIP4844", fakeSigner.lastTransactionType());
+        assertEquals(3L, fakeSigner.lastNonce());
+    }
+
+    @Test
+    void sendBlobTransactionUsesProvidedNonce() {
+        // Given
+        stubChainId("0x1");
+        stubLatestBlock(10_000_000_000L);
+        stubEstimateGas("0x5208");
+        // Don't stub nonce - it shouldn't be called
+        stubBlobBaseFee("0x1");
+        stubSendRawTransaction(TX_HASH.value());
+
+        io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
+                null,
+                RECIPIENT,
+                Wei.of(0),
+                null, // gasLimit
+                null, // maxPriorityFeePerGas
+                null, // maxFeePerGas
+                null, // maxFeePerBlobGas
+                42L, // nonce
+                null, null,
+                createTestSidecar());
+
+        // When
+        signer.sendBlobTransaction(request);
+
+        // Then: should use provided nonce
+        assertEquals(42L, fakeSigner.lastNonce());
+    }
+
+    @Test
+    void sendBlobTransactionUsesProvidedGasLimit() {
+        // Given
+        stubChainId("0x1");
+        stubLatestBlock(10_000_000_000L);
+        // Don't stub estimateGas - it shouldn't be called when gasLimit is provided
+        stubNonce("0x0");
+        stubBlobBaseFee("0x1");
+        stubSendRawTransaction(TX_HASH.value());
+
+        io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
+                null,
+                RECIPIENT,
+                Wei.of(0),
+                100_000L, // gasLimit
+                null, null, null, null, null, null,
+                createTestSidecar());
+
+        // When
+        signer.sendBlobTransaction(request);
+
+        // Then: should use provided gas limit
+        assertEquals(100_000L, fakeSigner.lastGasLimit());
+    }
+
+    @Test
+    void sendBlobTransactionUsesProvidedFees() {
+        // Given
+        stubChainId("0x1");
+        // No block needed - fees are provided
+        stubEstimateGas("0x5208");
+        stubNonce("0x0");
+        // No blobBaseFee needed - maxFeePerBlobGas is provided
+        stubSendRawTransaction(TX_HASH.value());
+
+        io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
+                null,
+                RECIPIENT,
+                Wei.of(0),
+                null, // gasLimit
+                Wei.of(2_000_000_000L), // maxPriorityFeePerGas
+                Wei.of(50_000_000_000L), // maxFeePerGas
+                Wei.of(100_000_000_000L), // maxFeePerBlobGas
+                null, null, null,
+                createTestSidecar());
+
+        // When
+        signer.sendBlobTransaction(request);
+
+        // Then
+        assertEquals(BigInteger.valueOf(50_000_000_000L), fakeSigner.lastMaxFeePerGas());
+        assertEquals(BigInteger.valueOf(2_000_000_000L), fakeSigner.lastMaxPriorityFeePerGas());
+        assertEquals(BigInteger.valueOf(100_000_000_000L), fakeSigner.lastMaxFeePerBlobGas());
+    }
+
+    @Test
+    void sendBlobTransactionDefaultsMaxFeePerBlobGasTo2xBlobBaseFee() {
+        // Given
+        stubChainId("0x1");
+        stubLatestBlock(10_000_000_000L);
+        stubEstimateGas("0x5208");
+        stubNonce("0x0");
+        stubBlobBaseFee("0x3b9aca00"); // 1 gwei blob base fee
+        stubSendRawTransaction(TX_HASH.value());
+
+        io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
+                null,
+                RECIPIENT,
+                Wei.of(0),
+                null, null, null, null, null, null, null,
+                createTestSidecar());
+
+        // When
+        signer.sendBlobTransaction(request);
+
+        // Then: maxFeePerBlobGas should be 2x blob base fee = 2 gwei
+        assertEquals(BigInteger.valueOf(2_000_000_000L), fakeSigner.lastMaxFeePerBlobGas());
+    }
+
+    @Test
+    void sendBlobTransactionThrowsOnRpcError() {
+        // Given
+        stubChainId("0x1");
+        stubLatestBlock(10_000_000_000L);
+        stubEstimateGas("0x5208");
+        stubNonce("0x0");
+        stubBlobBaseFee("0x1");
+        stubSendRawTransactionError(-32000, "insufficient funds");
+
+        io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
+                null,
+                RECIPIENT,
+                Wei.of(1_000_000_000_000_000_000L),
+                null, null, null, null, null, null, null,
+                createTestSidecar());
+
+        // When/Then
+        RpcException ex = assertThrows(RpcException.class, () -> signer.sendBlobTransaction(request));
+        assertTrue(ex.getMessage().contains("insufficient funds"));
+    }
+
+    @Test
+    void sendBlobTransactionThrowsInvalidSenderException() {
+        // Given
+        stubChainId("0x1");
+        stubLatestBlock(10_000_000_000L);
+        stubEstimateGas("0x5208");
+        stubNonce("0x0");
+        stubBlobBaseFee("0x1");
+        stubSendRawTransactionError(-32000, "invalid sender");
+
+        io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
+                null,
+                RECIPIENT,
+                Wei.of(0),
+                null, null, null, null, null, null, null,
+                createTestSidecar());
+
+        // When/Then
+        assertThrows(InvalidSenderException.class, () -> signer.sendBlobTransaction(request));
+    }
+
     // ==================== signer() Tests ====================
 
     @Test
@@ -579,6 +812,11 @@ class DefaultSignerTest {
     private void stubGasPrice(String hexValue) {
         JsonRpcResponse response = new JsonRpcResponse("2.0", hexValue, null, "1");
         when(provider.send(eq("eth_gasPrice"), any())).thenReturn(response);
+    }
+
+    private void stubBlobBaseFee(String hexValue) {
+        JsonRpcResponse response = new JsonRpcResponse("2.0", hexValue, null, "1");
+        when(provider.send(eq("eth_blobBaseFee"), any())).thenReturn(response);
     }
 
     private void stubNonce(String hexValue) {
@@ -681,6 +919,29 @@ class DefaultSignerTest {
     }
 
     /**
+     * Creates a test blob sidecar with dummy data.
+     * The commitment produces a versioned hash that starts with 0x01 (KZG version).
+     */
+    private static io.brane.core.types.BlobSidecar createTestSidecar() {
+        // Create a blob with all zeros (128 KiB)
+        byte[] blobData = new byte[io.brane.core.types.Blob.SIZE];
+        io.brane.core.types.Blob blob = new io.brane.core.types.Blob(blobData);
+
+        // Create a commitment (48 bytes) - just use zeros for testing
+        byte[] commitmentData = new byte[io.brane.core.types.KzgCommitment.SIZE];
+        io.brane.core.types.KzgCommitment commitment = new io.brane.core.types.KzgCommitment(commitmentData);
+
+        // Create a proof (48 bytes) - just use zeros for testing
+        byte[] proofData = new byte[io.brane.core.types.KzgProof.SIZE];
+        io.brane.core.types.KzgProof proof = new io.brane.core.types.KzgProof(proofData);
+
+        return new io.brane.core.types.BlobSidecar(
+                List.of(blob),
+                List.of(commitment),
+                List.of(proof));
+    }
+
+    /**
      * Fake signer for testing that captures signed transaction details.
      */
     private static final class FakeSigner implements Signer {
@@ -711,6 +972,7 @@ class DefaultSignerTest {
             return switch (lastTx) {
                 case io.brane.core.tx.LegacyTransaction tx -> tx.nonce();
                 case io.brane.core.tx.Eip1559Transaction tx -> tx.nonce();
+                case io.brane.core.tx.Eip4844Transaction tx -> tx.nonce();
             };
         }
 
@@ -718,19 +980,29 @@ class DefaultSignerTest {
             return switch (lastTx) {
                 case io.brane.core.tx.LegacyTransaction tx -> tx.gasLimit();
                 case io.brane.core.tx.Eip1559Transaction tx -> tx.gasLimit();
+                case io.brane.core.tx.Eip4844Transaction tx -> tx.gasLimit();
             };
         }
 
         BigInteger lastMaxPriorityFeePerGas() {
-            if (lastTx instanceof io.brane.core.tx.Eip1559Transaction tx) {
-                return tx.maxPriorityFeePerGas().value();
-            }
-            return null;
+            return switch (lastTx) {
+                case io.brane.core.tx.Eip1559Transaction tx -> tx.maxPriorityFeePerGas().value();
+                case io.brane.core.tx.Eip4844Transaction tx -> tx.maxPriorityFeePerGas().value();
+                default -> null;
+            };
         }
 
         BigInteger lastMaxFeePerGas() {
-            if (lastTx instanceof io.brane.core.tx.Eip1559Transaction tx) {
-                return tx.maxFeePerGas().value();
+            return switch (lastTx) {
+                case io.brane.core.tx.Eip1559Transaction tx -> tx.maxFeePerGas().value();
+                case io.brane.core.tx.Eip4844Transaction tx -> tx.maxFeePerGas().value();
+                default -> null;
+            };
+        }
+
+        BigInteger lastMaxFeePerBlobGas() {
+            if (lastTx instanceof io.brane.core.tx.Eip4844Transaction tx) {
+                return tx.maxFeePerBlobGas().value();
             }
             return null;
         }
@@ -746,6 +1018,7 @@ class DefaultSignerTest {
             return switch (lastTx) {
                 case io.brane.core.tx.LegacyTransaction tx -> "LEGACY";
                 case io.brane.core.tx.Eip1559Transaction tx -> "EIP1559";
+                case io.brane.core.tx.Eip4844Transaction tx -> "EIP4844";
             };
         }
     }

@@ -7,7 +7,8 @@ Modern, type-safe Java 21 SDK for Ethereum/EVM. Inspired by viem (TS) and alloy 
 | Module | Purpose | Key Classes |
 |--------|---------|-------------|
 | `brane-primitives` | Hex/RLP utilities (zero deps) | `Hex`, `Rlp` |
-| `brane-core` | Types, ABI, crypto, EIP-712, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `MnemonicWallet`, `TypedData`, `TxBuilder` |
+| `brane-core` | Types, ABI, crypto, EIP-712, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `MnemonicWallet`, `TypedData`, `TxBuilder`, `Blob`, `BlobSidecar`, `Eip4844Builder` |
+| `brane-kzg` | KZG commitments for EIP-4844 blobs | `CKzg`, `Kzg` |
 | `brane-rpc` | JSON-RPC client layer | `Brane`, `Brane.Reader`, `Brane.Signer`, `Brane.Tester`, `BraneProvider` |
 | `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `ReadOnlyContract` |
 | `brane-examples` | Usage examples & integration tests | Various `*Example.java` |
@@ -29,9 +30,10 @@ brane-primitives (no deps)
        ↓
    brane-core (BouncyCastle, Jackson)
        ↓
-    brane-rpc (Netty, Disruptor)
-       ↓
-  brane-contract
+   ┌───┴───┐
+brane-kzg  brane-rpc (Netty, Disruptor)
+(c-kzg)        ↓
+          brane-contract
 ```
 
 ## Common Commands
@@ -72,6 +74,24 @@ Eip1559Builder.create()
     .value(Wei.fromEther("0.1"))
     .data(calldata)
     .build(signer, client);
+```
+
+### Blob Transactions (EIP-4844)
+```java
+// Load KZG trusted setup
+Kzg kzg = CKzg.loadFromClasspath();
+
+// Build blob transaction from raw data
+BlobTransactionRequest request = Eip4844Builder.create()
+    .to(recipient)
+    .blobData(rawBytes)
+    .build(kzg);
+
+// Send blob transaction
+TransactionReceipt receipt = signer.sendBlobTransactionAndWait(request);
+
+// Decode data from blobs
+byte[] decoded = BlobDecoder.decode(request.sidecar().blobs());
 ```
 
 ### HD Wallet (BIP-39/BIP-44)

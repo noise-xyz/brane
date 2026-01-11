@@ -24,6 +24,9 @@ import java.util.Objects;
 public record Wei(BigInteger value) {
     private static final BigDecimal WEI_PER_ETHER = BigDecimal.TEN.pow(18);
 
+    /** Zero wei constant. */
+    public static final Wei ZERO = Wei.of(0);
+
     public Wei {
         Objects.requireNonNull(value, "value");
         if (value.signum() < 0) {

@@ -15,6 +15,16 @@
           {
             "type": "command",
             "command": "file=$(jq -r '.tool_input.file_path'); if echo \"$file\" | grep -q '\\.java$' && echo \"$file\" | grep -q '/src/main/' && ! echo \"$file\" | grep -q 'Test\\.java$'; then cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/suggest_tests.sh \"$file\" 2>/dev/null; fi; exit 0"
+          },
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/check_shell_syntax.sh",
+            "statusMessage": "Checking shell syntax"
+          },
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/validate_tasks_file.sh",
+            "statusMessage": "Validating tasks file format"
           }
         ]
       },

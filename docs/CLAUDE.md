@@ -47,15 +47,15 @@ description: "Brief description"
 
 Regular markdown content.
 
-<CodeGroup>
+{/* <CodeGroup> */}
 ```java
 // Java example
 ```
-</CodeGroup>
+{/* </CodeGroup> */}
 
-<Note>
+{/* <Note> */}
 Important information here.
-</Note>
+{/* </Note> */}
 ```
 
 ## Key Files

@@ -183,7 +183,15 @@ final class DefaultReader implements Brane.Reader {
         );
 
         final String txHash = RpcUtils.stringValue(map.get("hash"));
+        if (txHash == null) {
+            throw new io.brane.core.error.RpcException(
+                    0, "eth_getTransactionByHash response missing 'hash' field", (String) null, (Throwable) null);
+        }
         final String from = RpcUtils.stringValue(map.get("from"));
+        if (from == null) {
+            throw new io.brane.core.error.RpcException(
+                    0, "eth_getTransactionByHash response missing 'from' field", (String) null, (Throwable) null);
+        }
         final String to = RpcUtils.stringValue(map.get("to"));
         final String input = RpcUtils.stringValue(map.get("input"));
         final String valueHex = RpcUtils.stringValue(map.get("value"));
@@ -386,6 +394,18 @@ final class DefaultReader implements Brane.Reader {
                     0, "eth_estimateGas returned null", (String) null, (Throwable) null);
         }
         return RpcUtils.decodeHexBigInteger(result.toString());
+    }
+
+    @Override
+    public Wei getBlobBaseFee() {
+        ensureOpen();
+        final JsonRpcResponse response = sendWithRetry("eth_blobBaseFee", List.of());
+        final Object result = response.result();
+        if (result == null) {
+            throw new io.brane.core.error.RpcException(
+                    0, "eth_blobBaseFee returned null", (String) null, (Throwable) null);
+        }
+        return new Wei(RpcUtils.decodeHexBigInteger(result.toString()));
     }
 
     /**

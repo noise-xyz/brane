@@ -20,8 +20,10 @@ import io.brane.core.RevertDecoder.RevertKind;
 import io.brane.core.abi.Abi;
 import io.brane.core.abi.TypeSchema.StringSchema;
 import io.brane.core.abi.TypeSchema.UIntSchema;
+import io.brane.core.builder.Eip4844Builder;
 import io.brane.core.builder.TxBuilder;
 import io.brane.core.chain.ChainProfile;
+import io.brane.core.crypto.Kzg;
 import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.crypto.Signature;
 import io.brane.core.crypto.Signer;
@@ -29,6 +31,7 @@ import io.brane.core.error.ChainMismatchException;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListEntry;
+import io.brane.core.model.BlobTransactionRequest;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.LogEntry;
 import io.brane.core.model.TransactionReceipt;
@@ -38,6 +41,7 @@ import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.core.util.Topics;
+import io.brane.kzg.CKzg;
 import io.brane.primitives.Hex;
 import io.brane.rpc.AccountOverride;
 import io.brane.rpc.Brane;
@@ -110,6 +114,7 @@ public class SmokeApp {
     private static Abi complexAbi;
 
     private static boolean sepoliaMode = false;
+    private static Kzg kzg;
 
     public static void main(String[] args) {
         System.out.println("=== 🚀 Brane SDK Smoke Test Suite ===");
@@ -122,6 +127,11 @@ public class SmokeApp {
         }
 
         try {
+            // Load KZG trusted setup at start (required for blob transactions)
+            System.out.println("[Setup] Loading KZG Trusted Setup...");
+            kzg = CKzg.loadFromClasspath();
+            System.out.println("✓ KZG loaded");
+
             setup();
 
             if (sepoliaMode) {
@@ -151,6 +161,7 @@ public class SmokeApp {
                 testEip712DynamicSigning(); // Scenario S
                 testEip712JsonParsing(); // Scenario T
                 testTesterOperations(); // Scenario U
+                testBlobTransaction(); // Scenario V
             }
 
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
@@ -1263,5 +1274,55 @@ public class SmokeApp {
         } catch (Exception e) {
             throw new RuntimeException("Tester operations test failed", e);
         }
+    }
+
+    /**
+     * Scenario V: EIP-4844 Blob Transaction.
+     * <p>
+     * Tests the blob transaction functionality:
+     * - Create blob transaction with test data
+     * - Send and wait for confirmation
+     * - Verify receipt status is 1 (success)
+     * - Verify sidecar has expected blob count
+     */
+    private static void testBlobTransaction() {
+        System.out.println("\n[Scenario V] EIP-4844 Blob Transaction");
+
+        // KZG is loaded at start of main() - verify it's available
+        if (kzg == null) {
+            throw new RuntimeException("KZG not loaded - call CKzg.loadFromClasspath() first");
+        }
+        System.out.println("  ✓ KZG trusted setup available");
+
+        // Build blob transaction with test data
+        System.out.println("  Building blob transaction...");
+        byte[] testData = "Brane SDK EIP-4844 Blob Transaction Smoke Test".getBytes(StandardCharsets.UTF_8);
+
+        BlobTransactionRequest request = Eip4844Builder.create()
+                .to(RECIPIENT)
+                .value(Wei.of(1))
+                .blobData(testData)
+                .build(kzg);
+
+        int blobCount = request.sidecar().size();
+        System.out.println("    ✓ Blob transaction built (blob count: " + blobCount + ")");
+
+        // Verify sidecar has expected blob count (1 blob for small data)
+        if (blobCount != 1) {
+            throw new RuntimeException("Expected 1 blob, got " + blobCount);
+        }
+
+        // Send and wait for confirmation
+        System.out.println("  Sending blob transaction...");
+        TransactionReceipt receipt = signerClient.sendBlobTransactionAndWait(request);
+
+        // Verify receipt status is 1 (success)
+        if (!receipt.status()) {
+            throw new RuntimeException("Blob transaction failed! Status: " + receipt.status());
+        }
+        System.out.println("    ✓ Transaction confirmed with status: 1 (success)");
+        System.out.println("    Transaction hash: " + receipt.transactionHash().value());
+
+        System.out.println("  ✅ Scenario V: EIP-4844 Blob Transaction PASSED");
     }
 }

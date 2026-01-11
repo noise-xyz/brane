@@ -13,6 +13,7 @@ dependencies {
     implementation project(':brane-rpc')
     implementation project(':brane-contract')
     implementation project(':brane-primitives')
+    implementation project(':brane-kzg')
 }
 
 application {

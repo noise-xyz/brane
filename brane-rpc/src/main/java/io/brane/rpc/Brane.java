@@ -10,6 +10,7 @@ import org.jspecify.annotations.Nullable;
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.crypto.Signer;
 import io.brane.core.model.AccessListWithGas;
+import io.brane.core.model.BlobTransactionRequest;
 import io.brane.core.model.BlockHeader;
 import io.brane.core.model.LogEntry;
 import io.brane.core.model.Transaction;
@@ -18,6 +19,7 @@ import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
+import io.brane.core.types.Wei;
 
 /**
  * Unified entry point for interacting with Ethereum/EVM blockchains.
@@ -393,6 +395,26 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * @since 0.1.0
      */
     BigInteger estimateGas(TransactionRequest request);
+
+    /**
+     * Retrieves the current blob base fee per gas.
+     *
+     * <p>This method returns the base fee per blob gas for EIP-4844 blob transactions
+     * in the current block. The blob base fee is calculated using an EIP-1559-like
+     * mechanism based on blob gas usage in previous blocks.
+     *
+     * <p>This method calls the {@code eth_blobBaseFee} JSON-RPC method.
+     *
+     * <p><strong>Example:</strong>
+     * <pre>{@code
+     * Wei blobBaseFee = client.getBlobBaseFee();
+     * System.out.println("Current blob base fee: " + blobBaseFee.toGwei() + " gwei");
+     * }</pre>
+     *
+     * @return the current blob base fee per gas
+     * @since 0.4.0
+     */
+    Wei getBlobBaseFee();
 
     /**
      * Creates an access list for a transaction.
@@ -984,6 +1006,131 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
                 TransactionRequest request, long timeoutMillis, long pollIntervalMillis);
 
         /**
+         * Submits an EIP-4844 blob transaction to the blockchain and returns immediately.
+         *
+         * <p>This method:
+         * <ol>
+         *   <li>Fills in missing gas/nonce fields if null in the request</li>
+         *   <li>Signs the transaction using the configured signer</li>
+         *   <li>Broadcasts via {@code eth_sendRawTransaction} with the blob sidecar</li>
+         *   <li>Returns the transaction hash without waiting for confirmation</li>
+         * </ol>
+         *
+         * <p><strong>Note:</strong> The transaction is submitted but NOT confirmed.
+         * Use {@link #getTransactionReceipt(Hash)} to check confirmation status.
+         *
+         * <p><strong>Example:</strong>
+         * <pre>{@code
+         * BlobSidecar sidecar = BlobSidecar.from(blobs, commitments, proofs);
+         * BlobTransactionRequest request = new BlobTransactionRequest(
+         *     null, // from (auto-filled from signer)
+         *     contractAddress,
+         *     null, // value
+         *     null, // gasLimit (auto-estimated)
+         *     null, // maxPriorityFeePerGas (auto-filled)
+         *     null, // maxFeePerGas (auto-filled)
+         *     null, // maxFeePerBlobGas (auto-filled)
+         *     null, // nonce (auto-fetched)
+         *     calldata,
+         *     null, // accessList
+         *     sidecar
+         * );
+         * Hash txHash = client.sendBlobTransaction(request);
+         * }</pre>
+         *
+         * @param request the blob transaction request with at minimum a {@code to} address
+         *                and {@code sidecar}; all other fields are optional and will be auto-filled
+         * @return the transaction hash of the submitted transaction
+         * @since 0.4.0
+         */
+        Hash sendBlobTransaction(BlobTransactionRequest request);
+
+        /** Default poll interval for checking blob transaction receipt: 2 seconds. */
+        long DEFAULT_BLOB_POLL_INTERVAL_MILLIS = 2_000;
+
+        /**
+         * Submits an EIP-4844 blob transaction and waits for it to be confirmed using default settings.
+         *
+         * <p>This is a convenience method that uses default timeout (60 seconds) and poll
+         * interval (2 seconds). For custom settings, use
+         * {@link #sendBlobTransactionAndWait(BlobTransactionRequest, long, long)}.
+         *
+         * <p>This method combines {@link #sendBlobTransaction} with polling for the receipt.
+         * It will:
+         * <ol>
+         *   <li>Submit the blob transaction (same as {@link #sendBlobTransaction})</li>
+         *   <li>Poll {@code eth_getTransactionReceipt} every 2 seconds</li>
+         *   <li>Return the receipt once the transaction is included in a block</li>
+         *   <li>Throw an exception if 60 seconds is exceeded or transaction reverts</li>
+         * </ol>
+         *
+         * @param request the blob transaction request
+         * @return the transaction receipt once confirmed
+         * @since 0.4.0
+         */
+        default TransactionReceipt sendBlobTransactionAndWait(BlobTransactionRequest request) {
+            return sendBlobTransactionAndWait(request, DEFAULT_TIMEOUT_MILLIS, DEFAULT_BLOB_POLL_INTERVAL_MILLIS);
+        }
+
+        /**
+         * Submits an EIP-4844 blob transaction and waits for it to be confirmed in a block.
+         *
+         * <p>This method combines {@link #sendBlobTransaction} with polling for the receipt.
+         * It will:
+         * <ol>
+         *   <li>Submit the blob transaction (same as {@link #sendBlobTransaction})</li>
+         *   <li>Poll {@code eth_getTransactionReceipt} at the specified interval</li>
+         *   <li>Return the receipt once the transaction is included in a block</li>
+         *   <li>Throw an exception if timeout is reached or transaction reverts</li>
+         * </ol>
+         *
+         * @param request            the blob transaction request
+         * @param timeoutMillis      maximum time to wait for confirmation, in milliseconds
+         * @param pollIntervalMillis how often to poll for the receipt, in milliseconds
+         * @return the transaction receipt once confirmed
+         * @since 0.4.0
+         */
+        default TransactionReceipt sendBlobTransactionAndWait(
+                BlobTransactionRequest request, long timeoutMillis, long pollIntervalMillis) {
+            final Hash txHash = sendBlobTransaction(request);
+            final long deadlineNanos = System.nanoTime()
+                    + java.util.concurrent.TimeUnit.MILLISECONDS.toNanos(timeoutMillis);
+
+            // Exponential backoff: start with user-provided interval, double each time, cap at 10s
+            final long maxPollInterval = 10_000L;
+            long currentInterval = pollIntervalMillis;
+
+            while (System.nanoTime() - deadlineNanos < 0) {
+                final TransactionReceipt receipt = getTransactionReceipt(txHash);
+                if (receipt != null) {
+                    if (!receipt.status()) {
+                        throw new io.brane.core.error.RevertException(
+                                io.brane.core.RevertDecoder.RevertKind.UNKNOWN,
+                                "Blob transaction reverted (txHash: " + txHash.value() + ")",
+                                null,
+                                null);
+                    }
+                    return receipt;
+                }
+                try {
+                    Thread.sleep(currentInterval);
+                    currentInterval = Math.min(currentInterval * 2, maxPollInterval);
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    throw new io.brane.core.error.RpcException(
+                            -32000, "Interrupted while waiting for blob transaction receipt", null, e);
+                }
+            }
+
+            throw new io.brane.core.error.RpcException(
+                    -32000,
+                    "Timed out waiting for blob transaction receipt for " + txHash.value(),
+                    null,
+                    null,
+                    null);
+        }
+
+        /**
          * Returns the signer instance used by this client.
          *
          * @return the signer
@@ -1239,6 +1386,18 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          */
         TransactionReceipt sendTransactionAndWait(
                 TransactionRequest request, long timeoutMillis, long pollIntervalMillis);
+
+        /**
+         * Submits an EIP-4844 blob transaction to the blockchain and returns immediately.
+         *
+         * <p>Delegates to {@link Signer#sendBlobTransaction(BlobTransactionRequest)}.
+         *
+         * @param request the blob transaction request
+         * @return the transaction hash
+         * @see Signer#sendBlobTransaction(BlobTransactionRequest)
+         * @since 0.4.0
+         */
+        Hash sendBlobTransaction(BlobTransactionRequest request);
 
         /**
          * Returns the signer instance used by this tester.

@@ -14,6 +14,7 @@
 - **Overview**: Managing accounts and transactions.
 - **Transactions**: `sendTransaction` vs `sendTransactionAndWait`.
 - **Gas Management**: Automatic estimation & EIP-1559.
+- **Blob Transactions**: EIP-4844 blob support with `Eip4844Builder`, `SidecarBuilder`, and `BlobDecoder`.
 
 ## 4. Smart Contracts
 - **Interaction**: Reading (`call`) and Writing (`sendAndWait`).
@@ -31,7 +32,8 @@
 ## 7. Utilities & Types
 - **Primitives**: `Address`, `Wei`, `HexData`.
 - **ABI Encoding**: `FastAbiEncoder` (Low-level usage).
-- **Error Handling**: Decoding reverts and RPC errors.
+- **Error Handling**: Decoding reverts, RPC errors, and KZG failures.
+- **KZG Module**: `brane-kzg` for EIP-4844 blob commitments and proofs.
 
 ## 8. Testing (Brane.Tester)
 - **Overview**: Introduction to `Brane.Tester` for local test node interaction.

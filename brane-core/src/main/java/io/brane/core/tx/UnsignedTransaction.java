@@ -11,6 +11,7 @@ import io.brane.core.crypto.Signature;
  * <ul>
  * <li>{@link LegacyTransaction} - EIP-155 transactions with gasPrice</li>
  * <li>{@link Eip1559Transaction} - EIP-1559 transactions with dynamic fees</li>
+ * <li>{@link Eip4844Transaction} - EIP-4844 blob transactions</li>
  * </ul>
  *
  * <h2>Usage</h2>
@@ -33,7 +34,7 @@ import io.brane.core.crypto.Signature;
  *
  * @since 0.2.0
  */
-public sealed interface UnsignedTransaction permits LegacyTransaction, Eip1559Transaction {
+public sealed interface UnsignedTransaction permits LegacyTransaction, Eip1559Transaction, Eip4844Transaction {
 
     /**
      * Encodes the transaction for signing (pre-signature RLP encoding).
