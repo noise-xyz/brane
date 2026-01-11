@@ -199,10 +199,14 @@ public final class CKzg implements Kzg {
             // TODO: Use toBytesUnsafe() for performance - native library doesn't modify input.
             // toBytesUnsafe() is package-private in io.brane.core.types; would need internal API.
             for (int i = 0; i < blobs.size(); i++) {
-                System.arraycopy(blobs.get(i).toBytes(), 0, blobsFlat, i * Blob.SIZE, Blob.SIZE);
-                System.arraycopy(commitments.get(i).toBytes(), 0, commitmentsFlat,
+                Blob blob = Objects.requireNonNull(blobs.get(i), "blobs[" + i + "]");
+                KzgCommitment commitment = Objects.requireNonNull(commitments.get(i), "commitments[" + i + "]");
+                KzgProof proof = Objects.requireNonNull(proofs.get(i), "proofs[" + i + "]");
+
+                System.arraycopy(blob.toBytes(), 0, blobsFlat, i * Blob.SIZE, Blob.SIZE);
+                System.arraycopy(commitment.toBytes(), 0, commitmentsFlat,
                         i * KzgCommitment.SIZE, KzgCommitment.SIZE);
-                System.arraycopy(proofs.get(i).toBytes(), 0, proofsFlat,
+                System.arraycopy(proof.toBytes(), 0, proofsFlat,
                         i * KzgProof.SIZE, KzgProof.SIZE);
             }
 

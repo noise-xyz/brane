@@ -1,10 +1,12 @@
 {
-  "max_total_budget_usd": 50.0,
+  "max_total_budget_usd": 75.0,
   "max_parallel_discovery": 4,
   "max_parallel_verify": 4,
   "max_parallel_reloc": 6,
   "max_findings_to_verify": 100,
   "model_discovery": "opus",
+  "model_reloc": "sonnet",
+  "model_verify": "opus",
   "enable_self_consistency": false,
   "self_consistency_runs": 1
 }
