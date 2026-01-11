@@ -16,6 +16,17 @@ import io.brane.primitives.Hex;
  * This class is immutable and thread-safe. The internal byte array is defensively copied
  * on construction and when accessed via {@link #toBytes()}.
  *
+ * <h2>Design Rationale</h2>
+ * This is intentionally a class rather than a record for two reasons:
+ * <ol>
+ *   <li><b>Content-based equality for byte arrays</b>: Records use reference equality for
+ *       array components, but we need {@link java.util.Arrays#equals(byte[], byte[])} semantics
+ *       so that two commitments with identical bytes are considered equal.</li>
+ *   <li><b>Lazy caching</b>: The versioned hash computation (SHA-256) is expensive. We cache
+ *       the result in a volatile field, which records cannot express since all their fields
+ *       are derived from constructor parameters.</li>
+ * </ol>
+ *
  * @since 0.2.0
  */
 public final class KzgCommitment {
