@@ -128,7 +128,7 @@ public record Eip4844Transaction(
         // Validate no null hashes
         for (int i = 0; i < blobVersionedHashes.size(); i++) {
             if (blobVersionedHashes.get(i) == null) {
-                throw new IllegalArgumentException("blobVersionedHashes[" + i + "] cannot be null");
+                throw new NullPointerException("blobVersionedHashes[" + i + "] is null");
             }
         }
 
