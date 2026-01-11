@@ -161,12 +161,7 @@ public class SmokeApp {
                 testEip712DynamicSigning(); // Scenario S
                 testEip712JsonParsing(); // Scenario T
                 testTesterOperations(); // Scenario U
-                try {
-                    testBlobTransaction(); // Scenario V
-                } catch (Exception e) {
-                    System.err.println("  ⚠️ Blob transaction test failed: " + e.getMessage());
-                    e.printStackTrace();
-                }
+                testBlobTransaction(); // Scenario V
             }
 
             System.out.println("\n✅ ALL SMOKE TESTS PASSED!");
