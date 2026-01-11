@@ -1,19 +1,30 @@
-# Code Review Orchestrator v7.1
+# Code Review Orchestrator v7.2
 
-Automated code review using a multi-model LLM pipeline with layered hallucination defense.
+Automated code review using a multi-model LLM pipeline with layered hallucination defense and specialized deep analysis.
 
 ## Overview
 
 The orchestrator runs a multi-phase code review:
 
 ```
-Discovery (Haiku) → Index Validation → Quote Verification → Re-localization (Sonnet) → Verification (Sonnet) → Opus Review
+Discovery → Specialized Analysis → Index Validation → Quote Verification → Re-localization → Verification → Opus Review
+           (ARCH/SAFETY/PERF/QUALITY)
 ```
+
+### Specialized Analysis Categories
+
+| Category | What It Finds |
+|----------|---------------|
+| **ARCH** | Module boundary violations, internal package leaks, API inconsistencies, circular dependencies |
+| **SAFETY** | Secret exposure, missing input validation, timing attacks, integer overflow, PrivateKey handling |
+| **PERF** | Allocations in loops, blocking calls in hot paths, regex compile in loops, string concat in loops |
+| **QUALITY** | High cyclomatic complexity, missing Java 21 idioms (records, pattern matching), code smells |
 
 ### Hallucination Defense Layers
 
 | Layer | Defense | What It Catches |
 |-------|---------|-----------------|
+| 0 | Static Prechecks | Fast grep-based detection of known patterns (no LLM cost) |
 | 1 | Enumerated Indices | Forces `[N]` file and `[NNN]` line references - impossible to invent paths |
 | 2 | Quote Verification | Requires verbatim code quotes that must match source file |
 | 3 | Re-localization | Independent agent (different model) must locate the same issue |
@@ -99,7 +110,15 @@ Create `.claude/orchestrator.json` (loaded automatically) or specify with `--con
   "enable_quote_verification": true,
   "enable_relocalization": true,
   "reloc_tolerance": 3,
-  "api_timeout": 120
+  "api_timeout": 120,
+
+  "enable_specialized_discovery": true,
+  "enable_arch_analysis": true,
+  "enable_quality_analysis": true,
+  "enable_safety_analysis": true,
+  "enable_perf_analysis": true,
+  "enable_static_prechecks": true,
+  "model_specialized": "opus"
 }
 ```
 
@@ -140,19 +159,24 @@ Create `.claude/orchestrator.json` (loaded automatically) or specify with `--con
 
 1. **Setup**: Identify changed Java files, create work directories
 2. **Build Index**: Create enumerated file/line mapping for hallucination prevention
-3. **Discovery**: Haiku agents scan code in parallel batches
-4. **Quote Verification**: Verify each finding's code quote exists at claimed location
-5. **Re-localization**: Sonnet agents independently locate each issue
-6. **Build Context**: Extract code snippets around verified findings
-7. **Verification**: Sonnet confirms/rejects findings with full context
-8. **Opus Review**: Optional second opinion on high-severity (T1/T2) findings
-9. **Generate Report**: Produce markdown report and task list
+3. **Discovery**: Pattern-based scanning for common issues
+4. **Specialized Discovery**: Deep category-specific analysis (ARCH/SAFETY/PERF/QUALITY)
+   - Static prechecks (no LLM cost)
+   - Parallel LLM analysis per category
+   - Findings merged with main discovery
+5. **Quote Verification**: Verify each finding's code quote exists at claimed location
+6. **Re-localization**: Independent agent (different model) locates each issue
+7. **Build Context**: Extract code snippets around verified findings
+8. **Verification**: Confirms/rejects findings with full context
+9. **Opus Review**: Optional second opinion on high-severity (T1/T2) findings
+10. **Generate Report**: Produce markdown report and task list
 
 ### Model Selection Rationale
 
-- **Discovery (Haiku)**: Fast, cheap, good at pattern matching. Generates candidates.
+- **Discovery (configurable)**: Pattern matching to generate candidates.
+- **Specialized Analysis (Opus)**: Deep reasoning for architectural, safety, performance, and quality analysis.
 - **Re-localization (Sonnet)**: Different model to avoid shared hallucination bias.
-- **Verification (Sonnet)**: Needs reasoning to confirm/reject with evidence.
+- **Verification (configurable)**: Needs reasoning to confirm/reject with evidence.
 - **Opus Review**: Highest capability for final T1/T2 validation.
 
 ## Testing

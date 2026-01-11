@@ -48,6 +48,15 @@ ALL_RESULTS=""
 ALL_DISCOVERIES=""
 WORK_DIR=""
 
+# Generate unique run ID for this review session (prevents task ID collisions across runs)
+# Format: YYYYMMDD-HHMMSS-RANDOM (e.g., 20250111-143052-7a3f)
+RUN_ID=""
+
+# Incremental review settings
+INCREMENTAL_MODE=false
+INCREMENTAL_CACHE_DIR=""
+LAST_REVIEW_COMMIT=""
+
 # Initialize arrays (compatible with bash 3.2+)
 BACKGROUND_PIDS=()
 PIDS=()
@@ -120,6 +129,11 @@ check_prerequisites() {
     # Source calibration library (optional)
     if [[ -f "$SCRIPT_DIR/lib/calibration.sh" ]]; then
         source "$SCRIPT_DIR/lib/calibration.sh"
+    fi
+
+    # Source specialized discovery library (optional)
+    if [[ -f "$SCRIPT_DIR/lib/specialized_discovery.sh" ]]; then
+        source "$SCRIPT_DIR/lib/specialized_discovery.sh"
     fi
 }
 
@@ -213,6 +227,15 @@ init_defaults() {
     ENABLE_SELF_CONSISTENCY=true
     SELF_CONSISTENCY_RUNS=3          # Number of discovery runs
     SELF_CONSISTENCY_THRESHOLD=0.5   # Minimum agreement ratio (0.5 = 50% = majority)
+
+    # Specialized discovery settings (deep category-specific analysis)
+    ENABLE_SPECIALIZED_DISCOVERY=true
+    ENABLE_ARCH_ANALYSIS=true        # Architectural issues: module boundaries, API leaks
+    ENABLE_QUALITY_ANALYSIS=true     # Code quality: complexity, Java 21 idioms
+    ENABLE_SAFETY_ANALYSIS=true      # Security: secrets, validation, crypto handling
+    ENABLE_PERF_ANALYSIS=true        # Performance: allocations, hot paths, blocking
+    ENABLE_STATIC_PRECHECKS=true     # Fast grep-based checks before LLM analysis
+    MODEL_SPECIALIZED="opus"         # Model for specialized analysis (needs reasoning)
 }
 
 #######################################
@@ -302,6 +325,15 @@ load_config() {
         SELF_CONSISTENCY_RUNS=$(jq -r '.self_consistency_runs // 3' "$config_file")
         SELF_CONSISTENCY_THRESHOLD=$(jq -r '.self_consistency_threshold // 0.5' "$config_file")
 
+        # Specialized discovery settings
+        ENABLE_SPECIALIZED_DISCOVERY=$(jq -r 'if .enable_specialized_discovery == null then true else .enable_specialized_discovery end' "$config_file")
+        ENABLE_ARCH_ANALYSIS=$(jq -r 'if .enable_arch_analysis == null then true else .enable_arch_analysis end' "$config_file")
+        ENABLE_QUALITY_ANALYSIS=$(jq -r 'if .enable_quality_analysis == null then true else .enable_quality_analysis end' "$config_file")
+        ENABLE_SAFETY_ANALYSIS=$(jq -r 'if .enable_safety_analysis == null then true else .enable_safety_analysis end' "$config_file")
+        ENABLE_PERF_ANALYSIS=$(jq -r 'if .enable_perf_analysis == null then true else .enable_perf_analysis end' "$config_file")
+        ENABLE_STATIC_PRECHECKS=$(jq -r 'if .enable_static_prechecks == null then true else .enable_static_prechecks end' "$config_file")
+        MODEL_SPECIALIZED=$(jq -r '.model_specialized // "opus"' "$config_file")
+
         # Validate all values
         validate_int_config "max_parallel_discovery" "$MAX_PARALLEL_DISCOVERY" 1 20
         validate_int_config "max_parallel_verify" "$MAX_PARALLEL_VERIFY" 1 20
@@ -319,6 +351,15 @@ load_config() {
         validate_bool_config "enable_self_consistency" "$ENABLE_SELF_CONSISTENCY"
         validate_int_config "self_consistency_runs" "$SELF_CONSISTENCY_RUNS" 1 5
         validate_float_config "self_consistency_threshold" "$SELF_CONSISTENCY_THRESHOLD"
+
+        # Validate specialized discovery settings
+        validate_bool_config "enable_specialized_discovery" "$ENABLE_SPECIALIZED_DISCOVERY"
+        validate_bool_config "enable_arch_analysis" "$ENABLE_ARCH_ANALYSIS"
+        validate_bool_config "enable_quality_analysis" "$ENABLE_QUALITY_ANALYSIS"
+        validate_bool_config "enable_safety_analysis" "$ENABLE_SAFETY_ANALYSIS"
+        validate_bool_config "enable_perf_analysis" "$ENABLE_PERF_ANALYSIS"
+        validate_bool_config "enable_static_prechecks" "$ENABLE_STATIC_PRECHECKS"
+        validate_model_config "model_specialized" "$MODEL_SPECIALIZED"
 
         log_info "Config validation passed"
     fi
@@ -735,6 +776,104 @@ readonly CORRELATE_SCHEMA='{
 # Rate limit backoff multiplier (longer waits for 429)
 RATE_LIMIT_BACKOFF_MULTIPLIER=5
 
+# Adaptive rate limiting state (file-based for subshell safety)
+RATE_LIMIT_STATE_FILE=""
+RATE_LIMIT_EVENTS=0
+RATE_LIMIT_WINDOW_START=0
+ADAPTIVE_PARALLEL_FACTOR=1.0  # 1.0 = full parallelism, 0.5 = half, etc.
+
+# Initialize adaptive rate limiting
+init_adaptive_rate_limiting() {
+    RATE_LIMIT_STATE_FILE="$WORK_DIR/rate_limit_state"
+    echo "0 $(date +%s) 1.0" > "$RATE_LIMIT_STATE_FILE"
+}
+
+# Record a rate limit event and adjust parallelism
+record_rate_limit_event() {
+    if [[ -z "$RATE_LIMIT_STATE_FILE" ]] || [[ ! -f "$RATE_LIMIT_STATE_FILE" ]]; then
+        return
+    fi
+
+    local current_time
+    current_time=$(date +%s)
+
+    # Read current state
+    local events window_start factor
+    read -r events window_start factor < "$RATE_LIMIT_STATE_FILE"
+
+    # Reset window if older than 60 seconds
+    if [[ $((current_time - window_start)) -gt 60 ]]; then
+        events=0
+        window_start=$current_time
+    fi
+
+    events=$((events + 1))
+
+    # Reduce parallelism factor based on rate limit frequency
+    # More than 3 rate limits in 60 seconds = reduce to 50%
+    # More than 5 = reduce to 25%
+    if [[ $events -ge 5 ]]; then
+        factor="0.25"
+        log_warn "High rate limit frequency ($events in 60s), reducing parallelism to 25%"
+    elif [[ $events -ge 3 ]]; then
+        factor="0.5"
+        log_warn "Moderate rate limit frequency ($events in 60s), reducing parallelism to 50%"
+    elif [[ $events -ge 1 ]]; then
+        factor="0.75"
+        log_debug "Rate limit detected, reducing parallelism to 75%"
+    fi
+
+    echo "$events $window_start $factor" > "$RATE_LIMIT_STATE_FILE"
+}
+
+# Record a successful API call (helps recover parallelism)
+record_successful_call() {
+    if [[ -z "$RATE_LIMIT_STATE_FILE" ]] || [[ ! -f "$RATE_LIMIT_STATE_FILE" ]]; then
+        return
+    fi
+
+    local current_time
+    current_time=$(date +%s)
+
+    # Read current state
+    local events window_start factor
+    read -r events window_start factor < "$RATE_LIMIT_STATE_FILE"
+
+    # If no rate limits in 30+ seconds, gradually recover
+    if [[ $((current_time - window_start)) -gt 30 ]] && [[ "$factor" != "1.0" ]]; then
+        # Recover one step
+        case "$factor" in
+            "0.25") factor="0.5" ;;
+            "0.5")  factor="0.75" ;;
+            "0.75") factor="1.0" ;;
+        esac
+        events=0
+        window_start=$current_time
+        log_debug "Recovering parallelism to ${factor}x"
+        echo "$events $window_start $factor" > "$RATE_LIMIT_STATE_FILE"
+    fi
+}
+
+# Get current adaptive parallel limit
+get_adaptive_parallel_limit() {
+    local base_limit="$1"
+
+    if [[ -z "$RATE_LIMIT_STATE_FILE" ]] || [[ ! -f "$RATE_LIMIT_STATE_FILE" ]]; then
+        echo "$base_limit"
+        return
+    fi
+
+    local events window_start factor
+    read -r events window_start factor < "$RATE_LIMIT_STATE_FILE"
+
+    # Calculate adjusted limit (minimum 1)
+    local adjusted
+    adjusted=$(echo "$base_limit * $factor" | bc | cut -d'.' -f1)
+    [[ "$adjusted" -lt 1 ]] && adjusted=1
+
+    echo "$adjusted"
+}
+
 # Check if error indicates rate limiting
 # Returns 0 (true) if rate limited, 1 (false) otherwise
 is_rate_limited() {
@@ -830,6 +969,7 @@ claude_call() {
             is_error=$(echo "$response" | jq -r '.is_error // false')
             if [[ "$is_error" == "false" ]]; then
                 track_cost "$response"
+                record_successful_call  # Help recover parallelism
                 echo "$response"
                 return 0
             fi
@@ -858,6 +998,7 @@ claude_call() {
             # Apply longer backoff for rate limits
             if [[ "$rate_limited" == "true" ]]; then
                 wait_time=$((backoff * RATE_LIMIT_BACKOFF_MULTIPLIER))
+                record_rate_limit_event  # Track for adaptive parallelism
                 log_warn "Rate limited! Backing off for ${wait_time}s (extended)"
             else
                 log_info "Retrying in ${wait_time}s..."
@@ -918,6 +1059,124 @@ extract_code_context() {
             printf "%s %4d: %s\n", prefix, NR, $0
         }
     ' "$file"
+    echo '```'
+}
+
+#######################################
+# Smart Context Extraction (Prioritize Changed Hunks)
+#######################################
+
+# Extract file content with changed hunks prioritized for large files
+# Args: $1 = file path, $2 = max lines (default 400)
+# Output: Formatted file content with changed regions prioritized
+extract_smart_file_context() {
+    local file="$1"
+    local max_lines="${2:-400}"
+
+    if [[ ! -f "$file" ]]; then
+        echo "[File not found: $file]"
+        return 1
+    fi
+
+    local total_lines
+    total_lines=$(wc -l < "$file" | tr -d ' ')
+
+    # If file fits within limit, return full file with line numbers
+    if [[ "$total_lines" -le "$max_lines" ]]; then
+        format_file_with_line_numbers "$file" "$max_lines"
+        return
+    fi
+
+    # Large file: prioritize changed hunks
+    log_debug "Large file ($total_lines lines), extracting changed hunks for: $file"
+
+    # Get changed line numbers from git diff
+    local changed_lines
+    changed_lines=$(git diff "$BASE_BRANCH"..."$CURRENT_BRANCH" -U0 -- "$file" 2>/dev/null | \
+        awk '/^@@/ {
+            # Parse @@ -old,count +new,count @@
+            match($0, /\+([0-9]+)(,([0-9]+))?/, arr)
+            start = arr[1]
+            count = arr[3] ? arr[3] : 1
+            for (i = start; i < start + count; i++) print i
+        }' | sort -nu)
+
+    if [[ -z "$changed_lines" ]]; then
+        # No changes found, fall back to first max_lines of file
+        format_file_with_line_numbers "$file" "$max_lines"
+        return
+    fi
+
+    # Build context around changed lines (5 lines before/after each changed region)
+    local context_padding=5
+    local regions_to_include=""
+    local prev_end=0
+
+    while IFS= read -r line_num; do
+        local region_start=$((line_num - context_padding))
+        local region_end=$((line_num + context_padding))
+        [[ $region_start -lt 1 ]] && region_start=1
+        [[ $region_end -gt $total_lines ]] && region_end=$total_lines
+
+        # Merge overlapping regions
+        if [[ $region_start -le $((prev_end + 1)) ]] && [[ -n "$regions_to_include" ]]; then
+            # Extend previous region
+            regions_to_include="${regions_to_include%,*},$region_end"
+        else
+            if [[ -n "$regions_to_include" ]]; then
+                regions_to_include="$regions_to_include "
+            fi
+            regions_to_include="$regions_to_include$region_start,$region_end"
+        fi
+        prev_end=$region_end
+    done <<< "$changed_lines"
+
+    # Extract the regions with line numbers
+    local output=""
+    local lines_used=0
+    local first_region=true
+    local region
+
+    echo '```java'
+    echo "// $file (showing changed regions, $total_lines total lines)"
+
+    for region in $regions_to_include; do
+        local start end
+        start=$(echo "$region" | cut -d',' -f1)
+        end=$(echo "$region" | cut -d',' -f2)
+        local region_size=$((end - start + 1))
+
+        # Check if we have room for this region
+        if [[ $((lines_used + region_size)) -gt $max_lines ]]; then
+            if [[ "$first_region" == "true" ]]; then
+                # At least show partial first region
+                end=$((start + max_lines - 1))
+                region_size=$max_lines
+            else
+                echo "// ... (truncated, budget exceeded)"
+                break
+            fi
+        fi
+
+        if [[ "$first_region" != "true" ]] && [[ $start -gt $((prev_displayed_end + 1)) ]]; then
+            echo "// ... (lines $((prev_displayed_end + 1))-$((start - 1)) omitted)"
+        fi
+
+        awk -v start="$start" -v end="$end" '
+            NR >= start && NR <= end {
+                printf "%4d: %s\n", NR, $0
+            }
+        ' "$file"
+
+        prev_displayed_end=$end
+        lines_used=$((lines_used + region_size))
+        first_region=false
+    done
+
+    if [[ "$prev_displayed_end" -lt "$total_lines" ]]; then
+        echo "// ... (lines $((prev_displayed_end + 1))-$total_lines omitted)"
+    fi
+
     echo '```'
 }
 
@@ -1042,8 +1301,11 @@ reset_job_stats() {
 
 wait_for_slot() {
     local max_parallel="$1"
+    # Apply adaptive rate limiting
+    local effective_parallel
+    effective_parallel=$(get_adaptive_parallel_limit "$max_parallel")
     set +u
-    while [[ ${#PIDS[@]} -ge $max_parallel ]]; do
+    while [[ ${#PIDS[@]} -ge $effective_parallel ]]; do
         local new_pids=()
         local pid
         for pid in "${PIDS[@]}"; do
@@ -1062,7 +1324,9 @@ wait_for_slot() {
             fi
         done
         PIDS=("${new_pids[@]}")
-        [[ ${#PIDS[@]} -ge $max_parallel ]] && sleep 0.5
+        # Re-check adaptive limit in case it changed
+        effective_parallel=$(get_adaptive_parallel_limit "$max_parallel")
+        [[ ${#PIDS[@]} -ge $effective_parallel ]] && sleep 0.5
     done
     set -u
 }
@@ -1119,6 +1383,12 @@ phase_setup() {
     CURRENT_BRANCH=$(git branch --show-current 2>/dev/null || echo "HEAD")
     TODAY=$(date +%Y-%m-%d)
 
+    # Generate unique run ID for this session
+    local random_suffix
+    random_suffix=$(head -c 4 /dev/urandom 2>/dev/null | xxd -p 2>/dev/null || echo "$$")
+    RUN_ID="$(date +%Y%m%d-%H%M%S)-${random_suffix:0:4}"
+
+    log_info "Run ID: $RUN_ID"
     log_info "Branch: $CURRENT_BRANCH -> $BASE_BRANCH"
     log_info "Models: discovery=$MODEL_DISCOVERY reloc=$MODEL_RELOC verify=$MODEL_VERIFY"
     log_info "Budget: \$$MAX_TOTAL_BUDGET max"
@@ -1143,6 +1413,44 @@ phase_setup() {
         exit $EXIT_SUCCESS
     fi
 
+    # Incremental review: filter to only files changed since last review
+    INCREMENTAL_CACHE_DIR="$SPEC_DIR/.review_cache"
+    if [[ "$INCREMENTAL_MODE" == "true" ]]; then
+        local cache_file="$INCREMENTAL_CACHE_DIR/last_review.json"
+        local current_commit
+        current_commit=$(git rev-parse HEAD)
+
+        if [[ -f "$cache_file" ]]; then
+            LAST_REVIEW_COMMIT=$(jq -r '.commit // empty' "$cache_file" 2>/dev/null || true)
+            local last_review_branch
+            last_review_branch=$(jq -r '.branch // empty' "$cache_file" 2>/dev/null || true)
+
+            if [[ -n "$LAST_REVIEW_COMMIT" ]] && [[ "$last_review_branch" == "$CURRENT_BRANCH" ]]; then
+                # Get files changed since last review
+                local files_since_last
+                files_since_last=$(git diff "$LAST_REVIEW_COMMIT"..."$current_commit" --name-only -- '*.java' | grep -v '/internal/' | grep -v 'Test\.java$' || true)
+                local new_count
+                new_count=$(echo "$files_since_last" | grep -c '.' 2>/dev/null || echo "0")
+
+                if [[ "$new_count" -eq 0 ]]; then
+                    log_info "Incremental mode: No new changes since last review ($LAST_REVIEW_COMMIT)"
+                    log_info "Last review covered $CHANGED_FILE_COUNT files"
+                    exit $EXIT_SUCCESS
+                fi
+
+                log_info "Incremental mode: $new_count files changed since last review"
+                log_info "  Last review: $LAST_REVIEW_COMMIT"
+                log_info "  Full diff would be: $CHANGED_FILE_COUNT files"
+                CHANGED_FILES="$files_since_last"
+                CHANGED_FILE_COUNT="$new_count"
+            else
+                log_info "Incremental mode: No valid cache for branch $CURRENT_BRANCH, doing full review"
+            fi
+        else
+            log_info "Incremental mode: No previous review found, doing full review"
+        fi
+    fi
+
     log_info "Files to review: $CHANGED_FILE_COUNT"
 
     rm -rf "$WORK_DIR"
@@ -1151,6 +1459,9 @@ phase_setup() {
 
     # Initialize cost tracking (must be after WORK_DIR creation)
     init_cost_tracking
+
+    # Initialize adaptive rate limiting
+    init_adaptive_rate_limiting
 
     echo "$CHANGED_FILES" | sed '/^$/d' > "$WORK_DIR/files.txt"
 
@@ -1293,23 +1604,38 @@ run_single_discovery_pass() {
         local file="${FILE_INDEX[$idx]}"
         [[ ! -f "$file" ]] && continue
 
+        # Use smart context extraction for large files (prioritizes changed hunks)
         local content
-        content=$(format_file_with_line_numbers "$file" "$MAX_LINES_PER_CHUNK")
-        local content_size=${#content}
+        local total_lines
+        total_lines=$(wc -l < "$file" | tr -d ' ')
 
-        if [[ $((current_size + content_size)) -gt $max_batch_size ]] && [[ -n "$current_content" ]]; then
+        if [[ "$total_lines" -gt "$MAX_LINES_PER_CHUNK" ]]; then
+            # Large file: use smart extraction that prioritizes changed hunks
+            # extract_smart_file_context includes its own code fences
+            content=$(extract_smart_file_context "$file" "$MAX_LINES_PER_CHUNK")
+            current_content+="
+### [$idx] $(basename "$file")
+$content
+"
+        else
+            # Small file: include entirely
+            content=$(format_file_with_line_numbers "$file" "$MAX_LINES_PER_CHUNK")
+            current_content+="
+### [$idx] $(basename "$file")
+\`\`\`java
+$content
+\`\`\`
+"
+        fi
+
+        local content_size=${#content}
+        if [[ $((current_size + content_size)) -gt $max_batch_size ]] && [[ ${#current_content} -gt 100 ]]; then
             echo "$current_content" > "$output_dir/batch_${batch_num}_content.txt"
             batch_num=$((batch_num + 1))
             current_content=""
             current_size=0
         fi
 
-        current_content+="
-### [$idx] $(basename "$file")
-\`\`\`java
-$content
-\`\`\`
-"
         current_size=$((current_size + content_size + 50))
     done
 
@@ -1570,6 +1896,144 @@ phase_discovery() {
 }
 
 #######################################
+# Phase 2.5: Specialized Discovery
+#######################################
+phase_specialized_discovery() {
+    if [[ "$ENABLE_SPECIALIZED_DISCOVERY" != "true" ]]; then
+        log_info "Specialized discovery disabled, skipping..."
+        return
+    fi
+
+    # Check if specialized_discovery.sh was loaded
+    if ! type run_specialized_discovery &>/dev/null; then
+        log_warn "Specialized discovery library not loaded, skipping..."
+        return
+    fi
+
+    log_info "========================================"
+    log_info "Phase 2.5: Specialized Discovery"
+    log_info "========================================"
+
+    local spec_work_dir="$WORK_DIR/specialized"
+    mkdir -p "$spec_work_dir"
+
+    local categories_enabled=()
+    [[ "$ENABLE_ARCH_ANALYSIS" == "true" ]] && categories_enabled+=("ARCH")
+    [[ "$ENABLE_QUALITY_ANALYSIS" == "true" ]] && categories_enabled+=("QUALITY")
+    [[ "$ENABLE_SAFETY_ANALYSIS" == "true" ]] && categories_enabled+=("SAFETY")
+    [[ "$ENABLE_PERF_ANALYSIS" == "true" ]] && categories_enabled+=("PERF")
+
+    if [[ ${#categories_enabled[@]} -eq 0 ]]; then
+        log_info "No specialized categories enabled, skipping..."
+        return
+    fi
+
+    log_info "Categories: ${categories_enabled[*]}"
+    log_info "Model: $MODEL_SPECIALIZED"
+
+    # Run static prechecks first (fast, no LLM cost)
+    if [[ "$ENABLE_STATIC_PRECHECKS" == "true" ]]; then
+        log_info "Running static prechecks..."
+        run_static_prechecks "$WORK_DIR/files.txt" "$spec_work_dir/static_result.json"
+    fi
+
+    # Run specialized discovery passes in parallel
+    PIDS=()
+    reset_job_stats
+
+    for category in "${categories_enabled[@]}"; do
+        wait_for_slot "$MAX_PARALLEL_DISCOVERY"
+
+        local cat_lower
+        cat_lower=$(echo "$category" | tr '[:upper:]' '[:lower:]')
+
+        log_info "  Starting $category analysis..."
+
+        (
+            run_specialized_discovery "$category" \
+                "$WORK_DIR/files.txt" \
+                "$spec_work_dir/${cat_lower}_result.json" \
+                "$MODEL_SPECIALIZED"
+        ) &
+        PIDS+=($!)
+        BACKGROUND_PIDS+=($!)
+    done
+
+    log_info "Waiting for specialized discovery..."
+    wait_all_pids
+    report_phase_jobs "Specialized Discovery"
+    check_budget
+
+    # Aggregate all specialized findings
+    local specialized_findings="$spec_work_dir/all_specialized.json"
+    aggregate_specialized_findings "$spec_work_dir" "$specialized_findings"
+
+    # Merge specialized findings with main discoveries
+    local spec_count
+    spec_count=$(jq 'length' "$specialized_findings" 2>/dev/null || echo "0")
+
+    if [[ "$spec_count" -gt 0 ]]; then
+        log_info "Merging $spec_count specialized findings with main discoveries..."
+
+        # Convert specialized findings to match main discovery format
+        local converted
+        converted=$(jq '[.[] | {
+            file: .file,
+            line: .line,
+            severity: .severity,
+            category: (.issue_type // .category // "OTHER"),
+            description: .description,
+            code_quote: "",
+            analysis_type: .analysis_type,
+            fix_suggestion: (.fix_suggestion // .fix // .refactoring // .optimization // "")
+        }]' "$specialized_findings")
+
+        # Merge with existing discoveries
+        local merged
+        merged=$(jq -s 'add' "$ALL_DISCOVERIES" <(echo "$converted"))
+
+        # Deduplicate (same file:line within 5 lines = duplicate)
+        merged=$(echo "$merged" | jq '
+            group_by(.file) |
+            map(
+                sort_by(.line) |
+                reduce .[] as $item (
+                    [];
+                    if length == 0 then
+                        [$item]
+                    else
+                        ((.[-1].line - $item.line) | if . < 0 then -. else . end) as $diff |
+                        if $diff <= 5 then
+                            # Keep higher severity finding
+                            if (["T1","T2","T3","T4"] | index($item.severity) // 4) < (["T1","T2","T3","T4"] | index(.[-1].severity) // 4) then
+                                .[:-1] + [$item]
+                            else
+                                .
+                            end
+                        else
+                            . + [$item]
+                        end
+                    end
+                )
+            ) |
+            flatten |
+            sort_by(
+                if .severity == "T1" then 0
+                elif .severity == "T2" then 1
+                elif .severity == "T3" then 2
+                else 3 end
+            )
+        ')
+
+        echo "$merged" > "$ALL_DISCOVERIES"
+        DISCOVERY_COUNT=$(jq 'length' "$ALL_DISCOVERIES")
+        log_info "Total findings after merge: $DISCOVERY_COUNT"
+    fi
+
+    save_checkpoint "specialized_discovery_complete"
+}
+
+#######################################
 # Phase 3: Quote Verification
 #######################################
 phase_quote_verification() {
@@ -1754,6 +2218,14 @@ phase_relocalization() {
                 agree_count=$((agree_count + 1))
                 increment_stat "passed"
                 ;;
+            AGREE_EXTENDED*)
+                # Location within extended tolerance and semantic match - include with note
+                echo "$finding" | jq -c --arg comp "$comparison" \
+                    '. + {reloc_note: "extended_tolerance", reloc_detail: $comp}' >> "$reloc_verified_tmp"
+                agree_count=$((agree_count + 1))
+                increment_stat "passed_extended"
+                log_debug "Re-loc extended match: $comparison"
+                ;;
             AGREE_WEAK*)
                 # Location matches but semantic mismatch - flag but include
                 echo "$finding" | jq -c --arg comp "$comparison" \
@@ -1762,10 +2234,18 @@ phase_relocalization() {
                 increment_stat "semantic_mismatch"
                 log_debug "Re-loc semantic mismatch: $comparison"
                 ;;
-            DISAGREE*)
-                # Include but flag for review
+            DISAGREE*same_type*)
+                # Location differs but same issue type - likely legitimate, include with warning
                 echo "$finding" | jq -c --arg comp "$comparison" \
-                    '. + {reloc_warning: $comp}' >> "$reloc_verified_tmp"
+                    '. + {reloc_warning: $comp, needs_manual_review: true}' >> "$reloc_verified_tmp"
+                disagree_count=$((disagree_count + 1))
+                increment_stat "reloc_disagree_same_type"
+                log_debug "Re-loc disagree (same type): $comparison"
+                ;;
+            DISAGREE*)
+                # Location and semantic both differ - still include but flag strongly
+                echo "$finding" | jq -c --arg comp "$comparison" \
+                    '. + {reloc_warning: $comp, confidence: "LOW"}' >> "$reloc_verified_tmp"
                 disagree_count=$((disagree_count + 1))
                 increment_stat "reloc_disagree"
                 log_debug "Re-loc disagree: $comparison"
@@ -2190,6 +2670,8 @@ generate_simple_report() {
 
             if [[ "$tier_count" -gt 0 ]]; then
                 local idx=1
+                # Extract short run ID suffix for task IDs (last 4 chars)
+                local run_suffix="${RUN_ID##*-}"
                 while IFS= read -r finding; do
                     local title file line fix
                     title=$(echo "$finding" | jq -r '.title // "Untitled"')
@@ -2197,7 +2679,8 @@ generate_simple_report() {
                     line=$(echo "$finding" | jq -r '.line')
                     fix=$(echo "$finding" | jq -r '.fix // "No fix provided"')
 
-                    printf '#### %s-%03d: %s\n' "$tier" "$idx" "$title"
+                    # Task ID format: [TIER]-[INDEX] [RUN_SUFFIX] (e.g., T3-001 [7a3f])
+                    printf '#### %s-%03d [%s]: %s\n' "$tier" "$idx" "$run_suffix" "$title"
                     echo "- **File**: \`$file:$line\`"
                     echo "- **Fix**: $fix"
                     echo ""
@@ -2246,6 +2729,9 @@ phase_extract_tasks() {
     local verified
     verified=$(jq '[.[] | select(.verdict == "CONFIRMED" or .verdict == "DOWNGRADE_T3" or .verdict == "DOWNGRADE_T4")] | sort_by(.severity)' "$ALL_RESULTS")
 
+    # Extract short run ID suffix for task IDs
+    local run_suffix="${RUN_ID##*-}"
+
     local task_num=1
     while IFS= read -r finding; do
         local sev file line title fix
@@ -2255,12 +2741,39 @@ phase_extract_tasks() {
         title=$(echo "$finding" | jq -r '.title // "Untitled"')
         fix=$(echo "$finding" | jq -r '.fix // .title // "No fix specified"')
 
-        printf '%s-%03d:%s at %s:%s\n' "$sev" "$task_num" "$fix" "$file" "$line" >> "$TASKS_TXT"
+        # Task ID format: [TIER]-[INDEX] [RUN_SUFFIX] (e.g., T3-001 [7a3f])
+        printf '%s-%03d [%s]:%s at %s:%s\n' "$sev" "$task_num" "$run_suffix" "$fix" "$file" "$line" >> "$TASKS_TXT"
         task_num=$((task_num + 1))
     done < <(echo "$verified" | jq -c '.[]')
 
     TASK_COUNT=$((task_num - 1))
-    log_info "Generated $TASK_COUNT tasks: $TASKS_TXT"
+    log_info "Generated $TASK_COUNT tasks (run: $run_suffix): $TASKS_TXT"
+}
+
+#######################################
+# Save Incremental Review Cache
+#######################################
+save_incremental_cache() {
+    if [[ -z "$INCREMENTAL_CACHE_DIR" ]]; then
+        return
+    fi
+
+    mkdir -p "$INCREMENTAL_CACHE_DIR"
+    local cache_file="$INCREMENTAL_CACHE_DIR/last_review.json"
+    local current_commit
+    current_commit=$(git rev-parse HEAD)
+
+    cat > "$cache_file" << EOF
+{
+    "commit": "$current_commit",
+    "branch": "$CURRENT_BRANCH",
+    "timestamp": "$(date -u +"%Y-%m-%dT%H:%M:%SZ")",
+    "run_id": "$RUN_ID",
+    "files_reviewed": $CHANGED_FILE_COUNT,
+    "findings_count": ${VERIFIED_COUNT:-0}
+}
+EOF
+    log_info "Saved incremental review cache: $cache_file"
 }
 
 #######################################
@@ -2342,6 +2855,42 @@ main() {
                 ENABLE_SELF_CONSISTENCY=false
                 shift
                 ;;
+            --no-specialized)
+                ENABLE_SPECIALIZED_DISCOVERY=false
+                shift
+                ;;
+            --only-arch)
+                ENABLE_SPECIALIZED_DISCOVERY=true
+                ENABLE_ARCH_ANALYSIS=true
+                ENABLE_QUALITY_ANALYSIS=false
+                ENABLE_SAFETY_ANALYSIS=false
+                ENABLE_PERF_ANALYSIS=false
+                shift
+                ;;
+            --only-safety)
+                ENABLE_SPECIALIZED_DISCOVERY=true
+                ENABLE_ARCH_ANALYSIS=false
+                ENABLE_QUALITY_ANALYSIS=false
+                ENABLE_SAFETY_ANALYSIS=true
+                ENABLE_PERF_ANALYSIS=false
+                shift
+                ;;
+            --only-perf)
+                ENABLE_SPECIALIZED_DISCOVERY=true
+                ENABLE_ARCH_ANALYSIS=false
+                ENABLE_QUALITY_ANALYSIS=false
+                ENABLE_SAFETY_ANALYSIS=false
+                ENABLE_PERF_ANALYSIS=true
+                shift
+                ;;
+            --only-quality)
+                ENABLE_SPECIALIZED_DISCOVERY=true
+                ENABLE_ARCH_ANALYSIS=false
+                ENABLE_QUALITY_ANALYSIS=true
+                ENABLE_SAFETY_ANALYSIS=false
+                ENABLE_PERF_ANALYSIS=false
+                shift
+                ;;
             --calibrate)
                 calibrate_mode="run"
                 calibrate_dir="${2:-.claude/calibration}"
@@ -2354,6 +2903,10 @@ main() {
                 shift
                 [[ "$1" != -* ]] && { calibrate_dir="$1"; shift; }
                 ;;
+            --incremental)
+                INCREMENTAL_MODE=true
+                shift
+                ;;
             --help|-h)
                 echo "Usage: $0 [base_branch] [options]"
                 echo ""
@@ -2364,9 +2917,21 @@ main() {
                 echo "  --no-quote-verify      Disable quote verification layer"
                 echo "  --no-reloc             Disable re-localization layer"
                 echo "  --no-self-consistency  Disable self-consistency (multi-run) check"
+                echo "  --no-specialized       Disable specialized deep analysis passes"
+                echo "  --only-arch            Run only architectural analysis"
+                echo "  --only-safety          Run only safety/security analysis"
+                echo "  --only-perf            Run only performance analysis"
+                echo "  --only-quality         Run only code quality analysis"
                 echo "  --calibrate [dir]      Run calibration suite (default: .claude/calibration)"
                 echo "  --generate-calibration [dir]  Generate sample calibration data"
+                echo "  --incremental          Only review files changed since last review"
                 echo "  --help, -h             Show this help"
+                echo ""
+                echo "Specialized Analysis Categories:"
+                echo "  ARCH:    Module boundaries, API leaks, dependency violations"
+                echo "  SAFETY:  Secrets, input validation, crypto handling, memory safety"
+                echo "  PERF:    Allocations in loops, blocking calls, hot paths"
+                echo "  QUALITY: Complexity, Java 21 idioms, code smells"
                 exit 0
                 ;;
             *)
@@ -2420,6 +2985,7 @@ main() {
     phase_setup
     phase_build_index
     phase_discovery
+    phase_specialized_discovery
     phase_quote_verification
     phase_relocalization
     phase_build_context
@@ -2429,11 +2995,22 @@ main() {
     phase_extract_tasks
     print_summary
 
-    if [[ "${VERIFIED_COUNT:-0}" -gt 0 ]]; then
-        exit $EXIT_FINDINGS_FOUND
-    else
-        exit $EXIT_SUCCESS
+    # Save incremental review cache for future runs
+    save_incremental_cache
+
+    # Determine exit code based on results
+    local final_exit_code=$EXIT_SUCCESS
+
+    if [[ "${CUMULATIVE_FAILED_JOBS:-0}" -gt 0 ]]; then
+        # Some jobs failed - results may be incomplete
+        log_warn "Exiting with partial failure due to ${CUMULATIVE_FAILED_JOBS} failed jobs"
+        final_exit_code=$EXIT_PARTIAL_FAILURE
+    elif [[ "${VERIFIED_COUNT:-0}" -gt 0 ]]; then
+        # Found verified issues
+        final_exit_code=$EXIT_FINDINGS_FOUND
     fi
+
+    exit $final_exit_code
 }
 
 main "$@"

@@ -8,5 +8,23 @@
   "model_reloc": "sonnet",
   "model_verify": "opus",
   "enable_self_consistency": false,
-  "self_consistency_runs": 1
+  "self_consistency_runs": 1,
+  "reloc_tolerance": 5,
+  "_comment_reloc_tolerance": "Extended from default 3 - adaptive tolerance doubles this when semantic match succeeds",
+
+  "_comment_specialized": "Specialized discovery for deep category-specific analysis",
+  "enable_specialized_discovery": true,
+  "enable_arch_analysis": true,
+  "enable_quality_analysis": true,
+  "enable_safety_analysis": true,
+  "enable_perf_analysis": true,
+  "enable_static_prechecks": true,
+  "model_specialized": "opus",
+
+  "_comment_categories": {
+    "ARCH": "Module boundaries, internal package leaks, dependency violations, API consistency",
+    "QUALITY": "Cyclomatic complexity, Java 21 idioms (records, pattern matching, switch expressions), code smells",
+    "SAFETY": "Secrets exposure, input validation, timing attacks, integer overflow, PrivateKey handling",
+    "PERF": "Allocations in loops, blocking in hot paths, regex compile in loops, string concat"
+  }
 }

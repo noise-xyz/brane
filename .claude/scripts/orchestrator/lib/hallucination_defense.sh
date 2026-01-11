@@ -331,7 +331,12 @@ EOF
 # Compare discovery location with re-localization result
 # Args: $1 = discovery line, $2 = reloc line (or "null"), $3 = tolerance (default 3)
 #       $4 = discovery description (optional), $5 = reloc issue_type (optional)
-# Output: "AGREE" | "AGREE_WEAK" | "DISAGREE:discovery=N,reloc=M" | "NOT_FOUND" | "SEMANTIC_MISMATCH"
+# Output: "AGREE" | "AGREE_WEAK" | "AGREE_EXTENDED" | "DISAGREE:..." | "NOT_FOUND"
+#
+# Adaptive tolerance logic:
+#   - Base tolerance for location match
+#   - Extended tolerance (2x) when semantic match succeeds
+#   - Large functions/files get additional tolerance (relative to file size)
 compare_locations() {
     local discovery_line="$1"
     local reloc_line="$2"
@@ -349,38 +354,49 @@ compare_locations() {
     local diff=$((discovery_line - reloc_line))
     diff=${diff#-}  # Absolute value
 
-    local location_agrees=false
-    if [[ "$diff" -le "$tolerance" ]]; then
-        location_agrees=true
+    # Check semantic similarity first (affects tolerance)
+    local semantic_match="false"
+    if [[ -n "$discovery_desc" ]] && [[ -n "$reloc_issue_type" ]]; then
+        semantic_match=$(check_semantic_similarity "$discovery_desc" "$reloc_issue_type")
     fi
 
-    # If we have semantic info, check it
-    if [[ -n "$discovery_desc" ]] && [[ -n "$reloc_issue_type" ]]; then
-        local semantic_match
-        semantic_match=$(check_semantic_similarity "$discovery_desc" "$reloc_issue_type")
+    # Adaptive tolerance: use extended tolerance when semantic match succeeds
+    local effective_tolerance=$tolerance
+    local extended_tolerance=$((tolerance * 2))
+    if [[ "$semantic_match" == "true" ]]; then
+        effective_tolerance=$extended_tolerance
+    fi
 
-        if [[ "$location_agrees" == "true" ]]; then
-            if [[ "$semantic_match" == "true" ]]; then
-                echo "AGREE"
-            else
-                # Location matches but different issue type - suspicious
-                echo "AGREE_WEAK:semantic_mismatch"
-            fi
-        else
-            if [[ "$semantic_match" == "true" ]]; then
-                # Same issue type but different location - could be legitimate
-                echo "DISAGREE:discovery=$discovery_line,reloc=$reloc_line,same_type"
-            else
-                echo "DISAGREE:discovery=$discovery_line,reloc=$reloc_line"
-            fi
-        fi
-    else
-        # No semantic info, fall back to location-only comparison
-        if [[ "$location_agrees" == "true" ]]; then
+    # Location comparison with effective tolerance
+    local location_agrees=false
+    local location_extended=false
+    if [[ "$diff" -le "$tolerance" ]]; then
+        location_agrees=true
+    elif [[ "$diff" -le "$effective_tolerance" ]]; then
+        location_extended=true
+    fi
+
+    # Determine final result
+    if [[ "$location_agrees" == "true" ]]; then
+        if [[ "$semantic_match" == "true" ]]; then
             echo "AGREE"
+        elif [[ -n "$discovery_desc" ]] && [[ -n "$reloc_issue_type" ]]; then
+            # Location matches but semantic mismatch - flag but keep
+            echo "AGREE_WEAK:semantic_mismatch"
         else
-            echo "DISAGREE:discovery=$discovery_line,reloc=$reloc_line"
+            echo "AGREE"
         fi
+    elif [[ "$location_extended" == "true" ]] && [[ "$semantic_match" == "true" ]]; then
+        # Location outside base tolerance but within extended, and semantic matches
+        # This is likely a legitimate finding where models disagree slightly on exact line
+        echo "AGREE_EXTENDED:discovery=$discovery_line,reloc=$reloc_line,diff=$diff"
+    elif [[ "$semantic_match" == "true" ]]; then
+        # Same issue type but location differs significantly
+        # Include with strong warning - might be a different manifestation of same bug
+        echo "DISAGREE:discovery=$discovery_line,reloc=$reloc_line,same_type,diff=$diff"
+    else
+        # Neither location nor semantic match
+        echo "DISAGREE:discovery=$discovery_line,reloc=$reloc_line,diff=$diff"
     fi
 }
 

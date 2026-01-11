@@ -20,6 +20,11 @@
             "type": "command",
             "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/check_shell_syntax.sh",
             "statusMessage": "Checking shell syntax"
+          },
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/validate_tasks_file.sh",
+            "statusMessage": "Validating tasks file format"
           }
         ]
       },
