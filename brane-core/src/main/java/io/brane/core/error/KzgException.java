@@ -117,6 +117,17 @@ public final class KzgException extends BraneException {
     }
 
     /**
+     * Creates an exception for commitment computation errors with a cause.
+     *
+     * @param message description of the commitment failure
+     * @param cause the underlying cause
+     * @return a new KzgException with kind COMMITMENT_ERROR
+     */
+    public static KzgException commitmentError(final String message, final Throwable cause) {
+        return new KzgException(Kind.COMMITMENT_ERROR, message, cause);
+    }
+
+    /**
      * Creates an exception for proof computation or verification errors.
      *
      * @param message description of the proof failure

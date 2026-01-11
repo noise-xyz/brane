@@ -135,7 +135,7 @@ public final class CKzg implements Kzg {
             byte[] commitment = CKZG4844JNI.blobToKzgCommitment(blob.toBytes());
             return new KzgCommitment(commitment);
         } catch (Exception e) {
-            throw KzgException.commitmentError("Failed to compute KZG commitment: " + e.getMessage());
+            throw KzgException.commitmentError("Failed to compute KZG commitment: " + e.getMessage(), e);
         }
     }
 
