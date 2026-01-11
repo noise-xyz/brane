@@ -45,6 +45,15 @@
             "command": "cmd=$(jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE '^git commit'; then echo '{\"systemMessage\": \"Tip: Run ./.claude/scripts/pre_commit_check.sh before committing to verify affected tests pass.\"}'; fi; exit 0"
           }
         ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/large_file_hint.sh"
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -54,6 +63,15 @@
           {
             "type": "command",
             "command": "jq -r '.tool_input.file_path' | grep -qE 'gradle-wrapper\\.properties|java\\.license|deploy\\.yml' && { echo 'Protected file - please confirm with user before modifying' >&2; exit 2; } || exit 0"
+          }
+        ]
+      },
+      {
+        "matcher": "Read",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/block_large_file_read.sh"
           }
         ]
       }

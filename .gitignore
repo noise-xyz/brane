@@ -40,3 +40,7 @@ TODO.md
 spec.md
 ROADMAP.md
 spec/
+
+# Local MCP/LSP config
+.mcp.json
+.cclsp.json

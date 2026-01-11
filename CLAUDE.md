@@ -177,6 +177,37 @@ BraneException (sealed root)
 | Smoke | `./scripts/test_smoke.sh` | Anvil |
 | Full | `./verify_all.sh` | Anvil |
 
+## Large File Navigation (IMPORTANT - READ THIS)
+
+For Java files over 500 lines, **ALL reads are BLOCKED**. You MUST use cclsp MCP tools.
+
+**DO NOT ask the user what they want - USE THE TOOLS PROACTIVELY.**
+
+**NOTE:** First LSP call may timeout (~30s) while jdtls starts. If you get a timeout, retry - subsequent calls will be fast.
+
+When asked about a large file, immediately:
+1. Use `Grep` to find relevant symbols/patterns
+2. Use `mcp__cclsp__find_definition(file_path, symbol_name)` to get definitions
+3. Use `mcp__cclsp__find_references(file_path, symbol_name)` to find usages
+
+**Example - user asks "Read Brane.java":**
+```
+# WRONG: Asking "what would you like to know?"
+# RIGHT: Immediately search and use LSP tools
+
+Grep("sealed interface", path="brane-rpc/.../Brane.java")
+→ Found: line 229: "public sealed interface Brane"
+→ Found: line 840: "sealed interface Reader"
+→ Found: line 934: "sealed interface Signer"
+
+mcp__cclsp__find_definition(file_path="brane-rpc/.../Brane.java", symbol_name="Reader")
+→ Returns the Reader interface definition
+```
+
+**Large files in this codebase (>500 lines) - CANNOT be read directly:**
+- `brane-rpc/.../Brane.java` (2336 lines) - Main client interface
+- `brane-core/.../Abi.java` - ABI encoding/decoding
+
 ## Gotchas
 
 - **Keccak256 ThreadLocal**: Call `Keccak256.cleanup()` in pooled/web threads to prevent memory leaks
