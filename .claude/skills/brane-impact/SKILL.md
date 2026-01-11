@@ -70,7 +70,62 @@ git diff --name-only | grep '\.java$'
 
 ---
 
-## Test Discovery Commands
+## LSP-Enhanced Impact Analysis (Preferred)
+
+**Use cclsp MCP tools for precise, semantic impact analysis.**
+
+### Why LSP > Grep
+
+| Aspect | Grep (text-based) | LSP (semantic) |
+|--------|-------------------|----------------|
+| False positives | Yes (comments, strings) | No |
+| Renamed imports | Misses them | Finds them |
+| Qualified refs | May miss | Finds all |
+| Accuracy | ~80% | ~99% |
+
+### LSP Commands for Impact Analysis
+
+```
+# Find all usages of a symbol (MOST USEFUL)
+mcp__cclsp__find_references(file_path, symbol_name)
+
+# Find where a symbol is defined
+mcp__cclsp__find_definition(file_path, symbol_name)
+
+# Check for compile errors after changes
+mcp__cclsp__get_diagnostics(file_path)
+```
+
+### Example: Analyzing Impact of Changing `Address.from()`
+
+```
+# Step 1: Find all references to the method
+mcp__cclsp__find_references(
+  file_path="brane-core/src/main/java/io/brane/core/types/Address.java",
+  symbol_name="from"
+)
+→ Returns 47 locations across 12 files
+
+# Step 2: Check if changes broke anything
+mcp__cclsp__get_diagnostics(
+  file_path="brane-core/src/main/java/io/brane/core/types/Address.java"
+)
+→ Returns compile errors if signature is incompatible
+```
+
+### When to Use LSP vs Grep
+
+| Scenario | Use |
+|----------|-----|
+| Public API changes | **LSP** (precise reference count) |
+| Method signature changes | **LSP** (find all callers) |
+| Class renames | **LSP** (safe refactoring) |
+| Finding test files by name | Grep (pattern matching) |
+| Quick text search | Grep (faster for simple cases) |
+
+---
+
+## Test Discovery Commands (Fallback)
 
 ### Find Tests for a Changed Class
 
@@ -80,7 +135,7 @@ CLASS_NAME="Address"
 # Direct unit test (same name)
 find . -path "*/test/*" -name "*${CLASS_NAME}*Test.java" | grep -v target
 
-# All tests that reference this class
+# All tests that reference this class (less precise than LSP)
 grep -rl "$CLASS_NAME" --include="*Test.java" . | grep -v target
 
 # Integration tests
@@ -234,26 +289,54 @@ When asked to analyze impact or find affected tests:
 ### Phase 1: Identify Changes
 1. Run `git diff --name-only` to find changed files
 2. Extract module names from paths
-3. Identify changed class names
+3. Identify changed class/method names
 
-### Phase 2: Determine Impact
+### Phase 2: LSP-Based Impact Analysis (PREFERRED)
+
+**For each changed public symbol, use LSP to find precise references:**
+
+```
+mcp__cclsp__find_references(file_path, symbol_name)
+```
+
+This is MORE ACCURATE than grep because:
+- No false positives from comments/strings
+- Finds renamed imports and qualified references
+- Shows exact line numbers
+
+**Example workflow:**
+```
+# Changed file: Address.java, changed method: from()
+mcp__cclsp__find_references(
+  "brane-core/.../Address.java",
+  "from"
+)
+→ 47 references in 12 files
+
+# Check for compile errors
+mcp__cclsp__get_diagnostics("brane-core/.../Address.java")
+→ No errors (or shows what broke)
+```
+
+### Phase 3: Determine Module Impact
 1. Use the Impact Propagation Matrix to find affected modules
 2. Categorize severity (HIGH/MEDIUM/LOW)
 3. List transitive dependencies
 
-### Phase 3: Discover Tests
-1. Find direct tests: `find . -name "*ClassName*Test.java"`
-2. Find dependent tests: `grep -rl "ClassName" --include="*Test.java"`
-3. Find integration tests: `grep -rl "ClassName" --include="*IntegrationTest.java"`
+### Phase 4: Discover Tests
+1. From LSP references, filter for `*Test.java` files
+2. Find direct tests: `find . -name "*ClassName*Test.java"`
+3. Cross-reference with module dependency graph
 
-### Phase 4: Generate Report
+### Phase 5: Generate Report
 Produce a report with:
 - Changed files summary
+- **LSP reference count** (e.g., "47 usages across 12 files")
 - Impact severity assessment
-- Direct and dependent tests
+- Affected tests (from LSP + file patterns)
 - Recommended test commands (minimal → full)
 
-### Phase 5: Optionally Execute
+### Phase 6: Optionally Execute
 If `--run` is specified:
 ```bash
 ./.claude/scripts/verify_change.sh --run
