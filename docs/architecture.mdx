@@ -40,8 +40,3 @@ The `Brane` sealed interface is the main entry point:
 | `brane-rpc` | JSON-RPC client layer | Netty, Disruptor |
 | `brane-contract` | Contract binding (no codegen) | - |
 
-### brane-kzg
-
-The `brane-kzg` module provides KZG (Kate-Zaverucha-Goldberg) commitment operations required for EIP-4844 blob transactions. It wraps the `c-kzg-4844` native library and exposes the `Kzg` interface for computing commitments and proofs.
-
-See [Blob Transactions](/brane-signer/blobs) for usage details.
