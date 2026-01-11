@@ -1,13 +1,13 @@
 #!/bin/bash
 #
-# patch-cclsp-timeout.sh - Patch cclsp to increase jdtls initialization timeout
+# patch_cclsp_timeout.sh - Patch cclsp to increase jdtls initialization timeout
 #
 # This directly modifies your installed cclsp to use longer timeouts for Java/jdtls.
 # Run this once after installing/updating cclsp.
 #
 # Usage:
-#   ./.claude/scripts/patch-cclsp-timeout.sh
-#   ./.claude/scripts/patch-cclsp-timeout.sh --restore  # Restore from backup
+#   ./.claude/scripts/patch_cclsp_timeout.sh
+#   ./.claude/scripts/patch_cclsp_timeout.sh --restore  # Restore from backup
 #
 
 set -e
