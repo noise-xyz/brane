@@ -143,8 +143,8 @@ public final class CKzg implements Kzg {
         Objects.requireNonNull(blob, "blob");
 
         try {
-            // TODO: Use blob.toBytesUnsafe() for performance - native library doesn't modify input.
-            // toBytesUnsafe() is package-private in io.brane.core.types; would need internal API.
+            // toBytes() performs a defensive copy. The allocation overhead is acceptable since
+            // it is negligible compared to the native KZG cryptographic operations.
             byte[] commitment = CKZG4844JNI.blobToKzgCommitment(blob.toBytes());
             return new KzgCommitment(commitment);
         } catch (Exception e) {
@@ -158,8 +158,8 @@ public final class CKzg implements Kzg {
         Objects.requireNonNull(commitment, "commitment");
 
         try {
-            // TODO: Use toBytesUnsafe() for performance - native library doesn't modify input.
-            // toBytesUnsafe() is package-private in io.brane.core.types; would need internal API.
+            // toBytes() performs defensive copies. The allocation overhead is acceptable since
+            // it is negligible compared to the native KZG cryptographic operations.
             byte[] proof = CKZG4844JNI.computeBlobKzgProof(blob.toBytes(), commitment.toBytes());
             return new KzgProof(proof);
         } catch (Exception e) {
@@ -204,13 +204,13 @@ public final class CKzg implements Kzg {
         }
 
         try {
-            // Flatten lists into single byte arrays as expected by the native library
+            // Flatten lists into single byte arrays as expected by the native library.
+            // toBytes() performs defensive copies. The allocation overhead is acceptable since
+            // it is negligible compared to the native KZG cryptographic operations.
             byte[] blobsFlat = new byte[blobs.size() * Blob.SIZE];
             byte[] commitmentsFlat = new byte[commitments.size() * KzgCommitment.SIZE];
             byte[] proofsFlat = new byte[proofs.size() * KzgProof.SIZE];
 
-            // TODO: Use toBytesUnsafe() for performance - native library doesn't modify input.
-            // toBytesUnsafe() is package-private in io.brane.core.types; would need internal API.
             for (int i = 0; i < blobs.size(); i++) {
                 Blob blob = Objects.requireNonNull(blobs.get(i), "blobs[" + i + "]");
                 KzgCommitment commitment = Objects.requireNonNull(commitments.get(i), "commitments[" + i + "]");
