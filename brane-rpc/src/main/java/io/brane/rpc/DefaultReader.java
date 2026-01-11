@@ -188,6 +188,10 @@ final class DefaultReader implements Brane.Reader {
                     0, "eth_getTransactionByHash response missing 'hash' field", (String) null, (Throwable) null);
         }
         final String from = RpcUtils.stringValue(map.get("from"));
+        if (from == null) {
+            throw new io.brane.core.error.RpcException(
+                    0, "eth_getTransactionByHash response missing 'from' field", (String) null, (Throwable) null);
+        }
         final String to = RpcUtils.stringValue(map.get("to"));
         final String input = RpcUtils.stringValue(map.get("input"));
         final String valueHex = RpcUtils.stringValue(map.get("value"));
