@@ -14,6 +14,7 @@ BraneException (sealed root)
 ├── AbiDecodingException - ABI decoding failures
 ├── AbiEncodingException - ABI encoding failures
 ├── Eip712Exception - EIP-712 typed data failures
+├── KzgException - KZG commitment failures (EIP-4844)
 ├── RevertException - EVM execution reverts
 ├── RpcException - JSON-RPC communication failures
 └── TxnException - Transaction-specific failures (non-sealed)
@@ -138,6 +139,34 @@ try {
 ```
 
 See [EIP-712 Typed Data](/brane-signer/eip712) for details on typed data signing.
+
+## KzgException
+
+Thrown when KZG commitment operations fail during EIP-4844 blob transaction processing.
+
+```java
+import io.brane.core.error.KzgException;
+import io.brane.kzg.CKzg;
+
+try {
+    Kzg kzg = CKzg.loadFromClasspath();
+    BlobSidecar sidecar = SidecarBuilder.from(data).build(kzg);
+} catch (KzgException e) {
+    System.err.println("KZG error [" + e.kind() + "]: " + e.getMessage());
+}
+```
+
+### KzgException Kinds
+
+| Kind | Description |
+|------|-------------|
+| `INVALID_BLOB` | Invalid blob data format or content |
+| `INVALID_PROOF` | KZG proof verification failed |
+| `SETUP_ERROR` | Trusted setup loading failed |
+| `COMMITMENT_ERROR` | Failed to compute KZG commitment |
+| `PROOF_ERROR` | Failed to compute or verify KZG proof |
+
+See [Blob Transactions](/brane-signer/blobs) for details on EIP-4844 support.
 
 ## Transaction Exceptions
 
