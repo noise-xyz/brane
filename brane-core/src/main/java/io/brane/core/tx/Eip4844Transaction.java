@@ -365,10 +365,8 @@ public record Eip4844Transaction(
      * @return RLP list of versioned hashes
      */
     private RlpItem encodeBlobVersionedHashes() {
-        final List<RlpItem> hashes = new ArrayList<>(blobVersionedHashes.size());
-        for (Hash hash : blobVersionedHashes) {
-            hashes.add(new RlpString(hash.toBytes()));
-        }
-        return new RlpList(hashes);
+        return new RlpList(blobVersionedHashes.stream()
+                .<RlpItem>map(hash -> new RlpString(hash.toBytes()))
+                .toList());
     }
 }
