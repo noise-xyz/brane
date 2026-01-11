@@ -135,6 +135,11 @@ check_prerequisites() {
     if [[ -f "$SCRIPT_DIR/lib/specialized_discovery.sh" ]]; then
         source "$SCRIPT_DIR/lib/specialized_discovery.sh"
     fi
+
+    # Source cross-file analysis library (optional)
+    if [[ -f "$SCRIPT_DIR/lib/cross_file_analysis.sh" ]]; then
+        source "$SCRIPT_DIR/lib/cross_file_analysis.sh"
+    fi
 }
 
 #######################################
@@ -236,6 +241,13 @@ init_defaults() {
     ENABLE_PERF_ANALYSIS=true        # Performance: allocations, hot paths, blocking
     ENABLE_STATIC_PRECHECKS=true     # Fast grep-based checks before LLM analysis
     MODEL_SPECIALIZED="opus"         # Model for specialized analysis (needs reasoning)
+
+    # Cross-file analysis settings (detects issues spanning multiple files)
+    ENABLE_CROSS_FILE_ANALYSIS=true
+    ENABLE_NULL_PROPAGATION=true     # Track null/Optional returns and their handling
+    ENABLE_RESOURCE_OWNERSHIP=true   # Track Closeable lifecycle across files
+    ENABLE_CONTRACT_VIOLATION=true   # Interface promises vs implementation behavior
+    MODEL_CROSS_FILE="sonnet"        # Model for cross-file analysis
 }
 
 #######################################
@@ -334,6 +346,13 @@ load_config() {
         ENABLE_STATIC_PRECHECKS=$(jq -r 'if .enable_static_prechecks == null then true else .enable_static_prechecks end' "$config_file")
         MODEL_SPECIALIZED=$(jq -r '.model_specialized // "opus"' "$config_file")
 
+        # Cross-file analysis settings
+        ENABLE_CROSS_FILE_ANALYSIS=$(jq -r 'if .enable_cross_file_analysis == null then true else .enable_cross_file_analysis end' "$config_file")
+        ENABLE_NULL_PROPAGATION=$(jq -r 'if .enable_null_propagation == null then true else .enable_null_propagation end' "$config_file")
+        ENABLE_RESOURCE_OWNERSHIP=$(jq -r 'if .enable_resource_ownership == null then true else .enable_resource_ownership end' "$config_file")
+        ENABLE_CONTRACT_VIOLATION=$(jq -r 'if .enable_contract_violation == null then true else .enable_contract_violation end' "$config_file")
+        MODEL_CROSS_FILE=$(jq -r '.model_cross_file // "sonnet"' "$config_file")
+
         # Validate all values
         validate_int_config "max_parallel_discovery" "$MAX_PARALLEL_DISCOVERY" 1 20
         validate_int_config "max_parallel_verify" "$MAX_PARALLEL_VERIFY" 1 20
@@ -360,6 +379,13 @@ load_config() {
         validate_bool_config "enable_perf_analysis" "$ENABLE_PERF_ANALYSIS"
         validate_bool_config "enable_static_prechecks" "$ENABLE_STATIC_PRECHECKS"
         validate_model_config "model_specialized" "$MODEL_SPECIALIZED"
+
+        # Validate cross-file analysis settings
+        validate_bool_config "enable_cross_file_analysis" "$ENABLE_CROSS_FILE_ANALYSIS"
+        validate_bool_config "enable_null_propagation" "$ENABLE_NULL_PROPAGATION"
+        validate_bool_config "enable_resource_ownership" "$ENABLE_RESOURCE_OWNERSHIP"
+        validate_bool_config "enable_contract_violation" "$ENABLE_CONTRACT_VIOLATION"
+        validate_model_config "model_cross_file" "$MODEL_CROSS_FILE"
 
         log_info "Config validation passed"
     fi
@@ -2034,6 +2060,122 @@ phase_specialized_discovery() {
 }
 
 #######################################
+# Phase 2.7: Cross-File Analysis
+#######################################
+phase_cross_file_analysis() {
+    if [[ "$ENABLE_CROSS_FILE_ANALYSIS" != "true" ]]; then
+        log_info "Cross-file analysis disabled, skipping..."
+        return
+    fi
+
+    # Check if cross_file_analysis.sh was loaded
+    if ! type run_full_cross_file_analysis &>/dev/null; then
+        log_warn "Cross-file analysis library not loaded, skipping..."
+        return
+    fi
+
+    log_info "========================================"
+    log_info "Phase 2.7: Cross-File Analysis"
+    log_info "========================================"
+
+    local cross_work_dir="$WORK_DIR/cross_file"
+    mkdir -p "$cross_work_dir"
+
+    # Check if we have enough files for cross-file analysis
+    local file_count
+    file_count=$(wc -l < "$WORK_DIR/files.txt" | tr -d ' ')
+
+    if [[ "$file_count" -lt 2 ]]; then
+        log_info "Only $file_count file(s) to analyze, skipping cross-file analysis..."
+        return
+    fi
+
+    log_info "Analyzing $file_count files for cross-file issues..."
+    log_info "Model: $MODEL_CROSS_FILE"
+
+    # Run the full cross-file analysis pipeline
+    local result_file
+    result_file=$(run_full_cross_file_analysis \
+        "$WORK_DIR/files.txt" \
+        "$WORK_DIR" \
+        "$MODEL_CROSS_FILE")
+
+    check_budget
+
+    # Merge cross-file findings with main discoveries
+    if [[ -f "$result_file" ]]; then
+        local cross_count
+        cross_count=$(jq 'length' "$result_file" 2>/dev/null || echo "0")
+
+        if [[ "$cross_count" -gt 0 ]]; then
+            log_info "Merging $cross_count cross-file findings with main discoveries..."
+
+            # Convert cross-file findings to match main discovery format
+            local converted
+            converted=$(jq '[.[] | {
+                file: (.source_file // .target_file),
+                line: (.source_line // .target_line // 1),
+                severity: .severity,
+                category: .issue_type,
+                description: .description,
+                code_quote: "",
+                analysis_type: "CROSS_FILE",
+                cross_file_type: .cross_file_type,
+                target_file: .target_file,
+                target_line: .target_line,
+                chain: .chain,
+                fix_suggestion: .fix_suggestion
+            }]' "$result_file")
+
+            # Merge with existing discoveries
+            local merged
+            merged=$(jq -s 'add' "$ALL_DISCOVERIES" <(echo "$converted"))
+
+            # Deduplicate (same file:line within 5 lines = duplicate)
+            merged=$(echo "$merged" | jq '
+                group_by(.file) |
+                map(
+                    sort_by(.line) |
+                    reduce .[] as $item (
+                        [];
+                        if length == 0 then
+                            [$item]
+                        else
+                            ((.[-1].line - $item.line) | if . < 0 then -. else . end) as $diff |
+                            if $diff <= 5 and .[-1].category == $item.category then
+                                # Keep higher severity finding
+                                if (["T1","T2","T3","T4"] | index($item.severity) // 4) < (["T1","T2","T3","T4"] | index(.[-1].severity) // 4) then
+                                    .[:-1] + [$item]
+                                else
+                                    .
+                                end
+                            else
+                                . + [$item]
+                            end
+                        end
+                    )
+                ) |
+                flatten |
+                sort_by(
+                    if .severity == "T1" then 0
+                    elif .severity == "T2" then 1
+                    elif .severity == "T3" then 2
+                    else 3 end
+                )
+            ')
+
+            echo "$merged" > "$ALL_DISCOVERIES"
+            DISCOVERY_COUNT=$(jq 'length' "$ALL_DISCOVERIES")
+            log_info "Total findings after cross-file merge: $DISCOVERY_COUNT"
+        else
+            log_info "No cross-file issues detected"
+        fi
+    fi
+
+    save_checkpoint "cross_file_analysis_complete"
+}
+
+#######################################
 # Phase 3: Quote Verification
 #######################################
 phase_quote_verification() {
@@ -2859,6 +3001,30 @@ main() {
                 ENABLE_SPECIALIZED_DISCOVERY=false
                 shift
                 ;;
+            --no-cross-file)
+                ENABLE_CROSS_FILE_ANALYSIS=false
+                shift
+                ;;
+            --only-cross-file)
+                # Disable other analyses, run only cross-file
+                ENABLE_SPECIALIZED_DISCOVERY=false
+                ENABLE_CROSS_FILE_ANALYSIS=true
+                shift
+                ;;
+            --only-null-propagation)
+                ENABLE_CROSS_FILE_ANALYSIS=true
+                ENABLE_NULL_PROPAGATION=true
+                ENABLE_RESOURCE_OWNERSHIP=false
+                ENABLE_CONTRACT_VIOLATION=false
+                shift
+                ;;
+            --only-resource-ownership)
+                ENABLE_CROSS_FILE_ANALYSIS=true
+                ENABLE_NULL_PROPAGATION=false
+                ENABLE_RESOURCE_OWNERSHIP=true
+                ENABLE_CONTRACT_VIOLATION=false
+                shift
+                ;;
             --only-arch)
                 ENABLE_SPECIALIZED_DISCOVERY=true
                 ENABLE_ARCH_ANALYSIS=true
@@ -2918,10 +3084,14 @@ main() {
                 echo "  --no-reloc             Disable re-localization layer"
                 echo "  --no-self-consistency  Disable self-consistency (multi-run) check"
                 echo "  --no-specialized       Disable specialized deep analysis passes"
+                echo "  --no-cross-file        Disable cross-file analysis"
                 echo "  --only-arch            Run only architectural analysis"
                 echo "  --only-safety          Run only safety/security analysis"
                 echo "  --only-perf            Run only performance analysis"
                 echo "  --only-quality         Run only code quality analysis"
+                echo "  --only-cross-file      Run only cross-file analysis"
+                echo "  --only-null-propagation   Run only null propagation analysis"
+                echo "  --only-resource-ownership Run only resource ownership analysis"
                 echo "  --calibrate [dir]      Run calibration suite (default: .claude/calibration)"
                 echo "  --generate-calibration [dir]  Generate sample calibration data"
                 echo "  --incremental          Only review files changed since last review"
@@ -2932,6 +3102,11 @@ main() {
                 echo "  SAFETY:  Secrets, input validation, crypto handling, memory safety"
                 echo "  PERF:    Allocations in loops, blocking calls, hot paths"
                 echo "  QUALITY: Complexity, Java 21 idioms, code smells"
+                echo ""
+                echo "Cross-File Analysis Categories:"
+                echo "  NULL_PROPAGATION:    Track null/Optional returns and their handling across files"
+                echo "  RESOURCE_OWNERSHIP:  Track Closeable/AutoCloseable lifecycle across files"
+                echo "  CONTRACT_VIOLATION:  Interface promises vs implementation behavior"
                 exit 0
                 ;;
             *)
@@ -2986,6 +3161,7 @@ main() {
     phase_build_index
     phase_discovery
     phase_specialized_discovery
+    phase_cross_file_analysis
     phase_quote_verification
     phase_relocalization
     phase_build_context
