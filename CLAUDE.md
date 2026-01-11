@@ -177,13 +177,33 @@ BraneException (sealed root)
 | Smoke | `./scripts/test_smoke.sh` | Anvil |
 | Full | `./verify_all.sh` | Anvil |
 
+## LSP Setup for Claude Code
+
+To enable Java LSP features (go-to-definition, find-references), set up cclsp:
+
+```bash
+# 1. Install cclsp globally
+npm install -g cclsp
+
+# 2. Copy example configs and customize paths
+cp .cclsp.example.json .cclsp.json
+cp .mcp.example.json .mcp.json
+
+# 3. Edit .cclsp.json - update jdtls path for your system:
+#    - macOS VSCode: ~/.vscode/extensions/redhat.java-*/server/bin/jdtls
+#    - Or install jdtls separately and use "jdtls" if in PATH
+
+# 4. Patch cclsp for jdtls timeout (run after each cclsp update)
+./.claude/scripts/patch-cclsp-timeout.sh
+```
+
 ## Large File Navigation (IMPORTANT - READ THIS)
 
 For Java files over 500 lines, **ALL reads are BLOCKED**. You MUST use cclsp MCP tools.
 
 **DO NOT ask the user what they want - USE THE TOOLS PROACTIVELY.**
 
-**NOTE:** First LSP call may timeout (~30s) while jdtls starts. If you get a timeout, retry - subsequent calls will be fast.
+**NOTE:** First LSP call may take 1-3 minutes while jdtls indexes the project. Subsequent calls are fast.
 
 When asked about a large file, immediately:
 1. Use `Grep` to find relevant symbols/patterns
