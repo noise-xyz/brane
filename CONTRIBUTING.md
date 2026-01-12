@@ -75,11 +75,12 @@ BigInteger amount = new BigInteger("1500000000000000000");
 
 ### Test Layers
 
-| Level | Command | Requirements |
-|-------|---------|--------------|
-| Unit | `./gradlew test -Pbrane.unit.tests` | None |
-| Integration | `./gradlew test` | Anvil |
-| Full | `./verify_all.sh` | Anvil |
+| Level       | Command                               | Requirements |
+|-------------|---------------------------------------|--------------|
+| Unit        | `./gradlew test -Pbrane.unit.tests`   | None         |
+| Integration | `./gradlew test -Pbrane.integration.tests` | Anvil        |
+| All         | `./gradlew test`                      | Anvil        |
+| Full        | `./verify_all.sh`                     | Anvil        |
 
 ### Writing Tests
 
