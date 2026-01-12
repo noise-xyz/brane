@@ -1,5 +1,5 @@
+apply from: rootProject.file('gradle/publish/build.gradle')
+
 dependencies {
     // No runtime dependencies - pure JDK
-    
-
 }

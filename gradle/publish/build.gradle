@@ -1,23 +1,22 @@
+/**
+ * Publishing convention for Maven Central deployment via JReleaser.
+ *
+ * Usage: apply from: rootProject.file('gradle/publish/build.gradle')
+ *
+ * Required environment variables for publishing:
+ *   - JRELEASER_GPG_PUBLIC_KEY: Armored GPG public key
+ *   - JRELEASER_GPG_SECRET_KEY: Armored GPG private key
+ *   - JRELEASER_GPG_PASSPHRASE: GPG key passphrase
+ *   - JRELEASER_MAVENCENTRAL_CENTRAL_USERNAME: Sonatype token username
+ *   - JRELEASER_MAVENCENTRAL_CENTRAL_PASSWORD: Sonatype token password
+ */
+
 apply plugin: 'java-library'
+apply plugin: 'maven-publish'
 apply plugin: 'signing'
 apply plugin: 'org.jreleaser'
-apply plugin: 'maven-publish'
 
-tasks.register('javadocsJar', Jar) {
-    archiveClassifier = 'javadoc'
-    from javadoc
-}
-
-tasks.register('sourcesJar', Jar) {
-    archiveClassifier = 'sources'
-    from sourceSets.main.allSource
-}
-
-tasks.register('testsJar', Jar) {
-    archiveClassifier = 'tests'
-    from sourceSets.test.output
-}
-
+// Generate sources and javadoc JARs
 java {
     withJavadocJar()
     withSourcesJar()
@@ -30,61 +29,80 @@ publishing {
 
             pom {
                 name = project.name
-                description.set(project.provider({ project.description }))
-                url = 'https://github.com/brane-io/brane'
+                description.set(project.provider { project.description ?: "Brane SDK - ${project.name}" })
+                url = findProperty('POM_URL') ?: 'https://github.com/brane-io/brane'
+                inceptionYear = '2024'
 
                 licenses {
                     license {
-                        name = 'The Apache License, Version 2.0'
-                        url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        name = 'MIT License'
+                        url = 'https://opensource.org/licenses/MIT'
+                    }
+                    license {
+                        name = 'Apache License, Version 2.0'
+                        url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
                     }
                 }
 
                 developers {
                     developer {
-                        id = 'brane'
-                        name = 'Brane Team'
-                        email = 'hello@brane.io'
+                        id = findProperty('POM_DEVELOPER_ID') ?: 'brane'
+                        name = findProperty('POM_DEVELOPER_NAME') ?: 'Brane Team'
+                        email = findProperty('POM_DEVELOPER_EMAIL') ?: 'hello@brane.io'
                     }
                 }
+
                 scm {
-                    connection = 'scm:git:git://github.com/brane-io/brane.git'
-                    developerConnection = 'scm:git:ssh://github.com/brane-io/brane.git'
-                    url = 'https://github.com/brane-io/brane'
-                }
-
-                developers {
-                    developer {
-                        id = 'conor10'
-                        name = 'Conor Svensson'
-                        email = 'conor10@gmail.com'
-                    }
+                    connection = findProperty('POM_SCM_CONNECTION') ?: 'scm:git:git://github.com/brane-io/brane.git'
+                    developerConnection = findProperty('POM_SCM_DEV_CONNECTION') ?: 'scm:git:ssh://github.com/brane-io/brane.git'
+                    url = findProperty('POM_SCM_URL') ?: 'https://github.com/brane-io/brane'
                 }
             }
         }
     }
 
     repositories {
+        // Local staging directory for JReleaser
         maven {
-            name = "localStaging"
-            url = uri(layout.buildDirectory.dir("staging-deploy"))
+            name = 'localStaging'
+            url = uri(layout.buildDirectory.dir('staging-deploy'))
         }
+        // Snapshot repository (direct publish, no JReleaser)
         maven {
-            name = "sonatypeSnapshots"
-            url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+            name = 'sonatypeSnapshots'
+            url = uri('https://central.sonatype.com/repository/maven-snapshots/')
             credentials {
-                username = findProperty("JRELEASER_MAVENCENTRAL_CENTRAL_USERNAME") ?: System.getenv("JRELEASER_MAVENCENTRAL_CENTRAL_USERNAME")
-                password = findProperty("JRELEASER_MAVENCENTRAL_CENTRAL_PASSWORD") ?: System.getenv("JRELEASER_MAVENCENTRAL_CENTRAL_PASSWORD")
+                username = findProperty('JRELEASER_MAVENCENTRAL_CENTRAL_USERNAME') ?: System.getenv('JRELEASER_MAVENCENTRAL_CENTRAL_USERNAME') ?: ''
+                password = findProperty('JRELEASER_MAVENCENTRAL_CENTRAL_PASSWORD') ?: System.getenv('JRELEASER_MAVENCENTRAL_CENTRAL_PASSWORD') ?: ''
+            }
         }
-    }
     }
 }
 
+// GPG signing - only sign when publishing to real repositories
+signing {
+    // Use in-memory keys from environment (CI-friendly)
+    def signingKey = findProperty('signing.key') ?: System.getenv('JRELEASER_GPG_SECRET_KEY')
+    def signingPassword = findProperty('signing.password') ?: System.getenv('JRELEASER_GPG_PASSPHRASE')
+
+    if (signingKey && signingPassword) {
+        useInMemoryPgpKeys(signingKey, signingPassword)
+    }
+
+    // Only require signing for release builds
+    required { !version.toString().endsWith('-SNAPSHOT') && gradle.taskGraph.hasTask('publish') }
+
+    sign publishing.publications.maven
+}
+
+// JReleaser configuration for Maven Central deployment
 jreleaser {
     signing {
         active = 'ALWAYS'
         armored = true
+        verify = false  // JReleaser handles verification internally
     }
+
     deploy {
         maven {
             mavenCentral {
@@ -92,18 +110,39 @@ jreleaser {
                     active = 'RELEASE'
                     url = 'https://central.sonatype.com/api/v1/publisher'
                     applyMavenCentralRules = true
-                    stagingRepository("${buildDir}/staging-deploy")
+                    stagingRepository(layout.buildDirectory.dir('staging-deploy').get().asFile.absolutePath)
+                    // Retry settings for reliability
+                    retryDelay = 60
+                    maxRetries = 60
                 }
             }
         }
     }
+
+    // Release configuration
+    release {
+        github {
+            skipRelease = true  // We handle GitHub releases separately
+        }
+    }
 }
 
-tasks.register("publishSnapshot") {
-    dependsOn("publishMavenPublicationToSonatypeSnapshotsRepository")
-    onlyIf { version.endsWith("-SNAPSHOT") }
+// Task to publish snapshots directly (bypasses JReleaser)
+tasks.register('publishSnapshot') {
+    group = 'publishing'
+    description = 'Publishes snapshot version to Sonatype snapshots repository'
+    dependsOn 'publishMavenPublicationToSonatypeSnapshotsRepository'
+    onlyIf { version.toString().endsWith('-SNAPSHOT') }
 }
 
-tasks.named("jreleaserDeploy").configure {
-    dependsOn("publishMavenPublicationToLocalStagingRepository")
+// Wire JReleaser deploy to depend on local staging
+tasks.named('jreleaserDeploy').configure {
+    dependsOn 'publishMavenPublicationToLocalStagingRepository'
+}
+
+// Task to stage all artifacts locally (for verification before release)
+tasks.register('stageRelease') {
+    group = 'publishing'
+    description = 'Stages release artifacts locally for verification'
+    dependsOn 'publishMavenPublicationToLocalStagingRepository'
 }

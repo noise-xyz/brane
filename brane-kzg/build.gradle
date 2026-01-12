@@ -1,3 +1,5 @@
+apply from: rootProject.file('gradle/publish/build.gradle')
+
 dependencies {
     api project(":brane-core")
     implementation "io.consensys.protocols:jc-kzg-4844:2.1.5"

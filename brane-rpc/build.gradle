@@ -1,3 +1,5 @@
+apply from: rootProject.file('gradle/publish/build.gradle')
+
 dependencies {
     api project(":brane-core")
     api "org.jspecify:jspecify:1.0.0"
