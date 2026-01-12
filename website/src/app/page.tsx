@@ -10,7 +10,7 @@ export default function Home() {
               Brane
             </h1>
             <div className="absolute left-full ml-3 inline-flex items-center whitespace-nowrap rounded-full border border-zinc-200 bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-800 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
-              v0.1.0-alpha
+              v0.3.0
             </div>
           </div>
           <p className="text-2xl font-semibold text-black dark:text-white sm:text-3xl">

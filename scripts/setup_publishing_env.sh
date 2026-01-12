@@ -1,0 +1,103 @@
+#!/bin/bash
+# Setup script for Maven Central publishing environment variables
+# Run this script to configure your shell environment for publishing
+
+set -e
+
+KEYS_DIR="$HOME/.brane-keys"
+
+# GPG Key ID - pass as argument or will be prompted
+GPG_KEY_ID="${1:-}"
+
+echo "=== Brane SDK Publishing Environment Setup ==="
+echo ""
+
+# If no key ID provided, show available keys and prompt
+if [ -z "$GPG_KEY_ID" ]; then
+    echo "Available GPG keys:"
+    echo ""
+    gpg --list-secret-keys --keyid-format LONG 2>/dev/null || true
+    echo ""
+    echo "Usage: $0 <GPG_KEY_ID>"
+    echo ""
+    echo "Find your key ID in the output above (the 16-character hex string after 'sec')"
+    echo "Example: $0 BE398C4E143D3170"
+    exit 1
+fi
+
+# Validate key ID format (8 or 16 hex chars)
+if ! [[ "$GPG_KEY_ID" =~ ^[0-9A-Fa-f]{8,16}$ ]]; then
+    echo "ERROR: Invalid GPG key ID format: $GPG_KEY_ID"
+    echo "Key ID should be 8-16 hexadecimal characters"
+    exit 1
+fi
+
+# Warn if keys already exist
+if [ -f "$KEYS_DIR/public.asc" ] || [ -f "$KEYS_DIR/private.asc" ]; then
+    echo "WARNING: Keys already exist in $KEYS_DIR"
+    echo "Delete them first if you want to export different keys:"
+    echo "  rm $KEYS_DIR/public.asc $KEYS_DIR/private.asc"
+    echo ""
+fi
+
+# Check if keys directory exists
+if [ ! -d "$KEYS_DIR" ]; then
+    echo "Creating keys directory: $KEYS_DIR"
+    mkdir -p "$KEYS_DIR"
+fi
+
+# Check public key
+if [ ! -f "$KEYS_DIR/public.asc" ]; then
+    echo "Exporting public key..."
+    gpg --armor --export "$GPG_KEY_ID" > "$KEYS_DIR/public.asc"
+fi
+
+# Check private key
+if [ ! -f "$KEYS_DIR/private.asc" ]; then
+    echo "Exporting private key (you may be prompted for passphrase)..."
+    gpg --armor --export-secret-keys "$GPG_KEY_ID" > "$KEYS_DIR/private.asc"
+fi
+
+# Verify keys exist
+if [ ! -s "$KEYS_DIR/public.asc" ] || [ ! -s "$KEYS_DIR/private.asc" ]; then
+    echo "ERROR: Key export failed. Please run manually:"
+    echo "  gpg --armor --export $GPG_KEY_ID > $KEYS_DIR/public.asc"
+    echo "  gpg --armor --export-secret-keys $GPG_KEY_ID > $KEYS_DIR/private.asc"
+    exit 1
+fi
+
+echo ""
+echo "Keys exported successfully to $KEYS_DIR"
+echo ""
+
+# Generate environment variable exports
+cat << 'EXPORTS'
+=== Add these to your shell profile (~/.zshrc or ~/.bashrc) ===
+
+# GPG Signing for Maven Central
+export JRELEASER_GPG_PUBLIC_KEY="$(cat ~/.brane-keys/public.asc)"
+export JRELEASER_GPG_SECRET_KEY="$(cat ~/.brane-keys/private.asc)"
+export JRELEASER_GPG_PASSPHRASE=""  # Set securely; never hardcode or commit this value
+
+# Sonatype Central credentials (get from central.sonatype.com > Settings > Generate User Token)
+export JRELEASER_MAVENCENTRAL_CENTRAL_USERNAME="your-token-username"
+export JRELEASER_MAVENCENTRAL_CENTRAL_PASSWORD="your-token-password"
+
+EXPORTS
+
+echo ""
+echo "=== Next Steps ==="
+echo "1. Add a passphrase to your GPG key (recommended):"
+echo "   gpg --edit-key $GPG_KEY_ID passwd"
+echo ""
+echo "2. Get Sonatype credentials:"
+echo "   - Go to https://central.sonatype.com"
+echo "   - Sign in and verify namespace 'sh.brane'"
+echo "   - Go to Settings > Generate User Token"
+echo "   - Copy the username and password"
+echo ""
+echo "3. Add the environment variables to your shell profile"
+echo ""
+echo "4. Test publishing locally:"
+echo "   ./gradlew stageRelease"
+echo ""

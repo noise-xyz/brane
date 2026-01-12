@@ -1,5 +1,6 @@
 plugins {
     id 'com.diffplug.spotless' version '6.25.0' apply false
+    id 'org.jreleaser' version '1.21.0' apply false
 }
 
 ext {
@@ -9,7 +10,7 @@ ext {
 }
 
 allprojects {
-    group = 'com.github.noise-xyz.brane'
+    group = 'sh.brane'
     version = '0.3.0'
 
     repositories {
@@ -19,10 +20,23 @@ allprojects {
     }
 }
 
+// Module descriptions for POM metadata
+ext.moduleDescriptions = [
+    'brane-primitives': 'Low-level hex encoding and RLP utilities with zero dependencies',
+    'brane-core'      : 'Core types, ABI encoding/decoding, cryptographic primitives, and transaction builders',
+    'brane-kzg'       : 'KZG commitment scheme for EIP-4844 blob transactions',
+    'brane-rpc'       : 'JSON-RPC client with HTTP and WebSocket transports for Ethereum nodes',
+    'brane-contract'  : 'Type-safe contract binding via dynamic proxies, no code generation required',
+]
+
 subprojects {
     apply plugin: 'java-library'
-    apply plugin: 'maven-publish'
     apply plugin: 'com.diffplug.spotless'
+
+    // Set module description from ext.moduleDescriptions if available
+    if (rootProject.ext.moduleDescriptions.containsKey(project.name)) {
+        project.description = rootProject.ext.moduleDescriptions[project.name]
+    }
 
     spotless {
         java {
@@ -31,14 +45,6 @@ subprojects {
             importOrder('java', 'javax', '', 'io.brane')
             trimTrailingWhitespace()
             endWithNewline()
-        }
-    }
-
-    publishing {
-        publications {
-            mavenJava(MavenPublication) {
-                from components.java
-            }
         }
     }
 
@@ -87,18 +93,25 @@ subprojects {
 }
 
 // Aggregated Javadoc
-task allJavadoc(type: Javadoc) {
+tasks.register('allJavadoc', Javadoc) {
     description = 'Generates aggregated Javadoc for all modules'
     group = 'documentation'
 
     destinationDir = layout.buildDirectory.dir("docs/javadoc").get().asFile
     title = "Brane SDK ${version} API"
 
-    // Exclude examples from API docs
-    def docProjects = subprojects.findAll { it.name != 'brane-examples' }
+    // Exclude examples and benchmark from API docs
+    def docProjects = subprojects.findAll { !['brane-examples', 'brane-benchmark', 'smoke-test'].contains(it.name) }
+
+    // Depend on compileJava to ensure classes are available
+    dependsOn docProjects.collect { it.tasks.named('compileJava') }
 
     source docProjects.collect { it.sourceSets.main.allJava }
-    classpath = files(docProjects.collect { it.sourceSets.main.compileClasspath })
+
+    // Defer classpath resolution to execution time (Gradle 9 compatibility)
+    doFirst {
+        classpath = files(docProjects.collect { it.sourceSets.main.compileClasspath })
+    }
 
     exclude 'io/brane/internal/**'
     options.addStringOption('Xdoclint:none', '-quiet')

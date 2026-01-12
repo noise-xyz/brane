@@ -9,7 +9,7 @@ This document is the **System Prompt** for any AI agent (LLM) working on the Bra
 ## 1. Project Context
 *   **Name**: Brane SDK
 *   **Goal**: A modern, type-safe Java SDK for Ethereum/EVM, with zero dependencies on other web3 libraries in its public API.
-*   **Status**: `v0.1.0-alpha`
+*   **Status**: `v0.3.0`
 *   **Stack**: Java 21, Gradle, JUnit 5, Foundry (Anvil).
 
 ## 2. Critical Rules (The "Must Haves")
