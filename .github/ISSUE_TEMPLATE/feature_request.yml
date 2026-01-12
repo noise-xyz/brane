@@ -1,0 +1,70 @@
+name: Feature Request
+description: Suggest a new feature or enhancement
+labels: ["enhancement", "needs-triage"]
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a feature!
+
+        Please check if a similar feature hasn't already been requested in [existing issues](https://github.com/noise-xyz/brane/issues).
+
+  - type: checkboxes
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched existing issues and this feature has not been requested
+          required: true
+
+  - type: dropdown
+    attributes:
+      label: Component
+      description: Which module would this feature belong to?
+      multiple: true
+      options:
+        - brane-primitives (Hex, RLP)
+        - brane-core (Address, Wei, ABI, Crypto, Builders)
+        - brane-rpc (Brane client, Provider)
+        - brane-contract (Contract binding)
+        - brane-kzg (KZG commitments, Blobs)
+        - New module
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Problem Statement
+      description: |
+        What problem does this feature solve? What use case does it enable?
+
+        Example: "I need to decode logs from multiple contracts in a single call..."
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Proposed Solution
+      description: |
+        How would you like this to work? Include API examples if possible.
+      placeholder: |
+        ```java
+        // Example API
+        var logs = client.getLogs(filter)
+            .decode(MyEvent.class, OtherEvent.class);
+        ```
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Alternatives Considered
+      description: Have you considered any alternative approaches?
+
+  - type: textarea
+    attributes:
+      label: Additional Context
+      description: |
+        Any other context, references, or examples from other libraries (viem, ethers, alloy).
