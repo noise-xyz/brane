@@ -36,7 +36,8 @@ We will collaborate with you privately through GitHub's security advisory system
 ### Private Key Handling
 
 ```java
-// Always destroy private keys when done
+// Never hardcode keys in production - use environment variables, KMS, or secure storage
+// fromBytes() zeros the input array; fromHex() is shown here for brevity
 PrivateKey key = PrivateKey.fromHex("0x...");
 try {
     // Use the key
