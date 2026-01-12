@@ -12,7 +12,7 @@
 
 ## Checklist
 
-- [ ] I have read the [Contributing Guidelines](https://github.com/noise-xyz/brane/blob/main/CONTRIBUTING.md)
+- [ ] I have read the [Contributing Guidelines](../CONTRIBUTING.md)
 - [ ] Tests have been added/updated for the changes
 - [ ] Documentation has been updated (if applicable)
 - [ ] Breaking changes are noted below (if applicable)
