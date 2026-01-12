@@ -25,6 +25,21 @@ if [ -z "$GPG_KEY_ID" ]; then
     exit 1
 fi
 
+# Validate key ID format (8 or 16 hex chars)
+if ! [[ "$GPG_KEY_ID" =~ ^[0-9A-Fa-f]{8,16}$ ]]; then
+    echo "ERROR: Invalid GPG key ID format: $GPG_KEY_ID"
+    echo "Key ID should be 8-16 hexadecimal characters"
+    exit 1
+fi
+
+# Warn if keys already exist
+if [ -f "$KEYS_DIR/public.asc" ] || [ -f "$KEYS_DIR/private.asc" ]; then
+    echo "WARNING: Keys already exist in $KEYS_DIR"
+    echo "Delete them first if you want to export different keys:"
+    echo "  rm $KEYS_DIR/public.asc $KEYS_DIR/private.asc"
+    echo ""
+fi
+
 # Check if keys directory exists
 if [ ! -d "$KEYS_DIR" ]; then
     echo "Creating keys directory: $KEYS_DIR"
@@ -62,7 +77,7 @@ cat << 'EXPORTS'
 # GPG Signing for Maven Central
 export JRELEASER_GPG_PUBLIC_KEY="$(cat ~/.brane-keys/public.asc)"
 export JRELEASER_GPG_SECRET_KEY="$(cat ~/.brane-keys/private.asc)"
-export JRELEASER_GPG_PASSPHRASE=""  # Set this to your GPG key passphrase
+export JRELEASER_GPG_PASSPHRASE=""  # Set securely; never hardcode or commit this value
 
 # Sonatype Central credentials (get from central.sonatype.com > Settings > Generate User Token)
 export JRELEASER_MAVENCENTRAL_CENTRAL_USERNAME="your-token-username"
