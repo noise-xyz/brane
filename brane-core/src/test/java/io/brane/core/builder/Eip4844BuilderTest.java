@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 package io.brane.core.builder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;

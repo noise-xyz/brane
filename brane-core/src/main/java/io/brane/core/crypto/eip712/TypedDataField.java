@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 package io.brane.core.crypto.eip712;
 
 import java.util.Objects;
