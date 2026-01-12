@@ -47,6 +47,15 @@ brane-kzg  brane-rpc (Netty, Disruptor)
 
 # Full verification (requires Anvil running)
 ./verify_all.sh
+
+# Publish to local Maven (~/.m2/repository)
+./gradlew publishToMavenLocal
+
+# Stage release artifacts (verify before publishing)
+./gradlew stageRelease
+
+# Deploy to Maven Central (requires credentials)
+./gradlew jreleaserDeploy
 ```
 
 ## Key Patterns
@@ -194,7 +203,7 @@ cp .mcp.example.json .mcp.json
 #    - Or install jdtls separately and use "jdtls" if in PATH
 
 # 4. Patch cclsp for jdtls timeout (run after each cclsp update)
-./.claude/scripts/patch-cclsp-timeout.sh
+./.claude/scripts/patch_cclsp_timeout.sh
 ```
 
 ## Large File Navigation (IMPORTANT - READ THIS)

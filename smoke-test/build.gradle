@@ -4,7 +4,7 @@ plugins {
 }
 
 repositories {
-    mavenLocal() // Simulates JitPack (since we publish locally first)
+    mavenLocal() // For local development testing
     mavenCentral()
 }
 

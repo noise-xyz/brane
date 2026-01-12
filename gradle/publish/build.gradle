@@ -30,7 +30,7 @@ publishing {
             pom {
                 name = project.name
                 description.set(project.provider { project.description ?: "Brane SDK - ${project.name}" })
-                url = findProperty('POM_URL') ?: 'https://github.com/brane-io/brane'
+                url = findProperty('POM_URL') ?: 'https://github.com/noise-xyz/brane'
                 inceptionYear = '2024'
 
                 licenses {
@@ -46,16 +46,16 @@ publishing {
 
                 developers {
                     developer {
-                        id = findProperty('POM_DEVELOPER_ID') ?: 'brane'
-                        name = findProperty('POM_DEVELOPER_NAME') ?: 'Brane Team'
-                        email = findProperty('POM_DEVELOPER_EMAIL') ?: 'hello@brane.io'
+                        id = findProperty('POM_DEVELOPER_ID') ?: 'noise-xyz'
+                        name = findProperty('POM_DEVELOPER_NAME') ?: 'Noise'
+                        email = findProperty('POM_DEVELOPER_EMAIL') ?: 'dev@noise.xyz'
                     }
                 }
 
                 scm {
-                    connection = findProperty('POM_SCM_CONNECTION') ?: 'scm:git:git://github.com/brane-io/brane.git'
-                    developerConnection = findProperty('POM_SCM_DEV_CONNECTION') ?: 'scm:git:ssh://github.com/brane-io/brane.git'
-                    url = findProperty('POM_SCM_URL') ?: 'https://github.com/brane-io/brane'
+                    connection = findProperty('POM_SCM_CONNECTION') ?: 'scm:git:git://github.com/noise-xyz/brane.git'
+                    developerConnection = findProperty('POM_SCM_DEV_CONNECTION') ?: 'scm:git:ssh://github.com/noise-xyz/brane.git'
+                    url = findProperty('POM_SCM_URL') ?: 'https://github.com/noise-xyz/brane'
                 }
             }
         }

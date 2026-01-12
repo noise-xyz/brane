@@ -2,40 +2,76 @@
 
 ## How to use `brane` in your project
 
-We use [JitPack](https://jitpack.io) for internal distribution. This allows you to pull any branch, tag, or commit hash as a dependency.
+Brane SDK is published to **Maven Central** under group `sh.brane`.
 
-### 1. Add the Repository
-Add `maven { url 'https://jitpack.io' }` to your `repositories` block in `build.gradle`:
-
+### 1. Add Dependencies (Release)
 ```groovy
 repositories {
     mavenCentral()
-    maven { url 'https://jitpack.io' }
+}
+
+dependencies {
+    implementation 'sh.brane:brane-core:0.3.0'
+    implementation 'sh.brane:brane-rpc:0.3.0'
+    implementation 'sh.brane:brane-contract:0.3.0'
 }
 ```
 
-### 2. Add the Dependency
-Add the dependency using the format `com.github.noise-xyz.brane:Module:Tag`.
-
-#### Target a specific Release (Recommended)
+### 2. Using Snapshots (Pre-release Testing)
+For testing unreleased changes:
 ```groovy
+repositories {
+    mavenCentral()
+    maven { url 'https://central.sonatype.com/repository/maven-snapshots/' }
+}
+
 dependencies {
-    implementation 'com.github.noise-xyz.brane:brane-core:0.1.0'
+    implementation 'sh.brane:brane-core:0.4.0-SNAPSHOT'
 }
 ```
 
-#### Target a specific Commit (For debugging)
+### 3. Using Local Builds (Development)
+For testing local changes before they're published:
 ```groovy
+repositories {
+    mavenLocal()  // ~/.m2/repository
+    mavenCentral()
+}
+
 dependencies {
-    implementation 'com.github.noise-xyz.brane:brane-core:a1b2c3d'
+    implementation 'sh.brane:brane-core:0.3.0'
 }
 ```
 
-#### Target a Branch Snapshot (For testing latest changes)
-```groovy
-dependencies {
-    implementation 'com.github.noise-xyz.brane:brane-core:main-SNAPSHOT'
-}
+## Publishing Workflow (For Contributors)
+
+### Local Development
+```bash
+# Publish to ~/.m2/repository for local testing
+./gradlew publishToMavenLocal
+```
+
+### Snapshot Release
+```bash
+# Publish snapshot to Sonatype (requires credentials)
+./gradlew publishSnapshot
+```
+
+### Official Release
+```bash
+# 1. Stage artifacts locally (verify before release)
+./gradlew stageRelease
+
+# 2. Deploy to Maven Central via JReleaser
+./gradlew jreleaserDeploy
+```
+
+Required environment variables for release:
+```bash
+export JRELEASER_GPG_SECRET_KEY="..."
+export JRELEASER_GPG_PASSPHRASE="..."
+export JRELEASER_MAVENCENTRAL_CENTRAL_USERNAME="..."
+export JRELEASER_MAVENCENTRAL_CENTRAL_PASSWORD="..."
 ```
 
 ## Local Verification (For Contributors)
