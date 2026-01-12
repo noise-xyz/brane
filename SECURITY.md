@@ -11,14 +11,14 @@
 
 **Please do not report security vulnerabilities through public GitHub issues.**
 
-If you discover a security vulnerability in Brane SDK, please report it privately:
+Use GitHub's private vulnerability reporting:
 
-1. **Email**: security@noise.xyz
-2. **Subject**: `[SECURITY] Brane SDK - Brief description`
+**[Report a Vulnerability](https://github.com/noise-xyz/brane/security/advisories/new)**
 
 ### What to Include
 
 - Description of the vulnerability
+- Affected versions
 - Steps to reproduce
 - Potential impact
 - Suggested fix (if any)
@@ -29,7 +29,7 @@ If you discover a security vulnerability in Brane SDK, please report it privatel
 - **Initial Assessment**: Within 7 days
 - **Resolution Timeline**: Depends on severity, typically 30-90 days
 
-We will work with you to understand and address the issue. We appreciate responsible disclosure and will credit reporters (unless you prefer to remain anonymous).
+We will collaborate with you privately through GitHub's security advisory system to understand and address the issue. Once resolved, we'll publish an advisory and credit you (unless you prefer to remain anonymous).
 
 ## Security Considerations for Users
 
