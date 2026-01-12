@@ -5,10 +5,25 @@
 set -e
 
 KEYS_DIR="$HOME/.brane-keys"
-GPG_KEY_ID="BE398C4E143D3170"
+
+# GPG Key ID - pass as argument or will be prompted
+GPG_KEY_ID="${1:-}"
 
 echo "=== Brane SDK Publishing Environment Setup ==="
 echo ""
+
+# If no key ID provided, show available keys and prompt
+if [ -z "$GPG_KEY_ID" ]; then
+    echo "Available GPG keys:"
+    echo ""
+    gpg --list-secret-keys --keyid-format LONG 2>/dev/null || true
+    echo ""
+    echo "Usage: $0 <GPG_KEY_ID>"
+    echo ""
+    echo "Find your key ID in the output above (the 16-character hex string after 'sec')"
+    echo "Example: $0 BE398C4E143D3170"
+    exit 1
+fi
 
 # Check if keys directory exists
 if [ ! -d "$KEYS_DIR" ]; then
