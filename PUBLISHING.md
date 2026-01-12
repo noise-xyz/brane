@@ -52,11 +52,19 @@ export JRELEASER_MAVENCENTRAL_CENTRAL_PASSWORD="sonatype-token-password"
 ### Local Development / Testing
 
 ```bash
+# Publish to local Maven (~/.m2/repository)
+./gradlew publishToMavenLocal
+
 # Stage artifacts locally (no credentials needed)
 ./gradlew stageRelease
+```
 
-# Verify staged artifacts
-ls -la brane-*/build/staging-deploy/
+To test in another project, add `mavenLocal()` first:
+```groovy
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
 ```
 
 ### Publishing Snapshots
