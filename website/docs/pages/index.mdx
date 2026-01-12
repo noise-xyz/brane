@@ -1,0 +1,229 @@
+---
+layout: landing
+---
+
+import { HomePage } from 'vocs/components'
+
+<div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4rem', marginTop: '2rem', marginBottom: '3rem', marginLeft: '-25%', marginRight: '-25%', width: '150%' }}>
+  {/* Left Column: Hero Image, Description, Buttons */}
+  <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '480px' }}>
+    <img src="/brand/hero-image-dark.svg" alt="Brane" style={{ height: '240px', width: 'auto', borderRadius: '11px' }} />
+
+    <div style={{ fontSize: '1.3rem', color: '#919193', lineHeight: 1.6 }}>
+      <span style={{ color: 'var(--vocs-color_text)' }}>Type-safe</span>, <span style={{ color: 'var(--vocs-color_text)' }}>performant</span> Java 21 SDK for Ethereum.
+    </div>
+
+    <div style={{ display: 'flex', gap: '0.5rem' }}>
+      <HomePage.Button href="/quickstart" variant="accent">Get Started</HomePage.Button>
+      <HomePage.Button href="https://github.com/noise-xyz/brane">GitHub</HomePage.Button>
+    </div>
+  </div>
+
+  {/* Right Column: Install Code */}
+  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: '520px', gap: '1.5rem' }}>
+    <div id="home-install">
+
+:::code-group
+
+```xml [Maven]
+<dependency>
+  <groupId>sh.brane</groupId>
+  <artifactId>brane-rpc</artifactId>
+  <version>0.3.0</version>
+</dependency>
+```
+
+```groovy [Gradle]
+implementation 'sh.brane:brane-rpc:0.3.0'
+```
+
+:::
+
+    </div>
+  </div>
+</div>
+
+<div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', marginTop: '2rem', marginLeft: '-25%', marginRight: '-25%', width: '150%', gap: '0.5rem' }}>
+  <div style={{ flex: '1 1 23%', minWidth: '200px' }}>
+    <div style={{ height: '142px', border: '1px solid var(--vocs-color_border)', borderRadius: '8px', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'var(--vocs-color_background2)', backdropFilter: 'blur(2px)' }}>
+      <div style={{ fontSize: '1.25rem', fontWeight: 500 }}>Zero Codegen</div>
+      <div style={{ fontSize: '1.05rem', color: '#919193' }}>Bind interfaces to ABI at runtime. No build step.</div>
+    </div>
+  </div>
+  <div style={{ flex: '1 1 23%', minWidth: '200px' }}>
+    <div style={{ height: '142px', border: '1px solid var(--vocs-color_border)', borderRadius: '8px', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'var(--vocs-color_background2)', backdropFilter: 'blur(2px)' }}>
+      <div style={{ fontSize: '1.25rem', fontWeight: 500 }}>Type-Safe Primitives</div>
+      <div style={{ fontSize: '1.05rem', color: '#919193' }}><code>Address</code>, <code>Wei</code>, <code>Hash</code> — catch bugs at compile time.</div>
+    </div>
+  </div>
+  <div style={{ flex: '1 1 23%', minWidth: '200px' }}>
+    <div style={{ height: '142px', border: '1px solid var(--vocs-color_border)', borderRadius: '8px', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'var(--vocs-color_background2)', backdropFilter: 'blur(2px)' }}>
+      <div style={{ fontSize: '1.25rem', fontWeight: 500 }}>Virtual Thread Native</div>
+      <div style={{ fontSize: '1.05rem', color: '#919193' }}>Simple blocking code that scales. No reactive chains.</div>
+    </div>
+  </div>
+  <div style={{ flex: '1 1 23%', minWidth: '200px' }}>
+    <div style={{ height: '142px', border: '1px solid var(--vocs-color_border)', borderRadius: '8px', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', background: 'var(--vocs-color_background2)', backdropFilter: 'blur(2px)' }}>
+      <div style={{ fontSize: '1.25rem', fontWeight: 500 }}>Sealed Exceptions</div>
+      <div style={{ fontSize: '1.05rem', color: '#919193' }}>Exhaustive error handling with pattern matching.</div>
+    </div>
+  </div>
+</div>
+
+## Common Actions
+
+:::code-group
+
+```java [Connect]
+// HD wallet with derived accounts (BIP-44)
+var wallet = MnemonicWallet.fromPhrase(mnemonic);
+var account0 = wallet.derive(0);  // m/44'/60'/0'/0/0
+var account1 = wallet.derive(1);  // m/44'/60'/0'/0/1
+var account2 = wallet.derive(2);  // m/44'/60'/0'/0/2
+
+// Connect with signing capabilities
+var signer = Brane.connect(rpcUrl, account0);
+
+// Check connection and chain
+var chainId = signer.getChainId();
+var balance = signer.getBalance(account0.address());
+log.info("Connected to chain {} with balance {}", chainId, balance.toEther());
+
+// WebSocket with real-time block subscriptions
+var ws = Brane.connectWs("wss://eth.llamarpc.com");
+ws.subscribeNewHeads(block -> {
+    log.info("New block: {} with {} txs", block.number(), block.transactions().size());
+    processBlock(block);
+});
+
+// Subscribe to contract events
+ws.subscribeLogs(usdcAddress, transferTopic, log -> {
+    var transfer = decodeTransfer(log);
+    log.info("Transfer: {} -> {} amount {}", transfer.from(), transfer.to(), transfer.amount());
+});
+```
+
+```java [Read]
+// Define contract interface - no codegen required
+interface ERC20 {
+    BigInteger balanceOf(Address owner);
+    BigInteger allowance(Address owner, Address spender);
+    BigInteger totalSupply();
+    int decimals();
+    String symbol();
+}
+
+// Bind interface to deployed contract
+var usdc = BraneContract.bind(ERC20.class, abi, usdcAddress, client);
+
+// Single call
+var balance = usdc.balanceOf(wallet);
+var decimals = usdc.decimals();
+log.info("Balance: {} {}", formatUnits(balance, decimals), usdc.symbol());
+
+// Multicall batching - single RPC call for multiple reads
+var state = Multicall.execute(client, () -> {
+    return new TokenState(
+        usdc.balanceOf(wallet),
+        usdc.allowance(wallet, spender),
+        usdc.totalSupply(),
+        usdc.decimals()
+    );
+});
+log.info("Fetched {} values in single RPC call", 4);
+```
+
+```java [Write]
+// EIP-4844 blob transaction for L2 data availability
+var kzg = CKzg.loadFromClasspath();
+
+// Build blob transaction with rollup batch data
+var request = Eip4844Builder.create()
+    .to(blobRecipient)
+    .blobData(rollupBatchData)  // auto-encoded into blobs with KZG proofs
+    .maxFeePerBlobGas(Wei.fromGwei("100"))
+    .build(kzg);
+
+// Verify blob count before sending
+log.info("Sending {} blobs ({} bytes)",
+    request.sidecar().blobs().size(),
+    rollupBatchData.length);
+
+// Send and wait for confirmation
+var receipt = signer.sendBlobTransactionAndWait(request);
+log.info("Blob tx confirmed in block {}", receipt.blockNumber());
+log.info("Gas used: {} | Blob gas used: {}", receipt.gasUsed(), receipt.blobGasUsed());
+
+// Decode original data from blobs for verification
+var decoded = BlobDecoder.decode(request.sidecar().blobs());
+assert Arrays.equals(decoded, rollupBatchData);
+```
+
+```java [Test]
+// Connect to local Anvil instance
+var tester = Brane.connectTest();
+
+// Snapshot state for test isolation
+var snapshot = tester.snapshot();
+
+// Fund test accounts
+var testAccount = Address.from("0x1234...");
+tester.setBalance(testAccount, Wei.fromEther("1000"));
+
+// Impersonate any address without private key
+var whaleAddress = Address.from("0xWhale...");
+try (var session = tester.impersonate(whaleAddress)) {
+    // Execute transactions as whale
+    var receipt = session.sendTransactionAndWait(
+        Eip1559Builder.create()
+            .to(recipient)
+            .value(Wei.fromEther("100"))
+            .build()
+    );
+    log.info("Whale transfer confirmed: {}", receipt.transactionHash());
+}
+
+// Time travel for vesting/lock testing
+tester.increaseTime(Duration.ofDays(30));
+tester.mine();
+
+// Verify time-locked funds are now accessible
+var unlockedBalance = vestingContract.releasable(testAccount);
+log.info("Unlocked after 30 days: {}", unlockedBalance);
+
+// Revert to clean state
+tester.revert(snapshot);
+```
+
+:::
+
+<div style={{ marginTop: '3rem' }} />
+
+## Features [](#features)
+
+<div style={{ borderTop: '1px solid var(--vocs-color_border)', marginTop: '1rem', marginBottom: '1.5rem' }} />
+
+- EIP-1559 and [EIP-4844 blob](/signer/blobs) transactions
+- [HD wallets](/signer/hd-wallets) (BIP-39/44) and [EIP-712](/signer/eip712) signing
+- HTTP and [WebSocket](/providers/websocket) providers with [subscriptions](/reader/subscriptions)
+- [Multicall3](/contracts/multicall) batching for efficient reads
+- Event log parsing and filtering
+- [Anvil testing](/testing/overview): snapshots, impersonation, time control
+- [Transaction simulation](/reader/simulate) with state overrides
+
+<div style={{ marginTop: '3rem' }} />
+
+## Community [](#community)
+
+<div style={{ borderTop: '1px solid var(--vocs-color_border)', marginTop: '1rem', marginBottom: '1.5rem' }} />
+
+- Follow [@s8torxyz](https://x.com/s8torxyz) and [@noise_xyz](https://x.com/noise_xyz) on Twitter for project updates
+- Join the discussions on [GitHub](https://github.com/noise-xyz/brane/discussions)
+
+<div style={{ marginTop: '3rem' }} />
+
+## Supporters & Sponsors [](#supporters-sponsors)
+
+<div style={{ borderTop: '1px solid var(--vocs-color_border)', marginTop: '1rem', marginBottom: '1.5rem' }} />
+
+::sponsors
