@@ -27,10 +27,18 @@ git clone https://github.com/noise-xyz/brane.git && cd brane
 
 ### Testing
 
+We use a layered test approach:
+
+| Layer | Command | Anvil? |
+|-------|---------|--------|
+| Unit | `./gradlew test -Pbrane.unit.tests` | No |
+| Integration | `./scripts/test_integration.sh` | Yes |
+| Smoke | `./scripts/test_smoke.sh` | Yes |
+| **Full** | `./verify_all.sh` | Yes |
+
 ```bash
-./gradlew test -Pbrane.unit.tests    # Unit tests (no Anvil)
 anvil &                               # Start local node
-./verify_all.sh                       # Full test suite
+./verify_all.sh                       # Run all layers
 ```
 
 **PR requirements:**
