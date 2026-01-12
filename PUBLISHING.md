@@ -40,7 +40,7 @@ Set these environment variables (in CI or locally):
 # GPG signing (armored key content, not file paths)
 export JRELEASER_GPG_PUBLIC_KEY="$(cat public.asc)"
 export JRELEASER_GPG_SECRET_KEY="$(cat private.asc)"
-export JRELEASER_GPG_PASSPHRASE="your-key-passphrase"
+export JRELEASER_GPG_PASSPHRASE=""  # Set securely; never hardcode or commit this value
 
 # Sonatype credentials (from token generation)
 export JRELEASER_MAVENCENTRAL_CENTRAL_USERNAME="sonatype-token-username"
