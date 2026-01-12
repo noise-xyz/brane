@@ -57,6 +57,9 @@ INCREMENTAL_MODE=false
 INCREMENTAL_CACHE_DIR=""
 LAST_REVIEW_COMMIT=""
 
+# Module review mode (review all files in a module, not just git diff)
+MODULE_NAME=""
+
 # Initialize arrays (compatible with bash 3.2+)
 BACKGROUND_PIDS=()
 PIDS=()
@@ -213,9 +216,9 @@ init_defaults() {
     API_TIMEOUT=120  # seconds per API call
 
     # Models (use different models for discovery vs reloc to avoid shared bias)
-    MODEL_DISCOVERY="haiku"
+    MODEL_DISCOVERY="opus"
     MODEL_RELOC="sonnet"  # Different from discovery for independent validation
-    MODEL_VERIFY="sonnet"
+    MODEL_VERIFY="opus"
     MODEL_CORRELATE="sonnet"
     MODEL_OPUS="opus"
 
@@ -325,9 +328,9 @@ load_config() {
         MAX_PARALLEL_RELOC=$(jq -r '.max_parallel_reloc // 6' "$config_file")
         MAX_FINDINGS_TO_VERIFY=$(jq -r '.max_findings_to_verify // 30' "$config_file")
         MAX_TOTAL_BUDGET=$(jq -r '.max_total_budget_usd // 5.0' "$config_file")
-        MODEL_DISCOVERY=$(jq -r '.model_discovery // "haiku"' "$config_file")
+        MODEL_DISCOVERY=$(jq -r '.model_discovery // "opus"' "$config_file")
         MODEL_RELOC=$(jq -r '.model_reloc // "sonnet"' "$config_file")
-        MODEL_VERIFY=$(jq -r '.model_verify // "sonnet"' "$config_file")
+        MODEL_VERIFY=$(jq -r '.model_verify // "opus"' "$config_file")
         ENABLE_OPUS_REVIEW=$(jq -r 'if .enable_opus_review == null then true else .enable_opus_review end' "$config_file")
         ENABLE_QUOTE_VERIFICATION=$(jq -r 'if .enable_quote_verification == null then true else .enable_quote_verification end' "$config_file")
         ENABLE_RELOCALIZATION=$(jq -r 'if .enable_relocalization == null then true else .enable_relocalization end' "$config_file")
@@ -1113,19 +1116,24 @@ extract_smart_file_context() {
         return
     fi
 
-    # Large file: prioritize changed hunks
+    # Large file: prioritize changed hunks (only in branch diff mode)
     log_debug "Large file ($total_lines lines), extracting changed hunks for: $file"
 
-    # Get changed line numbers from git diff
-    local changed_lines
-    changed_lines=$(git diff "$BASE_BRANCH"..."$CURRENT_BRANCH" -U0 -- "$file" 2>/dev/null | \
-        awk '/^@@/ {
-            # Parse @@ -old,count +new,count @@
-            match($0, /\+([0-9]+)(,([0-9]+))?/, arr)
-            start = arr[1]
-            count = arr[3] ? arr[3] : 1
-            for (i = start; i < start + count; i++) print i
-        }' | sort -nu)
+    local changed_lines=""
+
+    # In module mode, there's no git diff - skip to fallback
+    if [[ -z "$MODULE_NAME" ]]; then
+        # Get changed line numbers from git diff (BSD awk compatible)
+        changed_lines=$(git diff "$BASE_BRANCH"..."$CURRENT_BRANCH" -U0 -- "$file" 2>/dev/null | \
+            grep '^@@' | \
+            sed -E 's/.*\+([0-9]+)(,([0-9]+))?.*/\1 \3/' | \
+            while read -r start count; do
+                count=${count:-1}
+                for ((i = start; i < start + count; i++)); do
+                    echo "$i"
+                done
+            done | sort -nu)
+    fi
 
     if [[ -z "$changed_lines" ]]; then
         # No changes found, fall back to first max_lines of file
@@ -1415,28 +1423,50 @@ phase_setup() {
     RUN_ID="$(date +%Y%m%d-%H%M%S)-${random_suffix:0:4}"
 
     log_info "Run ID: $RUN_ID"
-    log_info "Branch: $CURRENT_BRANCH -> $BASE_BRANCH"
+    if [[ -n "$MODULE_NAME" ]]; then
+        log_info "Mode: Module review ($MODULE_NAME)"
+    else
+        log_info "Branch: $CURRENT_BRANCH -> $BASE_BRANCH"
+    fi
     log_info "Models: discovery=$MODEL_DISCOVERY reloc=$MODEL_RELOC verify=$MODEL_VERIFY"
     log_info "Budget: \$$MAX_TOTAL_BUDGET max"
     log_info "Defense: quote=$ENABLE_QUOTE_VERIFICATION reloc=$ENABLE_RELOCALIZATION"
     log_info "========================================"
 
-    if [[ "$CURRENT_BRANCH" == "$BASE_BRANCH" ]]; then
-        log_error "Cannot review: already on base branch"
-        exit $EXIT_ERROR
-    fi
+    # Module mode: review all files in a module
+    if [[ -n "$MODULE_NAME" ]]; then
+        if [[ ! -d "$MODULE_NAME" ]]; then
+            log_error "Module directory '$MODULE_NAME' not found"
+            exit $EXIT_ERROR
+        fi
 
-    if ! git rev-parse --verify "$BASE_BRANCH" &>/dev/null; then
-        log_error "Base branch '$BASE_BRANCH' not found"
-        exit $EXIT_ERROR
-    fi
+        # Find all non-internal, non-test Java files in the module
+        CHANGED_FILES=$(find "$MODULE_NAME" -name '*.java' -type f | grep -v '/internal/' | grep -v 'Test\.java$' | sort || true)
+        CHANGED_FILE_COUNT=$(echo "$CHANGED_FILES" | grep -c '.' 2>/dev/null || echo "0")
 
-    CHANGED_FILES=$(git diff "$BASE_BRANCH"..."$CURRENT_BRANCH" --name-only -- '*.java' | grep -v '/internal/' | grep -v 'Test\.java$' || true)
-    CHANGED_FILE_COUNT=$(echo "$CHANGED_FILES" | grep -c '.' 2>/dev/null || echo "0")
+        if [[ "$CHANGED_FILE_COUNT" -eq 0 ]]; then
+            log_info "No reviewable Java files found in module '$MODULE_NAME'"
+            exit $EXIT_SUCCESS
+        fi
+    else
+        # Branch diff mode (default)
+        if [[ "$CURRENT_BRANCH" == "$BASE_BRANCH" ]]; then
+            log_error "Cannot review: already on base branch"
+            exit $EXIT_ERROR
+        fi
 
-    if [[ "$CHANGED_FILE_COUNT" -eq 0 ]]; then
-        log_info "No reviewable Java files changed"
-        exit $EXIT_SUCCESS
+        if ! git rev-parse --verify "$BASE_BRANCH" &>/dev/null; then
+            log_error "Base branch '$BASE_BRANCH' not found"
+            exit $EXIT_ERROR
+        fi
+
+        CHANGED_FILES=$(git diff "$BASE_BRANCH"..."$CURRENT_BRANCH" --name-only -- '*.java' | grep -v '/internal/' | grep -v 'Test\.java$' || true)
+        CHANGED_FILE_COUNT=$(echo "$CHANGED_FILES" | grep -c '.' 2>/dev/null || echo "0")
+
+        if [[ "$CHANGED_FILE_COUNT" -eq 0 ]]; then
+            log_info "No reviewable Java files changed"
+            exit $EXIT_SUCCESS
+        fi
     fi
 
     # Incremental review: filter to only files changed since last review
@@ -3073,6 +3103,10 @@ main() {
                 INCREMENTAL_MODE=true
                 shift
                 ;;
+            --module|-m)
+                MODULE_NAME="$2"
+                shift 2
+                ;;
             --help|-h)
                 echo "Usage: $0 [base_branch] [options]"
                 echo ""
@@ -3095,6 +3129,7 @@ main() {
                 echo "  --calibrate [dir]      Run calibration suite (default: .claude/calibration)"
                 echo "  --generate-calibration [dir]  Generate sample calibration data"
                 echo "  --incremental          Only review files changed since last review"
+                echo "  --module, -m <name>    Review all files in a module (e.g., brane-benchmark)"
                 echo "  --help, -h             Show this help"
                 echo ""
                 echo "Specialized Analysis Categories:"
@@ -3123,6 +3158,8 @@ main() {
         load_config "$config_file"
     elif [[ -f ".claude/orchestrator.json" ]]; then
         load_config ".claude/orchestrator.json"
+    elif [[ -f ".claude/scripts/orchestrator/review_config.json" ]]; then
+        load_config ".claude/scripts/orchestrator/review_config.json"
     fi
 
     # Handle calibration modes

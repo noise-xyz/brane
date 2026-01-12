@@ -49,7 +49,7 @@ brew install util-linux
 export PATH="/opt/homebrew/opt/util-linux/bin:$PATH"
 
 # Run with newer bash
-/opt/homebrew/bin/bash .claude/scripts/code_review_orchestrator_v7.sh main
+/opt/homebrew/bin/bash .claude/scripts/code_review_orchestrator.sh main
 ```
 
 ### Linux Setup
@@ -67,29 +67,35 @@ sudo yum install jq bc      # RHEL/CentOS
 
 ```bash
 # Review changes against main branch
-./.claude/scripts/code_review_orchestrator_v7.sh main
+./.claude/scripts/code_review_orchestrator.sh main
 
 # Review against a different base branch
-./.claude/scripts/code_review_orchestrator_v7.sh develop
+./.claude/scripts/code_review_orchestrator.sh develop
+
+# Review all files in a module (not just changed files)
+./.claude/scripts/code_review_orchestrator.sh --module brane-benchmark
 ```
 
 ### Options
 
 ```bash
 # Enable debug output
-DEBUG=true ./.claude/scripts/code_review_orchestrator_v7.sh main
+DEBUG=true ./.claude/scripts/code_review_orchestrator.sh main
 
 # JSON structured logging (for CI pipelines)
-./.claude/scripts/code_review_orchestrator_v7.sh main --json-log
+./.claude/scripts/code_review_orchestrator.sh main --json-log
 
 # Disable expensive re-localization layer (faster, less accurate)
-./.claude/scripts/code_review_orchestrator_v7.sh main --no-reloc
+./.claude/scripts/code_review_orchestrator.sh main --no-reloc
 
 # Disable quote verification
-./.claude/scripts/code_review_orchestrator_v7.sh main --no-quote-verify
+./.claude/scripts/code_review_orchestrator.sh main --no-quote-verify
 
 # Use custom config file
-./.claude/scripts/code_review_orchestrator_v7.sh main --config my_config.json
+./.claude/scripts/code_review_orchestrator.sh main --config my_config.json
+
+# Review entire module (useful for refactoring or initial review)
+./.claude/scripts/code_review_orchestrator.sh --module brane-core
 ```
 
 ### Configuration File
@@ -218,7 +224,7 @@ code-review:
       env:
         ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
       run: |
-        ./.claude/scripts/code_review_orchestrator_v7.sh main --json-log
+        ./.claude/scripts/code_review_orchestrator.sh main --json-log
 
     - name: Upload review
       uses: actions/upload-artifact@v4
