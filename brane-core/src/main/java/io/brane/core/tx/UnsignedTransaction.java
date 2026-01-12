@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 package io.brane.core.tx;
 
 import io.brane.core.crypto.Signature;

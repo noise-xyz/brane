@@ -25,6 +25,10 @@
             "type": "command",
             "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/validate_tasks_file.sh",
             "statusMessage": "Validating tasks file format"
+          },
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/post_edit_impact.sh"
           }
         ]
       },
@@ -45,15 +49,6 @@
             "command": "cmd=$(jq -r '.tool_input.command'); if echo \"$cmd\" | grep -qE '^git commit'; then echo '{\"systemMessage\": \"Tip: Run ./.claude/scripts/pre_commit_check.sh before committing to verify affected tests pass.\"}'; fi; exit 0"
           }
         ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/large_file_hint.sh"
-          }
-        ]
       }
     ],
     "PreToolUse": [
@@ -63,10 +58,6 @@
           {
             "type": "command",
             "command": "jq -r '.tool_input.file_path' | grep -qE 'gradle-wrapper\\.properties|java\\.license|deploy\\.yml' && { echo 'Protected file - please confirm with user before modifying' >&2; exit 2; } || exit 0"
-          },
-          {
-            "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/pre_edit_impact.sh"
           }
         ]
       },
@@ -85,6 +76,15 @@
           {
             "type": "command",
             "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/block_large_file_read.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "mcp__cclsp__find_definition|mcp__cclsp__find_references|mcp__cclsp__get_diagnostics|mcp__cclsp__rename_symbol",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/track_lsp_explored.sh"
           }
         ]
       }

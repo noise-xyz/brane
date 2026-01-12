@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 package io.brane.core;
 
 import org.slf4j.Logger;

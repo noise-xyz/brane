@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
 package io.brane.core.chain;
 
 import io.brane.core.types.Wei;
