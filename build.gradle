@@ -93,18 +93,25 @@ subprojects {
 }
 
 // Aggregated Javadoc
-task allJavadoc(type: Javadoc) {
+tasks.register('allJavadoc', Javadoc) {
     description = 'Generates aggregated Javadoc for all modules'
     group = 'documentation'
 
     destinationDir = layout.buildDirectory.dir("docs/javadoc").get().asFile
     title = "Brane SDK ${version} API"
 
-    // Exclude examples from API docs
-    def docProjects = subprojects.findAll { it.name != 'brane-examples' }
+    // Exclude examples and benchmark from API docs
+    def docProjects = subprojects.findAll { !['brane-examples', 'brane-benchmark', 'smoke-test'].contains(it.name) }
+
+    // Depend on compileJava to ensure classes are available
+    dependsOn docProjects.collect { it.tasks.named('compileJava') }
 
     source docProjects.collect { it.sourceSets.main.allJava }
-    classpath = files(docProjects.collect { it.sourceSets.main.compileClasspath })
+
+    // Defer classpath resolution to execution time (Gradle 9 compatibility)
+    doFirst {
+        classpath = files(docProjects.collect { it.sourceSets.main.compileClasspath })
+    }
 
     exclude 'io/brane/internal/**'
     options.addStringOption('Xdoclint:none', '-quiet')
