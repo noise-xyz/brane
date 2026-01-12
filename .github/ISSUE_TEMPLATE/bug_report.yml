@@ -1,0 +1,105 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+labels: ["bug", "needs-triage"]
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report this bug!
+
+        Please ensure the bug hasn't already been reported by searching [existing issues](https://github.com/noise-xyz/brane/issues).
+
+  - type: checkboxes
+    attributes:
+      label: Checklist
+      options:
+        - label: I have searched the existing issues and this bug has not been reported
+          required: true
+
+  - type: dropdown
+    attributes:
+      label: Component
+      description: Which module is affected?
+      multiple: true
+      options:
+        - brane-primitives (Hex, RLP)
+        - brane-core (Address, Wei, ABI, Crypto, Builders)
+        - brane-rpc (Brane client, Provider)
+        - brane-contract (Contract binding)
+        - brane-kzg (KZG commitments, Blobs)
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: Brane Version
+      description: What version of Brane are you using?
+      placeholder: "0.3.0 (from your build.gradle dependency)"
+    validations:
+      required: true
+
+  - type: dropdown
+    attributes:
+      label: Java Version
+      description: Which Java version are you using?
+      options:
+        - Java 21
+        - Java 22
+        - Java 23+
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    attributes:
+      label: Operating System
+      options:
+        - macOS (Apple Silicon)
+        - macOS (Intel)
+        - Linux
+        - Windows
+        - Other
+
+  - type: textarea
+    attributes:
+      label: Current Behavior
+      description: What happened? Include error messages if applicable.
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+    validations:
+      required: true
+
+  - type: textarea
+    attributes:
+      label: Steps to Reproduce
+      description: Minimal code or steps to reproduce the bug.
+      placeholder: |
+        1. Create a Brane client...
+        2. Call method X...
+        3. See error...
+
+        ```java
+        // Code snippet
+        var client = Brane.connect("http://localhost:8545");
+        ```
+    validations:
+      required: true
+
+  - type: input
+    attributes:
+      label: Reproducible Example
+      description: Link to a GitHub Gist or repo demonstrating the issue (optional but very helpful).
+      placeholder: "https://gist.github.com/..."
+
+  - type: textarea
+    attributes:
+      label: Additional Context
+      description: Any other context, logs, or screenshots.
