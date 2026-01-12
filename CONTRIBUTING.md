@@ -7,7 +7,7 @@ Thank you for your interest in contributing to Brane! This document provides gui
 ### Prerequisites
 
 - **Java 21+** (required - we use records, sealed classes, pattern matching)
-- **Gradle 8.7+** (wrapper included)
+- **Gradle 9.2+** (wrapper included)
 - **Anvil** (for integration tests) - Install via [Foundry](https://book.getfoundry.sh/getting-started/installation)
 
 ### Setting Up the Development Environment
