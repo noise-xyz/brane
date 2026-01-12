@@ -100,7 +100,7 @@ jreleaser {
     signing {
         active = 'ALWAYS'
         armored = true
-        verify = false  // JReleaser handles verification internally
+        verify = true  // Verify signatures before deploying
     }
 
     deploy {
