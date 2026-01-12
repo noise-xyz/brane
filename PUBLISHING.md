@@ -7,7 +7,7 @@ This document describes how to publish Brane SDK to Maven Central using JRelease
 ### 1. Sonatype Central Account
 
 1. Create an account at [central.sonatype.com](https://central.sonatype.com)
-2. Verify namespace ownership for `io.brane`
+2. Verify namespace ownership for `sh.brane`
 3. Generate a user token (Settings > Generate User Token)
 4. Save the username and password - these are your API credentials
 
@@ -95,11 +95,11 @@ JReleaser will:
 
 | Module | Artifact ID | Description |
 |--------|-------------|-------------|
-| brane-primitives | `io.brane:brane-primitives` | Hex/RLP utilities |
-| brane-core | `io.brane:brane-core` | Types, ABI, crypto |
-| brane-kzg | `io.brane:brane-kzg` | KZG commitments |
-| brane-rpc | `io.brane:brane-rpc` | JSON-RPC client |
-| brane-contract | `io.brane:brane-contract` | Contract binding |
+| brane-primitives | `sh.brane:brane-primitives` | Hex/RLP utilities |
+| brane-core | `sh.brane:brane-core` | Types, ABI, crypto |
+| brane-kzg | `sh.brane:brane-kzg` | KZG commitments |
+| brane-rpc | `sh.brane:brane-rpc` | JSON-RPC client |
+| brane-contract | `sh.brane:brane-contract` | Contract binding |
 
 Non-published modules: `brane-examples`, `brane-benchmark`, `smoke-test`
 
@@ -158,7 +158,7 @@ gpg --armor --export-secret-keys KEY_ID
 
 1. Verify credentials are from a generated token, not your login password
 2. Check the username/password match what Sonatype generated
-3. Ensure namespace `io.brane` is verified
+3. Ensure namespace `sh.brane` is verified
 
 ### "Invalid signature"
 
@@ -179,7 +179,7 @@ Update version in `build.gradle`:
 
 ```groovy
 allprojects {
-    group = 'io.brane'
+    group = 'sh.brane'
     version = '0.4.0'  // Update this
 }
 ```

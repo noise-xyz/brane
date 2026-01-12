@@ -10,7 +10,7 @@ ext {
 }
 
 allprojects {
-    group = 'io.brane'
+    group = 'sh.brane'
     version = '0.3.0'
 
     repositories {
