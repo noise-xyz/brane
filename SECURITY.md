@@ -56,7 +56,7 @@ Keccak256.cleanup();
 
 ### Mnemonic Wallet Security
 
-- Keep `MnemonicWallet` instances short-lived
+- Keep `MnemonicWallet` instances short-lived. The mnemonic phrase cannot be cleared from memory due to Java's String immutability, so minimizing the wallet's lifetime reduces its exposure.
 - Never log or persist mnemonic phrases
 - Derived `Signer` instances can be held longer
 
