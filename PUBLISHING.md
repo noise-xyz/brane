@@ -16,7 +16,7 @@ This document describes how to publish Brane SDK to Maven Central using JRelease
 Generate a GPG key for signing artifacts:
 
 ```bash
-# Generate key (use RSA 4096-bit, no expiration for simplicity)
+# Generate key (use RSA 4096-bit, set expiration to 1-2 years for security)
 gpg --full-generate-key
 
 # List keys to find your key ID
