@@ -80,24 +80,12 @@ non-sealed class DefaultReader implements Brane.Reader {
 
     @Override
     public BigInteger chainId() {
-        ensureOpen();
-        final JsonRpcResponse response = sendWithRetry("eth_chainId", List.of());
-        final Object result = response.result();
-        if (result == null) {
-            throw RpcException.fromNullResult("eth_chainId");
-        }
-        return io.brane.rpc.internal.RpcUtils.decodeHexBigInteger(result.toString());
+        return rpc.call("eth_chainId", List.of(), RpcUtils::decodeHexBigInteger);
     }
 
     @Override
     public BigInteger getBalance(final Address address) {
-        ensureOpen();
-        final JsonRpcResponse response = sendWithRetry("eth_getBalance", List.of(address.value(), "latest"));
-        final Object result = response.result();
-        if (result == null) {
-            throw RpcException.fromNullResult("eth_getBalance");
-        }
-        return io.brane.rpc.internal.RpcUtils.decodeHexBigInteger(result.toString());
+        return rpc.call("eth_getBalance", List.of(address.value(), "latest"), RpcUtils::decodeHexBigInteger);
     }
 
     @Override
@@ -388,25 +376,13 @@ non-sealed class DefaultReader implements Brane.Reader {
 
     @Override
     public BigInteger estimateGas(final TransactionRequest request) {
-        ensureOpen();
         final Map<String, Object> params = buildEstimateGasParams(request);
-        final JsonRpcResponse response = sendWithRetry("eth_estimateGas", List.of(params));
-        final Object result = response.result();
-        if (result == null) {
-            throw RpcException.fromNullResult("eth_estimateGas");
-        }
-        return RpcUtils.decodeHexBigInteger(result.toString());
+        return rpc.call("eth_estimateGas", List.of(params), RpcUtils::decodeHexBigInteger);
     }
 
     @Override
     public Wei getBlobBaseFee() {
-        ensureOpen();
-        final JsonRpcResponse response = sendWithRetry("eth_blobBaseFee", List.of());
-        final Object result = response.result();
-        if (result == null) {
-            throw RpcException.fromNullResult("eth_blobBaseFee");
-        }
-        return new Wei(RpcUtils.decodeHexBigInteger(result.toString()));
+        return rpc.call("eth_blobBaseFee", List.of(), hex -> new Wei(RpcUtils.decodeHexBigInteger(hex)));
     }
 
     /**
