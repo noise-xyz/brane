@@ -71,6 +71,11 @@ import io.brane.rpc.SnapshotId;
  * anvil --hardfork cancun
  * </pre>
  *
+ * <p>To use a custom RPC URL, set the system property {@code brane.test.rpc.url}:
+ * <pre>
+ * ./gradlew test -Dbrane.test.rpc.url=http://localhost:9545
+ * </pre>
+ *
  * @see Brane.Tester
  * @see Brane#connectTest()
  * @since 0.5.0
