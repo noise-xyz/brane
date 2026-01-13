@@ -106,7 +106,7 @@ class BlobTransactionRequestTest {
         assertEquals(Wei.of(100), request.valueOpt().orElseThrow());
 
         assertTrue(request.gasLimitOpt().isPresent());
-        assertEquals(21000L, request.gasLimitOpt().get());
+        assertEquals(21000L, request.gasLimitOpt().orElseThrow());
 
         assertTrue(request.maxPriorityFeePerGasOpt().isPresent());
         assertEquals(Wei.of(1), request.maxPriorityFeePerGasOpt().orElseThrow());
