@@ -47,7 +47,7 @@ final class SignerContractInvocationHandler extends AbstractContractInvocationHa
             return handleObjectMethod(proxy, method, args);
         }
 
-        final Object[] invocationArgs = args == null ? new Object[0] : args;
+        final Object[] invocationArgs = Objects.requireNonNullElse(args, new Object[0]);
         final Abi.FunctionMetadata metadata = binding.resolve(method);
 
         // Handle payable functions - extract Wei value from first parameter.
