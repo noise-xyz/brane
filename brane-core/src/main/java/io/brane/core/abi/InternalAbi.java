@@ -288,6 +288,22 @@ final class InternalAbi implements Abi {
         }
     }
 
+    /**
+     * Abstract base class for dynamic type converters.
+     * Dynamic types have variable size and are encoded via offset pointer in the head (32 bytes).
+     */
+    abstract static class DynamicTypeConverter implements TypeConverter {
+        @Override
+        public boolean isDynamic() {
+            return true;
+        }
+
+        @Override
+        public int getHeadSize() {
+            return 32;
+        }
+    }
+
     private static TypeConverter createConverter(final AbiParameter param) {
         final String solidityType = param.type;
 
