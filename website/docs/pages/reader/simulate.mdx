@@ -13,12 +13,12 @@ Brane exposes `eth_simulateV1` via `Brane.simulate()`. This lets you **dry-run**
 ### 1. Build a Simulation Request
 
 ```java
-import io.brane.rpc.BlockTag;
-import io.brane.rpc.Brane;
-import io.brane.rpc.SimulateCall;
-import io.brane.rpc.SimulateRequest;
-import io.brane.core.types.Address;
-import io.brane.core.types.HexData;
+import sh.brane.rpc.BlockTag;
+import sh.brane.rpc.Brane;
+import sh.brane.rpc.SimulateCall;
+import sh.brane.rpc.SimulateRequest;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.HexData;
 
 Address from = new Address("0x1111111111111111111111111111111111111111");
 Address to = new Address("0x2222222222222222222222222222222222222222");
@@ -37,7 +37,7 @@ SimulateRequest request = SimulateRequest.builder()
 ### 2. Execute
 
 ```java
-import io.brane.rpc.SimulateResult;
+import sh.brane.rpc.SimulateResult;
 
 Brane client = Brane.connect("https://eth-mainnet.example.com");
 SimulateResult result = client.simulate(request);
@@ -48,7 +48,7 @@ SimulateResult result = client.simulate(request);
 Each call produces a `CallResult` in the **same order** as the input calls.
 
 ```java
-import io.brane.rpc.CallResult;
+import sh.brane.rpc.CallResult;
 
 for (var r : result.results()) {
     switch (r) {
@@ -83,8 +83,8 @@ if (changes != null) {
 State overrides allow you to simulate "what if" scenarios without touching real chain state.
 
 ```java
-import io.brane.rpc.AccountOverride;
-import io.brane.core.types.Wei;
+import sh.brane.rpc.AccountOverride;
+import sh.brane.core.types.Wei;
 
 Address who = new Address("0x3333333333333333333333333333333333333333");
 
@@ -100,8 +100,8 @@ SimulateRequest requestWithOverride = SimulateRequest.builder()
 ## Error Handling
 
 ```java
-import io.brane.core.error.RpcException;
-import io.brane.rpc.exception.SimulateNotSupportedException;
+import sh.brane.core.error.RpcException;
+import sh.brane.rpc.exception.SimulateNotSupportedException;
 
 try {
     var result = client.simulate(request);

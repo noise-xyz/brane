@@ -5,8 +5,8 @@
 ## Usage
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.core.crypto.PrivateKeySigner;
+import sh.brane.rpc.Brane;
+import sh.brane.core.crypto.PrivateKeySigner;
 
 // Create a signer
 var signer = new PrivateKeySigner(System.getenv("SEPOLIA_PRIVATE_KEY"));
@@ -48,7 +48,7 @@ System.out.println("Mined in block: " + receipt.blockNumber());
 Sends a transaction immediately and returns the transaction hash. Does not wait for mining.
 
 ```java
-import io.brane.core.builder.TxBuilder;
+import sh.brane.core.builder.TxBuilder;
 
 TransactionRequest request = TxBuilder.eip1559()
     .to(new Address("0x..."))
@@ -94,10 +94,10 @@ Address myAddress = client.getAddress();
 Generate an EIP-2930 access list and include it in your transaction for 10-20% gas savings on complex contract interactions:
 
 ```java
-import io.brane.core.model.AccessListWithGas;
-import io.brane.core.builder.TxBuilder;
-import io.brane.core.types.Address;
-import io.brane.core.types.HexData;
+import sh.brane.core.model.AccessListWithGas;
+import sh.brane.core.builder.TxBuilder;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.HexData;
 
 Address contractAddress = new Address("0x...");
 HexData encodedCall = new HexData("0x..."); // ABI-encoded function call

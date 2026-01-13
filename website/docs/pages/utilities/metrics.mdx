@@ -7,7 +7,7 @@ Brane provides hooks for collecting metrics from the RPC layer, enabling integra
 Implement the `BraneMetrics` interface to receive callbacks on RPC events:
 
 ```java
-import io.brane.rpc.BraneMetrics;
+import sh.brane.rpc.BraneMetrics;
 import java.time.Duration;
 
 public class MyMetrics implements BraneMetrics {
@@ -41,7 +41,7 @@ public class MyMetrics implements BraneMetrics {
 Attach your metrics implementation to a WebSocket provider:
 
 ```java
-import io.brane.rpc.WebSocketProvider;
+import sh.brane.rpc.WebSocketProvider;
 
 var provider = WebSocketProvider.create("wss://...");
 provider.setMetrics(new MyMetrics());
@@ -72,7 +72,7 @@ provider.setMetrics(new MyMetrics());
 Here's a complete example integrating with Micrometer:
 
 ```java
-import io.brane.rpc.BraneMetrics;
+import sh.brane.rpc.BraneMetrics;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Timer;
@@ -200,7 +200,7 @@ public void onRingBufferSaturation(long remaining, int size) {
 For development or debugging, a simple logging implementation:
 
 ```java
-import io.brane.rpc.BraneMetrics;
+import sh.brane.rpc.BraneMetrics;
 import java.time.Duration;
 
 public class LoggingMetrics implements BraneMetrics {

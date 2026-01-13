@@ -7,7 +7,7 @@ import { HomePage } from 'vocs/components'
 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '4rem', marginTop: '2rem', marginBottom: '3rem', marginLeft: '-25%', marginRight: '-25%', width: '150%' }}>
   {/* Left Column: Hero Image, Description, Buttons */}
   <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', maxWidth: '480px' }}>
-    <img src="/brand/hero-image-dark.svg" alt="Brane" style={{ height: '240px', width: 'auto', borderRadius: '11px' }} />
+    <img src="/brand/hero-image-dark.svg" alt="Brane" style={{ height: '240px', width: 'auto', borderRadius: '11px', position: 'relative', zIndex: 1 }} />
 
     <div style={{ fontSize: '1.3rem', color: '#919193', lineHeight: 1.6 }}>
       <span style={{ color: 'var(--vocs-color_text)' }}>Type-safe</span>, <span style={{ color: 'var(--vocs-color_text)' }}>performant</span> Java 21 SDK for Ethereum.
@@ -20,7 +20,7 @@ import { HomePage } from 'vocs/components'
   </div>
 
   {/* Right Column: Install Code */}
-  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: '520px', gap: '1.5rem' }}>
+  <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between', width: '480px', gap: '1.5rem' }}>
     <div id="home-install">
 
 :::code-group

@@ -9,9 +9,9 @@
 Sets the ETH balance of any account directly. This is commonly called "dealing" ETH to an address in testing frameworks.
 
 ```java
-import io.brane.core.types.Address;
-import io.brane.core.types.Wei;
-import io.brane.rpc.Brane;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Wei;
+import sh.brane.rpc.Brane;
 
 Brane.Tester tester = Brane.connectTest();
 
@@ -69,7 +69,7 @@ tester.setBalance(testAccount, exactAmount);
 Deploys arbitrary bytecode at any address. This allows you to place contract code at specific addresses without going through the normal deployment process.
 
 ```java
-import io.brane.core.types.HexData;
+import sh.brane.core.types.HexData;
 
 // Deploy bytecode that always returns 42
 HexData bytecode = HexData.from("0x602a60005260206000f3");
@@ -176,7 +176,7 @@ Setting a nonce lower than the actual number of transactions from that account c
 Directly writes to a contract's storage slots. This is the most powerful manipulation method, allowing you to modify any internal state of a contract.
 
 ```java
-import io.brane.core.types.Hash;
+import sh.brane.core.types.Hash;
 
 Address contract = Address.from("0x...");
 
@@ -204,7 +204,7 @@ Solidity uses specific rules for storage layout:
 
 **Modify ERC20 balance directly:**
 ```java
-import io.brane.core.crypto.Keccak256;
+import sh.brane.core.crypto.Keccak256;
 
 Address tokenContract = Address.from("0x...");
 Address holder = Address.from("0x...");

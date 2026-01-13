@@ -18,11 +18,11 @@ Impersonation only works on test nodes (Anvil, Hardhat, Ganache). Attempting to 
 The recommended way to use impersonation is with Java's try-with-resources pattern. This ensures the impersonation is automatically stopped when the session ends, preventing resource leaks.
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.rpc.ImpersonationSession;
-import io.brane.core.types.Address;
-import io.brane.core.types.Wei;
-import io.brane.core.model.TransactionRequest;
+import sh.brane.rpc.Brane;
+import sh.brane.rpc.ImpersonationSession;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Wei;
+import sh.brane.core.model.TransactionRequest;
 
 Brane.Tester tester = Brane.connectTest();
 
@@ -88,11 +88,11 @@ try (ImpersonationSession session = tester.impersonate(whale)) {
 A common use case is testing interactions with whale accounts - addresses holding large token balances on mainnet. Here's a complete pattern:
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.rpc.ImpersonationSession;
-import io.brane.rpc.SnapshotId;
-import io.brane.core.types.Address;
-import io.brane.core.types.Wei;
+import sh.brane.rpc.Brane;
+import sh.brane.rpc.ImpersonationSession;
+import sh.brane.rpc.SnapshotId;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Wei;
 
 public class WhaleTestExample {
     // Known whale addresses (example: Binance hot wallet)

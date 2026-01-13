@@ -5,7 +5,7 @@ The HTTP provider is the default transport for most use cases. Brane uses Java 2
 ## Basic Usage
 
 ```java
-import io.brane.rpc.Brane;
+import sh.brane.rpc.Brane;
 
 // Simple read-only client
 Brane client = Brane.connect("https://eth.llamarpc.com");
@@ -16,8 +16,8 @@ System.out.println("Block #" + block.number());
 For more control, use the builder:
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.core.chain.ChainProfiles;
+import sh.brane.rpc.Brane;
+import sh.brane.core.chain.ChainProfiles;
 
 Brane client = Brane.builder()
     .rpcUrl("https://eth.llamarpc.com")
@@ -86,8 +86,8 @@ The builder provides a clean fluent API for configuration:
 For low-level access to any Ethereum RPC method, use the provider directly:
 
 ```java
-import io.brane.rpc.BraneProvider;
-import io.brane.rpc.JsonRpcResponse;
+import sh.brane.rpc.BraneProvider;
+import sh.brane.rpc.JsonRpcResponse;
 import java.util.List;
 
 BraneProvider provider = BraneProvider.http("https://eth.llamarpc.com");
@@ -108,7 +108,7 @@ JsonRpcResponse balance = provider.send("eth_getBalance",
 For maximum throughput, fire requests in parallel:
 
 ```java
-import io.brane.rpc.BraneExecutors;
+import sh.brane.rpc.BraneExecutors;
 import java.util.concurrent.Future;
 import java.util.ArrayList;
 
@@ -152,8 +152,8 @@ Use `BraneExecutors.newIoBoundExecutor()` for I/O-bound work. See [Threading & E
 The builder creates different client types based on configuration:
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.core.crypto.PrivateKey;
+import sh.brane.rpc.Brane;
+import sh.brane.core.crypto.PrivateKey;
 
 // Read-only client (Brane.Reader)
 Brane.Reader reader = Brane.builder()
@@ -178,7 +178,7 @@ Hash txHash = signer.sendTransaction(request);
 HTTP transport errors are wrapped in `RpcException`:
 
 ```java
-import io.brane.core.error.RpcException;
+import sh.brane.core.error.RpcException;
 
 try {
     var block = client.getLatestBlock();

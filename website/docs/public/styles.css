@@ -8,7 +8,7 @@
   height: 100vh;
   background-image: url('/angel.svg');
   background-size: contain;
-  background-position: center top;
+  background-position: 40% top;
   background-repeat: no-repeat;
   opacity: 0.02;
   pointer-events: none;

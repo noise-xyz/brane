@@ -97,8 +97,8 @@ export default defineConfig({
   ],
   theme: {
     accentColor: {
-      light: '#0D9373',
-      dark: '#07C983',
+      light: '#f34533',
+      dark: '#f34533',
     },
   },
   sponsors: [

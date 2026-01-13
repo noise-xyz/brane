@@ -60,17 +60,17 @@ Once configured, add the dependencies:
 ```xml [Maven]
 <dependencies>
     <dependency>
-        <groupId>io.brane</groupId>
+        <groupId>sh.brane</groupId>
         <artifactId>brane-core</artifactId>
         <version>0.3.0</version>
     </dependency>
     <dependency>
-        <groupId>io.brane</groupId>
+        <groupId>sh.brane</groupId>
         <artifactId>brane-rpc</artifactId>
         <version>0.3.0</version>
     </dependency>
     <dependency>
-        <groupId>io.brane</groupId>
+        <groupId>sh.brane</groupId>
         <artifactId>brane-contract</artifactId>
         <version>0.3.0</version>
     </dependency>
@@ -79,9 +79,9 @@ Once configured, add the dependencies:
 
 ```groovy [Gradle]
 dependencies {
-    implementation 'io.brane:brane-core:0.3.0'
-    implementation 'io.brane:brane-rpc:0.3.0'
-    implementation 'io.brane:brane-contract:0.3.0'
+    implementation 'sh.brane:brane-core:0.3.0'
+    implementation 'sh.brane:brane-rpc:0.3.0'
+    implementation 'sh.brane:brane-contract:0.3.0'
 }
 ```
 
@@ -94,7 +94,7 @@ dependencies {
 Create a `Brane` client to read from the blockchain.
 
 ```java
-import io.brane.rpc.Brane;
+import sh.brane.rpc.Brane;
 
 public class Example {
     public static void main(String[] args) {
@@ -113,11 +113,11 @@ public class Example {
 Create a `Brane.Signer` client to sign and send transactions.
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.core.crypto.PrivateKey;
-import io.brane.core.model.TransactionRequest;
-import io.brane.core.types.Wei;
-import io.brane.core.types.Address;
+import sh.brane.rpc.Brane;
+import sh.brane.core.crypto.PrivateKey;
+import sh.brane.core.model.TransactionRequest;
+import sh.brane.core.types.Wei;
+import sh.brane.core.types.Address;
 
 // 1. Create a signer from a private key
 var signer = PrivateKey.fromHex(System.getenv("SEPOLIA_PRIVATE_KEY"));

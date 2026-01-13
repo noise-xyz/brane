@@ -5,7 +5,7 @@
 `Brane.Tester` is a specialized client for interacting with local test nodes like Anvil, Hardhat, and Ganache. It extends the standard Brane capabilities with test-specific operations that are only available on development networks.
 
 ```java
-import io.brane.rpc.Brane;
+import sh.brane.rpc.Brane;
 
 // Connect to local Anvil with default test key
 Brane.Tester tester = Brane.connectTest();
@@ -38,11 +38,11 @@ Anvil is recommended for the best feature support and performance.
 ## Quick Example
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.rpc.SnapshotId;
-import io.brane.rpc.ImpersonationSession;
-import io.brane.core.types.Address;
-import io.brane.core.types.Wei;
+import sh.brane.rpc.Brane;
+import sh.brane.rpc.SnapshotId;
+import sh.brane.rpc.ImpersonationSession;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Wei;
 
 public class TesterExample {
     public static void main(String[] args) {
@@ -96,7 +96,7 @@ Brane.Tester tester = Brane.connectTest();
 Use a specific Anvil test account:
 
 ```java
-import io.brane.rpc.AnvilSigners;
+import sh.brane.rpc.AnvilSigners;
 
 // Use the 4th test account (index 3)
 var signer = AnvilSigners.keyAt(3);
@@ -116,8 +116,8 @@ Brane.Tester tester = Brane.connectTest("http://192.168.1.100:8545");
 Use Hardhat or Ganache instead of Anvil:
 
 ```java
-import io.brane.rpc.TestNodeMode;
-import io.brane.core.crypto.PrivateKey;
+import sh.brane.rpc.TestNodeMode;
+import sh.brane.core.crypto.PrivateKey;
 
 var signer = PrivateKey.fromHex("0x...");
 Brane.Tester tester = Brane.connectTest(
@@ -249,7 +249,7 @@ tester.setIntervalMining(0); // Disable interval mining
 Anvil starts with 10 pre-funded accounts (10,000 ETH each). Access them via `AnvilSigners`:
 
 ```java
-import io.brane.rpc.AnvilSigners;
+import sh.brane.rpc.AnvilSigners;
 
 // Default key (account 0)
 var signer = AnvilSigners.defaultKey();

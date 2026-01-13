@@ -7,7 +7,7 @@ Interface for reading from the blockchain (blocks, transactions, logs).
 ## Usage
 
 ```java
-import io.brane.rpc.Brane;
+import sh.brane.rpc.Brane;
 
 // Simple connection - returns Brane.Reader for read-only operations
 Brane client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/your-key");
@@ -54,7 +54,7 @@ var blockByNumber = client.getBlockByNumber(12345678);
 Fetch a transaction by its hash.
 
 ```java
-import io.brane.core.types.Hash;
+import sh.brane.core.types.Hash;
 
 Hash txHash = new Hash("0x...");
 var tx = client.getTransactionByHash(txHash);
@@ -82,10 +82,10 @@ String result = client.call(params, "latest");
 Returns an array of all logs matching a given filter object.
 
 ```java
-import io.brane.rpc.LogFilter;
-import io.brane.core.model.LogEntry;
-import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
+import sh.brane.rpc.LogFilter;
+import sh.brane.core.model.LogEntry;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Hash;
 import java.util.List;
 import java.util.Optional;
 
@@ -118,11 +118,11 @@ This allows you to see which storage slots a transaction will touch and how much
 Useful for gas optimization and preparing transactions that conform to EIP-2930.
 
 ```java
-import io.brane.core.model.TransactionRequest;
-import io.brane.core.model.AccessListWithGas;
-import io.brane.core.model.AccessListEntry;
-import io.brane.core.types.Address;
-import io.brane.core.types.HexData;
+import sh.brane.core.model.TransactionRequest;
+import sh.brane.core.model.AccessListWithGas;
+import sh.brane.core.model.AccessListEntry;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.HexData;
 import java.math.BigInteger;
 import java.util.List;
 
@@ -155,10 +155,10 @@ for (AccessListEntry entry : result.accessList()) {
 Simulate one or more calls using `eth_simulateV1` (supports per-call results and optional state overrides).
 
 ```java
-import io.brane.rpc.SimulateCall;
-import io.brane.rpc.SimulateRequest;
-import io.brane.core.types.Address;
-import io.brane.core.types.HexData;
+import sh.brane.rpc.SimulateCall;
+import sh.brane.rpc.SimulateRequest;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.HexData;
 
 SimulateRequest request = SimulateRequest.builder()
     .call(SimulateCall.builder()

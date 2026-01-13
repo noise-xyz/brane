@@ -17,8 +17,8 @@ Snapshots save the entire blockchain state (accounts, balances, storage, blocks)
 ### Basic Usage
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.rpc.SnapshotId;
+import sh.brane.rpc.Brane;
+import sh.brane.rpc.SnapshotId;
 
 Brane.Tester tester = Brane.connectTest();
 
@@ -98,8 +98,8 @@ The recommended pattern for JUnit 5 uses `@BeforeEach` and `@AfterEach` to autom
 ### Basic JUnit Pattern
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.rpc.SnapshotId;
+import sh.brane.rpc.Brane;
+import sh.brane.rpc.SnapshotId;
 import org.junit.jupiter.api.*;
 
 class MyContractTest {
@@ -242,7 +242,7 @@ For scenarios where you need to persist chain state to disk or share it between 
 ### Dumping State
 
 ```java
-import io.brane.core.types.HexData;
+import sh.brane.core.types.HexData;
 import java.nio.file.Files;
 import java.nio.file.Path;
 

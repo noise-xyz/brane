@@ -23,7 +23,7 @@ BraneException (sealed root)
 ### Catching All Brane Errors
 
 ```java
-import io.brane.core.error.BraneException;
+import sh.brane.core.error.BraneException;
 
 try {
     client.sendTransaction(request);
@@ -36,9 +36,9 @@ try {
 ### Catching Specific Errors
 
 ```java
-import io.brane.core.error.RevertException;
-import io.brane.core.error.RpcException;
-import io.brane.core.error.TxnException;
+import sh.brane.core.error.RevertException;
+import sh.brane.core.error.RpcException;
+import sh.brane.core.error.TxnException;
 
 try {
     client.sendTransaction(request);
@@ -59,9 +59,9 @@ try {
 Thrown when the JSON-RPC node returns an error (e.g., rate limiting, invalid request).
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.core.types.Address;
-import io.brane.core.error.RpcException;
+import sh.brane.rpc.Brane;
+import sh.brane.core.types.Address;
+import sh.brane.core.error.RpcException;
 
 Brane client = Brane.connect("https://eth.example.com");
 Address address = Address.from("0x...");
@@ -79,9 +79,9 @@ try {
 Thrown when a smart contract execution reverts.
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.contract.BraneContract;
-import io.brane.core.error.RevertException;
+import sh.brane.rpc.Brane;
+import sh.brane.contract.BraneContract;
+import sh.brane.core.error.RevertException;
 
 Brane.Signer client = Brane.connect("https://eth.example.com", signer);
 MyToken token = BraneContract.bind(MyToken.class, abi, tokenAddress, client);
@@ -99,8 +99,8 @@ try {
 Thrown when ABI encoding or decoding fails.
 
 ```java
-import io.brane.core.error.AbiEncodingException;
-import io.brane.core.error.AbiDecodingException;
+import sh.brane.core.error.AbiEncodingException;
+import sh.brane.core.error.AbiDecodingException;
 
 try {
     abi.encodeFunction("transfer", invalidArg);
@@ -120,8 +120,8 @@ try {
 Thrown when EIP-712 typed data encoding, parsing, or validation fails. This includes invalid JSON format, missing required fields, unknown types, and value encoding errors.
 
 ```java
-import io.brane.core.crypto.eip712.TypedDataJson;
-import io.brane.core.error.Eip712Exception;
+import sh.brane.core.crypto.eip712.TypedDataJson;
+import sh.brane.core.error.Eip712Exception;
 
 try {
     TypedData<?> typedData = TypedDataJson.parseAndValidate(jsonFromDapp);
@@ -142,8 +142,8 @@ See [EIP-712 Typed Data](/signer/eip712) for details on typed data signing.
 Thrown when KZG commitment operations fail during EIP-4844 blob transaction processing.
 
 ```java
-import io.brane.core.error.KzgException;
-import io.brane.kzg.CKzg;
+import sh.brane.core.error.KzgException;
+import sh.brane.kzg.CKzg;
 
 try {
     Kzg kzg = CKzg.loadFromClasspath();
@@ -174,8 +174,8 @@ See [Blob Transactions](/signer/blobs) for details on EIP-4844 support.
 Thrown when transaction building fails due to invalid parameters.
 
 ```java
-import io.brane.core.builder.Eip1559Builder;
-import io.brane.core.builder.BraneTxBuilderException;
+import sh.brane.core.builder.Eip1559Builder;
+import sh.brane.core.builder.BraneTxBuilderException;
 
 try {
     // Missing required fields
@@ -194,7 +194,7 @@ try {
 Thrown when the transaction's chain ID doesn't match the connected network.
 
 ```java
-import io.brane.core.error.ChainMismatchException;
+import sh.brane.core.error.ChainMismatchException;
 
 try {
     // Trying to send a mainnet transaction to a testnet
@@ -209,7 +209,7 @@ try {
 Thrown when the transaction sender address is invalid or doesn't match the signer.
 
 ```java
-import io.brane.core.error.InvalidSenderException;
+import sh.brane.core.error.InvalidSenderException;
 
 try {
     client.sendTransaction(txWithWrongSender);
@@ -220,15 +220,15 @@ try {
 
 ## RPC-Layer Exceptions
 
-The `io.brane.rpc.exception` package contains RPC-specific exceptions that are separate from the core `BraneException` hierarchy.
+The `sh.brane.rpc.exception` package contains RPC-specific exceptions that are separate from the core `BraneException` hierarchy.
 
 ### RetryExhaustedException
 
 Thrown when all retry attempts have been exhausted for transient RPC failures.
 
 ```java
-import io.brane.rpc.exception.RetryExhaustedException;
-import io.brane.core.error.RpcException;
+import sh.brane.rpc.exception.RetryExhaustedException;
+import sh.brane.core.error.RpcException;
 
 try {
     client.getLatestBlock();
@@ -253,7 +253,7 @@ try {
 Thrown when `eth_simulateV1` is not supported by the RPC node. See [Transaction Simulation](/reader/simulate) for details.
 
 ```java
-import io.brane.rpc.exception.SimulateNotSupportedException;
+import sh.brane.rpc.exception.SimulateNotSupportedException;
 
 try {
     client.simulate(request);
@@ -269,12 +269,12 @@ try {
 If your contract throws a custom error (e.g., `error InsufficientFunds(uint256 available, uint256 required)`), you can decode it using `RevertDecoder`.
 
 ```java
-import io.brane.core.RevertDecoder;
-import io.brane.core.abi.TypeSchema;
-import io.brane.core.abi.Abi;
-import io.brane.rpc.Brane;
-import io.brane.contract.BraneContract;
-import io.brane.core.error.RevertException;
+import sh.brane.core.RevertDecoder;
+import sh.brane.core.abi.TypeSchema;
+import sh.brane.core.abi.Abi;
+import sh.brane.rpc.Brane;
+import sh.brane.contract.BraneContract;
+import sh.brane.core.error.RevertException;
 
 Brane client = Brane.connect("https://eth.example.com");
 MyToken token = BraneContract.bind(MyToken.class, abi, tokenAddress, client);

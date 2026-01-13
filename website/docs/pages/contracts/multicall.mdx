@@ -38,8 +38,8 @@ String symbol = symbolHandle.result().data();
 ### 1. Create a Batch
 
 ```java
-import io.brane.rpc.MulticallBatch;
-import io.brane.rpc.Brane;
+import sh.brane.rpc.MulticallBatch;
+import sh.brane.rpc.Brane;
 
 MulticallBatch batch = client.batch();
 ```
@@ -108,11 +108,11 @@ if (balanceResult.success()) {
 ## Complete Example
 
 ```java
-import io.brane.rpc.MulticallBatch;
-import io.brane.rpc.BatchHandle;
-import io.brane.rpc.BatchResult;
-import io.brane.core.types.Address;
-import io.brane.rpc.Brane;
+import sh.brane.rpc.MulticallBatch;
+import sh.brane.rpc.BatchHandle;
+import sh.brane.rpc.BatchResult;
+import sh.brane.core.types.Address;
+import sh.brane.rpc.Brane;
 import java.math.BigInteger;
 
 public class MulticallExample {
