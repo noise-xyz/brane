@@ -100,7 +100,7 @@ class SimulateCallsIntegrationTest {
 
             var deployTx = TxBuilder.eip1559()
                     .data(bytecodeWithConstructor)
-                    .value(Wei.of(0))
+                    .value(Wei.ZERO)
                     .build();
 
             TransactionReceipt receipt = braneClient.sendTransactionAndWait(deployTx, 10_000, 500);
