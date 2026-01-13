@@ -85,6 +85,8 @@ public class BraneTestExtension implements
     private static final ExtensionContext.Namespace NAMESPACE =
             ExtensionContext.Namespace.create(BraneTestExtension.class);
 
+    private static final String RPC_URL_PROPERTY = "brane.test.rpc.url";
+
     private static final String TESTER_KEY = "tester";
     private static final String READER_KEY = "reader";
     private static final String PROVIDER_KEY = "provider";
