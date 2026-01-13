@@ -3,6 +3,8 @@ package io.brane.rpc;
 
 import static io.brane.rpc.internal.RpcUtils.MAPPER;
 
+import io.brane.rpc.internal.RpcUtils;
+
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -994,8 +996,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         try {
             JsonRpcResponse response = sendAsync("eth_subscribe", subscribeParams).join();
             if (response.error() != null) {
-                throw new RpcException(response.error().code(), response.error().message(),
-                        response.error().data() != null ? response.error().data().toString() : null);
+                throw RpcUtils.toRpcException(response.error());
             }
             String subscriptionId = String.valueOf(response.result());
             if (subscriptionId.startsWith("\"") && subscriptionId.endsWith("\"")) {

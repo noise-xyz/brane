@@ -96,16 +96,16 @@ String result = switch (type) {
 
 ### ❌ BAD - Ternary null check (when default is constant)
 ```java
-final Wei valueOrZero = value != null ? value : Wei.of(0);
+final Wei valueOrZero = value != null ? value : Wei.of(0);  // Use Wei.ZERO constant
 final HexData dataOrEmpty = data != null ? data : HexData.EMPTY;
-final Object[] args = args == null ? new Object[0] : args;
+final Object[] args = args == null ? new Object[0] : args;  // Use EMPTY_ARGS constant
 ```
 
 ### ✅ GOOD - Objects.requireNonNullElse()
 ```java
-final Wei valueOrZero = Objects.requireNonNullElse(value, Wei.of(0));
+final Wei valueOrZero = Objects.requireNonNullElse(value, Wei.ZERO);
 final HexData dataOrEmpty = Objects.requireNonNullElse(data, HexData.EMPTY);
-final Object[] args = Objects.requireNonNullElse(args, new Object[0]);
+final Object[] args = Objects.requireNonNullElse(args, EMPTY_ARGS);  // Define EMPTY_ARGS constant
 ```
 
 ### ✅ BEST - Use static constants for empty defaults
@@ -220,6 +220,8 @@ return switch (schema) {
 | Stream to list | `.collect(Collectors.toList())` | `.toList()` |
 | Local types | Explicit when obvious | `var` when RHS shows type |
 | Repeated construction | Inline `new Exception(...)` everywhere | Factory method `toException()` |
+| Zero values | `Wei.of(0)`, `new HexData("0x")` | `Wei.ZERO`, `HexData.EMPTY` |
+| JsonRpcError → RpcException | Manual `new RpcException(err.code()...)` | `RpcUtils.toRpcException(err)` |
 
 ---
 
@@ -285,12 +287,12 @@ String toValue = Objects.requireNonNullElse(to?.value(), ???);  // No way to pre
 
 **Examples in codebase**:
 ```java
-// Mapping - KEEP AS-IS
+// Mapping - KEEP AS-IS (null in → null out, transforms non-null)
 withDefaults.to() != null ? withDefaults.to().value() : null
 this.accessList = accessList == null ? null : List.copyOf(accessList)
 
-// Defaulting - CAN change to requireNonNullElse
-value != null ? value : Wei.ZERO  →  Objects.requireNonNullElse(value, Wei.ZERO)
+// Defaulting - SHOULD change to requireNonNullElse with constant
+value != null ? value : Wei.of(0)  →  Objects.requireNonNullElse(value, Wei.ZERO)
 ```
 
 **Alternative** (more verbose):
@@ -341,38 +343,37 @@ These cannot be converted to streams without boxing overhead or losing clarity.
 
 ## 7. Factory Methods for Repeated Patterns
 
-### ❌ BAD - Duplicated exception construction
+### ❌ BAD - Manual RpcException construction from JsonRpcError
 ```java
-// Repeated 11 times across codebase
-final JsonRpcError err = response.error();
-throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+// DON'T do this - manual construction misses extractErrorData()
+if (response.error() != null) {
+    throw new RpcException(response.error().code(), response.error().message(),
+            response.error().data() != null ? response.error().data().toString() : null);
+}
 ```
 
-### ✅ GOOD - Extract factory method
+### ✅ GOOD - ALWAYS use RpcUtils.toRpcException()
 ```java
-// In RpcUtils.java
-public static RpcException toRpcException(final JsonRpcError err) {
-    return new RpcException(err.code(), err.message(), extractErrorData(err.data()), (Long) null);
-}
-
-// Usage - clean and consistent
+// ALWAYS use the factory method for JsonRpcError → RpcException
 if (response.hasError()) {
     throw RpcUtils.toRpcException(response.error());
+}
+
+// The factory method in RpcUtils.java:
+public static RpcException toRpcException(final JsonRpcError err) {
+    return new RpcException(err.code(), err.message(), extractErrorData(err.data()), (Long) null);
 }
 ```
 
 **Benefits**:
+- Uses `extractErrorData()` to handle nested error data structures (Map, Array, Iterable)
 - Single point of change for error handling logic
 - Consistent error construction across codebase
 - Easier to add logging, metrics, or error enrichment later
 
-**Existing good example**: `RpcUtils.toRpcException()` added in REVIEW4
+**Rule**: ANY time you convert `JsonRpcError` to `RpcException`, use `RpcUtils.toRpcException()`.
 
 ### Related: Use extractErrorData() for error data
-
-**Locations still using simple pattern**:
-- `SmartGasStrategy.java:254, 371`
-- `RpcRetry.java:328`
 
 ```java
 // ❌ BAD - doesn't handle nested structures
@@ -381,6 +382,8 @@ err.data() != null ? err.data().toString() : null
 // ✅ GOOD - handles Map, Array, Iterable wrapping
 RpcUtils.extractErrorData(err.data())
 ```
+
+**Note**: If you're throwing `RpcException` from `JsonRpcError`, just use `toRpcException()` which calls `extractErrorData()` internally.
 
 ---
 
@@ -412,6 +415,44 @@ if (provider instanceof WebSocketProvider ws) {
 
 ---
 
+## 9. Use Static Constants for Common Values
+
+### ❌ BAD - Creating new instances for well-known values
+```java
+value = Wei.of(0);                    // Allocates new BigInteger
+data = new HexData("0x");             // Allocates new String
+args = new Object[0];                 // Allocates new array
+```
+
+### ✅ GOOD - Use predefined constants
+```java
+value = Wei.ZERO;                     // Cached singleton
+data = HexData.EMPTY;                 // Cached singleton
+args = EMPTY_ARGS;                    // Private static final constant
+```
+
+### Available constants in Brane SDK
+
+| Type | Constant | Value |
+|------|----------|-------|
+| `Wei` | `Wei.ZERO` | `BigInteger.ZERO` |
+| `HexData` | `HexData.EMPTY` | `"0x"` |
+| `List` | `List.of()` | Empty immutable list (JDK) |
+| `Map` | `Map.of()` | Empty immutable map (JDK) |
+
+**Note**: `List.of()` and `Map.of()` return cached singletons, so no need for custom constants.
+
+### When to define your own constant
+```java
+// Arrays don't have built-in empty constant, define one:
+private static final Object[] EMPTY_ARGS = new Object[0];
+
+// Use in requireNonNullElse to avoid allocation:
+final Object[] args = Objects.requireNonNullElse(input, EMPTY_ARGS);
+```
+
+---
+
 ## Codebase Examples
 
 ### Good Examples (follow these)
@@ -426,3 +467,21 @@ if (provider instanceof WebSocketProvider ws) {
 - `InternalAbi.java:548-552, 653-658` - Pattern matching for instanceof
 - `DefaultSigner.java:100-101` - Uses `Objects.requireNonNullElse()`
 - `CallResult.java:50-57` - Pattern matching for instanceof
+
+### Refactored in REVIEW5 (now good examples)
+- `InternalAbi.java:38` - Uses `EMPTY_ARGS` constant
+- `ReadOnlyContractInvocationHandler.java:21` - Uses `EMPTY_ARGS` constant
+- `SignerContractInvocationHandler.java:27,64` - Uses `EMPTY_ARGS` + pattern matching instanceof
+- `MulticallInvocationHandler.java:32` - Uses `EMPTY_ARGS` constant
+- `SmartGasStrategy.java:254,371` - Uses `RpcUtils.extractErrorData()`
+- `RpcRetry.java:329` - Uses `RpcUtils.extractErrorData()`
+
+### Good examples of constant usage
+- `BlobTransactionRequest.java:194` - Uses `Wei.ZERO` ✓
+- `DefaultSigner.java:435,441` - Uses `Wei.ZERO` ✓
+
+### Still needs cleanup (REVIEW6)
+- `WebSocketProvider.java:997-998` - Should use `RpcUtils.toRpcException()`
+- `SignerContractInvocationHandler.java:68` - Should use `Wei.ZERO`
+- `DefaultSigner.java:101` - Should use `Wei.ZERO`
+- `TransactionRequest.java:162` - Should use `Wei.ZERO`
