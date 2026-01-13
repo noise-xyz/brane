@@ -141,8 +141,8 @@ class SimulateCallsTest {
         SimulateResult result = client.simulate(request);
 
         assertEquals(1, result.results().size());
-        assertTrue(result.results().get(0) instanceof CallResult.Failure);
-        CallResult.Failure failure = (CallResult.Failure) result.results().get(0);
+        assertInstanceOf(CallResult.Failure.class, result.results().getFirst());
+        CallResult.Failure failure = (CallResult.Failure) result.results().getFirst();
         assertEquals("execution reverted", failure.errorMessage());
         assertEquals("0x08c379a0", failure.revertData().value());
     }
