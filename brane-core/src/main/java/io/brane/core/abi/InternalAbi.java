@@ -656,27 +656,12 @@ final class InternalAbi implements Abi {
         }
 
         if (normalizedType.startsWith("bytes")) {
-            return new TypeConverter() {
+            return new StaticTypeConverter() {
                 @Override
                 public AbiType convert(Object value) {
                     if (value == null)
                         throw new AbiEncodingException("bytesN value cannot be null");
                     return toBytes(value, false);
-                }
-
-                @Override
-                public boolean isDynamic() {
-                    return false;
-                }
-
-                @Override
-                public int getHeadSize() {
-                    return 32;
-                }
-
-                @Override
-                public int getContentSize(Object value) {
-                    return 32;
                 }
 
                 @Override
