@@ -19,11 +19,6 @@ public record Utf8String(String value) implements DynamicAbiType {
     }
 
     @Override
-    public boolean isDynamic() {
-        return true;
-    }
-
-    @Override
     public String typeName() {
         return "string";
     }
