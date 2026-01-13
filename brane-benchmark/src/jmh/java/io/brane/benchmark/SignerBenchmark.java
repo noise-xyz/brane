@@ -66,7 +66,7 @@ public class SignerBenchmark {
                 Wei.of(1000000000),
                 100000,
                 to,
-                Wei.of(0),
+                Wei.ZERO,
                 HexData.fromBytes(largeData));
     }
 

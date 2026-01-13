@@ -135,7 +135,7 @@ class Eip1559TransactionTest {
                 Wei.of(100000000000L),
                 100000L, // More gas for complex interaction
                 contractAddr,
-                Wei.of(0),
+                Wei.ZERO,
                 HexData.fromBytes(new byte[] { 0x01, 0x02, 0x03, 0x04 }),
                 List.of(entry));
 
@@ -156,7 +156,7 @@ class Eip1559TransactionTest {
                 Wei.of(100000000000L),
                 500000L,
                 null, // null = contract creation
-                Wei.of(0),
+                Wei.ZERO,
                 HexData.fromBytes(new byte[] { 0x60, 0x60, 0x60, 0x40 }),
                 List.of());
 
@@ -176,7 +176,7 @@ class Eip1559TransactionTest {
                 Wei.of(100000000000L),
                 21000L,
                 Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
-                Wei.of(0),
+                Wei.ZERO,
                 HexData.EMPTY,
                 List.of()));
     }
@@ -190,7 +190,7 @@ class Eip1559TransactionTest {
                 Wei.of(100000000000L),
                 21000L,
                 Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
-                Wei.of(0),
+                Wei.ZERO,
                 HexData.EMPTY,
                 List.of()));
     }
@@ -204,7 +204,7 @@ class Eip1559TransactionTest {
                 Wei.of(100000000000L),
                 0L, // Invalid zero gas limit
                 Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
-                Wei.of(0),
+                Wei.ZERO,
                 HexData.EMPTY,
                 List.of()));
     }
@@ -218,7 +218,7 @@ class Eip1559TransactionTest {
                 Wei.of(100000000000L),
                 21000L,
                 Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
-                Wei.of(0),
+                Wei.ZERO,
                 HexData.EMPTY,
                 List.of()));
     }
@@ -299,7 +299,7 @@ class Eip1559TransactionTest {
                 Wei.of(100000000000L),
                 21000L,
                 contractAddr,
-                Wei.of(0),
+                Wei.ZERO,
                 HexData.EMPTY,
                 accessList);
 

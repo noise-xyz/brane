@@ -160,8 +160,8 @@ class RlpTest {
                 () -> RlpList.of(listWithNull));
         assertTrue(ex.getMessage().contains("cannot contain null"));
 
-        // Varargs with null should also be rejected
-        assertThrows(IllegalArgumentException.class, () -> RlpList.of(RlpString.of(1L), null));
+        // Varargs with null should also be rejected (List.of throws NullPointerException)
+        assertThrows(NullPointerException.class, () -> RlpList.of(RlpString.of(1L), null));
     }
 
     @Test

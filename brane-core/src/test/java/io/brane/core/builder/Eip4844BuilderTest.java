@@ -17,6 +17,7 @@ import io.brane.core.model.BlobTransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Blob;
 import io.brane.core.types.BlobSidecar;
+import io.brane.core.types.FixedSizeG1Point;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.KzgCommitment;
@@ -34,18 +35,18 @@ class Eip4844BuilderTest {
     private static class MockKzg implements Kzg {
         @Override
         public KzgCommitment blobToCommitment(Blob blob) {
-            byte[] commitmentData = new byte[KzgCommitment.SIZE];
+            byte[] commitmentData = new byte[FixedSizeG1Point.SIZE];
             byte[] blobBytes = blob.toBytes();
-            System.arraycopy(blobBytes, 0, commitmentData, 0, Math.min(blobBytes.length, KzgCommitment.SIZE));
+            System.arraycopy(blobBytes, 0, commitmentData, 0, Math.min(blobBytes.length, FixedSizeG1Point.SIZE));
             return new KzgCommitment(commitmentData);
         }
 
         @Override
         public KzgProof computeProof(Blob blob, KzgCommitment commitment) {
-            byte[] proofData = new byte[KzgProof.SIZE];
+            byte[] proofData = new byte[FixedSizeG1Point.SIZE];
             byte[] blobBytes = blob.toBytes();
             byte[] commitmentBytes = commitment.toBytes();
-            for (int i = 0; i < KzgProof.SIZE; i++) {
+            for (int i = 0; i < FixedSizeG1Point.SIZE; i++) {
                 proofData[i] = (byte) (blobBytes[i % blobBytes.length] ^ commitmentBytes[i % commitmentBytes.length]);
             }
             return new KzgProof(proofData);
@@ -64,8 +65,8 @@ class Eip4844BuilderTest {
 
     private static BlobSidecar createMockSidecar() {
         Blob blob = new Blob(new byte[Blob.SIZE]);
-        KzgCommitment commitment = new KzgCommitment(new byte[KzgCommitment.SIZE]);
-        KzgProof proof = new KzgProof(new byte[KzgProof.SIZE]);
+        KzgCommitment commitment = new KzgCommitment(new byte[FixedSizeG1Point.SIZE]);
+        KzgProof proof = new KzgProof(new byte[FixedSizeG1Point.SIZE]);
         return new BlobSidecar(List.of(blob), List.of(commitment), List.of(proof));
     }
 
@@ -293,7 +294,7 @@ class Eip4844BuilderTest {
         BlobTransactionRequest request = Eip4844Builder.create()
                 .from(SENDER)
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .nonce(0)
                 .gasLimit(21000)
                 .maxFeePerGas(Wei.gwei(1))

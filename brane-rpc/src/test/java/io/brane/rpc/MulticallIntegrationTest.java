@@ -231,7 +231,7 @@ class MulticallIntegrationTest {
 
         var request = TxBuilder.eip1559()
                 .data(new HexData(ERC20_BYTECODE + encodedArgs.value().substring(2)))
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .build();
 
         TransactionReceipt receipt = braneClient.sendTransactionAndWait(request, 10_000, 500);

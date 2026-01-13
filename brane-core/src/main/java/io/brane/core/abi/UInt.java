@@ -10,7 +10,7 @@ import java.util.Objects;
  * @param width the bit width (must be a multiple of 8, between 8 and 256)
  * @param value the BigInteger value (must be non-negative and fit in width)
  */
-public record UInt(int width, BigInteger value) implements AbiType {
+public record UInt(int width, BigInteger value) implements StaticAbiType {
     public UInt {
         if (width % 8 != 0 || width < 8 || width > 256) {
             throw new IllegalArgumentException("Invalid uint width: " + width);
@@ -22,16 +22,6 @@ public record UInt(int width, BigInteger value) implements AbiType {
         if (value.bitLength() > width) {
             throw new IllegalArgumentException("value " + value + " too large for uint" + width);
         }
-    }
-
-    @Override
-    public int byteSize() {
-        return 32;
-    }
-
-    @Override
-    public boolean isDynamic() {
-        return false;
     }
 
     @Override

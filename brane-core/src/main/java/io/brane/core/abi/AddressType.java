@@ -37,19 +37,9 @@ import io.brane.core.types.Address;
  * @param value the Address wrapper containing the 20-byte value
  * @since 0.1.0-alpha
  */
-public record AddressType(Address value) implements AbiType {
+public record AddressType(Address value) implements StaticAbiType {
     public AddressType {
         Objects.requireNonNull(value, "value cannot be null");
-    }
-
-    @Override
-    public int byteSize() {
-        return 32;
-    }
-
-    @Override
-    public boolean isDynamic() {
-        return false;
     }
 
     @Override

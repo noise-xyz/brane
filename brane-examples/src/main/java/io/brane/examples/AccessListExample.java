@@ -39,7 +39,7 @@ public final class AccessListExample {
         final TransactionRequest request =
                 TxBuilder.eip1559()
                         .to(target)
-                        .value(Wei.of(0))
+                        .value(Wei.ZERO)
                         .accessList(accessList)
                         .build();
 

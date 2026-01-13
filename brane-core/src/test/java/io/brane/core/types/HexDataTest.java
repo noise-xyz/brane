@@ -144,7 +144,7 @@ class HexDataTest {
         // CRIT-3: Test equality for empty data
         HexData empty1 = HexData.EMPTY;
         HexData empty2 = HexData.fromBytes(new byte[0]);
-        HexData empty3 = new HexData("0x");
+        HexData empty3 = HexData.EMPTY;
 
         assertTrue(empty1.equals(empty2));
         assertTrue(empty2.equals(empty3));

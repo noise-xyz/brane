@@ -35,6 +35,7 @@ final class InternalAbi implements Abi {
     /** Logger for debug-level diagnostics, e.g., constructor matching failures during event decoding. */
     private static final Logger LOG = LoggerFactory.getLogger(InternalAbi.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Object[] EMPTY_ARGS = new Object[0];
 
     private final Map<String, AbiFunction> functionsByName;
     private final Map<String, AbiFunction> functionsBySignature;
@@ -51,7 +52,7 @@ final class InternalAbi implements Abi {
 
     @Override
     public FunctionCall encodeFunction(final String name, final Object... args) {
-        final Object[] providedArgs = args == null ? new Object[0] : args;
+        final Object[] providedArgs = Objects.requireNonNullElse(args, EMPTY_ARGS);
         final AbiFunction fn = resolveFunction(name, providedArgs.length);
 
         // Calculate selector
@@ -115,7 +116,7 @@ final class InternalAbi implements Abi {
             return HexData.EMPTY;
         }
 
-        final Object[] providedArgs = args == null ? new Object[0] : args;
+        final Object[] providedArgs = Objects.requireNonNullElse(args, EMPTY_ARGS);
         if (constructor.inputs().size() != providedArgs.length) {
             throw new AbiEncodingException(
                     "Constructor expects "
@@ -264,6 +265,43 @@ final class InternalAbi implements Abi {
             // Fallback to legacy conversion if not optimized
             // This is slow but safe for complex types not yet optimized
             throw new UnsupportedOperationException("Direct encoding not implemented for this type");
+        }
+    }
+
+    /**
+     * Abstract base class for static type converters.
+     * Static types have fixed size (32 bytes) and are encoded inline in the head.
+     */
+    abstract static class StaticTypeConverter implements TypeConverter {
+        @Override
+        public boolean isDynamic() {
+            return false;
+        }
+
+        @Override
+        public int getHeadSize() {
+            return 32;
+        }
+
+        @Override
+        public int getContentSize(Object value) {
+            return 32;
+        }
+    }
+
+    /**
+     * Abstract base class for dynamic type converters.
+     * Dynamic types have variable size and are encoded via offset pointer in the head (32 bytes).
+     */
+    abstract static class DynamicTypeConverter implements TypeConverter {
+        @Override
+        public boolean isDynamic() {
+            return true;
+        }
+
+        @Override
+        public int getHeadSize() {
+            return 32;
         }
     }
 
@@ -460,27 +498,12 @@ final class InternalAbi implements Abi {
                 width = Integer.parseInt(normalizedType.substring(4));
             }
             final int finalWidth = width;
-            return new TypeConverter() {
+            return new StaticTypeConverter() {
                 @Override
                 public AbiType convert(Object value) {
                     if (value == null)
                         throw new AbiEncodingException("uint value cannot be null");
                     return new UInt(finalWidth, toBigInteger(value, false));
-                }
-
-                @Override
-                public boolean isDynamic() {
-                    return false;
-                }
-
-                @Override
-                public int getHeadSize() {
-                    return 32;
-                }
-
-                @Override
-                public int getContentSize(Object value) {
-                    return 32;
                 }
 
                 @Override
@@ -496,27 +519,12 @@ final class InternalAbi implements Abi {
                 width = Integer.parseInt(normalizedType.substring(3));
             }
             final int finalWidth = width;
-            return new TypeConverter() {
+            return new StaticTypeConverter() {
                 @Override
                 public AbiType convert(Object value) {
                     if (value == null)
                         throw new AbiEncodingException("int value cannot be null");
                     return new Int(finalWidth, toBigInteger(value, true));
-                }
-
-                @Override
-                public boolean isDynamic() {
-                    return false;
-                }
-
-                @Override
-                public int getHeadSize() {
-                    return 32;
-                }
-
-                @Override
-                public int getContentSize(Object value) {
-                    return 32;
                 }
 
                 @Override
@@ -527,7 +535,7 @@ final class InternalAbi implements Abi {
         }
 
         if (normalizedType.equals("address")) {
-            return new TypeConverter() {
+            return new StaticTypeConverter() {
                 @Override
                 public AbiType convert(Object value) {
                     if (value == null)
@@ -540,30 +548,20 @@ final class InternalAbi implements Abi {
                 }
 
                 @Override
-                public boolean isDynamic() {
-                    return false;
-                }
-
-                @Override
-                public int getHeadSize() {
-                    return 32;
-                }
-
-                @Override
-                public int getContentSize(Object value) {
-                    return 32;
-                }
-
-                @Override
                 public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
-                    Address a = (value instanceof Address) ? (Address) value : new Address((String) value);
+                    Address a;
+                    if (value instanceof Address addr) {
+                        a = addr;
+                    } else {
+                        a = new Address((String) value);
+                    }
                     io.brane.core.abi.FastAbiEncoder.encodeAddress(a, buffer);
                 }
             };
         }
 
         if (normalizedType.equals("bool")) {
-            return new TypeConverter() {
+            return new StaticTypeConverter() {
                 @Override
                 public AbiType convert(Object value) {
                     if (value == null)
@@ -574,21 +572,6 @@ final class InternalAbi implements Abi {
                 }
 
                 @Override
-                public boolean isDynamic() {
-                    return false;
-                }
-
-                @Override
-                public int getHeadSize() {
-                    return 32;
-                }
-
-                @Override
-                public int getContentSize(Object value) {
-                    return 32;
-                }
-
-                @Override
                 public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
                     io.brane.core.abi.FastAbiEncoder.encodeBool((Boolean) value, buffer);
                 }
@@ -596,7 +579,7 @@ final class InternalAbi implements Abi {
         }
 
         if (normalizedType.equals("string")) {
-            return new TypeConverter() {
+            return new DynamicTypeConverter() {
                 @Override
                 public AbiType convert(Object value) {
                     if (value == null)
@@ -604,16 +587,6 @@ final class InternalAbi implements Abi {
                     if (value instanceof String s)
                         return new Utf8String(s);
                     throw new AbiEncodingException("Expected String for type 'string'");
-                }
-
-                @Override
-                public boolean isDynamic() {
-                    return true;
-                }
-
-                @Override
-                public int getHeadSize() {
-                    return 32;
                 }
 
                 @Override
@@ -632,22 +605,12 @@ final class InternalAbi implements Abi {
         }
 
         if (normalizedType.equals("bytes")) {
-            return new TypeConverter() {
+            return new DynamicTypeConverter() {
                 @Override
                 public AbiType convert(Object value) {
                     if (value == null)
                         throw new AbiEncodingException("bytes value cannot be null");
                     return toBytes(value, true);
-                }
-
-                @Override
-                public boolean isDynamic() {
-                    return true;
-                }
-
-                @Override
-                public int getHeadSize() {
-                    return 32;
                 }
 
                 @Override
@@ -679,7 +642,7 @@ final class InternalAbi implements Abi {
         }
 
         if (normalizedType.startsWith("bytes")) {
-            return new TypeConverter() {
+            return new StaticTypeConverter() {
                 @Override
                 public AbiType convert(Object value) {
                     if (value == null)
@@ -688,28 +651,13 @@ final class InternalAbi implements Abi {
                 }
 
                 @Override
-                public boolean isDynamic() {
-                    return false;
-                }
-
-                @Override
-                public int getHeadSize() {
-                    return 32;
-                }
-
-                @Override
-                public int getContentSize(Object value) {
-                    return 32;
-                }
-
-                @Override
                 public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
                     // Static bytes are just right-padded
                     byte[] data;
-                    if (value instanceof byte[]) {
-                        data = (byte[]) value;
-                    } else if (value instanceof HexData) {
-                        data = Hex.decode(((HexData) value).value());
+                    if (value instanceof byte[] bytes) {
+                        data = bytes;
+                    } else if (value instanceof HexData hex) {
+                        data = Hex.decode(hex.value());
                     } else {
                         throw new AbiEncodingException("Expected byte[] or HexData for bytesN");
                     }

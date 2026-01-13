@@ -260,7 +260,7 @@ public final class Rlp {
         // Improved capacity estimation: assume average item is ~3 bytes (typical case: 1-byte header + 2-byte payload).
         // Note: very small values (0-127) in RLP are encoded as a single byte with no header, so the actual average may be lower.
         // Cap at 16 to avoid over-allocation for large lists
-        final int estimatedItems = Math.max(1, Math.min(length / 3, 16));
+        final int estimatedItems = Math.clamp(length / 3, 1, 16);
         final List<RlpItem> items = new ArrayList<>(estimatedItems);
 
         int currentOffset = start;

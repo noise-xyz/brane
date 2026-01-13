@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.ReentrantLock;
 
 import io.brane.core.AnsiColors;
 import io.brane.core.builder.TxBuilder;
@@ -263,7 +265,8 @@ public final class CanonicalCustomSignerExample {
         private final PrivateKey privateKey;
         private final int threshold;
         private final Set<String> approvals = new HashSet<>();
-        private final Object lock = new Object();
+        private final ReentrantLock lock = new ReentrantLock();
+        private final Condition thresholdReached = lock.newCondition();
 
         public MockMpcCluster(String privateKeyHex, int totalParties, int threshold) {
             this.privateKey = PrivateKey.fromHex(privateKeyHex);
@@ -275,20 +278,26 @@ public final class CanonicalCustomSignerExample {
         }
 
         public void approve(String partyId) {
-            synchronized (lock) {
+            lock.lock();
+            try {
                 approvals.add(partyId);
                 System.out.println("    (Cluster: " + approvals.size() + "/" + threshold + " approvals)");
                 if (approvals.size() >= threshold) {
-                    lock.notifyAll();
+                    thresholdReached.signalAll();
                 }
+            } finally {
+                lock.unlock();
             }
         }
 
         public void waitForThreshold() throws InterruptedException {
-            synchronized (lock) {
+            lock.lock();
+            try {
                 while (approvals.size() < threshold) {
-                    lock.wait();
+                    thresholdReached.await();
                 }
+            } finally {
+                lock.unlock();
             }
         }
 

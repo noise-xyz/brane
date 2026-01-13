@@ -100,7 +100,7 @@ class SimulateCallsIntegrationTest {
 
             var deployTx = TxBuilder.eip1559()
                     .data(bytecodeWithConstructor)
-                    .value(Wei.of(0))
+                    .value(Wei.ZERO)
                     .build();
 
             TransactionReceipt receipt = braneClient.sendTransactionAndWait(deployTx, 10_000, 500);
@@ -188,9 +188,7 @@ class SimulateCallsIntegrationTest {
             assertEquals(1, result.results().size());
 
             CallResult callResult = result.results().get(0);
-            assertTrue(callResult instanceof CallResult.Success);
-
-            CallResult.Success success = (CallResult.Success) callResult;
+            CallResult.Success success = assertInstanceOf(CallResult.Success.class, callResult);
             assertNotNull(success.returnData());
 
             // Decode the balance

@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import io.brane.core.RevertDecoder;
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
@@ -33,6 +34,7 @@ import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.rpc.internal.LogParser;
+import io.brane.rpc.internal.RpcInvoker;
 import io.brane.rpc.internal.RpcUtils;
 
 /**
@@ -44,7 +46,7 @@ import io.brane.rpc.internal.RpcUtils;
  *
  * @since 0.1.0
  */
-final class DefaultReader implements Brane.Reader {
+non-sealed class DefaultReader implements Brane.Reader {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultReader.class);
 
@@ -53,6 +55,7 @@ final class DefaultReader implements Brane.Reader {
     private final int maxRetries;
     private final RpcRetryConfig retryConfig;
     private final AtomicBoolean closed;
+    private final RpcInvoker rpc;
 
     /**
      * Creates a new DefaultReader with the specified configuration.
@@ -72,64 +75,40 @@ final class DefaultReader implements Brane.Reader {
         this.maxRetries = maxRetries;
         this.retryConfig = retryConfig;
         this.closed = new AtomicBoolean(false);
+        this.rpc = new RpcInvoker(this::sendWithRetry, this::ensureOpen);
     }
 
     @Override
     public BigInteger chainId() {
-        ensureOpen();
-        final JsonRpcResponse response = sendWithRetry("eth_chainId", List.of());
-        final Object result = response.result();
-        if (result == null) {
-            throw new io.brane.core.error.RpcException(
-                    0, "eth_chainId returned null", (String) null, (Throwable) null);
-        }
-        return io.brane.rpc.internal.RpcUtils.decodeHexBigInteger(result.toString());
+        return rpc.call("eth_chainId", List.of(), RpcUtils::decodeHexBigInteger);
     }
 
     @Override
     public BigInteger getBalance(final Address address) {
-        ensureOpen();
-        final JsonRpcResponse response = sendWithRetry("eth_getBalance", List.of(address.value(), "latest"));
-        final Object result = response.result();
-        if (result == null) {
-            throw new io.brane.core.error.RpcException(
-                    0, "eth_getBalance returned null", (String) null, (Throwable) null);
-        }
-        return io.brane.rpc.internal.RpcUtils.decodeHexBigInteger(result.toString());
+        return rpc.call("eth_getBalance", List.of(address.value(), "latest"), RpcUtils::decodeHexBigInteger);
     }
 
     @Override
     public HexData getCode(final Address address) {
-        ensureOpen();
-        final JsonRpcResponse response = sendWithRetry("eth_getCode", List.of(address.value(), "latest"));
-        final Object result = response.result();
-        if (result == null) {
-            return HexData.EMPTY;
-        }
-        final String hex = result.toString();
-        // eth_getCode returns "0x" for addresses with no code
-        if ("0x".equals(hex)) {
-            return HexData.EMPTY;
-        }
-        return new HexData(hex);
+        return rpc.callWithDefault(
+                "eth_getCode",
+                List.of(address.value(), "latest"),
+                hex -> "0x".equals(hex) ? HexData.EMPTY : new HexData(hex),
+                HexData.EMPTY);
     }
 
     @Override
     public HexData getStorageAt(final Address address, final BigInteger slot) {
-        ensureOpen();
         final String slotHex = "0x" + slot.toString(16);
-        final JsonRpcResponse response = sendWithRetry(
-                "eth_getStorageAt", List.of(address.value(), slotHex, "latest"));
-        final Object result = response.result();
-        if (result == null) {
-            return HexData.EMPTY;
-        }
-        return new HexData(result.toString());
+        return rpc.callWithDefault(
+                "eth_getStorageAt",
+                List.of(address.value(), slotHex, "latest"),
+                HexData::new,
+                HexData.EMPTY);
     }
 
     @Override
     public @Nullable BlockHeader getLatestBlock() {
-        ensureOpen();
         return getBlockByTag(BlockTag.LATEST.toRpcValue());
     }
 
@@ -140,12 +119,19 @@ final class DefaultReader implements Brane.Reader {
      * @return the block header, or null if not found
      */
     private @Nullable BlockHeader getBlockByTag(final String tag) {
-        final JsonRpcResponse response = sendWithRetry("eth_getBlockByNumber", List.of(tag, Boolean.FALSE));
-        final Object result = response.result();
-        if (result == null) {
-            return null;
-        }
+        return rpc.callNullableObject(
+                "eth_getBlockByNumber",
+                List.of(tag, Boolean.FALSE),
+                this::parseBlockHeader);
+    }
 
+    /**
+     * Parses a block header from the raw JSON-RPC result.
+     *
+     * @param result the raw result object from JSON-RPC
+     * @return the parsed block header
+     */
+    private BlockHeader parseBlockHeader(final Object result) {
         final Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
         );
@@ -166,32 +152,38 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public @Nullable BlockHeader getBlockByNumber(final long blockNumber) {
-        ensureOpen();
         return getBlockByTag("0x" + Long.toHexString(blockNumber));
     }
 
     @Override
     public @Nullable Transaction getTransactionByHash(final Hash hash) {
-        ensureOpen();
-        final JsonRpcResponse response = sendWithRetry("eth_getTransactionByHash", List.of(hash.value()));
-        final Object result = response.result();
-        if (result == null) {
-            return null;
-        }
+        return rpc.callNullableObject(
+                "eth_getTransactionByHash",
+                List.of(hash.value()),
+                this::parseTransaction);
+    }
 
+    /**
+     * Parses a transaction from the raw JSON-RPC result.
+     *
+     * @param result the raw result object from JSON-RPC
+     * @return the parsed transaction
+     * @throws RpcException if required fields are missing
+     */
+    private Transaction parseTransaction(final Object result) {
         final Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
         );
 
         final String txHash = RpcUtils.stringValue(map.get("hash"));
         if (txHash == null) {
-            throw new io.brane.core.error.RpcException(
-                    0, "eth_getTransactionByHash response missing 'hash' field", (String) null, (Throwable) null);
+            throw new RpcException(
+                    -32000, "eth_getTransactionByHash response missing 'hash' field", (String) null, (Throwable) null);
         }
         final String from = RpcUtils.stringValue(map.get("from"));
         if (from == null) {
-            throw new io.brane.core.error.RpcException(
-                    0, "eth_getTransactionByHash response missing 'from' field", (String) null, (Throwable) null);
+            throw new RpcException(
+                    -32000, "eth_getTransactionByHash response missing 'from' field", (String) null, (Throwable) null);
         }
         final String to = RpcUtils.stringValue(map.get("to"));
         final String input = RpcUtils.stringValue(map.get("input"));
@@ -212,13 +204,19 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public @Nullable TransactionReceipt getTransactionReceipt(final Hash hash) {
-        ensureOpen();
-        final JsonRpcResponse response = sendWithRetry("eth_getTransactionReceipt", List.of(hash.value()));
-        final Object result = response.result();
-        if (result == null) {
-            return null;
-        }
+        return rpc.callNullableObject(
+                "eth_getTransactionReceipt",
+                List.of(hash.value()),
+                this::parseTransactionReceipt);
+    }
 
+    /**
+     * Parses a transaction receipt from the raw JSON-RPC result.
+     *
+     * @param result the raw result object from JSON-RPC
+     * @return the parsed transaction receipt
+     */
+    private TransactionReceipt parseTransactionReceipt(final Object result) {
         final Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
         );
@@ -335,11 +333,12 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public List<LogEntry> getLogs(final LogFilter filter) {
-        ensureOpen();
         final Map<String, Object> params = buildLogParams(filter);
-        final JsonRpcResponse response = sendWithRetry("eth_getLogs", List.of(params));
-        final Object result = response.result();
-        return LogParser.parseLogs(result, true);
+        return rpc.callObjectWithDefault(
+                "eth_getLogs",
+                List.of(params),
+                result -> LogParser.parseLogs(result, true),
+                List.of());
     }
 
     /**
@@ -386,27 +385,13 @@ final class DefaultReader implements Brane.Reader {
 
     @Override
     public BigInteger estimateGas(final TransactionRequest request) {
-        ensureOpen();
         final Map<String, Object> params = buildEstimateGasParams(request);
-        final JsonRpcResponse response = sendWithRetry("eth_estimateGas", List.of(params));
-        final Object result = response.result();
-        if (result == null) {
-            throw new io.brane.core.error.RpcException(
-                    0, "eth_estimateGas returned null", (String) null, (Throwable) null);
-        }
-        return RpcUtils.decodeHexBigInteger(result.toString());
+        return rpc.call("eth_estimateGas", List.of(params), RpcUtils::decodeHexBigInteger);
     }
 
     @Override
     public Wei getBlobBaseFee() {
-        ensureOpen();
-        final JsonRpcResponse response = sendWithRetry("eth_blobBaseFee", List.of());
-        final Object result = response.result();
-        if (result == null) {
-            throw new io.brane.core.error.RpcException(
-                    0, "eth_blobBaseFee returned null", (String) null, (Throwable) null);
-        }
-        return new Wei(RpcUtils.decodeHexBigInteger(result.toString()));
+        return rpc.call("eth_blobBaseFee", List.of(), hex -> new Wei(RpcUtils.decodeHexBigInteger(hex)));
     }
 
     /**
@@ -452,14 +437,11 @@ final class DefaultReader implements Brane.Reader {
                 "eth_createAccessList",
                 List.of(params, BlockTag.LATEST.toRpcValue()));
         if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new io.brane.core.error.RpcException(
-                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(response.error());
         }
         final Object result = response.result();
         if (result == null) {
-            throw new io.brane.core.error.RpcException(
-                    0, "eth_createAccessList returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult("eth_createAccessList");
         }
 
         final Map<String, Object> map = MAPPER.convertValue(
@@ -499,7 +481,7 @@ final class DefaultReader implements Brane.Reader {
     @SuppressWarnings("unchecked")
     public SimulateResult simulate(final SimulateRequest request) {
         ensureOpen();
-        final BlockTag blockTag = request.blockTag() != null ? request.blockTag() : BlockTag.LATEST;
+        final BlockTag blockTag = Objects.requireNonNullElse(request.blockTag(), BlockTag.LATEST);
         final JsonRpcResponse response = sendWithRetry(
                 "eth_simulateV1",
                 List.of(request.toMap(), blockTag.toRpcValue()));
@@ -510,8 +492,7 @@ final class DefaultReader implements Brane.Reader {
                 throw new io.brane.rpc.exception.SimulateNotSupportedException(
                         "eth_simulateV1 is not supported by this node");
             }
-            throw new io.brane.core.error.RpcException(
-                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(err);
         }
         final Object result = response.result();
         if (result == null) {

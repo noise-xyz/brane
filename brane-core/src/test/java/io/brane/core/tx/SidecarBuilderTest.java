@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import io.brane.core.crypto.Kzg;
 import io.brane.core.types.Blob;
 import io.brane.core.types.BlobSidecar;
+import io.brane.core.types.FixedSizeG1Point;
 import io.brane.core.types.KzgCommitment;
 import io.brane.core.types.KzgProof;
 
@@ -263,10 +264,10 @@ class SidecarBuilderTest {
         public KzgCommitment blobToCommitment(Blob blob) {
             commitmentCallCount++;
             // Create a deterministic commitment based on blob content
-            byte[] commitmentData = new byte[KzgCommitment.SIZE];
+            byte[] commitmentData = new byte[FixedSizeG1Point.SIZE];
             byte[] blobBytes = blob.toBytes();
             // Use first few bytes of blob to make commitment distinct
-            System.arraycopy(blobBytes, 0, commitmentData, 0, Math.min(blobBytes.length, KzgCommitment.SIZE));
+            System.arraycopy(blobBytes, 0, commitmentData, 0, Math.min(blobBytes.length, FixedSizeG1Point.SIZE));
             return new KzgCommitment(commitmentData);
         }
 
@@ -274,11 +275,11 @@ class SidecarBuilderTest {
         public KzgProof computeProof(Blob blob, KzgCommitment commitment) {
             proofCallCount++;
             // Create a deterministic proof based on blob and commitment
-            byte[] proofData = new byte[KzgProof.SIZE];
+            byte[] proofData = new byte[FixedSizeG1Point.SIZE];
             byte[] blobBytes = blob.toBytes();
             byte[] commitmentBytes = commitment.toBytes();
             // XOR first bytes of blob and commitment to make proof distinct
-            for (int i = 0; i < KzgProof.SIZE; i++) {
+            for (int i = 0; i < FixedSizeG1Point.SIZE; i++) {
                 proofData[i] = (byte) (blobBytes[i % blobBytes.length] ^ commitmentBytes[i % commitmentBytes.length]);
             }
             return new KzgProof(proofData);

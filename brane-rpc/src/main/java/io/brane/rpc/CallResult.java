@@ -48,10 +48,10 @@ public sealed interface CallResult {
         boolean isFailure = map.containsKey("error") && map.get("error") != null;
         if (!isFailure && map.containsKey("status")) {
             Object status = map.get("status");
-            if (status instanceof Number) {
-                isFailure = ((Number) status).intValue() == 0;
-            } else if (status instanceof String) {
-                isFailure = RpcUtils.decodeHexBigInteger((String) status).intValue() == 0;
+            if (status instanceof Number n) {
+                isFailure = n.intValue() == 0;
+            } else if (status instanceof String s) {
+                isFailure = RpcUtils.decodeHexBigInteger(s).intValue() == 0;
             }
         }
 

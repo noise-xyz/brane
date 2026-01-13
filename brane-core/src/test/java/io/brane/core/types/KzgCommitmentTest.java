@@ -11,12 +11,12 @@ class KzgCommitmentTest {
 
     @Test
     void constantsAreCorrect() {
-        assertEquals(48, KzgCommitment.SIZE);
+        assertEquals(48, FixedSizeG1Point.SIZE);
     }
 
     @Test
     void acceptsCorrectSize() {
-        byte[] data = new byte[KzgCommitment.SIZE];
+        byte[] data = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data, (byte) 0xAB);
         KzgCommitment commitment = new KzgCommitment(data);
         assertArrayEquals(data, commitment.toBytes());
@@ -29,13 +29,13 @@ class KzgCommitmentTest {
 
     @Test
     void rejectsTooSmall() {
-        byte[] data = new byte[KzgCommitment.SIZE - 1];
+        byte[] data = new byte[FixedSizeG1Point.SIZE - 1];
         assertThrows(IllegalArgumentException.class, () -> new KzgCommitment(data));
     }
 
     @Test
     void rejectsTooLarge() {
-        byte[] data = new byte[KzgCommitment.SIZE + 1];
+        byte[] data = new byte[FixedSizeG1Point.SIZE + 1];
         assertThrows(IllegalArgumentException.class, () -> new KzgCommitment(data));
     }
 
@@ -47,7 +47,7 @@ class KzgCommitmentTest {
 
     @Test
     void defensiveCopyOnConstruction() {
-        byte[] data = new byte[KzgCommitment.SIZE];
+        byte[] data = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data, (byte) 0xAB);
         KzgCommitment commitment = new KzgCommitment(data);
 
@@ -60,7 +60,7 @@ class KzgCommitmentTest {
 
     @Test
     void toBytesReturnsDefensiveCopy() {
-        byte[] data = new byte[KzgCommitment.SIZE];
+        byte[] data = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data, (byte) 0xAB);
         KzgCommitment commitment = new KzgCommitment(data);
 
@@ -77,7 +77,7 @@ class KzgCommitmentTest {
 
     @Test
     void toVersionedHashReturnsCorrectFormat() {
-        byte[] data = new byte[KzgCommitment.SIZE];
+        byte[] data = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data, (byte) 0xAB);
         KzgCommitment commitment = new KzgCommitment(data);
 
@@ -93,7 +93,7 @@ class KzgCommitmentTest {
 
     @Test
     void toVersionedHashIsCached() {
-        byte[] data = new byte[KzgCommitment.SIZE];
+        byte[] data = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data, (byte) 0xAB);
         KzgCommitment commitment = new KzgCommitment(data);
 
@@ -106,13 +106,13 @@ class KzgCommitmentTest {
 
     @Test
     void equalsAndHashCode() {
-        byte[] data1 = new byte[KzgCommitment.SIZE];
+        byte[] data1 = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data1, (byte) 0xAB);
 
-        byte[] data2 = new byte[KzgCommitment.SIZE];
+        byte[] data2 = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data2, (byte) 0xAB);
 
-        byte[] data3 = new byte[KzgCommitment.SIZE];
+        byte[] data3 = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data3, (byte) 0xCD);
 
         KzgCommitment commitment1 = new KzgCommitment(data1);
@@ -139,7 +139,7 @@ class KzgCommitmentTest {
 
     @Test
     void toStringContainsHex() {
-        byte[] data = new byte[KzgCommitment.SIZE];
+        byte[] data = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data, (byte) 0xAB);
         KzgCommitment commitment = new KzgCommitment(data);
 
@@ -152,10 +152,10 @@ class KzgCommitmentTest {
 
     @Test
     void differentCommitmentsProduceDifferentVersionedHashes() {
-        byte[] data1 = new byte[KzgCommitment.SIZE];
+        byte[] data1 = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data1, (byte) 0xAB);
 
-        byte[] data2 = new byte[KzgCommitment.SIZE];
+        byte[] data2 = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data2, (byte) 0xCD);
 
         KzgCommitment commitment1 = new KzgCommitment(data1);

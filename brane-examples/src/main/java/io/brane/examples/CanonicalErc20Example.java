@@ -206,7 +206,7 @@ public final class CanonicalErc20Example {
 
     final TransactionRequest request = TxBuilder.eip1559()
         .data(new HexData(data))
-        .value(Wei.of(0))
+        .value(Wei.ZERO)
         .build();
 
     // Wait for deployment

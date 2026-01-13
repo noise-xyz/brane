@@ -8,7 +8,7 @@ import java.util.Objects;
  *
  * @param value the string value
  */
-public record Utf8String(String value) implements AbiType {
+public record Utf8String(String value) implements DynamicAbiType {
     public Utf8String {
         Objects.requireNonNull(value, "value cannot be null");
     }
@@ -16,11 +16,6 @@ public record Utf8String(String value) implements AbiType {
     @Override
     public int byteSize() {
         return 32;
-    }
-
-    @Override
-    public boolean isDynamic() {
-        return true;
     }
 
     @Override

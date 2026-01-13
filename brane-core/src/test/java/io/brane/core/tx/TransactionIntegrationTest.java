@@ -143,7 +143,7 @@ class TransactionIntegrationTest {
         final TransactionRequest request = new TransactionRequest(
                 Address.fromBytes(hexToBytes("2c7536e3605d9c16a7a3d7b1898e529396a65c23")),
                 contractAddr,
-                Wei.of(0),
+                Wei.ZERO,
                 100000L,
                 null,
                 Wei.gwei(2),
@@ -172,7 +172,7 @@ class TransactionIntegrationTest {
         final TransactionRequest request = new TransactionRequest(
                 Address.fromBytes(hexToBytes("2c7536e3605d9c16a7a3d7b1898e529396a65c23")),
                 null, // Contract deployment
-                Wei.of(0),
+                Wei.ZERO,
                 500000L,
                 Wei.gwei(20),
                 null,

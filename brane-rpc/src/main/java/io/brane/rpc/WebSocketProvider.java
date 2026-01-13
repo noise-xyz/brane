@@ -48,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.brane.core.error.RpcException;
+import io.brane.rpc.internal.RpcUtils;
 
 /**
  * Ultra-low latency WebSocket provider using Netty and LMAX Disruptor.
@@ -720,9 +721,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         try {
             return sendAsync(method, params).join();
         } catch (Exception e) {
-            if (e.getCause() instanceof RpcException)
-                throw (RpcException) e.getCause();
-            throw new RpcException(-1, "Request failed", null, e);
+            if (e.getCause() instanceof RpcException rpc) throw rpc;
+            throw new RpcException(-32000, "Request failed", null, e);
         }
     }
 
@@ -858,7 +858,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 }
             });
         } else {
-            future.completeExceptionally(new RpcException(-1, "Channel not active", null));
+            future.completeExceptionally(new RpcException(-32000, "Channel not active", null));
         }
 
         return future;
@@ -995,8 +995,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         try {
             JsonRpcResponse response = sendAsync("eth_subscribe", subscribeParams).join();
             if (response.error() != null) {
-                throw new RpcException(response.error().code(), response.error().message(),
-                        response.error().data() != null ? response.error().data().toString() : null);
+                throw RpcUtils.toRpcException(response.error());
             }
             String subscriptionId = String.valueOf(response.result());
             if (subscriptionId.startsWith("\"") && subscriptionId.endsWith("\"")) {
@@ -1008,9 +1007,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             });
             return subscriptionId;
         } catch (Exception e) {
-            if (e instanceof RpcException)
-                throw (RpcException) e;
-            throw new RpcException(-1, "Subscription failed", null, e);
+            if (e instanceof RpcException rpc) throw rpc;
+            throw new RpcException(-32000, "Subscription failed", null, e);
         }
     }
 
@@ -1029,7 +1027,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             subscriptions.remove(subscriptionId);
             return "true".equals(String.valueOf(response.result()));
         } catch (Exception e) {
-            throw new RpcException(-1, "Unsubscribe failed", null, e);
+            throw new RpcException(-32000, "Unsubscribe failed", null, e);
         }
     }
 
@@ -1216,7 +1214,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             // Channel not active - fail the request
             CompletableFuture<JsonRpcResponse> future = pendingRequests.remove(event.id);
             if (future != null) {
-                future.completeExceptionally(new RpcException(-1, "Channel not active", null));
+                future.completeExceptionally(new RpcException(-32000, "Channel not active", null));
             }
         }
         // Clear event data to prevent stale references when Disruptor reuses this event object.
@@ -1239,27 +1237,27 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             switch (c) {
-                case '"':
+                case '"' -> {
                     buf.writeByte('\\');
                     buf.writeByte('"');
-                    break;
-                case '\\':
+                }
+                case '\\' -> {
                     buf.writeByte('\\');
                     buf.writeByte('\\');
-                    break;
-                case '\n':
+                }
+                case '\n' -> {
                     buf.writeByte('\\');
                     buf.writeByte('n');
-                    break;
-                case '\r':
+                }
+                case '\r' -> {
                     buf.writeByte('\\');
                     buf.writeByte('r');
-                    break;
-                case '\t':
+                }
+                case '\t' -> {
                     buf.writeByte('\\');
                     buf.writeByte('t');
-                    break;
-                default:
+                }
+                default -> {
                     if (c < 32) {
                         // Control character - escape as unicode
                         buf.writeByte('\\');
@@ -1280,6 +1278,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                             i++;
                         }
                     }
+                }
             }
         }
     }
@@ -1336,33 +1335,31 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * Write any JSON value directly to ByteBuf.
      */
     private void writeJsonValue(ByteBuf buf, Object value) {
-        if (value == null) {
-            buf.writeBytes(NULL_BYTES);
-        } else if (value instanceof String) {
-            buf.writeByte('"');
-            writeEscapedString(buf, (String) value);
-            buf.writeByte('"');
-        } else if (value instanceof Integer) {
-            writeInt(buf, (Integer) value);
-        } else if (value instanceof Long) {
-            writeLong(buf, (Long) value);
-        } else if (value instanceof Boolean) {
-            buf.writeBytes((Boolean) value ? TRUE_BYTES : FALSE_BYTES);
-        } else if (value instanceof List) {
-            writeJsonArray(buf, (List<?>) value);
-        } else if (value instanceof java.util.Map) {
-            writeJsonObject(buf, (java.util.Map<?, ?>) value);
-        } else if (value instanceof Number) {
-            // Fallback for Double/Float/BigInteger
-            String numStr = value.toString();
-            for (int i = 0; i < numStr.length(); i++) {
-                buf.writeByte(numStr.charAt(i));
+        switch (value) {
+            case null -> buf.writeBytes(NULL_BYTES);
+            case String s -> {
+                buf.writeByte('"');
+                writeEscapedString(buf, s);
+                buf.writeByte('"');
             }
-        } else {
-            // Fallback - convert to string
-            buf.writeByte('"');
-            writeEscapedString(buf, value.toString());
-            buf.writeByte('"');
+            case Integer i -> writeInt(buf, i);
+            case Long l -> writeLong(buf, l);
+            case Boolean b -> buf.writeBytes(b ? TRUE_BYTES : FALSE_BYTES);
+            case List<?> list -> writeJsonArray(buf, list);
+            case java.util.Map<?, ?> map -> writeJsonObject(buf, map);
+            case Number n -> {
+                // Fallback for Double/Float/BigInteger
+                String numStr = n.toString();
+                for (int idx = 0; idx < numStr.length(); idx++) {
+                    buf.writeByte(numStr.charAt(idx));
+                }
+            }
+            default -> {
+                // Fallback - convert to string
+                buf.writeByte('"');
+                writeEscapedString(buf, value.toString());
+                buf.writeByte('"');
+            }
         }
     }
 

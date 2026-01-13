@@ -6,6 +6,7 @@ import static io.brane.rpc.internal.RpcUtils.validateUrl;
 
 import java.time.Duration;
 import java.util.Map;
+import java.util.Objects;
 
 import org.jspecify.annotations.Nullable;
 
@@ -33,8 +34,8 @@ public record RpcConfig(
         validateUrl(url, HTTP_SCHEMES);
 
         // Apply defaults
-        connectTimeout = connectTimeout == null ? DEFAULT_CONNECT : connectTimeout;
-        readTimeout = readTimeout == null ? DEFAULT_READ : readTimeout;
+        connectTimeout = Objects.requireNonNullElse(connectTimeout, DEFAULT_CONNECT);
+        readTimeout = Objects.requireNonNullElse(readTimeout, DEFAULT_READ);
         headers = headers == null ? Map.of() : Map.copyOf(headers);
 
         // Validate timeouts are positive

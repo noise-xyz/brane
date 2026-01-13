@@ -193,7 +193,7 @@ public final class TesterIntegrationTest {
             Address testAddr = new Address("0x1111111111111111111111111111111111111111");
             tester.setBalance(testAddr, Wei.fromEther(new BigDecimal("50")));
 
-            tester.setBalance(testAddr, Wei.of(0));
+            tester.setBalance(testAddr, Wei.ZERO);
 
             BigInteger actualBalance = tester.getBalance(testAddr);
             assertEqual(BigInteger.ZERO, actualBalance, "Balance should be zero");
@@ -614,7 +614,7 @@ public final class TesterIntegrationTest {
             HexData savedState = tester.dumpState();
 
             // Change the balance
-            tester.setBalance(testAddr, Wei.of(0));
+            tester.setBalance(testAddr, Wei.ZERO);
             assertEqual(BigInteger.ZERO, tester.getBalance(testAddr), "Balance should be zero");
 
             // Restore state

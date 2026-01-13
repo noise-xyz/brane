@@ -96,7 +96,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .build();
 
         // When
@@ -139,7 +139,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .nonce(42L)
                 .build();
 
@@ -161,7 +161,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .gasLimit(100_000L)
                 .build();
 
@@ -183,7 +183,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .maxFeePerGas(Wei.of(50_000_000_000L))
                 .maxPriorityFeePerGas(Wei.of(2_000_000_000L))
                 .build();
@@ -208,7 +208,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .build();
 
         // When
@@ -270,7 +270,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .build();
 
         // When/Then
@@ -284,7 +284,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .build();
 
         // When/Then
@@ -304,7 +304,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .build();
 
         // When: send two transactions
@@ -332,7 +332,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .build();
 
         // When
@@ -356,7 +356,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .build();
 
         // When
@@ -380,7 +380,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .build();
 
         // When/Then
@@ -405,7 +405,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .data(new HexData("0xdeadbeef"))
                 .build();
 
@@ -426,7 +426,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .build();
 
         // When
@@ -449,7 +449,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .build();
 
         // When: use two-argument version with custom timeout and poll interval
@@ -474,7 +474,7 @@ class DefaultSignerTest {
 
         TransactionRequest request = TxBuilder.eip1559()
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .build();
 
         // When/Then
@@ -529,7 +529,7 @@ class DefaultSignerTest {
         io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
                 null, // from defaults to signer.address()
                 RECIPIENT,
-                Wei.of(0),
+                Wei.ZERO,
                 null, null, null, null, null, null, null,
                 createTestSidecar());
 
@@ -578,7 +578,7 @@ class DefaultSignerTest {
         io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
                 null,
                 RECIPIENT,
-                Wei.of(0),
+                Wei.ZERO,
                 null, // gasLimit
                 null, // maxPriorityFeePerGas
                 null, // maxFeePerGas
@@ -607,7 +607,7 @@ class DefaultSignerTest {
         io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
                 null,
                 RECIPIENT,
-                Wei.of(0),
+                Wei.ZERO,
                 100_000L, // gasLimit
                 null, null, null, null, null, null,
                 createTestSidecar());
@@ -632,7 +632,7 @@ class DefaultSignerTest {
         io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
                 null,
                 RECIPIENT,
-                Wei.of(0),
+                Wei.ZERO,
                 null, // gasLimit
                 Wei.of(2_000_000_000L), // maxPriorityFeePerGas
                 Wei.of(50_000_000_000L), // maxFeePerGas
@@ -662,7 +662,7 @@ class DefaultSignerTest {
         io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
                 null,
                 RECIPIENT,
-                Wei.of(0),
+                Wei.ZERO,
                 null, null, null, null, null, null, null,
                 createTestSidecar());
 
@@ -708,7 +708,7 @@ class DefaultSignerTest {
         io.brane.core.model.BlobTransactionRequest request = new io.brane.core.model.BlobTransactionRequest(
                 null,
                 RECIPIENT,
-                Wei.of(0),
+                Wei.ZERO,
                 null, null, null, null, null, null, null,
                 createTestSidecar());
 
@@ -929,11 +929,11 @@ class DefaultSignerTest {
         io.brane.core.types.Blob blob = new io.brane.core.types.Blob(blobData);
 
         // Create a commitment (48 bytes) - just use zeros for testing
-        byte[] commitmentData = new byte[io.brane.core.types.KzgCommitment.SIZE];
+        byte[] commitmentData = new byte[io.brane.core.types.FixedSizeG1Point.SIZE];
         io.brane.core.types.KzgCommitment commitment = new io.brane.core.types.KzgCommitment(commitmentData);
 
         // Create a proof (48 bytes) - just use zeros for testing
-        byte[] proofData = new byte[io.brane.core.types.KzgProof.SIZE];
+        byte[] proofData = new byte[io.brane.core.types.FixedSizeG1Point.SIZE];
         io.brane.core.types.KzgProof proof = new io.brane.core.types.KzgProof(proofData);
 
         return new io.brane.core.types.BlobSidecar(

@@ -5,10 +5,9 @@ import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
 
@@ -20,11 +19,7 @@ import io.brane.core.error.ChainMismatchException;
 import io.brane.core.error.InvalidSenderException;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
-import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlobTransactionRequest;
-import io.brane.core.model.BlockHeader;
-import io.brane.core.model.LogEntry;
-import io.brane.core.model.Transaction;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
@@ -36,16 +31,14 @@ import io.brane.rpc.internal.RpcUtils;
 /**
  * Default implementation of {@link Brane.Signer} for full blockchain operations.
  *
- * <p>This implementation provides access to all read operations via delegation to
- * an internal {@link DefaultReader}, plus transaction signing and sending capabilities
- * using the configured {@link Signer} and {@link SmartGasStrategy}.
+ * <p>This implementation extends {@link DefaultReader} to inherit all read operations,
+ * and adds transaction signing and sending capabilities using the configured
+ * {@link Signer} and {@link SmartGasStrategy}.
  *
  * @since 0.1.0
  */
-final class DefaultSigner implements Brane.Signer {
+non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
 
-    private final DefaultReader reader;
-    private final BraneProvider provider;
     private final io.brane.core.crypto.Signer signer;
     private final SmartGasStrategy gasStrategy;
     private final AtomicReference<Long> cachedChainId = new AtomicReference<>();
@@ -65,11 +58,10 @@ final class DefaultSigner implements Brane.Signer {
             final @Nullable ChainProfile chain,
             final int maxRetries,
             final RpcRetryConfig retryConfig) {
-        this.reader = new DefaultReader(provider, chain, maxRetries, retryConfig);
-        this.provider = provider;
+        super(provider, chain, maxRetries, retryConfig);
         this.signer = signer;
         final ChainProfile resolvedChain = chain != null ? chain : defaultChainProfile();
-        this.gasStrategy = new SmartGasStrategy(reader, provider, resolvedChain);
+        this.gasStrategy = new SmartGasStrategy(this, provider, resolvedChain);
     }
 
     /**
@@ -79,111 +71,6 @@ final class DefaultSigner implements Brane.Signer {
     private static ChainProfile defaultChainProfile() {
         // Use chain ID 1 as a placeholder; actual chain ID will be fetched lazily
         return ChainProfile.of(1L, null, true, Wei.of(1_000_000_000L));
-    }
-
-    @Override
-    public BigInteger chainId() {
-        return reader.chainId();
-    }
-
-    @Override
-    public BigInteger getBalance(final Address address) {
-        return reader.getBalance(address);
-    }
-
-    @Override
-    public HexData getCode(final Address address) {
-        return reader.getCode(address);
-    }
-
-    @Override
-    public HexData getStorageAt(final Address address, final BigInteger slot) {
-        return reader.getStorageAt(address, slot);
-    }
-
-    @Override
-    public @Nullable BlockHeader getLatestBlock() {
-        return reader.getLatestBlock();
-    }
-
-    @Override
-    public @Nullable BlockHeader getBlockByNumber(final long blockNumber) {
-        return reader.getBlockByNumber(blockNumber);
-    }
-
-    @Override
-    public @Nullable Transaction getTransactionByHash(final Hash hash) {
-        return reader.getTransactionByHash(hash);
-    }
-
-    @Override
-    public @Nullable TransactionReceipt getTransactionReceipt(final Hash hash) {
-        return reader.getTransactionReceipt(hash);
-    }
-
-    @Override
-    public HexData call(final CallRequest request) {
-        return reader.call(request);
-    }
-
-    @Override
-    public HexData call(final CallRequest request, final BlockTag blockTag) {
-        return reader.call(request, blockTag);
-    }
-
-    @Override
-    public List<LogEntry> getLogs(final LogFilter filter) {
-        return reader.getLogs(filter);
-    }
-
-    @Override
-    public BigInteger estimateGas(final TransactionRequest request) {
-        return reader.estimateGas(request);
-    }
-
-    @Override
-    public Wei getBlobBaseFee() {
-        return reader.getBlobBaseFee();
-    }
-
-    @Override
-    public AccessListWithGas createAccessList(final TransactionRequest request) {
-        return reader.createAccessList(request);
-    }
-
-    @Override
-    public SimulateResult simulate(final SimulateRequest request) {
-        return reader.simulate(request);
-    }
-
-    @Override
-    public MulticallBatch batch() {
-        return reader.batch();
-    }
-
-    @Override
-    public Subscription onNewHeads(final Consumer<BlockHeader> callback) {
-        return reader.onNewHeads(callback);
-    }
-
-    @Override
-    public Subscription onLogs(final LogFilter filter, final Consumer<LogEntry> callback) {
-        return reader.onLogs(filter, callback);
-    }
-
-    @Override
-    public Optional<ChainProfile> chain() {
-        return reader.chain();
-    }
-
-    @Override
-    public boolean canSubscribe() {
-        return reader.canSubscribe();
-    }
-
-    @Override
-    public void close() {
-        reader.close();
     }
 
     @Override
@@ -208,11 +95,11 @@ final class DefaultSigner implements Brane.Signer {
         // Get gas limit (should already be filled by SmartGasStrategy)
         final BigInteger gasLimit = withDefaults.gasLimitOpt()
                 .map(BigInteger::valueOf)
-                .orElseGet(() -> reader.estimateGas(withDefaults));
+                .orElseGet(() -> estimateGas(withDefaults));
 
         // Prepare value and data
-        final Wei valueOrZero = withDefaults.value() != null ? withDefaults.value() : Wei.of(0);
-        final HexData dataOrEmpty = withDefaults.data() != null ? withDefaults.data() : HexData.EMPTY;
+        final Wei valueOrZero = Objects.requireNonNullElse(withDefaults.value(), Wei.ZERO);
+        final HexData dataOrEmpty = Objects.requireNonNullElse(withDefaults.data(), HexData.EMPTY);
 
         // Build unsigned transaction
         final io.brane.core.tx.UnsignedTransaction unsignedTx;
@@ -276,7 +163,7 @@ final class DefaultSigner implements Brane.Signer {
         final String txHash;
         final long start = System.nanoTime();
         try {
-            final JsonRpcResponse response = reader.sendWithRetry(
+            final JsonRpcResponse response = sendWithRetry(
                     "eth_sendRawTransaction", List.of(signedHex));
             if (response.hasError()) {
                 final JsonRpcError err = response.error();
@@ -290,7 +177,7 @@ final class DefaultSigner implements Brane.Signer {
             }
             final Object result = response.result();
             if (result == null) {
-                throw new RpcException(-32000, "eth_sendRawTransaction returned null", (String) null, (Throwable) null);
+                throw RpcException.fromNullResult("eth_sendRawTransaction");
             }
             txHash = result.toString();
         } catch (RpcException e) {
@@ -316,10 +203,10 @@ final class DefaultSigner implements Brane.Signer {
         if (cached != null) {
             return cached;
         }
-        final long actual = reader.chainId().longValue();
+        final long actual = chainId().longValue();
 
         // Validate chain ID against configured chain profile (if present)
-        reader.chain().ifPresent(profile -> {
+        chain().ifPresent(profile -> {
             final long expected = profile.chainId();
             if (expected != actual) {
                 throw new ChainMismatchException(expected, actual);
@@ -334,15 +221,14 @@ final class DefaultSigner implements Brane.Signer {
      * Fetches the nonce for an address.
      */
     private BigInteger fetchNonce(final Address from) {
-        final JsonRpcResponse response = reader.sendWithRetry(
+        final JsonRpcResponse response = sendWithRetry(
                 "eth_getTransactionCount", List.of(from.value(), "pending"));
         if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(response.error());
         }
         final Object result = response.result();
         if (result == null) {
-            throw new RpcException(-32000, "eth_getTransactionCount returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult("eth_getTransactionCount");
         }
         return RpcUtils.decodeHexBigInteger(result.toString());
     }
@@ -351,14 +237,13 @@ final class DefaultSigner implements Brane.Signer {
      * Fetches the current gas price.
      */
     private BigInteger fetchGasPrice() {
-        final JsonRpcResponse response = reader.sendWithRetry("eth_gasPrice", List.of());
+        final JsonRpcResponse response = sendWithRetry("eth_gasPrice", List.of());
         if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(response.error());
         }
         final Object result = response.result();
         if (result == null) {
-            throw new RpcException(-32000, "eth_gasPrice returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult("eth_gasPrice");
         }
         return RpcUtils.decodeHexBigInteger(result.toString());
     }
@@ -442,7 +327,7 @@ final class DefaultSigner implements Brane.Signer {
         final String blockNumber = RpcUtils.toQuantityHex(BigInteger.valueOf(receipt.blockNumber()));
 
         try {
-            final JsonRpcResponse response = provider.send("eth_call", List.of(tx, blockNumber));
+            final JsonRpcResponse response = provider().send("eth_call", List.of(tx, blockNumber));
             if (response.hasError()) {
                 final JsonRpcError err = response.error();
                 final String data = RpcUtils.extractErrorData(err.data());
@@ -504,7 +389,7 @@ final class DefaultSigner implements Brane.Signer {
                             request.data(),
                             true, // isEip1559 (EIP-4844 uses EIP-1559 fees)
                             request.accessList());
-                    return reader.estimateGas(estRequest).longValue();
+                    return estimateGas(estRequest).longValue();
                 });
 
         // Get fee parameters - use SmartGasStrategy for EIP-1559 fee estimation
@@ -535,7 +420,7 @@ final class DefaultSigner implements Brane.Signer {
         final Wei maxFeePerBlobGas = request.maxFeePerBlobGasOpt()
                 .orElseGet(() -> {
                     // Get current blob base fee and add buffer (2x)
-                    final Wei blobBaseFee = reader.getBlobBaseFee();
+                    final Wei blobBaseFee = getBlobBaseFee();
                     return Wei.of(blobBaseFee.value().multiply(BigInteger.TWO));
                 });
 
@@ -548,7 +433,7 @@ final class DefaultSigner implements Brane.Signer {
                 gasLimit,
                 request.to(),
                 request.valueOpt().orElse(Wei.ZERO),
-                request.data() != null ? request.data() : HexData.EMPTY,
+                Objects.requireNonNullElse(request.data(), HexData.EMPTY),
                 request.accessListOrEmpty(),
                 maxFeePerBlobGas,
                 request.blobVersionedHashes());
@@ -571,7 +456,7 @@ final class DefaultSigner implements Brane.Signer {
         final String txHash;
         final long start = System.nanoTime();
         try {
-            final JsonRpcResponse response = reader.sendWithRetry(
+            final JsonRpcResponse response = sendWithRetry(
                     "eth_sendRawTransaction", List.of(signedHex));
             if (response.hasError()) {
                 final JsonRpcError err = response.error();
@@ -585,7 +470,7 @@ final class DefaultSigner implements Brane.Signer {
             }
             final Object result = response.result();
             if (result == null) {
-                throw new RpcException(-32000, "eth_sendRawTransaction returned null", (String) null, (Throwable) null);
+                throw RpcException.fromNullResult("eth_sendRawTransaction");
             }
             txHash = result.toString();
         } catch (RpcException e) {

@@ -2,6 +2,7 @@
 package io.brane.core.model;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 import io.brane.core.types.Address;
@@ -129,7 +130,7 @@ public record TransactionRequest(
     }
 
     public List<AccessListEntry> accessListOrEmpty() {
-        return accessList == null ? List.of() : accessList;
+        return Objects.requireNonNullElse(accessList, List.of());
     }
 
     /**
@@ -158,8 +159,8 @@ public record TransactionRequest(
             throw new IllegalStateException("gasLimit must be set");
         }
 
-        final Wei valueOrZero = value != null ? value : Wei.of(0);
-        final HexData dataOrEmpty = data != null ? data : HexData.EMPTY;
+        final Wei valueOrZero = Objects.requireNonNullElse(value, Wei.ZERO);
+        final HexData dataOrEmpty = Objects.requireNonNullElse(data, HexData.EMPTY);
 
         if (isEip1559) {
             if (maxPriorityFeePerGas == null || maxFeePerGas == null) {

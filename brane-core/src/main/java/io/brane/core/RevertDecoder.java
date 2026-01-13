@@ -134,7 +134,7 @@ public final class RevertDecoder {
      */
     public static Decoded decode(
             final String rawDataHex, final Map<String, CustomErrorAbi> customErrors) {
-        final Map<String, CustomErrorAbi> errors = customErrors != null ? customErrors : Map.of();
+        final Map<String, CustomErrorAbi> errors = Objects.requireNonNullElse(customErrors, Map.of());
         if (rawDataHex == null || !rawDataHex.startsWith("0x") || rawDataHex.length() < 10) {
             return new Decoded(RevertKind.UNKNOWN, null, rawDataHex);
         }

@@ -263,7 +263,7 @@ public final class TesterSmokeTest {
             HexData savedState = tester.dumpState();
 
             // Change balance
-            tester.setBalance(testAccount, Wei.of(0));
+            tester.setBalance(testAccount, Wei.ZERO);
             assertEqual(BigInteger.ZERO, tester.getBalance(testAccount),
                     "Balance should be zero");
 
