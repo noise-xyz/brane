@@ -3,8 +3,6 @@ package io.brane.rpc;
 
 import static io.brane.rpc.internal.RpcUtils.MAPPER;
 
-import io.brane.rpc.internal.RpcUtils;
-
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
@@ -50,6 +48,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import io.brane.core.error.RpcException;
+import io.brane.rpc.internal.RpcUtils;
 
 /**
  * Ultra-low latency WebSocket provider using Netty and LMAX Disruptor.

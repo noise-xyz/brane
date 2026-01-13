@@ -65,7 +65,7 @@ final class SignerContractInvocationHandler extends AbstractContractInvocationHa
             value = weiValue;
             contractArgs = Arrays.copyOfRange(invocationArgs, 1, invocationArgs.length);
         } else {
-            value = Wei.of(0);
+            value = Wei.ZERO;
             contractArgs = invocationArgs;
         }
 
