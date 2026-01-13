@@ -5,6 +5,7 @@ import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -97,8 +98,8 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
                 .orElseGet(() -> estimateGas(withDefaults));
 
         // Prepare value and data
-        final Wei valueOrZero = withDefaults.value() != null ? withDefaults.value() : Wei.of(0);
-        final HexData dataOrEmpty = withDefaults.data() != null ? withDefaults.data() : HexData.EMPTY;
+        final Wei valueOrZero = Objects.requireNonNullElse(withDefaults.value(), Wei.of(0));
+        final HexData dataOrEmpty = Objects.requireNonNullElse(withDefaults.data(), HexData.EMPTY);
 
         // Build unsigned transaction
         final io.brane.core.tx.UnsignedTransaction unsignedTx;
