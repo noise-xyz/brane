@@ -98,7 +98,8 @@ public class BraneTestExtension implements
         if (isNestedClass(context)) {
             return;
         }
-        var tester = Brane.connectTest();
+        String rpcUrl = System.getProperty(RPC_URL_PROPERTY, Brane.DEFAULT_ANVIL_URL);
+        var tester = Brane.connectTest(rpcUrl);
         getStore(context).put(TESTER_KEY, tester);
     }
 
