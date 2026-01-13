@@ -61,7 +61,7 @@ final class MulticallInvocationHandler implements InvocationHandler {
             return handleObjectMethod(proxy, method, args);
         }
 
-        final Object[] invocationArgs = args == null ? new Object[0] : args;
+        final Object[] invocationArgs = Objects.requireNonNullElse(args, new Object[0]);
         final Abi.FunctionMetadata metadata = binding.resolve(method);
         final Abi.FunctionCall functionCall = abi.encodeFunction(metadata.name(), invocationArgs);
 
