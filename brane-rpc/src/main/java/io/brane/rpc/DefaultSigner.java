@@ -36,7 +36,7 @@ import io.brane.rpc.internal.RpcUtils;
  *
  * @since 0.1.0
  */
-final class DefaultSigner extends DefaultReader implements Brane.Signer {
+non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
 
     private final io.brane.core.crypto.Signer signer;
     private final SmartGasStrategy gasStrategy;

@@ -3,19 +3,12 @@ package io.brane.rpc;
 
 import java.math.BigInteger;
 import java.util.List;
-import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
 
 import org.jspecify.annotations.Nullable;
 
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.error.RpcException;
-import io.brane.core.model.AccessListWithGas;
-import io.brane.core.model.BlobTransactionRequest;
-import io.brane.core.model.BlockHeader;
-import io.brane.core.model.LogEntry;
-import io.brane.core.model.Transaction;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
@@ -27,20 +20,19 @@ import io.brane.rpc.internal.RpcUtils;
 /**
  * Default implementation of {@link Brane.Tester} for test node operations.
  *
- * <p>This implementation provides access to all read operations via delegation to
- * an internal {@link DefaultSigner}, plus test-specific methods like snapshots,
- * impersonation, and time manipulation.
+ * <p>This implementation extends {@link DefaultSigner} to inherit all read and signing
+ * operations, and adds test-specific methods like snapshots, impersonation, and time
+ * manipulation.
  *
  * <p>Supports Anvil, Hardhat, and Ganache test nodes through {@link TestNodeMode}.
  *
  * <h2>Implementation Notes</h2>
  *
- * <h3>Delegation Pattern</h3>
- * <p>This class uses composition-based delegation rather than inheritance. It wraps a
- * {@link DefaultSigner} instance internally and delegates all {@link Brane.Reader} and
- * {@link Brane.Signer} operations to it. This approach:
+ * <h3>Inheritance Pattern</h3>
+ * <p>This class extends {@link DefaultSigner} to inherit all {@link Brane.Reader} and
+ * {@link Brane.Signer} operations. This approach:
  * <ul>
- *   <li>Avoids diamond inheritance issues (Tester extends both Reader and Signer)</li>
+ *   <li>Eliminates boilerplate delegation methods</li>
  *   <li>Allows reuse of proven Reader/Signer implementations</li>
  *   <li>Keeps test-specific logic isolated in this class</li>
  * </ul>
@@ -67,9 +59,8 @@ import io.brane.rpc.internal.RpcUtils;
  *
  * @since 0.3.0
  */
-final class DefaultTester implements Brane.Tester {
+final class DefaultTester extends DefaultSigner implements Brane.Tester {
 
-    private final DefaultSigner signer;
     private final BraneProvider provider;
     private final TestNodeMode mode;
     private final int maxRetries;
@@ -92,121 +83,11 @@ final class DefaultTester implements Brane.Tester {
             final int maxRetries,
             final RpcRetryConfig retryConfig,
             final TestNodeMode mode) {
-        this.signer = new DefaultSigner(provider, signer, chain, maxRetries, retryConfig);
+        super(provider, signer, chain, maxRetries, retryConfig);
         this.provider = provider;
         this.mode = mode;
         this.maxRetries = maxRetries;
         this.retryConfig = retryConfig;
-    }
-
-    // ==================== Brane.Reader Interface Delegation ====================
-    // All read operations are delegated to the internal DefaultSigner, which
-    // itself delegates to DefaultReader. This ensures consistent behavior across
-    // all client types (Reader, Signer, Tester).
-
-    @Override
-    public BigInteger chainId() {
-        return signer.chainId();
-    }
-
-    @Override
-    public BigInteger getBalance(final Address address) {
-        return signer.getBalance(address);
-    }
-
-    @Override
-    public HexData getCode(final Address address) {
-        return signer.getCode(address);
-    }
-
-    @Override
-    public HexData getStorageAt(final Address address, final BigInteger slot) {
-        return signer.getStorageAt(address, slot);
-    }
-
-    @Override
-    public @Nullable BlockHeader getLatestBlock() {
-        return signer.getLatestBlock();
-    }
-
-    @Override
-    public @Nullable BlockHeader getBlockByNumber(final long blockNumber) {
-        return signer.getBlockByNumber(blockNumber);
-    }
-
-    @Override
-    public @Nullable Transaction getTransactionByHash(final Hash hash) {
-        return signer.getTransactionByHash(hash);
-    }
-
-    @Override
-    public @Nullable TransactionReceipt getTransactionReceipt(final Hash hash) {
-        return signer.getTransactionReceipt(hash);
-    }
-
-    @Override
-    public HexData call(final CallRequest request) {
-        return signer.call(request);
-    }
-
-    @Override
-    public HexData call(final CallRequest request, final BlockTag blockTag) {
-        return signer.call(request, blockTag);
-    }
-
-    @Override
-    public List<LogEntry> getLogs(final LogFilter filter) {
-        return signer.getLogs(filter);
-    }
-
-    @Override
-    public BigInteger estimateGas(final TransactionRequest request) {
-        return signer.estimateGas(request);
-    }
-
-    @Override
-    public Wei getBlobBaseFee() {
-        return signer.getBlobBaseFee();
-    }
-
-    @Override
-    public AccessListWithGas createAccessList(final TransactionRequest request) {
-        return signer.createAccessList(request);
-    }
-
-    @Override
-    public SimulateResult simulate(final SimulateRequest request) {
-        return signer.simulate(request);
-    }
-
-    @Override
-    public MulticallBatch batch() {
-        return signer.batch();
-    }
-
-    @Override
-    public Subscription onNewHeads(final Consumer<BlockHeader> callback) {
-        return signer.onNewHeads(callback);
-    }
-
-    @Override
-    public Subscription onLogs(final LogFilter filter, final Consumer<LogEntry> callback) {
-        return signer.onLogs(filter, callback);
-    }
-
-    @Override
-    public Optional<ChainProfile> chain() {
-        return signer.chain();
-    }
-
-    @Override
-    public boolean canSubscribe() {
-        return signer.canSubscribe();
-    }
-
-    @Override
-    public void close() {
-        signer.close();
     }
 
     // ==================== Tester Interface Implementation ====================
@@ -214,33 +95,17 @@ final class DefaultTester implements Brane.Tester {
 
     @Override
     public Brane.Signer asSigner() {
-        return signer;
+        return this;
     }
 
-    // ==================== Brane.Signer Method Delegation ====================
-    // Transaction signing operations delegated to internal DefaultSigner.
-
+    /**
+     * Resolves the conflict between Signer and Tester default methods.
+     * Delegates to the three-arg overload using default timeout values.
+     */
     @Override
-    public Hash sendTransaction(final TransactionRequest request) {
-        return signer.sendTransaction(request);
-    }
-
-    @Override
-    public TransactionReceipt sendTransactionAndWait(
-            final TransactionRequest request,
-            final long timeoutMillis,
-            final long pollIntervalMillis) {
-        return signer.sendTransactionAndWait(request, timeoutMillis, pollIntervalMillis);
-    }
-
-    @Override
-    public Hash sendBlobTransaction(final BlobTransactionRequest request) {
-        return signer.sendBlobTransaction(request);
-    }
-
-    @Override
-    public io.brane.core.crypto.Signer signer() {
-        return signer.signer();
+    public TransactionReceipt sendTransactionAndWait(final TransactionRequest request) {
+        return sendTransactionAndWait(
+                request, Brane.Signer.DEFAULT_TIMEOUT_MILLIS, Brane.Signer.DEFAULT_POLL_INTERVAL_MILLIS);
     }
 
     // ==================== Snapshot Methods ====================

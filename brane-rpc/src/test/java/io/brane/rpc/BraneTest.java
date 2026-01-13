@@ -511,6 +511,8 @@ class BraneTest {
     @Test
     void patternMatchingWorksWithTester() {
         // Test pattern matching includes Tester case
+        // Note: With inheritance (DefaultTester extends DefaultSigner extends DefaultReader),
+        // the most specific type (Tester) must be checked first in the switch statement.
         Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
         Brane tester = Brane.builder()
                 .provider(provider)
@@ -518,9 +520,9 @@ class BraneTest {
                 .buildTester();
 
         String result = switch (tester) {
-            case Brane.Reader r -> "reader";
-            case Brane.Signer s -> "signer";
             case Brane.Tester t -> "tester";
+            case Brane.Signer s -> "signer";
+            case Brane.Reader r -> "reader";
         };
         assertEquals("tester", result);
     }
