@@ -68,6 +68,22 @@ public non-sealed class RpcException extends BraneException {
         this(code, message, data, (Long) null, null);
     }
 
+    /**
+     * Creates an exception for an RPC method that returned a null result.
+     *
+     * <p>
+     * Some RPC methods return {@code null} to indicate the requested resource
+     * does not exist (e.g., {@code eth_getTransactionByHash} for unknown hashes,
+     * {@code eth_getBlockByNumber} for non-existent blocks). This factory method
+     * creates a standardized exception for such cases.
+     *
+     * @param methodName the name of the RPC method that returned null
+     * @return a new RpcException with code -32000 indicating a null result
+     */
+    public static RpcException fromNullResult(String methodName) {
+        return new RpcException(-32000, methodName + " returned null", null, (Long) null);
+    }
+
     public int code() {
         return code;
     }
