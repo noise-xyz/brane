@@ -176,7 +176,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
             }
             final Object result = response.result();
             if (result == null) {
-                throw new RpcException(-32000, "eth_sendRawTransaction returned null", (String) null, (Throwable) null);
+                throw RpcException.fromNullResult("eth_sendRawTransaction");
             }
             txHash = result.toString();
         } catch (RpcException e) {
@@ -228,7 +228,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
         }
         final Object result = response.result();
         if (result == null) {
-            throw new RpcException(-32000, "eth_getTransactionCount returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult("eth_getTransactionCount");
         }
         return RpcUtils.decodeHexBigInteger(result.toString());
     }
@@ -244,7 +244,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
         }
         final Object result = response.result();
         if (result == null) {
-            throw new RpcException(-32000, "eth_gasPrice returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult("eth_gasPrice");
         }
         return RpcUtils.decodeHexBigInteger(result.toString());
     }
@@ -471,7 +471,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
             }
             final Object result = response.result();
             if (result == null) {
-                throw new RpcException(-32000, "eth_sendRawTransaction returned null", (String) null, (Throwable) null);
+                throw RpcException.fromNullResult("eth_sendRawTransaction");
             }
             txHash = result.toString();
         } catch (RpcException e) {
