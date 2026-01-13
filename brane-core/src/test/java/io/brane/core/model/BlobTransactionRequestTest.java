@@ -103,7 +103,7 @@ class BlobTransactionRequestTest {
                 5L, HexData.EMPTY, null, sidecar);
 
         assertTrue(request.valueOpt().isPresent());
-        assertEquals(Wei.of(100), request.valueOpt().get());
+        assertEquals(Wei.of(100), request.valueOpt().orElseThrow());
 
         assertTrue(request.gasLimitOpt().isPresent());
         assertEquals(21000L, request.gasLimitOpt().get());
