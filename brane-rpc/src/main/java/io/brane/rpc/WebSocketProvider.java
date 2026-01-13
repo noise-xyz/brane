@@ -1335,33 +1335,31 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * Write any JSON value directly to ByteBuf.
      */
     private void writeJsonValue(ByteBuf buf, Object value) {
-        if (value == null) {
-            buf.writeBytes(NULL_BYTES);
-        } else if (value instanceof String) {
-            buf.writeByte('"');
-            writeEscapedString(buf, (String) value);
-            buf.writeByte('"');
-        } else if (value instanceof Integer) {
-            writeInt(buf, (Integer) value);
-        } else if (value instanceof Long) {
-            writeLong(buf, (Long) value);
-        } else if (value instanceof Boolean) {
-            buf.writeBytes((Boolean) value ? TRUE_BYTES : FALSE_BYTES);
-        } else if (value instanceof List) {
-            writeJsonArray(buf, (List<?>) value);
-        } else if (value instanceof java.util.Map) {
-            writeJsonObject(buf, (java.util.Map<?, ?>) value);
-        } else if (value instanceof Number) {
-            // Fallback for Double/Float/BigInteger
-            String numStr = value.toString();
-            for (int i = 0; i < numStr.length(); i++) {
-                buf.writeByte(numStr.charAt(i));
+        switch (value) {
+            case null -> buf.writeBytes(NULL_BYTES);
+            case String s -> {
+                buf.writeByte('"');
+                writeEscapedString(buf, s);
+                buf.writeByte('"');
             }
-        } else {
-            // Fallback - convert to string
-            buf.writeByte('"');
-            writeEscapedString(buf, value.toString());
-            buf.writeByte('"');
+            case Integer i -> writeInt(buf, i);
+            case Long l -> writeLong(buf, l);
+            case Boolean b -> buf.writeBytes(b ? TRUE_BYTES : FALSE_BYTES);
+            case List<?> list -> writeJsonArray(buf, list);
+            case java.util.Map<?, ?> map -> writeJsonObject(buf, map);
+            case Number n -> {
+                // Fallback for Double/Float/BigInteger
+                String numStr = n.toString();
+                for (int idx = 0; idx < numStr.length(); idx++) {
+                    buf.writeByte(numStr.charAt(idx));
+                }
+            }
+            default -> {
+                // Fallback - convert to string
+                buf.writeByte('"');
+                writeEscapedString(buf, value.toString());
+                buf.writeByte('"');
+            }
         }
     }
 
