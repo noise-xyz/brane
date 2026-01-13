@@ -267,6 +267,27 @@ final class InternalAbi implements Abi {
         }
     }
 
+    /**
+     * Abstract base class for static type converters.
+     * Static types have fixed size (32 bytes) and are encoded inline in the head.
+     */
+    abstract static class StaticTypeConverter implements TypeConverter {
+        @Override
+        public boolean isDynamic() {
+            return false;
+        }
+
+        @Override
+        public int getHeadSize() {
+            return 32;
+        }
+
+        @Override
+        public int getContentSize(Object value) {
+            return 32;
+        }
+    }
+
     private static TypeConverter createConverter(final AbiParameter param) {
         final String solidityType = param.type;
 
