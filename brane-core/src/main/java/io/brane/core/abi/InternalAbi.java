@@ -555,7 +555,7 @@ final class InternalAbi implements Abi {
         }
 
         if (normalizedType.equals("bool")) {
-            return new TypeConverter() {
+            return new StaticTypeConverter() {
                 @Override
                 public AbiType convert(Object value) {
                     if (value == null)
@@ -563,21 +563,6 @@ final class InternalAbi implements Abi {
                     if (value instanceof Boolean b)
                         return new Bool(b);
                     throw new AbiEncodingException("Expected Boolean for type 'bool'");
-                }
-
-                @Override
-                public boolean isDynamic() {
-                    return false;
-                }
-
-                @Override
-                public int getHeadSize() {
-                    return 32;
-                }
-
-                @Override
-                public int getContentSize(Object value) {
-                    return 32;
                 }
 
                 @Override
