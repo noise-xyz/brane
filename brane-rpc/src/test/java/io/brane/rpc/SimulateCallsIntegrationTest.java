@@ -188,9 +188,7 @@ class SimulateCallsIntegrationTest {
             assertEquals(1, result.results().size());
 
             CallResult callResult = result.results().get(0);
-            assertTrue(callResult instanceof CallResult.Success);
-
-            CallResult.Success success = (CallResult.Success) callResult;
+            CallResult.Success success = assertInstanceOf(CallResult.Success.class, callResult);
             assertNotNull(success.returnData());
 
             // Decode the balance
