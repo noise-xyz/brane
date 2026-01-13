@@ -71,9 +71,9 @@ public final class Erc20TransferLogExample {
 
     System.out.println(
         "eth_getLogs filter: fromBlock="
-            + (filter.fromBlock().isPresent() ? "0x" + Long.toHexString(filter.fromBlock().get()) : "latest")
+            + filter.fromBlock().map(b -> "0x" + Long.toHexString(b)).orElse("latest")
             + ", toBlock="
-            + (filter.toBlock().isPresent() ? "0x" + Long.toHexString(filter.toBlock().get()) : "latest")
+            + filter.toBlock().map(b -> "0x" + Long.toHexString(b)).orElse("latest")
             + ", address="
             + token.value()
             + ", topics="
