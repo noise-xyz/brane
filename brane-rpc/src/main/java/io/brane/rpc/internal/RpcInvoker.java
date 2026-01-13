@@ -128,4 +128,75 @@ public final class RpcInvoker {
         }
         return decoder.apply(result.toString());
     }
+
+    /**
+     * Invokes an RPC method and decodes the raw result object, throwing if null.
+     *
+     * <p>This method is similar to {@link #call} but passes the raw result object
+     * to the decoder instead of converting to string first. Use this for RPC calls
+     * that return complex JSON objects (e.g., eth_getLogs).
+     *
+     * @param method  the RPC method name
+     * @param params  the method parameters
+     * @param decoder a function to decode the raw result object into the target type
+     * @param <T>     the return type
+     * @return the decoded result
+     * @throws RpcException if the result is null
+     */
+    public <T> T callObject(String method, List<?> params, Function<Object, T> decoder) {
+        ensureOpen.run();
+        JsonRpcResponse response = sender.send(method, params);
+        Object result = response.result();
+        if (result == null) {
+            throw RpcException.fromNullResult(method);
+        }
+        return decoder.apply(result);
+    }
+
+    /**
+     * Invokes an RPC method and decodes the raw result object, returning null if the result is null.
+     *
+     * <p>This method is similar to {@link #callNullable} but passes the raw result object
+     * to the decoder instead of converting to string first. Use this for RPC calls
+     * that return complex JSON objects where null is valid (e.g., eth_getTransactionByHash).
+     *
+     * @param method  the RPC method name
+     * @param params  the method parameters
+     * @param decoder a function to decode the raw result object into the target type
+     * @param <T>     the return type
+     * @return the decoded result, or null if the result is null
+     */
+    public <T> @Nullable T callNullableObject(String method, List<?> params, Function<Object, T> decoder) {
+        ensureOpen.run();
+        JsonRpcResponse response = sender.send(method, params);
+        Object result = response.result();
+        if (result == null) {
+            return null;
+        }
+        return decoder.apply(result);
+    }
+
+    /**
+     * Invokes an RPC method and decodes the raw result object, returning a default value if null.
+     *
+     * <p>This method is similar to {@link #callWithDefault} but passes the raw result object
+     * to the decoder instead of converting to string first. Use this for RPC calls
+     * that return complex JSON objects where null should map to a default value.
+     *
+     * @param method       the RPC method name
+     * @param params       the method parameters
+     * @param decoder      a function to decode the raw result object into the target type
+     * @param defaultValue the value to return if the result is null
+     * @param <T>          the return type
+     * @return the decoded result, or the default value if the result is null
+     */
+    public <T> T callObjectWithDefault(String method, List<?> params, Function<Object, T> decoder, T defaultValue) {
+        ensureOpen.run();
+        JsonRpcResponse response = sender.send(method, params);
+        Object result = response.result();
+        if (result == null) {
+            return defaultValue;
+        }
+        return decoder.apply(result);
+    }
 }

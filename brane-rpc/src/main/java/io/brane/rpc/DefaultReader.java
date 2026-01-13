@@ -109,7 +109,6 @@ non-sealed class DefaultReader implements Brane.Reader {
 
     @Override
     public @Nullable BlockHeader getLatestBlock() {
-        ensureOpen();
         return getBlockByTag(BlockTag.LATEST.toRpcValue());
     }
 
@@ -120,12 +119,19 @@ non-sealed class DefaultReader implements Brane.Reader {
      * @return the block header, or null if not found
      */
     private @Nullable BlockHeader getBlockByTag(final String tag) {
-        final JsonRpcResponse response = sendWithRetry("eth_getBlockByNumber", List.of(tag, Boolean.FALSE));
-        final Object result = response.result();
-        if (result == null) {
-            return null;
-        }
+        return rpc.callNullableObject(
+                "eth_getBlockByNumber",
+                List.of(tag, Boolean.FALSE),
+                this::parseBlockHeader);
+    }
 
+    /**
+     * Parses a block header from the raw JSON-RPC result.
+     *
+     * @param result the raw result object from JSON-RPC
+     * @return the parsed block header
+     */
+    private BlockHeader parseBlockHeader(final Object result) {
         final Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
         );
@@ -146,31 +152,37 @@ non-sealed class DefaultReader implements Brane.Reader {
 
     @Override
     public @Nullable BlockHeader getBlockByNumber(final long blockNumber) {
-        ensureOpen();
         return getBlockByTag("0x" + Long.toHexString(blockNumber));
     }
 
     @Override
     public @Nullable Transaction getTransactionByHash(final Hash hash) {
-        ensureOpen();
-        final JsonRpcResponse response = sendWithRetry("eth_getTransactionByHash", List.of(hash.value()));
-        final Object result = response.result();
-        if (result == null) {
-            return null;
-        }
+        return rpc.callNullableObject(
+                "eth_getTransactionByHash",
+                List.of(hash.value()),
+                this::parseTransaction);
+    }
 
+    /**
+     * Parses a transaction from the raw JSON-RPC result.
+     *
+     * @param result the raw result object from JSON-RPC
+     * @return the parsed transaction
+     * @throws RpcException if required fields are missing
+     */
+    private Transaction parseTransaction(final Object result) {
         final Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
         );
 
         final String txHash = RpcUtils.stringValue(map.get("hash"));
         if (txHash == null) {
-            throw new io.brane.core.error.RpcException(
+            throw new RpcException(
                     0, "eth_getTransactionByHash response missing 'hash' field", (String) null, (Throwable) null);
         }
         final String from = RpcUtils.stringValue(map.get("from"));
         if (from == null) {
-            throw new io.brane.core.error.RpcException(
+            throw new RpcException(
                     0, "eth_getTransactionByHash response missing 'from' field", (String) null, (Throwable) null);
         }
         final String to = RpcUtils.stringValue(map.get("to"));
@@ -192,13 +204,19 @@ non-sealed class DefaultReader implements Brane.Reader {
 
     @Override
     public @Nullable TransactionReceipt getTransactionReceipt(final Hash hash) {
-        ensureOpen();
-        final JsonRpcResponse response = sendWithRetry("eth_getTransactionReceipt", List.of(hash.value()));
-        final Object result = response.result();
-        if (result == null) {
-            return null;
-        }
+        return rpc.callNullableObject(
+                "eth_getTransactionReceipt",
+                List.of(hash.value()),
+                this::parseTransactionReceipt);
+    }
 
+    /**
+     * Parses a transaction receipt from the raw JSON-RPC result.
+     *
+     * @param result the raw result object from JSON-RPC
+     * @return the parsed transaction receipt
+     */
+    private TransactionReceipt parseTransactionReceipt(final Object result) {
         final Map<String, Object> map = MAPPER.convertValue(
                 result, new TypeReference<Map<String, Object>>() {}
         );
@@ -315,11 +333,12 @@ non-sealed class DefaultReader implements Brane.Reader {
 
     @Override
     public List<LogEntry> getLogs(final LogFilter filter) {
-        ensureOpen();
         final Map<String, Object> params = buildLogParams(filter);
-        final JsonRpcResponse response = sendWithRetry("eth_getLogs", List.of(params));
-        final Object result = response.result();
-        return LogParser.parseLogs(result, true);
+        return rpc.callObjectWithDefault(
+                "eth_getLogs",
+                List.of(params),
+                result -> LogParser.parseLogs(result, true),
+                List.of());
     }
 
     /**
