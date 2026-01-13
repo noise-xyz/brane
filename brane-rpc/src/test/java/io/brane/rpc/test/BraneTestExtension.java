@@ -203,7 +203,7 @@ public class BraneTestExtension implements
         var reader = store.get(READER_KEY, Brane.Reader.class);
         if (reader == null) {
             reader = Brane.builder()
-                    .rpcUrl(Brane.DEFAULT_ANVIL_URL)
+                    .rpcUrl(System.getProperty(RPC_URL_PROPERTY, Brane.DEFAULT_ANVIL_URL))
                     .buildReader();
             store.put(READER_KEY, reader);
         }
