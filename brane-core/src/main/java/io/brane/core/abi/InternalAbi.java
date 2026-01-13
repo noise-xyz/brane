@@ -51,7 +51,7 @@ final class InternalAbi implements Abi {
 
     @Override
     public FunctionCall encodeFunction(final String name, final Object... args) {
-        final Object[] providedArgs = args == null ? new Object[0] : args;
+        final Object[] providedArgs = Objects.requireNonNullElse(args, new Object[0]);
         final AbiFunction fn = resolveFunction(name, providedArgs.length);
 
         // Calculate selector
