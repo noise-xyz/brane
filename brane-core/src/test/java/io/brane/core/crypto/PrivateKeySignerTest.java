@@ -26,10 +26,10 @@ class PrivateKeySignerTest {
         // Create a Legacy transaction for testing
         LegacyTransaction tx = new LegacyTransaction(
                 0L, // nonce
-                Wei.of(0), // gasPrice
+                Wei.ZERO, // gasPrice
                 21_000L, // gasLimit
                 new Address("0x0000000000000000000000000000000000000000"), // to
-                Wei.of(0), // value
+                Wei.ZERO, // value
                 HexData.EMPTY // data
         );
 
