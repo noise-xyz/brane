@@ -178,12 +178,12 @@ non-sealed class DefaultReader implements Brane.Reader {
         final String txHash = RpcUtils.stringValue(map.get("hash"));
         if (txHash == null) {
             throw new RpcException(
-                    0, "eth_getTransactionByHash response missing 'hash' field", (String) null, (Throwable) null);
+                    -32000, "eth_getTransactionByHash response missing 'hash' field", (String) null, (Throwable) null);
         }
         final String from = RpcUtils.stringValue(map.get("from"));
         if (from == null) {
             throw new RpcException(
-                    0, "eth_getTransactionByHash response missing 'from' field", (String) null, (Throwable) null);
+                    -32000, "eth_getTransactionByHash response missing 'from' field", (String) null, (Throwable) null);
         }
         final String to = RpcUtils.stringValue(map.get("to"));
         final String input = RpcUtils.stringValue(map.get("input"));
