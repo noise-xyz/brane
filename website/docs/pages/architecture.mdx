@@ -1,0 +1,36 @@
+# Architecture
+
+Understanding the Brane SDK structure.
+
+## Overview
+
+Brane provides a layered architecture separating client APIs from transport providers.
+
+## Client Layer
+
+The `Brane` sealed interface is the main entry point:
+
+- **`Brane.Reader`** - Read-only operations: balance queries, block fetching, `eth_call`, event logs
+- **`Brane.Signer`** - All Reader operations plus transaction signing and sending
+- **`Brane.Tester`** - All Signer operations plus test node manipulation (snapshots, impersonation, time control)
+
+`DefaultSigner` delegates read operations to an internal `DefaultReader` instance. `DefaultTester` delegates signing operations to an internal `DefaultSigner` instance.
+
+## Provider Layer
+
+`BraneProvider` abstracts the transport mechanism:
+
+| Provider | Use Case |
+|----------|----------|
+| `HttpBraneProvider` | Standard request/response, stateless, serverless-friendly |
+| `WebSocketProvider` | Real-time subscriptions, persistent connection |
+
+## Module Dependencies
+
+| Module | Purpose | Dependencies |
+|--------|---------|--------------|
+| `brane-primitives` | Hex/RLP utilities | None |
+| `brane-core` | Types, ABI, crypto, transaction building | BouncyCastle, Jackson |
+| `brane-kzg` | KZG commitments for EIP-4844 blobs | c-kzg-4844 |
+| `brane-rpc` | JSON-RPC client layer | Netty, Disruptor |
+| `brane-contract` | Contract binding (no codegen) | - |

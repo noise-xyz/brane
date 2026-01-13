@@ -1,0 +1,350 @@
+# WebSocket Provider
+
+Brane's WebSocket transport enables persistent connections for real-time subscriptions and lower-latency RPC calls.
+
+## Basic Usage
+
+```java
+import io.brane.rpc.Brane;
+
+// Create a WebSocket-based client
+Brane client = Brane.builder()
+    .wsUrl("wss://ethereum.publicnode.com")
+    .build();
+
+// Use like any other client
+var latestBlock = client.getLatestBlock();
+System.out.println("Block #" + latestBlock.number());
+
+// Always close when done
+client.close();
+```
+
+For simple connection without additional configuration:
+
+```java
+import io.brane.rpc.Brane;
+import io.brane.rpc.WebSocketProvider;
+
+// If you need direct provider access
+WebSocketProvider provider = WebSocketProvider.create("wss://ethereum.publicnode.com");
+Brane client = Brane.builder()
+    .provider(provider)
+    .build();
+```
+
+:::tip
+Use `wss://` for secure connections. The provider automatically handles SSL/TLS.
+:::
+
+---
+
+## Advanced Configuration
+
+For production use cases, you'll want fine-grained control over connection behavior, timeouts, and performance tuning.
+
+### WebSocketConfig
+
+For fine-grained control over WebSocket behavior, configure via `WebSocketConfig`:
+
+```java
+import io.brane.rpc.Brane;
+import io.brane.rpc.WebSocketConfig;
+import io.brane.rpc.WebSocketConfig.WaitStrategyType;
+import io.brane.rpc.WebSocketProvider;
+import java.time.Duration;
+
+var config = WebSocketConfig.builder("wss://eth.example.com")
+    .maxPendingRequests(32768)              // Max concurrent requests
+    .ringBufferSize(8192)                   // Disruptor buffer (power of 2)
+    .waitStrategy(WaitStrategyType.YIELDING) // Low latency mode
+    .defaultRequestTimeout(Duration.ofSeconds(30))
+    .connectTimeout(Duration.ofSeconds(10))
+    .ioThreads(1)                           // Usually 1 is optimal
+    .build();
+
+WebSocketProvider provider = WebSocketProvider.create(config);
+Brane client = Brane.builder()
+    .provider(provider)
+    .build();
+```
+
+### Configuration Reference
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `maxPendingRequests` | 65,536 | Maximum concurrent in-flight requests. Must be power of 2. |
+| `ringBufferSize` | 4,096 | Disruptor ring buffer size. Increase for high throughput. |
+| `waitStrategy` | `YIELDING` | `YIELDING` = low latency, high CPU. `BLOCKING` = low CPU, higher latency. |
+| `defaultRequestTimeout` | 60 sec | Timeout for requests without explicit timeout. |
+| `connectTimeout` | 10 sec | WebSocket handshake timeout. |
+| `ioThreads` | 1 | Netty I/O threads. 1 is usually optimal (avoids context switching). |
+
+:::tip
+**When to use YIELDING:** High-frequency trading, MEV bots, or any latency-critical application where you can afford higher CPU usage.
+
+**When to use BLOCKING:** Long-running services, batch processing, or when running alongside other CPU-intensive workloads.
+:::
+
+---
+
+## Request Timeouts
+
+Every async request has a configurable timeout to prevent hanging requests.
+
+### Default Timeout
+
+The default timeout comes from `WebSocketConfig.defaultRequestTimeout()` (60 seconds by default):
+
+```java
+// Uses the default timeout from config
+var response = provider.sendAsync("eth_blockNumber", List.of()).get();
+```
+
+### Per-Request Timeout
+
+Override the timeout for individual requests:
+
+```java
+import java.time.Duration;
+
+// Short timeout for time-sensitive operations
+var gasPrice = provider.sendAsync("eth_gasPrice", List.of(), Duration.ofSeconds(5))
+    .get();
+
+// Longer timeout for slow methods
+var logs = provider.sendAsync("eth_getLogs", List.of(filter), Duration.ofSeconds(120))
+    .get();
+```
+
+:::warning
+When a request times out, the slot is freed but the request may still complete on the server side. Design your application to handle this.
+:::
+
+---
+
+## Subscriptions
+
+WebSocket enables real-time event subscriptions via `eth_subscribe`.
+
+:::tip
+For **type-safe subscriptions**, use [`client.onNewHeads()`](/reader/subscriptions) and [`client.onLogs()`](/reader/subscriptions) instead of the raw provider API shown below.
+:::
+
+### New Block Headers
+
+Subscribe to new blocks as they are mined:
+
+```java
+String subscriptionId = provider.subscribe("newHeads", null, event -> {
+    System.out.println("New block: " + event);
+});
+
+// Later, unsubscribe
+provider.unsubscribe(subscriptionId);
+```
+
+### Contract Event Logs
+
+Subscribe to specific contract events:
+
+```java
+import java.util.List;
+import java.util.Map;
+
+// Filter for Transfer events on USDC
+Map<String, Object> filter = Map.of(
+    "address", "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+    "topics", List.of("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+);
+
+String subscriptionId = provider.subscribe("logs", List.of(filter), event -> {
+    System.out.println("Transfer detected: " + event);
+});
+```
+
+### Pending Transactions
+
+Monitor the mempool for new pending transactions:
+
+```java
+String subscriptionId = provider.subscribe("newPendingTransactions", null, event -> {
+    System.out.println("Pending tx: " + event);
+});
+```
+
+### Custom Callback Executor
+
+By default, subscription callbacks run on **virtual threads** to prevent blocking the Netty I/O thread.
+
+For custom threading behavior:
+
+```java
+import java.util.concurrent.Executors;
+
+// Use a bounded thread pool for callbacks
+provider.setSubscriptionExecutor(
+    Executors.newFixedThreadPool(4)
+);
+
+// Or run directly on the Netty I/O thread (use with caution)
+provider.setSubscriptionExecutor(Runnable::run);
+```
+
+:::warning
+If you set a single-threaded executor or run callbacks on the I/O thread, ensure callbacks complete quickly. Blocking operations will stall all WebSocket I/O.
+:::
+
+---
+
+## High-Performance Batching
+
+For high-throughput scenarios, use `sendAsyncBatch()` which uses an LMAX Disruptor ring buffer for optimal batching:
+
+```java
+import java.util.concurrent.CompletableFuture;
+import java.util.List;
+
+// Fire many requests in rapid succession
+CompletableFuture<?>[] futures = new CompletableFuture[1000];
+for (int i = 0; i < 1000; i++) {
+    futures[i] = provider.sendAsyncBatch("eth_blockNumber", List.of());
+}
+
+// Wait for all responses
+CompletableFuture.allOf(futures).join();
+```
+
+This batches network writes together, reducing syscall overhead.
+
+### Async vs Batch Methods
+
+| Method | Use Case | Latency | Throughput |
+|--------|----------|---------|------------|
+| `sendAsync()` | Individual requests | Optimal | Good |
+| `sendAsyncBatch()` | Bulk requests | Good | Optimal |
+
+**Rule of thumb:** Use `sendAsync()` normally. Switch to `sendAsyncBatch()` when sending many requests in a tight loop.
+
+---
+
+## Backpressure & Error Handling
+
+The provider has built-in backpressure to prevent overwhelming the connection.
+
+### Too Many Pending Requests
+
+When you exceed `maxPendingRequests`, new requests fail immediately with an `RpcException`:
+
+```java
+try {
+    var response = provider.sendAsync("eth_blockNumber", List.of()).get();
+} catch (ExecutionException e) {
+    if (e.getCause() instanceof RpcException rpc) {
+        if (rpc.getMessage().contains("Too many pending requests")) {
+            // Back off and retry
+            Thread.sleep(100);
+        }
+    }
+}
+```
+
+### Connection Lost
+
+The provider attempts to reconnect automatically. If the connection is lost while requests are in-flight, those futures will complete exceptionally.
+
+---
+
+## Connection State Machine
+
+The `WebSocketProvider` exposes its connection state for monitoring and handling edge cases:
+
+```java
+import io.brane.rpc.WebSocketProvider;
+import io.brane.rpc.WebSocketProvider.ConnectionState;
+
+var provider = WebSocketProvider.create("wss://...");
+
+// Check current state
+ConnectionState state = provider.getConnectionState();
+System.out.println("Connection state: " + state);
+```
+
+### Connection States
+
+| State | Description |
+|-------|-------------|
+| `CONNECTING` | Initial connection in progress |
+| `CONNECTED` | WebSocket is connected and operational |
+| `RECONNECTING` | Connection lost, attempting to reconnect |
+| `CLOSED` | Provider has been closed |
+
+### Handling Reconnection
+
+During `RECONNECTING` state, requests may fail temporarily. For resilient applications:
+
+```java
+ConnectionState state = provider.getConnectionState();
+
+if (state == ConnectionState.RECONNECTING) {
+    // Wait or use fallback strategy
+    log.warn("WebSocket reconnecting, request may fail");
+}
+
+if (state == ConnectionState.CLOSED) {
+    // Provider is shut down, need a new instance
+    throw new IllegalStateException("Provider is closed");
+}
+```
+
+:::tip
+Use `BraneMetrics.onConnectionLost()` and `onReconnect()` hooks for monitoring connection health instead of polling `getConnectionState()`.
+:::
+
+---
+
+## Client Types
+
+The builder creates different client types based on configuration:
+
+```java
+import io.brane.rpc.Brane;
+import io.brane.core.crypto.PrivateKey;
+import io.brane.core.types.Address;
+import io.brane.core.types.Wei;
+
+// Read-only client (Brane.Reader) - for queries and subscriptions
+Brane.Reader reader = Brane.builder()
+    .wsUrl("wss://ethereum.publicnode.com")
+    .buildReader();
+
+var balance = reader.getBalance(Address.from("0x..."));
+var sub = reader.onNewHeads(header -> System.out.println("Block: " + header.number()));
+
+// Signing client (Brane.Signer) - can send transactions
+Brane.Signer signer = Brane.builder()
+    .wsUrl("wss://ethereum.publicnode.com")
+    .signer(PrivateKey.fromHex("0x..."))
+    .buildSigner();
+
+// Create and send a transaction over WebSocket
+var request = signer.eip1559()
+    .to(Address.from("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"))
+    .value(Wei.fromEther("0.01"))
+    .build();
+
+var receipt = signer.sendTransactionAndWait(request);
+```
+
+---
+
+## When to Use WebSocket
+
+| Scenario | Recommended |
+|----------|-------------|
+| Real-time subscriptions | WebSocket |
+| High-frequency trading / MEV | WebSocket |
+| Long-running services | WebSocket |
+| Simple read operations | HTTP or WebSocket |
+| Serverless / Lambda | HTTP (no persistent connection) |
+| Mobile apps | HTTP (battery efficiency) |

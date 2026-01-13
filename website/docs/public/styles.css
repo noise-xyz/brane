@@ -1,0 +1,53 @@
+/* Hide logo/title in header - collapse space */
+.vocs_DesktopTopNav_logo,
+.vocs_DesktopTopNav_logoWrapper {
+  display: none !important;
+  width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* Remove the withLogo modifier spacing */
+.vocs_DesktopTopNav.vocs_DesktopTopNav_withLogo {
+  padding-left: 0;
+}
+
+/* Ensure nav items stay on the right */
+.vocs_DesktopTopNav_section:has(.vocs_DesktopTopNav_group) {
+  margin-left: auto;
+}
+
+[data-layout="landing"] .vocs_Button_button {
+  border-radius: 4px;
+  height: 36px;
+  padding: 0 16px;
+}
+
+[data-layout="landing"] .vocs_Content {
+  position: inherit;
+}
+
+#home-install .vocs_CodeGroup {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+}
+
+#home-install .vocs_Tabs_content {
+  flex: 1;
+}
+
+#home-install .vocs_Code {
+  font-size: 18px;
+}
+
+/* Make sidebar logo bigger */
+.vocs_Sidebar_logo img,
+.vocs_Sidebar_logoImage {
+  height: 40px !important;
+  width: 40px !important;
+}
+
+.vocs_Sidebar_logo {
+  height: 40px !important;
+}

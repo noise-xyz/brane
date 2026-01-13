@@ -1,0 +1,174 @@
+# Performance
+
+Brane performance benchmarks and optimization guide.
+
+Brane is optimized for low latency and high throughput. Here's what to expect and how to tune for your use case.
+
+## Key Numbers
+
+| Provider | Mode | Throughput | Latency |
+|----------|------|------------|---------|
+| WebSocket | Sequential | ~8,000 ops/s | 0.12ms |
+| WebSocket | Batch (100) | **~110,000 ops/s** | - |
+| HTTP (Loom) | Batch (100) | ~22,000 ops/s | - |
+
+:::tip
+WebSocket batching is **4-5x faster** than HTTP for high-throughput scenarios.
+:::
+
+---
+
+## WebSocket vs HTTP
+
+### When WebSocket Wins
+
+- **Persistent connection** — No TCP handshake per request
+- **Request multiplexing** — Multiple in-flight requests on one connection
+- **Disruptor batching** — `sendAsyncBatch()` coalesces network writes
+
+### When HTTP is Fine
+
+- Serverless / Lambda (no persistent connections)
+- Low request volume (< 100 req/s)
+- Simple read-only operations
+
+---
+
+## Optimizing Throughput
+
+### Use Batch Mode
+
+For bulk operations, use `sendAsyncBatch()`:
+
+```java
+import java.util.concurrent.CompletableFuture;
+import java.util.List;
+import java.util.ArrayList;
+
+var futures = new ArrayList<CompletableFuture<?>>();
+for (int i = 0; i < 1000; i++) {
+    futures.add(provider.sendAsyncBatch("eth_blockNumber", List.of()));
+}
+CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();
+```
+
+### Tune the Ring Buffer
+
+For very high throughput, increase the ring buffer size:
+
+```java
+var config = WebSocketConfig.builder("wss://...")
+    .ringBufferSize(16384)  // Default: 4096
+    .maxPendingRequests(65536)
+    .build();
+```
+
+### Use YIELDING Wait Strategy
+
+For latency-critical applications:
+
+```java
+var config = WebSocketConfig.builder("wss://...")
+    .waitStrategy(WaitStrategyType.YIELDING)  // Lower latency, higher CPU
+    .build();
+```
+
+---
+
+## Optimizing Latency
+
+### Per-Request Timeouts
+
+Set aggressive timeouts for time-sensitive operations:
+
+```java
+import java.time.Duration;
+
+// 5 second timeout for gas price (needs to be fresh)
+var gasPrice = provider.sendAsync("eth_gasPrice", List.of(),
+    Duration.ofSeconds(5)).get();
+```
+
+### Keep Connections Warm
+
+Avoid cold-start latency by keeping the WebSocket connection open:
+
+```java
+// Create once, reuse for the lifetime of your application
+var provider = WebSocketProvider.create("wss://...");
+
+// Don't create/close per request
+```
+
+---
+
+## ABI Encoding Performance
+
+| Operation | Throughput |
+|-----------|------------|
+| Brane `encodeCall` | ~2,500,000 ops/s |
+| web3j `encodeFunction` | ~400,000 ops/s |
+| **Brane Speedup** | **6.3x** |
+
+Brane's ABI encoder is optimized for zero-allocation encoding in hot paths.
+
+---
+
+## Running Your Own Benchmarks
+
+### Quick Benchmark (Local)
+
+```bash
+# Start Anvil
+anvil --host 0.0.0.0 --port 8545
+
+# Run quick benchmark
+./gradlew :brane-benchmark:runQuickBenchmark
+```
+
+### Full JMH Suite
+
+```bash
+./gradlew :brane-benchmark:jmh
+```
+
+### Against Real Networks
+
+Create a `.env` file:
+
+```bash
+HTTP_RPC_URL=https://eth-mainnet.g.alchemy.com/v2/YOUR_KEY
+WS_RPC_URL=wss://eth-mainnet.g.alchemy.com/v2/YOUR_KEY
+```
+
+Then:
+
+```bash
+./gradlew :brane-benchmark:runRealWorldBenchmark
+```
+
+---
+
+## Methodology
+
+All benchmarks use:
+- **Warmup:** 100 iterations
+- **Measurement:** 1,000 iterations
+- **Environment:** Local Anvil devnet (eliminates network variability)
+- **JVM:** OpenJDK 21 with G1GC
+
+:::warning
+Real network latency (~20-50ms) dominates performance. Local benchmarks isolate client efficiency; production throughput depends on your RPC provider's rate limits and network distance.
+:::
+
+---
+
+## Performance Monitoring
+
+Integrate with your observability stack using `BraneMetrics`:
+
+```java
+provider.setMetrics(new MyMicrometerMetrics(registry));
+```
+
+See [Metrics & Observability](/utilities/metrics) for implementation details.

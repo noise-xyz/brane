@@ -1,27 +1,17 @@
 {
-  "name": "website",
-  "version": "0.3.0",
+  "name": "brane-docs",
+  "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
+    "dev": "vocs dev",
+    "build": "vocs build",
+    "preview": "vocs preview"
   },
   "dependencies": {
-    "next": "16.0.5",
-    "react": "19.2.0",
-    "react-dom": "19.2.0"
+    "vocs": "^1.0.0-alpha.62"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "babel-plugin-react-compiler": "1.0.0",
-    "eslint": "^9",
-    "eslint-config-next": "16.0.5",
-    "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5.0.0"
   }
 }
