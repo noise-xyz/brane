@@ -21,7 +21,7 @@ HD wallet support was added in version 0.3.0.
 Create a new wallet with a randomly generated mnemonic phrase:
 
 ```java
-import io.brane.core.crypto.hd.MnemonicWallet;
+import sh.brane.core.crypto.hd.MnemonicWallet;
 
 // Generate a 12-word phrase (default, 128 bits of entropy)
 MnemonicWallet wallet = MnemonicWallet.generatePhrase();
@@ -112,7 +112,7 @@ System.out.println(account1.address()); // Second address
 Use `DerivationPath` for full control over the BIP-44 path:
 
 ```java
-import io.brane.core.crypto.hd.DerivationPath;
+import sh.brane.core.crypto.hd.DerivationPath;
 
 // m/44'/60'/0'/0/5 - Address index 5 of account 0
 DerivationPath path1 = DerivationPath.of(5);
@@ -147,8 +147,8 @@ Brane follows the standard Ethereum BIP-44 path format: `m/44'/60'/account'/0/ad
 Derived signers work seamlessly with `Brane.Signer` for transactions:
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.core.types.Wei;
+import sh.brane.rpc.Brane;
+import sh.brane.core.types.Wei;
 
 // Create wallet and derive signer
 MnemonicWallet wallet = MnemonicWallet.fromPhrase(phrase);
@@ -235,10 +235,10 @@ pks.signMessage(msg); // throws IllegalStateException
 ## Complete Example
 
 ```java
-import io.brane.core.crypto.Signer;
-import io.brane.core.crypto.hd.DerivationPath;
-import io.brane.core.crypto.hd.MnemonicWallet;
-import io.brane.rpc.Brane;
+import sh.brane.core.crypto.Signer;
+import sh.brane.core.crypto.hd.DerivationPath;
+import sh.brane.core.crypto.hd.MnemonicWallet;
+import sh.brane.rpc.Brane;
 
 public class HdWalletExample {
     public static void main(String[] args) {

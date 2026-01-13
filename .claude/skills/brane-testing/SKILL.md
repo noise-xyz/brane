@@ -20,11 +20,11 @@ This is non-negotiable. Writing tests after implementation leads to:
 
 | Module | What to Test | Test Location |
 |--------|-------------|---------------|
-| `brane-core` | Types, ABI encoding/decoding, Crypto, Models, Builders | `brane-core/src/test/java/io/brane/core/...` |
-| `brane-rpc` | RPC clients, providers, retry logic, WebSocket | `brane-rpc/src/test/java/io/brane/rpc/...` |
-| `brane-contract` | Contract binding, proxy invocation, event decoding | `brane-contract/src/test/java/io/brane/contract/...` |
-| `brane-primitives` | Hex utilities, RLP encoding | `brane-primitives/src/test/java/io/brane/primitives/...` |
-| `brane-examples` | Integration tests against Anvil | `brane-examples/src/main/java/io/brane/examples/...` |
+| `brane-core` | Types, ABI encoding/decoding, Crypto, Models, Builders | `brane-core/src/test/java/sh/brane/core/...` |
+| `brane-rpc` | RPC clients, providers, retry logic, WebSocket | `brane-rpc/src/test/java/sh/brane/rpc/...` |
+| `brane-contract` | Contract binding, proxy invocation, event decoding | `brane-contract/src/test/java/sh/brane/contract/...` |
+| `brane-primitives` | Hex utilities, RLP encoding | `brane-primitives/src/test/java/sh/brane/primitives/...` |
+| `brane-examples` | Integration tests against Anvil | `brane-examples/src/main/java/sh/brane/examples/...` |
 
 ---
 
@@ -70,7 +70,7 @@ Use descriptive verbs that indicate what's being tested:
 
 ```bash
 # Run ONLY your new test - it MUST fail
-./gradlew :brane-core:test --tests "io.brane.core.types.MyNewTypeTest"
+./gradlew :brane-core:test --tests "sh.brane.core.types.MyNewTypeTest"
 ```
 
 If the test passes before you write implementation, either:
@@ -95,13 +95,13 @@ If the test passes before you write implementation, either:
 
 ```bash
 # Run single test class
-./gradlew :brane-core:test --tests "io.brane.core.types.AddressTest"
+./gradlew :brane-core:test --tests "sh.brane.core.types.AddressTest"
 
 # Run single test method
-./gradlew :brane-core:test --tests "io.brane.core.types.AddressTest.acceptsValidAddress"
+./gradlew :brane-core:test --tests "sh.brane.core.types.AddressTest.acceptsValidAddress"
 
 # Run all tests in a package
-./gradlew :brane-core:test --tests "io.brane.core.types.*"
+./gradlew :brane-core:test --tests "sh.brane.core.types.*"
 
 # Run with verbose output
 ./gradlew :brane-core:test --tests "..." --info
@@ -116,7 +116,7 @@ If the test passes before you write implementation, either:
 ./gradlew test
 
 # Integration example
-./gradlew :brane-examples:run -PmainClass=io.brane.examples.MyExample
+./gradlew :brane-examples:run -PmainClass=sh.brane.examples.MyExample
 ```
 
 ---
@@ -127,7 +127,7 @@ After TDD cycles, follow this strict order. **ALL STEPS ARE MANDATORY.**
 
 ### Step 1: Targeted Verification (Unit)
 ```bash
-./gradlew :brane-core:test --tests "io.brane.core.MyClassTest"
+./gradlew :brane-core:test --tests "sh.brane.core.MyClassTest"
 ```
 **Rule**: If this fails, STOP. Fix it. Do not proceed.
 
@@ -288,7 +288,7 @@ private static final String ANVIL_PRIVATE_KEY =
 
 ### Unit Test Template
 ```java
-package io.brane.core;
+package sh.brane.core;
 
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
@@ -318,7 +318,7 @@ class MyFeatureTest {
 
 ### Integration Test Template (brane-examples)
 ```java
-package io.brane.examples;
+package sh.brane.examples;
 
 public class MyFeatureExample {
 

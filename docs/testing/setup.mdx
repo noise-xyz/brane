@@ -16,7 +16,7 @@ The `Brane` interface provides static factory methods for quickly creating test 
 The simplest way to connect uses Anvil at `http://127.0.0.1:8545` with the default test key (account 0):
 
 ```java
-import io.brane.rpc.Brane;
+import sh.brane.rpc.Brane;
 
 // Connect with all defaults
 Brane.Tester tester = Brane.connectTest();
@@ -36,7 +36,7 @@ Brane.Tester tester = Brane.builder()
 Connect to the default Anvil URL with a specific test account:
 
 ```java
-import io.brane.rpc.AnvilSigners;
+import sh.brane.rpc.AnvilSigners;
 
 // Use account at index 3
 Signer signer = AnvilSigners.keyAt(3);
@@ -58,7 +58,7 @@ Brane.Tester tester = Brane.connectTest("http://127.0.0.1:9545");
 ### With Custom URL and Signer
 
 ```java
-import io.brane.core.crypto.PrivateKey;
+import sh.brane.core.crypto.PrivateKey;
 
 Signer signer = PrivateKey.fromHex("0x...");
 Brane.Tester tester = Brane.connectTest("http://localhost:8545", signer);
@@ -69,7 +69,7 @@ Brane.Tester tester = Brane.connectTest("http://localhost:8545", signer);
 Connect to Hardhat or Ganache instead of Anvil:
 
 ```java
-import io.brane.rpc.TestNodeMode;
+import sh.brane.rpc.TestNodeMode;
 
 Signer signer = PrivateKey.fromHex("0x...");
 Brane.Tester tester = Brane.connectTest(
@@ -196,8 +196,8 @@ Brane.Tester tester = Brane.builder()
 ### Advanced Configuration
 
 ```java
-import io.brane.core.chain.ChainProfiles;
-import io.brane.rpc.RpcRetryConfig;
+import sh.brane.core.chain.ChainProfiles;
+import sh.brane.rpc.RpcRetryConfig;
 
 Brane.Tester tester = Brane.builder()
     .rpcUrl("http://localhost:8545")
@@ -219,7 +219,7 @@ Brane.Tester tester = Brane.builder()
 ### Getting Test Keys
 
 ```java
-import io.brane.rpc.AnvilSigners;
+import sh.brane.rpc.AnvilSigners;
 
 // Default key (account 0) - most commonly used
 Signer signer = AnvilSigners.defaultKey();
@@ -279,11 +279,11 @@ Signer bob = AnvilSigners.keyAt(2);
 ## Complete Example
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.rpc.AnvilSigners;
-import io.brane.rpc.SnapshotId;
-import io.brane.core.types.Address;
-import io.brane.core.types.Wei;
+import sh.brane.rpc.Brane;
+import sh.brane.rpc.AnvilSigners;
+import sh.brane.rpc.SnapshotId;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Wei;
 
 public class TestSetupExample {
     public static void main(String[] args) {

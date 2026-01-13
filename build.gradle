@@ -42,7 +42,7 @@ subprojects {
         java {
             target 'src/**/*.java'
             removeUnusedImports()
-            importOrder('java', 'javax', '', 'io.brane')
+            importOrder('java', 'javax', '', 'sh.brane')
             trimTrailingWhitespace()
             endWithNewline()
         }
@@ -87,7 +87,7 @@ subprojects {
     }
 
     tasks.withType(Javadoc).configureEach {
-        exclude 'io/brane/internal/**'
+        exclude 'sh/brane/internal/**'
         options.addStringOption('Xdoclint:none', '-quiet')
     }
 }
@@ -113,7 +113,7 @@ tasks.register('allJavadoc', Javadoc) {
         classpath = files(docProjects.collect { it.sourceSets.main.compileClasspath })
     }
 
-    exclude 'io/brane/internal/**'
+    exclude 'sh/brane/internal/**'
     options.addStringOption('Xdoclint:none', '-quiet')
     options.overview = file('overview.html')
     options.memberLevel = JavadocMemberLevel.PROTECTED

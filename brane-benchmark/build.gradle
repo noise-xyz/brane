@@ -41,21 +41,21 @@ tasks.withType(JavaCompile).configureEach {
 
 task runManualBenchmark(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'io.brane.benchmark.ManualBenchmark'
+    mainClass = 'sh.brane.benchmark.ManualBenchmark'
 }
 
 task runRealWorldBenchmark(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'io.brane.benchmark.RealWorldLatencyTest'
+    mainClass = 'sh.brane.benchmark.RealWorldLatencyTest'
 }
 
 task runWebSocketBenchmark(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'io.brane.benchmark.ManualWebSocketBenchmark'
+    mainClass = 'sh.brane.benchmark.ManualWebSocketBenchmark'
 }
 
 task runQuickBenchmark(type: JavaExec) {
     classpath = sourceSets.main.runtimeClasspath
-    mainClass = 'io.brane.benchmark.QuickProviderBenchmark'
+    mainClass = 'sh.brane.benchmark.QuickProviderBenchmark'
 }
 

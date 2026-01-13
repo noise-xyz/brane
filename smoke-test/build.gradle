@@ -17,7 +17,7 @@ dependencies {
 }
 
 application {
-    mainClass = project.findProperty('mainClass') ?: 'io.brane.smoke.SmokeApp'
+    mainClass = project.findProperty('mainClass') ?: 'sh.brane.smoke.SmokeApp'
 }
 
 java {

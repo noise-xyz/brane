@@ -62,7 +62,7 @@ git diff --name-only | grep '\.java$'
 
 # Analyze specific file or class
 ./.claude/scripts/verify_change.sh Address
-./.claude/scripts/verify_change.sh brane-core/src/main/java/io/brane/core/types/Address.java
+./.claude/scripts/verify_change.sh brane-core/src/main/java/sh/brane/core/types/Address.java
 
 # Run with tests
 ./.claude/scripts/verify_change.sh --run
@@ -101,14 +101,14 @@ mcp__cclsp__get_diagnostics(file_path)
 ```
 # Step 1: Find all references to the method
 mcp__cclsp__find_references(
-  file_path="brane-core/src/main/java/io/brane/core/types/Address.java",
+  file_path="brane-core/src/main/java/sh/brane/core/types/Address.java",
   symbol_name="from"
 )
 → Returns 47 locations across 12 files
 
 # Step 2: Check if changes broke anything
 mcp__cclsp__get_diagnostics(
-  file_path="brane-core/src/main/java/io/brane/core/types/Address.java"
+  file_path="brane-core/src/main/java/sh/brane/core/types/Address.java"
 )
 → Returns compile errors if signature is incompatible
 ```

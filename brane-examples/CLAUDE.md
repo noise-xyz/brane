@@ -6,14 +6,14 @@ Comprehensive examples demonstrating SDK features. Also serves as integration te
 
 ```bash
 # Run specific example
-./gradlew :brane-examples:run -PmainClass=io.brane.examples.CanonicalAbiExample
+./gradlew :brane-examples:run -PmainClass=sh.brane.examples.CanonicalAbiExample
 
 # Requires Anvil for most examples
 anvil  # In separate terminal
 
 # EIP-4844 blob examples require Cancun hardfork
 anvil --hardfork cancun
-./gradlew :brane-examples:run -PmainClass=io.brane.examples.BlobTransactionExample
+./gradlew :brane-examples:run -PmainClass=sh.brane.examples.BlobTransactionExample
 ```
 
 ## Canonical Examples (Start Here)
@@ -61,7 +61,7 @@ anvil --hardfork cancun
 
 ## Writing New Examples
 
-1. Create class in `io.brane.examples`
+1. Create class in `sh.brane.examples`
 2. Add `public static void main(String[] args)`
 3. Use standard Anvil setup:
    ```java

@@ -4,7 +4,7 @@ Low-level utilities with zero external dependencies. Foundation for all other mo
 
 ## Key Classes
 
-### Hex (`io.brane.primitives.Hex`)
+### Hex (`sh.brane.primitives.Hex`)
 ```java
 // Encode
 String hex = Hex.encode(bytes);           // "0xabcd..."
@@ -21,7 +21,7 @@ boolean has = Hex.hasPrefix("0xabcd");    // true
 byte[] bytes = Hex.toBytes("0xabcd");     // Alias for decode
 ```
 
-### RLP (`io.brane.primitives.rlp`)
+### RLP (`sh.brane.primitives.rlp`)
 ```java
 // Encode
 byte[] encoded = Rlp.encode(item);

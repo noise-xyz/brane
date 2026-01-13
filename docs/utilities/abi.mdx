@@ -10,8 +10,8 @@ The `Abi` class provides powerful helpers for working with Ethereum's Applicatio
 Compute the 4-byte function selector for any function signature.
 
 ```java
-import io.brane.core.abi.Abi;
-import io.brane.core.types.HexData;
+import sh.brane.core.abi.Abi;
+import sh.brane.core.types.HexData;
 
 // "transfer(address,uint256)" -> 0xa9059cbb
 HexData selector = Abi.functionSelector("transfer(address,uint256)");
@@ -22,8 +22,8 @@ HexData selector = Abi.functionSelector("transfer(address,uint256)");
 Compute the 32-byte topic hash for an event signature.
 
 ```java
-import io.brane.core.abi.Abi;
-import io.brane.core.types.Hash;
+import sh.brane.core.abi.Abi;
+import sh.brane.core.types.Hash;
 
 // "Transfer(address,address,uint256)" -> 0xddf252...
 Hash topic = Abi.eventTopic("Transfer(address,address,uint256)");
@@ -34,9 +34,9 @@ Hash topic = Abi.eventTopic("Transfer(address,address,uint256)");
 Decode raw logs into Java objects using `Abi.decodeEvents`.
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.rpc.LogFilter;
-import io.brane.core.abi.Abi;
+import sh.brane.rpc.Brane;
+import sh.brane.rpc.LogFilter;
+import sh.brane.core.abi.Abi;
 
 Brane client = Brane.connect("https://eth-mainnet.example.com");
 LogFilter filter = ...;
@@ -65,8 +65,8 @@ for (var event : transfers) {
 For zero-allocation, low-level encoding of arguments (useful for manual `eth_call` construction).
 
 ```java
-import io.brane.core.abi.FastAbiEncoder;
-import io.brane.core.abi.UInt;
+import sh.brane.core.abi.FastAbiEncoder;
+import sh.brane.core.abi.UInt;
 
 byte[] encoded = FastAbiEncoder.encode(List.of(
     new UInt(256, BigInteger.TEN)
@@ -82,8 +82,8 @@ The `Array<T>` record represents Solidity arrays (both static `T[N]` and dynamic
 Arrays require an `elementTypeName` parameter for correct ABI encoding:
 
 ```java
-import io.brane.core.abi.Array;
-import io.brane.core.abi.UInt;
+import sh.brane.core.abi.Array;
+import sh.brane.core.abi.UInt;
 
 // Dynamic array: uint256[]
 Array<UInt> dynamicArray = new Array<>(
@@ -94,9 +94,9 @@ Array<UInt> dynamicArray = new Array<>(
 );
 
 // Static array: address[3]
-Array<io.brane.core.abi.Address> staticArray = new Array<>(
+Array<sh.brane.core.abi.Address> staticArray = new Array<>(
     List.of(addr1, addr2, addr3),
-    io.brane.core.abi.Address.class,
+    sh.brane.core.abi.Address.class,
     false,      // isDynamicLength (fixed size)
     "address"   // elementTypeName
 );

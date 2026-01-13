@@ -31,7 +31,7 @@ public interface Signer {
 The most common implementation is `PrivateKeySigner`, which uses a local private key.
 
 ```java
-import io.brane.core.crypto.PrivateKeySigner;
+import sh.brane.core.crypto.PrivateKeySigner;
 
 // Initialize with a hex private key
 var signer = new PrivateKeySigner("0x...");
@@ -45,7 +45,7 @@ System.out.println("Address: " + signer.address());
 For managing multiple accounts from a single mnemonic phrase, use `MnemonicWallet`:
 
 ```java
-import io.brane.core.crypto.hd.MnemonicWallet;
+import sh.brane.core.crypto.hd.MnemonicWallet;
 
 // Generate a new 12-word phrase
 MnemonicWallet wallet = MnemonicWallet.generatePhrase();
@@ -70,7 +70,7 @@ The underlying `PrivateKey` class handles secp256k1 key operations directly.
 ### Creating Keys
 
 ```java
-import io.brane.core.crypto.PrivateKey;
+import sh.brane.core.crypto.PrivateKey;
 
 // From hex string (most common)
 PrivateKey key = PrivateKey.fromHex("0x...");
@@ -120,8 +120,8 @@ All `PrivateKey` operations are thread-safe. Concurrent signing and destruction 
 When using `Brane.connect(url, signer)` to create a `Brane.Signer` client, the signer is handled automatically. However, you can also sign directly:
 
 ```java
-import io.brane.core.tx.LegacyTransaction;
-import io.brane.core.types.Wei;
+import sh.brane.core.tx.LegacyTransaction;
+import sh.brane.core.types.Wei;
 
 // Create an unsigned transaction
 var tx = new LegacyTransaction(
@@ -168,8 +168,8 @@ Signature signTypedData(TypedData<?> typedData);
 Example usage:
 
 ```java
-import io.brane.core.crypto.eip712.Eip712Domain;
-import io.brane.core.crypto.eip712.TypedData;
+import sh.brane.core.crypto.eip712.Eip712Domain;
+import sh.brane.core.crypto.eip712.TypedData;
 
 // Create domain and typed data
 Eip712Domain domain = Eip712Domain.builder()

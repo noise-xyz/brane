@@ -10,7 +10,7 @@ Brane provides factory methods for correctly configured thread pools, optimized 
 Java 21's virtual threads are excellent for I/O-bound work but can hurt performance for CPU-intensive tasks. Brane's `BraneExecutors` provides properly configured executors for each use case.
 
 ```java
-import io.brane.rpc.BraneExecutors;
+import sh.brane.rpc.BraneExecutors;
 ```
 
 ---
@@ -26,8 +26,8 @@ Use virtual threads for operations that spend most of their time waiting:
 ### Example: Parallel RPC Calls
 
 ```java
-import io.brane.rpc.BraneExecutors;
-import io.brane.rpc.BraneProvider;
+import sh.brane.rpc.BraneExecutors;
+import sh.brane.rpc.BraneProvider;
 import java.util.List;
 import java.util.concurrent.Future;
 import java.util.ArrayList;
@@ -65,7 +65,7 @@ Use platform threads for operations that keep the CPU busy:
 ### Example: Signature Verification
 
 ```java
-import io.brane.rpc.BraneExecutors;
+import sh.brane.rpc.BraneExecutors;
 import java.util.List;
 
 List<byte[]> signatures = getSignaturesToVerify();
@@ -126,8 +126,8 @@ All threads are daemon threads, so they won't prevent JVM shutdown.
 By default, WebSocket subscription callbacks run on virtual threads. You can customize this:
 
 ```java
-import io.brane.rpc.WebSocketProvider;
-import io.brane.rpc.BraneExecutors;
+import sh.brane.rpc.WebSocketProvider;
+import sh.brane.rpc.BraneExecutors;
 
 var provider = WebSocketProvider.create("wss://...");
 

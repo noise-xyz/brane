@@ -30,7 +30,7 @@ For a Pull Request to be merged, it must:
 3.  **Develop**: Write code and Unit Tests.
 4.  **Targeted Test**: Run *only* your new test to iterate fast.
     *   Unit: `./gradlew test --tests "com.package.MyTest"`
-    *   Integration: `./gradlew :brane-examples:run -PmainClass=io.brane.examples.MyExample`
+    *   Integration: `./gradlew :brane-examples:run -PmainClass=sh.brane.examples.MyExample`
 5.  **Test Loop**: Run `./scripts/test_unit.sh` to ensure no regressions.
 6.  **Verify**: Run `./scripts/test_integration.sh` before pushing.
 7.  **Final Check**: Run `./verify_all.sh` to run the full suite.
@@ -55,7 +55,7 @@ If you are an AI assistant (like Gemini) helping with this codebase, follow thes
 
 ### 2. Creating an Integration Test
 *   **Goal**: Verify interaction with a real EVM (Anvil).
-*   **Location**: `brane-examples/src/main/java/io/brane/examples/...` (as a standalone example) OR `brane-core/src/test/java/...` (with `@Tag("integration")`).
+*   **Location**: `brane-examples/src/main/java/sh/brane/examples/...` (as a standalone example) OR `brane-core/src/test/java/...` (with `@Tag("integration")`).
 *   **Pattern**:
     *   Use `Brane.connect(url, signer)` to connect to `http://127.0.0.1:8545`.
     *   Use the default Anvil private key: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`.
@@ -67,7 +67,7 @@ If you are an AI assistant (like Gemini) helping with this codebase, follow thes
 
 ### 3. Adding to Smoke Tests (`SmokeApp.java`)
 *   **Goal**: Stress test a feature in a "real world" scenario.
-*   **Location**: `smoke-test/src/main/java/io/brane/smoke/SmokeApp.java`
+*   **Location**: `smoke-test/src/main/java/sh/brane/smoke/SmokeApp.java`
 *   **Pattern**:
     *   Add a new `private static void testMyFeature()` method.
     *   Call it from `main()`.
@@ -82,8 +82,8 @@ As an AI agent, you **MUST** strictly follow this 3-step protocol for **EVERY** 
 *   **Goal**: Verify your specific change works in isolation.
 *   **Action**: Run **ONLY** the test case you just wrote or modified.
 *   **Commands**:
-    *   Unit: `./gradlew test --tests "io.brane.core.MyClassTest"`
-    *   Integration: `./gradlew :brane-examples:run -PmainClass=io.brane.examples.MyNewExample`
+    *   Unit: `./gradlew test --tests "sh.brane.core.MyClassTest"`
+    *   Integration: `./gradlew :brane-examples:run -PmainClass=sh.brane.examples.MyNewExample`
 *   **Rule**: If this fails, **STOP**. Fix the code. Do not run other tests.
 
 #### Step 2: Layer Verification (The "Regression" Check)
