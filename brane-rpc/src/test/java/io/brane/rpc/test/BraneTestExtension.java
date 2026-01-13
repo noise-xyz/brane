@@ -11,6 +11,8 @@ import org.junit.jupiter.api.extension.ParameterResolutionException;
 import org.junit.jupiter.api.extension.ParameterResolver;
 
 import io.brane.rpc.Brane;
+import io.brane.rpc.BraneProvider;
+import io.brane.rpc.HttpBraneProvider;
 import io.brane.rpc.SnapshotId;
 
 /**
@@ -26,7 +28,7 @@ import io.brane.rpc.SnapshotId;
  *   <li>Takes a snapshot before each test</li>
  *   <li>Reverts to the snapshot after each test</li>
  *   <li>Closes the tester after all tests</li>
- *   <li>Supports parameter injection for {@link Brane.Tester}, {@link Brane.Signer}, and {@link Brane.Reader}</li>
+ *   <li>Supports parameter injection for {@link Brane.Tester}, {@link Brane.Signer}, {@link Brane.Reader}, and {@link BraneProvider}</li>
  * </ul>
  *
  * <h2>Usage Example</h2>
@@ -85,16 +87,25 @@ public class BraneTestExtension implements
 
     private static final String TESTER_KEY = "tester";
     private static final String READER_KEY = "reader";
+    private static final String PROVIDER_KEY = "provider";
     private static final String SNAPSHOT_KEY = "snapshot";
 
     @Override
     public void beforeAll(ExtensionContext context) {
+        // Only create tester in the root test class, not in nested classes
+        if (isNestedClass(context)) {
+            return;
+        }
         var tester = Brane.connectTest();
         getStore(context).put(TESTER_KEY, tester);
     }
 
     @Override
     public void afterAll(ExtensionContext context) {
+        // Only close resources in the root test class, not in nested classes
+        if (isNestedClass(context)) {
+            return;
+        }
         var tester = getTester(context);
         if (tester != null) {
             closeQuietly(tester);
@@ -103,6 +114,19 @@ public class BraneTestExtension implements
         if (reader != null) {
             closeQuietly(reader);
         }
+        var provider = getStore(context).get(PROVIDER_KEY, BraneProvider.class);
+        if (provider != null) {
+            closeQuietly(provider);
+        }
+    }
+
+    /**
+     * Checks if the context is for a nested test class.
+     */
+    private boolean isNestedClass(ExtensionContext context) {
+        return context.getParent()
+                .flatMap(ExtensionContext::getTestClass)
+                .isPresent();
     }
 
     private void closeQuietly(AutoCloseable closeable) {
@@ -127,7 +151,14 @@ public class BraneTestExtension implements
         var tester = getTester(context);
         var snapshot = getStore(context).remove(SNAPSHOT_KEY, SnapshotId.class);
         if (tester != null && snapshot != null) {
-            tester.revert(snapshot);
+            // Try to revert. If it fails (e.g., snapshot was invalidated by reset()),
+            // silently ignore - the test already completed and we don't want to mask
+            // the actual test result with a cleanup error.
+            try {
+                tester.revert(snapshot);
+            } catch (Exception e) {
+                // Snapshot was likely invalidated by a reset() call in the test
+            }
         }
     }
 
@@ -137,7 +168,8 @@ public class BraneTestExtension implements
         Class<?> type = parameterContext.getParameter().getType();
         return type == Brane.Tester.class
                 || type == Brane.Signer.class
-                || type == Brane.Reader.class;
+                || type == Brane.Reader.class
+                || type == BraneProvider.class;
     }
 
     @Override
@@ -156,6 +188,8 @@ public class BraneTestExtension implements
             return tester.asSigner();
         } else if (type == Brane.Reader.class) {
             return getOrCreateReader(extensionContext);
+        } else if (type == BraneProvider.class) {
+            return getOrCreateProvider(extensionContext);
         }
 
         throw new ParameterResolutionException("Unsupported parameter type: " + type);
@@ -171,6 +205,16 @@ public class BraneTestExtension implements
             store.put(READER_KEY, reader);
         }
         return reader;
+    }
+
+    private BraneProvider getOrCreateProvider(ExtensionContext context) {
+        var store = getStore(context);
+        var provider = store.get(PROVIDER_KEY, BraneProvider.class);
+        if (provider == null) {
+            provider = HttpBraneProvider.builder(Brane.DEFAULT_ANVIL_URL).build();
+            store.put(PROVIDER_KEY, provider);
+        }
+        return provider;
     }
 
     private ExtensionContext.Store getStore(ExtensionContext context) {

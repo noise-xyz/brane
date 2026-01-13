@@ -6,19 +6,21 @@ import static org.junit.jupiter.api.Assertions.*;
 import java.math.BigInteger;
 import java.util.List;
 
-import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.ClassOrderer;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestClassOrder;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.junit.jupiter.api.extension.ExtendWith;
 
-import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.rpc.internal.RpcUtils;
+import io.brane.rpc.test.BraneTestExtension;
 
 /**
  * Integration tests for {@link Brane.Tester} account manipulation methods against Anvil.
@@ -34,48 +36,19 @@ import io.brane.rpc.internal.RpcUtils;
  * </pre>
  */
 @EnabledIfSystemProperty(named = "brane.integration.tests", matches = "true")
+@ExtendWith(BraneTestExtension.class)
+@TestClassOrder(ClassOrderer.OrderAnnotation.class)
 class TesterIntegrationTest {
-
-    private static final String TEST_PRIVATE_KEY =
-            "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 
     private static final Address TEST_ADDRESS =
             new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
-
-    private static Brane.Tester tester;
-    private static BraneProvider provider;
-    private SnapshotId snapshot;
-
-    @BeforeAll
-    static void setupClient() {
-        String rpcUrl = System.getProperty("brane.examples.rpc", "http://127.0.0.1:8545");
-        var signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
-        provider = HttpBraneProvider.builder(rpcUrl).build();
-        tester = Brane.builder()
-                .provider(provider)
-                .signer(signer)
-                .testMode(TestNodeMode.ANVIL)
-                .buildTester();
-    }
-
-    @BeforeEach
-    void createSnapshot() {
-        snapshot = tester.snapshot();
-    }
-
-    @org.junit.jupiter.api.AfterEach
-    void revertSnapshot() {
-        if (snapshot != null) {
-            tester.revert(snapshot);
-        }
-    }
 
     // ==================== Helper Methods for Raw RPC Calls ====================
 
     /**
      * Gets bytecode at an address using eth_getCode.
      */
-    private static HexData getCode(Address address) {
+    private static HexData getCode(BraneProvider provider, Address address) {
         JsonRpcResponse response = provider.send("eth_getCode", List.of(address.value(), "latest"));
         Object result = response.result();
         if (result == null) {
@@ -87,7 +60,7 @@ class TesterIntegrationTest {
     /**
      * Gets the nonce of an address using eth_getTransactionCount.
      */
-    private static BigInteger getNonce(Address address) {
+    private static BigInteger getNonce(BraneProvider provider, Address address) {
         JsonRpcResponse response = provider.send("eth_getTransactionCount", List.of(address.value(), "latest"));
         Object result = response.result();
         if (result == null) {
@@ -99,7 +72,7 @@ class TesterIntegrationTest {
     /**
      * Gets storage at a slot using eth_getStorageAt.
      */
-    private static Hash getStorageAt(Address address, Hash slot) {
+    private static Hash getStorageAt(BraneProvider provider, Address address, Hash slot) {
         JsonRpcResponse response = provider.send("eth_getStorageAt", List.of(address.value(), slot.value(), "latest"));
         Object result = response.result();
         if (result == null) {
@@ -111,12 +84,13 @@ class TesterIntegrationTest {
     // ==================== setBalance() Integration Tests ====================
 
     @Nested
+    @Order(1)
     @DisplayName("setBalance integration tests")
     class SetBalanceTests {
 
         @Test
         @DisplayName("setBalance changes account balance")
-        void setBalanceChangesAccountBalance() {
+        void setBalanceChangesAccountBalance(Brane.Tester tester) {
             Wei newBalance = Wei.fromEther(new java.math.BigDecimal("12345"));
 
             tester.setBalance(TEST_ADDRESS, newBalance);
@@ -127,7 +101,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("setBalance can set balance to zero")
-        void setBalanceCanSetToZero() {
+        void setBalanceCanSetToZero(Brane.Tester tester) {
             tester.setBalance(TEST_ADDRESS, Wei.of(0));
 
             BigInteger actualBalance = tester.getBalance(TEST_ADDRESS);
@@ -136,7 +110,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("setBalance can set very large balance")
-        void setBalanceCanSetLargeBalance() {
+        void setBalanceCanSetLargeBalance(Brane.Tester tester) {
             // 1 million ETH
             Wei largeBalance = Wei.fromEther(new java.math.BigDecimal("1000000"));
 
@@ -150,6 +124,7 @@ class TesterIntegrationTest {
     // ==================== setCode() Integration Tests ====================
 
     @Nested
+    @Order(2)
     @DisplayName("setCode integration tests")
     class SetCodeTests {
 
@@ -158,42 +133,42 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("setCode deploys code at address")
-        void setCodeDeploysCodeAtAddress() {
+        void setCodeDeploysCodeAtAddress(Brane.Tester tester, BraneProvider provider) {
             tester.setCode(TEST_ADDRESS, SIMPLE_CODE);
 
-            HexData actualCode = getCode(TEST_ADDRESS);
+            HexData actualCode = getCode(provider, TEST_ADDRESS);
             assertEquals(SIMPLE_CODE.value(), actualCode.value());
         }
 
         @Test
         @DisplayName("setCode can set empty code")
-        void setCodeCanSetEmptyCode() {
+        void setCodeCanSetEmptyCode(Brane.Tester tester, BraneProvider provider) {
             // First set some code
             tester.setCode(TEST_ADDRESS, SIMPLE_CODE);
 
             // Then clear it
             tester.setCode(TEST_ADDRESS, new HexData("0x"));
 
-            HexData actualCode = getCode(TEST_ADDRESS);
+            HexData actualCode = getCode(provider, TEST_ADDRESS);
             assertEquals("0x", actualCode.value());
         }
 
         @Test
         @DisplayName("setCode replaces existing code")
-        void setCodeReplacesExistingCode() {
+        void setCodeReplacesExistingCode(Brane.Tester tester, BraneProvider provider) {
             HexData code1 = new HexData("0x6001");
             HexData code2 = new HexData("0x6002");
 
             tester.setCode(TEST_ADDRESS, code1);
             tester.setCode(TEST_ADDRESS, code2);
 
-            HexData actualCode = getCode(TEST_ADDRESS);
+            HexData actualCode = getCode(provider, TEST_ADDRESS);
             assertEquals(code2.value(), actualCode.value());
         }
 
         @Test
         @DisplayName("getCode via Brane.Reader interface returns code set by setCode")
-        void getCodeViaReaderInterfaceReturnsSetCode() {
+        void getCodeViaReaderInterfaceReturnsSetCode(Brane.Tester tester) {
             tester.setCode(TEST_ADDRESS, SIMPLE_CODE);
 
             // Use the Brane.Reader interface method (not raw RPC)
@@ -203,7 +178,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("getCode via Brane.Reader interface returns empty for EOA")
-        void getCodeViaReaderInterfaceReturnsEmptyForEoa() {
+        void getCodeViaReaderInterfaceReturnsEmptyForEoa(Brane.Tester tester) {
             // Clear any existing code
             tester.setCode(TEST_ADDRESS, new HexData("0x"));
 
@@ -216,41 +191,42 @@ class TesterIntegrationTest {
     // ==================== setNonce() Integration Tests ====================
 
     @Nested
+    @Order(3)
     @DisplayName("setNonce integration tests")
     class SetNonceTests {
 
         @Test
         @DisplayName("setNonce changes account nonce")
-        void setNonceChangesAccountNonce() {
+        void setNonceChangesAccountNonce(Brane.Tester tester, BraneProvider provider) {
             long newNonce = 42;
 
             tester.setNonce(TEST_ADDRESS, newNonce);
 
-            BigInteger actualNonce = getNonce(TEST_ADDRESS);
+            BigInteger actualNonce = getNonce(provider, TEST_ADDRESS);
             assertEquals(BigInteger.valueOf(newNonce), actualNonce);
         }
 
         @Test
         @DisplayName("setNonce can set to zero")
-        void setNonceCanSetToZero() {
+        void setNonceCanSetToZero(Brane.Tester tester, BraneProvider provider) {
             // First set a non-zero nonce
             tester.setNonce(TEST_ADDRESS, 100);
 
             // Then set it back to zero
             tester.setNonce(TEST_ADDRESS, 0);
 
-            BigInteger actualNonce = getNonce(TEST_ADDRESS);
+            BigInteger actualNonce = getNonce(provider, TEST_ADDRESS);
             assertEquals(BigInteger.ZERO, actualNonce);
         }
 
         @Test
         @DisplayName("setNonce can set large nonce")
-        void setNonceCanSetLargeNonce() {
+        void setNonceCanSetLargeNonce(Brane.Tester tester, BraneProvider provider) {
             long largeNonce = 999_999_999L;
 
             tester.setNonce(TEST_ADDRESS, largeNonce);
 
-            BigInteger actualNonce = getNonce(TEST_ADDRESS);
+            BigInteger actualNonce = getNonce(provider, TEST_ADDRESS);
             assertEquals(BigInteger.valueOf(largeNonce), actualNonce);
         }
     }
@@ -258,6 +234,7 @@ class TesterIntegrationTest {
     // ==================== setStorageAt() Integration Tests ====================
 
     @Nested
+    @Order(4)
     @DisplayName("setStorageAt integration tests")
     class SetStorageAtTests {
 
@@ -269,19 +246,19 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("setStorageAt sets storage value")
-        void setStorageAtSetsStorageValue() {
+        void setStorageAtSetsStorageValue(Brane.Tester tester, BraneProvider provider) {
             // First deploy some code so the address is a contract
             tester.setCode(TEST_ADDRESS, new HexData("0x60016000"));
 
             tester.setStorageAt(TEST_ADDRESS, SLOT_0, VALUE_42);
 
-            Hash actualValue = getStorageAt(TEST_ADDRESS, SLOT_0);
+            Hash actualValue = getStorageAt(provider, TEST_ADDRESS, SLOT_0);
             assertEquals(VALUE_42.value(), actualValue.value());
         }
 
         @Test
         @DisplayName("setStorageAt can set to zero")
-        void setStorageAtCanSetToZero() {
+        void setStorageAtCanSetToZero(Brane.Tester tester, BraneProvider provider) {
             tester.setCode(TEST_ADDRESS, new HexData("0x60016000"));
 
             // First set a non-zero value
@@ -291,13 +268,13 @@ class TesterIntegrationTest {
             Hash zeroValue = new Hash("0x0000000000000000000000000000000000000000000000000000000000000000");
             tester.setStorageAt(TEST_ADDRESS, SLOT_0, zeroValue);
 
-            Hash actualValue = getStorageAt(TEST_ADDRESS, SLOT_0);
+            Hash actualValue = getStorageAt(provider, TEST_ADDRESS, SLOT_0);
             assertEquals(zeroValue.value(), actualValue.value());
         }
 
         @Test
         @DisplayName("setStorageAt works with different slots")
-        void setStorageAtWorksWithDifferentSlots() {
+        void setStorageAtWorksWithDifferentSlots(Brane.Tester tester, BraneProvider provider) {
             tester.setCode(TEST_ADDRESS, new HexData("0x60016000"));
 
             Hash slot1 = new Hash("0x0000000000000000000000000000000000000000000000000000000000000001");
@@ -308,13 +285,13 @@ class TesterIntegrationTest {
             tester.setStorageAt(TEST_ADDRESS, slot1, value1);
             tester.setStorageAt(TEST_ADDRESS, slot5, value5);
 
-            assertEquals(value1.value(), getStorageAt(TEST_ADDRESS, slot1).value());
-            assertEquals(value5.value(), getStorageAt(TEST_ADDRESS, slot5).value());
+            assertEquals(value1.value(), getStorageAt(provider, TEST_ADDRESS, slot1).value());
+            assertEquals(value5.value(), getStorageAt(provider, TEST_ADDRESS, slot5).value());
         }
 
         @Test
         @DisplayName("getStorageAt via Brane.Reader interface returns value set by setStorageAt")
-        void getStorageAtViaReaderInterfaceReturnsSetValue() {
+        void getStorageAtViaReaderInterfaceReturnsSetValue(Brane.Tester tester) {
             // Deploy code first so address is a contract
             tester.setCode(TEST_ADDRESS, new HexData("0x60016000"));
 
@@ -327,7 +304,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("getStorageAt via Brane.Reader interface returns zero for uninitialized slot")
-        void getStorageAtViaReaderInterfaceReturnsZeroForUninitializedSlot() {
+        void getStorageAtViaReaderInterfaceReturnsZeroForUninitializedSlot(Brane.Tester tester) {
             // Deploy code first
             tester.setCode(TEST_ADDRESS, new HexData("0x60016000"));
 
@@ -343,7 +320,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("getStorageAt via Brane.Reader interface works with large slot numbers")
-        void getStorageAtViaReaderInterfaceWorksWithLargeSlotNumbers() {
+        void getStorageAtViaReaderInterfaceWorksWithLargeSlotNumbers(Brane.Tester tester) {
             tester.setCode(TEST_ADDRESS, new HexData("0x60016000"));
 
             // Large slot number (like those used by Solidity mappings)
@@ -361,12 +338,13 @@ class TesterIntegrationTest {
     // ==================== Combined Operations Tests ====================
 
     @Nested
+    @Order(5)
     @DisplayName("Combined account manipulation tests")
     class CombinedTests {
 
         @Test
         @DisplayName("setBalance and setNonce work together")
-        void setBalanceAndNonceWorkTogether() {
+        void setBalanceAndNonceWorkTogether(Brane.Tester tester, BraneProvider provider) {
             Wei balance = Wei.fromEther(new java.math.BigDecimal("100"));
             long nonce = 50;
 
@@ -374,12 +352,12 @@ class TesterIntegrationTest {
             tester.setNonce(TEST_ADDRESS, nonce);
 
             assertEquals(balance.value(), tester.getBalance(TEST_ADDRESS));
-            assertEquals(BigInteger.valueOf(nonce), getNonce(TEST_ADDRESS));
+            assertEquals(BigInteger.valueOf(nonce), getNonce(provider, TEST_ADDRESS));
         }
 
         @Test
         @DisplayName("setCode and setStorageAt work together")
-        void setCodeAndStorageWorkTogether() {
+        void setCodeAndStorageWorkTogether(Brane.Tester tester, BraneProvider provider) {
             HexData code = new HexData("0x602a60005260206000f3");
             Hash slot = new Hash("0x0000000000000000000000000000000000000000000000000000000000000000");
             Hash value = new Hash("0x000000000000000000000000000000000000000000000000000000000000002a");
@@ -387,13 +365,13 @@ class TesterIntegrationTest {
             tester.setCode(TEST_ADDRESS, code);
             tester.setStorageAt(TEST_ADDRESS, slot, value);
 
-            assertEquals(code.value(), getCode(TEST_ADDRESS).value());
-            assertEquals(value.value(), getStorageAt(TEST_ADDRESS, slot).value());
+            assertEquals(code.value(), getCode(provider, TEST_ADDRESS).value());
+            assertEquals(value.value(), getStorageAt(provider, TEST_ADDRESS, slot).value());
         }
 
         @Test
         @DisplayName("snapshot and revert preserve original state")
-        void snapshotAndRevertPreserveState() {
+        void snapshotAndRevertPreserveState(Brane.Tester tester) {
             // Get original balance
             BigInteger originalBalance = tester.getBalance(TEST_ADDRESS);
 
@@ -416,12 +394,13 @@ class TesterIntegrationTest {
     // ==================== State Management Integration Tests ====================
 
     @Nested
+    @Order(6)
     @DisplayName("Snapshot and revert integration tests")
     class SnapshotAndRevertTests {
 
         @Test
         @DisplayName("snapshot returns unique IDs for each call")
-        void snapshotReturnsUniqueIds() {
+        void snapshotReturnsUniqueIds(Brane.Tester tester) {
             SnapshotId snapshot1 = tester.snapshot();
             SnapshotId snapshot2 = tester.snapshot();
 
@@ -432,7 +411,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("revert restores balance changes")
-        void revertRestoresBalanceChanges() {
+        void revertRestoresBalanceChanges(Brane.Tester tester) {
             BigInteger originalBalance = tester.getBalance(TEST_ADDRESS);
             SnapshotId snap = tester.snapshot();
 
@@ -447,54 +426,54 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("revert restores code changes")
-        void revertRestoresCodeChanges() {
-            HexData originalCode = getCode(TEST_ADDRESS);
+        void revertRestoresCodeChanges(Brane.Tester tester, BraneProvider provider) {
+            HexData originalCode = getCode(provider, TEST_ADDRESS);
             SnapshotId snap = tester.snapshot();
 
             HexData newCode = new HexData("0x602a60005260206000f3");
             tester.setCode(TEST_ADDRESS, newCode);
-            assertEquals(newCode.value(), getCode(TEST_ADDRESS).value());
+            assertEquals(newCode.value(), getCode(provider, TEST_ADDRESS).value());
 
             tester.revert(snap);
-            assertEquals(originalCode.value(), getCode(TEST_ADDRESS).value());
+            assertEquals(originalCode.value(), getCode(provider, TEST_ADDRESS).value());
         }
 
         @Test
         @DisplayName("revert restores nonce changes")
-        void revertRestoresNonceChanges() {
-            BigInteger originalNonce = getNonce(TEST_ADDRESS);
+        void revertRestoresNonceChanges(Brane.Tester tester, BraneProvider provider) {
+            BigInteger originalNonce = getNonce(provider, TEST_ADDRESS);
             SnapshotId snap = tester.snapshot();
 
             tester.setNonce(TEST_ADDRESS, 999);
-            assertEquals(BigInteger.valueOf(999), getNonce(TEST_ADDRESS));
+            assertEquals(BigInteger.valueOf(999), getNonce(provider, TEST_ADDRESS));
 
             tester.revert(snap);
-            assertEquals(originalNonce, getNonce(TEST_ADDRESS));
+            assertEquals(originalNonce, getNonce(provider, TEST_ADDRESS));
         }
 
         @Test
         @DisplayName("revert restores storage changes")
-        void revertRestoresStorageChanges() {
+        void revertRestoresStorageChanges(Brane.Tester tester, BraneProvider provider) {
             Hash slot = new Hash("0x0000000000000000000000000000000000000000000000000000000000000000");
             Hash zeroValue = new Hash("0x0000000000000000000000000000000000000000000000000000000000000000");
 
             // Set up a contract with some code
             tester.setCode(TEST_ADDRESS, new HexData("0x60016000"));
 
-            Hash originalStorage = getStorageAt(TEST_ADDRESS, slot);
+            Hash originalStorage = getStorageAt(provider, TEST_ADDRESS, slot);
             SnapshotId snap = tester.snapshot();
 
             Hash newValue = new Hash("0x000000000000000000000000000000000000000000000000000000000000abcd");
             tester.setStorageAt(TEST_ADDRESS, slot, newValue);
-            assertEquals(newValue.value(), getStorageAt(TEST_ADDRESS, slot).value());
+            assertEquals(newValue.value(), getStorageAt(provider, TEST_ADDRESS, slot).value());
 
             tester.revert(snap);
-            assertEquals(originalStorage.value(), getStorageAt(TEST_ADDRESS, slot).value());
+            assertEquals(originalStorage.value(), getStorageAt(provider, TEST_ADDRESS, slot).value());
         }
 
         @Test
         @DisplayName("nested snapshots work correctly")
-        void nestedSnapshotsWorkCorrectly() {
+        void nestedSnapshotsWorkCorrectly(Brane.Tester tester) {
             BigInteger balance0 = tester.getBalance(TEST_ADDRESS);
 
             SnapshotId snap1 = tester.snapshot();
@@ -518,9 +497,9 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("revert restores multiple state changes atomically")
-        void revertRestoresMultipleChangesAtomically() {
+        void revertRestoresMultipleChangesAtomically(Brane.Tester tester, BraneProvider provider) {
             BigInteger originalBalance = tester.getBalance(TEST_ADDRESS);
-            BigInteger originalNonce = getNonce(TEST_ADDRESS);
+            BigInteger originalNonce = getNonce(provider, TEST_ADDRESS);
 
             SnapshotId snap = tester.snapshot();
 
@@ -530,24 +509,25 @@ class TesterIntegrationTest {
 
             // Verify changes
             assertEquals(Wei.fromEther(new java.math.BigDecimal("777")).value(), tester.getBalance(TEST_ADDRESS));
-            assertEquals(BigInteger.valueOf(777), getNonce(TEST_ADDRESS));
+            assertEquals(BigInteger.valueOf(777), getNonce(provider, TEST_ADDRESS));
 
             // Revert should restore all changes
             tester.revert(snap);
             assertEquals(originalBalance, tester.getBalance(TEST_ADDRESS));
-            assertEquals(originalNonce, getNonce(TEST_ADDRESS));
+            assertEquals(originalNonce, getNonce(provider, TEST_ADDRESS));
         }
     }
 
     // ==================== Dump and Load State Integration Tests ====================
 
     @Nested
+    @Order(7)
     @DisplayName("dumpState and loadState integration tests")
     class DumpAndLoadStateTests {
 
         @Test
         @DisplayName("dumpState returns non-empty state data")
-        void dumpStateReturnsNonEmptyData() {
+        void dumpStateReturnsNonEmptyData(Brane.Tester tester) {
             HexData state = tester.dumpState();
 
             assertNotNull(state);
@@ -557,7 +537,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("loadState returns true on valid state")
-        void loadStateReturnsTrueOnValidState() {
+        void loadStateReturnsTrueOnValidState(Brane.Tester tester) {
             HexData state = tester.dumpState();
 
             boolean loaded = tester.loadState(state);
@@ -567,7 +547,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("dumpState and loadState preserve account balance")
-        void dumpAndLoadStatePreservesBalance() {
+        void dumpAndLoadStatePreservesBalance(Brane.Tester tester) {
             // Set a specific balance
             Wei testBalance = Wei.fromEther(new java.math.BigDecimal("123.456"));
             tester.setBalance(TEST_ADDRESS, testBalance);
@@ -589,11 +569,11 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("dumpState captures nonce in state")
-        void dumpStateCapturesNonce() {
+        void dumpStateCapturesNonce(Brane.Tester tester, BraneProvider provider) {
             // Set a specific nonce
             long testNonce = 42;
             tester.setNonce(TEST_ADDRESS, testNonce);
-            assertEquals(BigInteger.valueOf(testNonce), getNonce(TEST_ADDRESS));
+            assertEquals(BigInteger.valueOf(testNonce), getNonce(provider, TEST_ADDRESS));
 
             // Dump state - verifies the operation completes successfully
             HexData savedState = tester.dumpState();
@@ -603,7 +583,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("dumpState and loadState preserve contract code")
-        void dumpAndLoadStatePreservesCode() {
+        void dumpAndLoadStatePreservesCode(Brane.Tester tester, BraneProvider provider) {
             // Set contract code
             HexData testCode = new HexData("0x602a60005260206000f3");
             tester.setCode(TEST_ADDRESS, testCode);
@@ -613,18 +593,18 @@ class TesterIntegrationTest {
 
             // Change the code
             tester.setCode(TEST_ADDRESS, new HexData("0x6001"));
-            assertEquals("0x6001", getCode(TEST_ADDRESS).value());
+            assertEquals("0x6001", getCode(provider, TEST_ADDRESS).value());
 
             // Load saved state
             tester.loadState(savedState);
 
             // Code should be restored
-            assertEquals(testCode.value(), getCode(TEST_ADDRESS).value());
+            assertEquals(testCode.value(), getCode(provider, TEST_ADDRESS).value());
         }
 
         @Test
         @DisplayName("dumpState and loadState preserve storage")
-        void dumpAndLoadStatePreservesStorage() {
+        void dumpAndLoadStatePreservesStorage(Brane.Tester tester, BraneProvider provider) {
             // Set up contract with storage
             Hash slot = new Hash("0x0000000000000000000000000000000000000000000000000000000000000001");
             Hash testValue = new Hash("0x00000000000000000000000000000000000000000000000000000000deadbeef");
@@ -638,18 +618,18 @@ class TesterIntegrationTest {
             // Change the storage
             Hash newValue = new Hash("0x0000000000000000000000000000000000000000000000000000000000000000");
             tester.setStorageAt(TEST_ADDRESS, slot, newValue);
-            assertEquals(newValue.value(), getStorageAt(TEST_ADDRESS, slot).value());
+            assertEquals(newValue.value(), getStorageAt(provider, TEST_ADDRESS, slot).value());
 
             // Load saved state
             tester.loadState(savedState);
 
             // Storage should be restored
-            assertEquals(testValue.value(), getStorageAt(TEST_ADDRESS, slot).value());
+            assertEquals(testValue.value(), getStorageAt(provider, TEST_ADDRESS, slot).value());
         }
 
         @Test
         @DisplayName("dumpState and loadState preserve multiple accounts")
-        void dumpAndLoadStatePreservesMultipleAccounts() {
+        void dumpAndLoadStatePreservesMultipleAccounts(Brane.Tester tester) {
             Address account1 = TEST_ADDRESS;
             Address account2 = new Address("0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC");
 
@@ -676,7 +656,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("state can be loaded multiple times")
-        void stateCanBeLoadedMultipleTimes() {
+        void stateCanBeLoadedMultipleTimes(Brane.Tester tester) {
             Wei testBalance = Wei.fromEther(new java.math.BigDecimal("500"));
             tester.setBalance(TEST_ADDRESS, testBalance);
 
@@ -696,6 +676,7 @@ class TesterIntegrationTest {
     // ==================== Impersonation Integration Tests ====================
 
     @Nested
+    @Order(8)
     @DisplayName("Impersonation integration tests")
     class ImpersonationTests {
 
@@ -705,7 +686,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("impersonate sends transaction from impersonated address")
-        void impersonateSendsTransactionFromImpersonatedAddress() {
+        void impersonateSendsTransactionFromImpersonatedAddress(Brane.Tester tester) {
             // Fund the whale address
             Wei whaleFunds = Wei.fromEther(new java.math.BigDecimal("100"));
             tester.setBalance(WHALE_ADDRESS, whaleFunds);
@@ -741,7 +722,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("impersonate sendTransactionAndWait works correctly")
-        void impersonateSendTransactionAndWaitWorks() {
+        void impersonateSendTransactionAndWaitWorks(Brane.Tester tester) {
             // Fund the whale address
             Wei whaleFunds = Wei.fromEther(new java.math.BigDecimal("100"));
             tester.setBalance(WHALE_ADDRESS, whaleFunds);
@@ -775,7 +756,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("impersonate session address returns correct impersonated address")
-        void impersonateSessionAddressReturnsCorrectAddress() {
+        void impersonateSessionAddressReturnsCorrectAddress(Brane.Tester tester) {
             try (ImpersonationSession session = tester.impersonate(WHALE_ADDRESS)) {
                 assertEquals(WHALE_ADDRESS, session.address());
             }
@@ -783,7 +764,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("impersonate session auto-closes with try-with-resources")
-        void impersonateSessionAutoCloses() {
+        void impersonateSessionAutoCloses(Brane.Tester tester) {
             ImpersonationSession session = tester.impersonate(WHALE_ADDRESS);
             session.close();
 
@@ -803,7 +784,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("impersonate session close is idempotent")
-        void impersonateSessionCloseIsIdempotent() {
+        void impersonateSessionCloseIsIdempotent(Brane.Tester tester) {
             ImpersonationSession session = tester.impersonate(WHALE_ADDRESS);
 
             // Multiple close calls should not throw
@@ -816,7 +797,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("impersonate can send multiple transactions in same session")
-        void impersonateCanSendMultipleTransactions() {
+        void impersonateCanSendMultipleTransactions(Brane.Tester tester) {
             Wei whaleFunds = Wei.fromEther(new java.math.BigDecimal("100"));
             tester.setBalance(WHALE_ADDRESS, whaleFunds);
 
@@ -842,7 +823,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("impersonate overwrites any from address in request")
-        void impersonateOverwritesFromAddress() {
+        void impersonateOverwritesFromAddress(Brane.Tester tester) {
             Wei whaleFunds = Wei.fromEther(new java.math.BigDecimal("100"));
             tester.setBalance(WHALE_ADDRESS, whaleFunds);
 
@@ -878,12 +859,13 @@ class TesterIntegrationTest {
     // ==================== Mining Integration Tests ====================
 
     @Nested
+    @Order(9)
     @DisplayName("Mining integration tests")
     class MiningTests {
 
         @Test
         @DisplayName("mine() advances block number by 1")
-        void mineAdvancesBlockNumberByOne() {
+        void mineAdvancesBlockNumberByOne(Brane.Tester tester) {
             io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
             long beforeNumber = beforeBlock.number();
 
@@ -895,7 +877,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("mine(blocks) advances block number by specified amount")
-        void mineBlocksAdvancesBlockNumber() {
+        void mineBlocksAdvancesBlockNumber(Brane.Tester tester) {
             io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
             long beforeNumber = beforeBlock.number();
 
@@ -907,7 +889,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("mine(blocks, interval) advances both block number and time")
-        void mineWithIntervalAdvancesBlocksAndTime() {
+        void mineWithIntervalAdvancesBlocksAndTime(Brane.Tester tester) {
             io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
             long beforeNumber = beforeBlock.number();
             long beforeTimestamp = beforeBlock.timestamp();
@@ -927,7 +909,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("mine with large block count works")
-        void mineLargeBlockCount() {
+        void mineLargeBlockCount(Brane.Tester tester) {
             io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
             long beforeNumber = beforeBlock.number();
 
@@ -941,25 +923,26 @@ class TesterIntegrationTest {
     // ==================== Automine Integration Tests ====================
 
     @Nested
+    @Order(10)
     @DisplayName("Automine integration tests")
     class AutomineTests {
 
         @org.junit.jupiter.api.BeforeEach
-        void ensureAutomineEnabled() {
+        void ensureAutomineEnabled(Brane.Tester tester) {
             // Ensure automine is enabled before each test since snapshot/revert
             // may not restore automine state
             tester.setAutomine(true);
         }
 
         @org.junit.jupiter.api.AfterEach
-        void restoreAutomine() {
+        void restoreAutomine(Brane.Tester tester) {
             // Always re-enable automine after tests
             tester.setAutomine(true);
         }
 
         @Test
         @DisplayName("getAutomine returns current state correctly")
-        void getAutomineReturnsCurrentState() {
+        void getAutomineReturnsCurrentState(Brane.Tester tester) {
             // After setup, automine should be enabled
             boolean automine = tester.getAutomine();
             assertTrue(automine, "Automine should be enabled after setup");
@@ -967,7 +950,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("setAutomine(false) disables automine")
-        void setAutomineDisables() {
+        void setAutomineDisables(Brane.Tester tester) {
             // Get initial state (should be true after setup)
             assertTrue(tester.getAutomine());
 
@@ -978,7 +961,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("setAutomine(true) enables automine")
-        void setAutomineEnables() {
+        void setAutomineEnables(Brane.Tester tester) {
             // Disable automine first
             tester.setAutomine(false);
             assertFalse(tester.getAutomine());
@@ -990,7 +973,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("transactions are not mined when automine is disabled")
-        void transactionsNotMinedWhenAutomineDisabled() {
+        void transactionsNotMinedWhenAutomineDisabled(Brane.Tester tester) {
             // Disable automine
             tester.setAutomine(false);
 
@@ -1022,7 +1005,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("setIntervalMining sets mining interval")
-        void setIntervalMiningSetsInterval() {
+        void setIntervalMiningSetsInterval(Brane.Tester tester) {
             // This test just verifies the method executes without error
             // Interval mining is harder to test in a unit test context
             assertDoesNotThrow(() -> tester.setIntervalMining(0)); // Disable interval mining
@@ -1032,12 +1015,13 @@ class TesterIntegrationTest {
     // ==================== Time Manipulation Integration Tests ====================
 
     @Nested
+    @Order(11)
     @DisplayName("Time manipulation integration tests")
     class TimeManipulationTests {
 
         @Test
         @DisplayName("increaseTime advances timestamp")
-        void increaseTimeAdvancesTimestamp() {
+        void increaseTimeAdvancesTimestamp(Brane.Tester tester) {
             io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
             long beforeTimestamp = beforeBlock.timestamp();
 
@@ -1058,7 +1042,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("increaseTime by 1 day")
-        void increaseTimeByOneDay() {
+        void increaseTimeByOneDay(Brane.Tester tester) {
             io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
             long beforeTimestamp = beforeBlock.timestamp();
 
@@ -1079,7 +1063,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("setNextBlockTimestamp sets specific timestamp for next block")
-        void setNextBlockTimestampSetsTimestamp() {
+        void setNextBlockTimestampSetsTimestamp(Brane.Tester tester) {
             // Get a future timestamp (current time + 1 year)
             long futureTimestamp = System.currentTimeMillis() / 1000 + 365 * 24 * 60 * 60;
 
@@ -1097,7 +1081,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("setNextBlockTimestamp only affects next block")
-        void setNextBlockTimestampOnlyAffectsNextBlock() {
+        void setNextBlockTimestampOnlyAffectsNextBlock(Brane.Tester tester) {
             // Get current timestamp
             io.brane.core.model.BlockHeader currentBlock = tester.getLatestBlock();
             long currentTimestamp = currentBlock.timestamp();
@@ -1129,7 +1113,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("increaseTime with multiple calls accumulates")
-        void increaseTimeAccumulates() {
+        void increaseTimeAccumulates(Brane.Tester tester) {
             io.brane.core.model.BlockHeader beforeBlock = tester.getLatestBlock();
             long beforeTimestamp = beforeBlock.timestamp();
 
@@ -1152,7 +1136,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("time manipulation is preserved across snapshots")
-        void timeManipulationPreservedAcrossSnapshots() {
+        void timeManipulationPreservedAcrossSnapshots(Brane.Tester tester) {
             // Get initial timestamp
             io.brane.core.model.BlockHeader initialBlock = tester.getLatestBlock();
             long initialTimestamp = initialBlock.timestamp();
@@ -1192,26 +1176,16 @@ class TesterIntegrationTest {
      * reset(forkUrl, blockNumber) can set up forking.
      *
      * <p><strong>Important:</strong> These tests call {@code reset()} which invalidates
-     * any existing snapshots. Each test creates a fresh snapshot after reset to allow
-     * the class-level {@code @AfterEach} to clean up properly.
+     * any existing snapshots. The extension handles this with try-catch on revert.
      */
     @Nested
+    @Order(12)
     @DisplayName("Reset integration tests")
     class ResetTests {
 
-        /**
-         * After each reset test, we need to create a new snapshot for the class-level
-         * @AfterEach to work with, since reset() invalidates all prior snapshots.
-         */
-        @org.junit.jupiter.api.AfterEach
-        void createFreshSnapshotAfterReset() {
-            // Reset invalidates the class-level snapshot, so update it
-            snapshot = tester.snapshot();
-        }
-
         @Test
         @DisplayName("reset() resets block number to genesis")
-        void resetResetsBlockNumberToGenesis() {
+        void resetResetsBlockNumberToGenesis(Brane.Tester tester) {
             // Mine several blocks
             tester.mine(50);
 
@@ -1230,7 +1204,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("reset() restores default account balances")
-        void resetRestoresDefaultAccountBalances() {
+        void resetRestoresDefaultAccountBalances(Brane.Tester tester) {
             // Anvil's default test account balance is 10000 ETH
             Wei defaultBalance = Wei.fromEther(new java.math.BigDecimal("10000"));
 
@@ -1250,23 +1224,23 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("reset() resets nonces to zero")
-        void resetResetsNoncesToZero() {
+        void resetResetsNoncesToZero(Brane.Tester tester, BraneProvider provider) {
             // Set a non-zero nonce
             tester.setNonce(TEST_ADDRESS, 999);
-            assertEquals(BigInteger.valueOf(999), getNonce(TEST_ADDRESS));
+            assertEquals(BigInteger.valueOf(999), getNonce(provider, TEST_ADDRESS));
 
             // Reset the chain
             tester.reset();
 
             // Nonce should be reset to 0
-            BigInteger nonceAfterReset = getNonce(TEST_ADDRESS);
+            BigInteger nonceAfterReset = getNonce(provider, TEST_ADDRESS);
             assertEquals(BigInteger.ZERO, nonceAfterReset,
                     "Nonce should be 0 after reset");
         }
 
         @Test
         @DisplayName("reset() allows continued chain operations")
-        void resetAllowsContinuedChainOperations() {
+        void resetAllowsContinuedChainOperations(Brane.Tester tester) {
             // Mine some blocks
             tester.mine(10);
 
@@ -1288,7 +1262,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("reset() can be called multiple times")
-        void resetCanBeCalledMultipleTimes() {
+        void resetCanBeCalledMultipleTimes(Brane.Tester tester) {
             // First set of operations
             tester.mine(10);
             assertEquals(10, tester.getLatestBlock().number());
@@ -1320,7 +1294,7 @@ class TesterIntegrationTest {
          */
         @Test
         @DisplayName("reset with fork URL sets up forked state")
-        void resetWithForkUrlSetsUpForkedState() {
+        void resetWithForkUrlSetsUpForkedState(Brane.Tester tester) {
             // Use a public RPC or skip if not available
             // We fork at a known block to verify the fork works
             String forkRpcUrl = System.getProperty("brane.fork.rpc.url");
@@ -1346,7 +1320,7 @@ class TesterIntegrationTest {
 
         @Test
         @DisplayName("reset with fork allows continued operations")
-        void resetWithForkAllowsContinuedOperations() {
+        void resetWithForkAllowsContinuedOperations(Brane.Tester tester) {
             String forkRpcUrl = System.getProperty("brane.fork.rpc.url");
 
             if (forkRpcUrl == null || forkRpcUrl.isEmpty()) {
