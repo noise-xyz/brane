@@ -1007,8 +1007,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             });
             return subscriptionId;
         } catch (Exception e) {
-            if (e instanceof RpcException)
-                throw (RpcException) e;
+            if (e instanceof RpcException rpc) throw rpc;
             throw new RpcException(-32000, "Subscription failed", null, e);
         }
     }
