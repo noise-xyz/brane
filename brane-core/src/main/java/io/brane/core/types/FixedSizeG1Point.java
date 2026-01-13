@@ -56,18 +56,6 @@ public abstract sealed class FixedSizeG1Point permits KzgCommitment, KzgProof {
         return data.clone();
     }
 
-    /**
-     * Returns the raw byte array without copying.
-     * <p>
-     * Package-private for performance-critical internal use only.
-     * Callers must not modify the returned array.
-     *
-     * @return the internal byte array (do not modify)
-     */
-    byte[] toBytesUnsafe() {
-        return data;
-    }
-
     @Override
     public boolean equals(final Object o) {
         if (this == o) return true;
