@@ -102,7 +102,7 @@ class TesterIntegrationTest {
         @Test
         @DisplayName("setBalance can set balance to zero")
         void setBalanceCanSetToZero(Brane.Tester tester) {
-            tester.setBalance(TEST_ADDRESS, Wei.of(0));
+            tester.setBalance(TEST_ADDRESS, Wei.ZERO);
 
             BigInteger actualBalance = tester.getBalance(TEST_ADDRESS);
             assertEquals(BigInteger.ZERO, actualBalance);
@@ -556,7 +556,7 @@ class TesterIntegrationTest {
             HexData savedState = tester.dumpState();
 
             // Change the balance
-            tester.setBalance(TEST_ADDRESS, Wei.of(0));
+            tester.setBalance(TEST_ADDRESS, Wei.ZERO);
             assertEquals(BigInteger.ZERO, tester.getBalance(TEST_ADDRESS));
 
             // Load saved state
@@ -643,8 +643,8 @@ class TesterIntegrationTest {
             HexData savedState = tester.dumpState();
 
             // Change both balances
-            tester.setBalance(account1, Wei.of(0));
-            tester.setBalance(account2, Wei.of(0));
+            tester.setBalance(account1, Wei.ZERO);
+            tester.setBalance(account2, Wei.ZERO);
 
             // Load saved state
             tester.loadState(savedState);
