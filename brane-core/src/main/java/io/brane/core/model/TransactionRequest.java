@@ -159,7 +159,7 @@ public record TransactionRequest(
             throw new IllegalStateException("gasLimit must be set");
         }
 
-        final Wei valueOrZero = Objects.requireNonNullElse(value, Wei.of(0));
+        final Wei valueOrZero = Objects.requireNonNullElse(value, Wei.ZERO);
         final HexData dataOrEmpty = Objects.requireNonNullElse(data, HexData.EMPTY);
 
         if (isEip1559) {
