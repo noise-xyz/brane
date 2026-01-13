@@ -294,7 +294,7 @@ class Eip4844BuilderTest {
         BlobTransactionRequest request = Eip4844Builder.create()
                 .from(SENDER)
                 .to(RECIPIENT)
-                .value(Wei.of(0))
+                .value(Wei.ZERO)
                 .nonce(0)
                 .gasLimit(21000)
                 .maxFeePerGas(Wei.gwei(1))
