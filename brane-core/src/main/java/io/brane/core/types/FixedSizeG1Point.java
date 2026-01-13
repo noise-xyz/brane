@@ -18,8 +18,7 @@ import io.brane.primitives.Hex;
  *
  * @since 0.2.0
  */
-// TODO: Add 'sealed permits KzgCommitment, KzgProof' after subclasses are migrated [REFACTOR2-3.x]
-public abstract class FixedSizeG1Point {
+public abstract sealed class FixedSizeG1Point permits KzgCommitment, KzgProof {
 
     /**
      * Size of a G1 point in bytes (48 bytes for a compressed G1 point on BLS12-381).
