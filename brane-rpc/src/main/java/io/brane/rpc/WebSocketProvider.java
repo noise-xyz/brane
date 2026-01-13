@@ -722,7 +722,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         } catch (Exception e) {
             if (e.getCause() instanceof RpcException)
                 throw (RpcException) e.getCause();
-            throw new RpcException(-1, "Request failed", null, e);
+            throw new RpcException(-32000, "Request failed", null, e);
         }
     }
 
@@ -858,7 +858,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 }
             });
         } else {
-            future.completeExceptionally(new RpcException(-1, "Channel not active", null));
+            future.completeExceptionally(new RpcException(-32000, "Channel not active", null));
         }
 
         return future;
@@ -1010,7 +1010,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         } catch (Exception e) {
             if (e instanceof RpcException)
                 throw (RpcException) e;
-            throw new RpcException(-1, "Subscription failed", null, e);
+            throw new RpcException(-32000, "Subscription failed", null, e);
         }
     }
 
@@ -1029,7 +1029,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             subscriptions.remove(subscriptionId);
             return "true".equals(String.valueOf(response.result()));
         } catch (Exception e) {
-            throw new RpcException(-1, "Unsubscribe failed", null, e);
+            throw new RpcException(-32000, "Unsubscribe failed", null, e);
         }
     }
 
@@ -1216,7 +1216,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
             // Channel not active - fail the request
             CompletableFuture<JsonRpcResponse> future = pendingRequests.remove(event.id);
             if (future != null) {
-                future.completeExceptionally(new RpcException(-1, "Channel not active", null));
+                future.completeExceptionally(new RpcException(-32000, "Channel not active", null));
             }
         }
         // Clear event data to prevent stale references when Disruptor reuses this event object.
