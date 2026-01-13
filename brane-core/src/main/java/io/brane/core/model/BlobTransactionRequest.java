@@ -191,8 +191,8 @@ public record BlobTransactionRequest(
             throw new IllegalStateException("maxFeePerBlobGas must be set for EIP-4844 transactions");
         }
 
-        final Wei valueOrZero = value != null ? value : Wei.ZERO;
-        final HexData dataOrEmpty = data != null ? data : HexData.EMPTY;
+        final Wei valueOrZero = Objects.requireNonNullElse(value, Wei.ZERO);
+        final HexData dataOrEmpty = Objects.requireNonNullElse(data, HexData.EMPTY);
 
         return new Eip4844Transaction(
                 chainId,
