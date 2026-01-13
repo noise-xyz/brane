@@ -372,7 +372,7 @@ final class SmartGasStrategy {
         }
         final Object resultObj = response.result();
         if (resultObj == null) {
-            throw new RpcException(-32000, "eth_gasPrice returned null result", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult("eth_gasPrice");
         }
         return resultObj.toString();
     }
