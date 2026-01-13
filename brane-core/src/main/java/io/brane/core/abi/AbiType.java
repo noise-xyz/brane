@@ -12,7 +12,7 @@ package io.brane.core.abi;
  * @see AbiDecoder
  */
 public sealed interface AbiType permits
-        UInt, Int, AddressType, Bool, Bytes, Utf8String, Array, Tuple {
+        StaticAbiType, Bytes, Utf8String, Array, Tuple {
 
     /**
      * Returns the static byte size of this type (usually 32).
