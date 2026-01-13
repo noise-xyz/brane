@@ -51,7 +51,7 @@ class BlobTransactionRequestTest {
     void rejectsNullTo() {
         assertThrows(NullPointerException.class, () ->
                 new BlobTransactionRequest(
-                        from, null, Wei.of(0), 21000L,
+                        from, null, Wei.ZERO, 21000L,
                         Wei.of(1), Wei.of(2), Wei.of(3),
                         0L, HexData.EMPTY, null, sidecar));
     }
@@ -60,7 +60,7 @@ class BlobTransactionRequestTest {
     void rejectsNullSidecar() {
         assertThrows(NullPointerException.class, () ->
                 new BlobTransactionRequest(
-                        from, to, Wei.of(0), 21000L,
+                        from, to, Wei.ZERO, 21000L,
                         Wei.of(1), Wei.of(2), Wei.of(3),
                         0L, HexData.EMPTY, null, null));
     }
@@ -69,7 +69,7 @@ class BlobTransactionRequestTest {
     void rejectsNegativeGasLimit() {
         assertThrows(IllegalArgumentException.class, () ->
                 new BlobTransactionRequest(
-                        from, to, Wei.of(0), -1L,
+                        from, to, Wei.ZERO, -1L,
                         Wei.of(1), Wei.of(2), Wei.of(3),
                         0L, HexData.EMPTY, null, sidecar));
     }
@@ -78,7 +78,7 @@ class BlobTransactionRequestTest {
     void rejectsNegativeNonce() {
         assertThrows(IllegalArgumentException.class, () ->
                 new BlobTransactionRequest(
-                        from, to, Wei.of(0), 21000L,
+                        from, to, Wei.ZERO, 21000L,
                         Wei.of(1), Wei.of(2), Wei.of(3),
                         -1L, HexData.EMPTY, null, sidecar));
     }
@@ -86,7 +86,7 @@ class BlobTransactionRequestTest {
     @Test
     void blobVersionedHashesDelegatesToSidecar() {
         BlobTransactionRequest request = new BlobTransactionRequest(
-                from, to, Wei.of(0), 21000L,
+                from, to, Wei.ZERO, 21000L,
                 Wei.of(1), Wei.of(2), Wei.of(3),
                 0L, HexData.EMPTY, null, sidecar);
 
@@ -139,7 +139,7 @@ class BlobTransactionRequestTest {
     @Test
     void accessListOrEmptyReturnsEmptyForNull() {
         BlobTransactionRequest request = new BlobTransactionRequest(
-                from, to, Wei.of(0), 21000L,
+                from, to, Wei.ZERO, 21000L,
                 Wei.of(1), Wei.of(2), Wei.of(3),
                 0L, HexData.EMPTY, null, sidecar);
 
@@ -152,7 +152,7 @@ class BlobTransactionRequestTest {
                 new AccessListEntry(to, List.of(new Hash("0x" + "1".repeat(64)))));
 
         BlobTransactionRequest request = new BlobTransactionRequest(
-                from, to, Wei.of(0), 21000L,
+                from, to, Wei.ZERO, 21000L,
                 Wei.of(1), Wei.of(2), Wei.of(3),
                 0L, HexData.EMPTY, entries, sidecar);
 
@@ -162,7 +162,7 @@ class BlobTransactionRequestTest {
     @Test
     void toUnsignedTransactionThrowsWhenFromIsNull() {
         BlobTransactionRequest request = new BlobTransactionRequest(
-                null, to, Wei.of(0), 21000L,
+                null, to, Wei.ZERO, 21000L,
                 Wei.of(1), Wei.of(2), Wei.of(3),
                 0L, HexData.EMPTY, null, sidecar);
 
@@ -174,7 +174,7 @@ class BlobTransactionRequestTest {
     @Test
     void toUnsignedTransactionThrowsWhenNonceIsNull() {
         BlobTransactionRequest request = new BlobTransactionRequest(
-                from, to, Wei.of(0), 21000L,
+                from, to, Wei.ZERO, 21000L,
                 Wei.of(1), Wei.of(2), Wei.of(3),
                 null, HexData.EMPTY, null, sidecar);
 
@@ -186,7 +186,7 @@ class BlobTransactionRequestTest {
     @Test
     void toUnsignedTransactionThrowsWhenGasLimitIsNull() {
         BlobTransactionRequest request = new BlobTransactionRequest(
-                from, to, Wei.of(0), null,
+                from, to, Wei.ZERO, null,
                 Wei.of(1), Wei.of(2), Wei.of(3),
                 0L, HexData.EMPTY, null, sidecar);
 
@@ -198,7 +198,7 @@ class BlobTransactionRequestTest {
     @Test
     void toUnsignedTransactionThrowsWhenMaxPriorityFeePerGasIsNull() {
         BlobTransactionRequest request = new BlobTransactionRequest(
-                from, to, Wei.of(0), 21000L,
+                from, to, Wei.ZERO, 21000L,
                 null, Wei.of(2), Wei.of(3),
                 0L, HexData.EMPTY, null, sidecar);
 
@@ -210,7 +210,7 @@ class BlobTransactionRequestTest {
     @Test
     void toUnsignedTransactionThrowsWhenMaxFeePerGasIsNull() {
         BlobTransactionRequest request = new BlobTransactionRequest(
-                from, to, Wei.of(0), 21000L,
+                from, to, Wei.ZERO, 21000L,
                 Wei.of(1), null, Wei.of(3),
                 0L, HexData.EMPTY, null, sidecar);
 
@@ -222,7 +222,7 @@ class BlobTransactionRequestTest {
     @Test
     void toUnsignedTransactionThrowsWhenMaxFeePerBlobGasIsNull() {
         BlobTransactionRequest request = new BlobTransactionRequest(
-                from, to, Wei.of(0), 21000L,
+                from, to, Wei.ZERO, 21000L,
                 Wei.of(1), Wei.of(2), null,
                 0L, HexData.EMPTY, null, sidecar);
 
@@ -269,13 +269,13 @@ class BlobTransactionRequestTest {
                 0L, HexData.EMPTY, null, sidecar);
 
         Eip4844Transaction tx = request.toUnsignedTransaction(1L);
-        assertEquals(Wei.of(0), tx.value());
+        assertEquals(Wei.ZERO, tx.value());
     }
 
     @Test
     void toUnsignedTransactionDefaultsNullDataToEmpty() {
         BlobTransactionRequest request = new BlobTransactionRequest(
-                from, to, Wei.of(0), 21000L,
+                from, to, Wei.ZERO, 21000L,
                 Wei.of(1), Wei.of(2), Wei.of(3),
                 0L, null, null, sidecar);
 
