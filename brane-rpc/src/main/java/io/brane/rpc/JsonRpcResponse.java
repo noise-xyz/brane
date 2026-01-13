@@ -80,7 +80,7 @@ public record JsonRpcResponse(
                             "Map contains non-String key: value='" + key + "', type=" + key.getClass().getName());
                 }
             }
-            return (Map<String, Object>) result;
+            return (Map<String, Object>) map;
         }
         try {
             return MAPPER.convertValue(result, new TypeReference<Map<String, Object>>() {});
