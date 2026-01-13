@@ -548,7 +548,12 @@ final class InternalAbi implements Abi {
 
                 @Override
                 public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
-                    Address a = (value instanceof Address) ? (Address) value : new Address((String) value);
+                    Address a;
+                    if (value instanceof Address addr) {
+                        a = addr;
+                    } else {
+                        a = new Address((String) value);
+                    }
                     io.brane.core.abi.FastAbiEncoder.encodeAddress(a, buffer);
                 }
             };
