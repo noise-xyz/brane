@@ -214,7 +214,7 @@ public class BraneTestExtension implements
         var store = getStore(context);
         var provider = store.get(PROVIDER_KEY, BraneProvider.class);
         if (provider == null) {
-            provider = HttpBraneProvider.builder(Brane.DEFAULT_ANVIL_URL).build();
+            provider = HttpBraneProvider.builder(System.getProperty(RPC_URL_PROPERTY, Brane.DEFAULT_ANVIL_URL)).build();
             store.put(PROVIDER_KEY, provider);
         }
         return provider;
