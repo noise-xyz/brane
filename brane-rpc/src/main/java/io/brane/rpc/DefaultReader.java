@@ -481,7 +481,7 @@ non-sealed class DefaultReader implements Brane.Reader {
     @SuppressWarnings("unchecked")
     public SimulateResult simulate(final SimulateRequest request) {
         ensureOpen();
-        final BlockTag blockTag = request.blockTag() != null ? request.blockTag() : BlockTag.LATEST;
+        final BlockTag blockTag = Objects.requireNonNullElse(request.blockTag(), BlockTag.LATEST);
         final JsonRpcResponse response = sendWithRetry(
                 "eth_simulateV1",
                 List.of(request.toMap(), blockTag.toRpcValue()));
