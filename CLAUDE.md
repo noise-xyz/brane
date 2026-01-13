@@ -248,4 +248,5 @@ mcp__cclsp__find_definition(file_path="brane-rpc/.../Brane.java", symbol_name="R
 
 ## For Full Details
 
-See `AGENT.md` for comprehensive development standards, testing protocol, and AI agent instructions.
+- `JAVA21.md` - Java 21 patterns reference (sealed types, pattern matching, records, virtual threads)
+- `AGENT.md` - Comprehensive development standards, testing protocol, and AI agent instructions
