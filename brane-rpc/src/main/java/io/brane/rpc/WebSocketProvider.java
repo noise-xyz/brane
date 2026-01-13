@@ -1237,27 +1237,27 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         for (int i = 0; i < s.length(); i++) {
             char c = s.charAt(i);
             switch (c) {
-                case '"':
+                case '"' -> {
                     buf.writeByte('\\');
                     buf.writeByte('"');
-                    break;
-                case '\\':
+                }
+                case '\\' -> {
                     buf.writeByte('\\');
                     buf.writeByte('\\');
-                    break;
-                case '\n':
+                }
+                case '\n' -> {
                     buf.writeByte('\\');
                     buf.writeByte('n');
-                    break;
-                case '\r':
+                }
+                case '\r' -> {
                     buf.writeByte('\\');
                     buf.writeByte('r');
-                    break;
-                case '\t':
+                }
+                case '\t' -> {
                     buf.writeByte('\\');
                     buf.writeByte('t');
-                    break;
-                default:
+                }
+                default -> {
                     if (c < 32) {
                         // Control character - escape as unicode
                         buf.writeByte('\\');
@@ -1278,6 +1278,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                             i++;
                         }
                     }
+                }
             }
         }
     }
