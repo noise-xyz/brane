@@ -34,6 +34,7 @@ import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.rpc.internal.LogParser;
+import io.brane.rpc.internal.RpcInvoker;
 import io.brane.rpc.internal.RpcUtils;
 
 /**
@@ -54,6 +55,7 @@ non-sealed class DefaultReader implements Brane.Reader {
     private final int maxRetries;
     private final RpcRetryConfig retryConfig;
     private final AtomicBoolean closed;
+    private final RpcInvoker rpc;
 
     /**
      * Creates a new DefaultReader with the specified configuration.
@@ -73,6 +75,7 @@ non-sealed class DefaultReader implements Brane.Reader {
         this.maxRetries = maxRetries;
         this.retryConfig = retryConfig;
         this.closed = new AtomicBoolean(false);
+        this.rpc = new RpcInvoker(this::sendWithRetry, this::ensureOpen);
     }
 
     @Override
