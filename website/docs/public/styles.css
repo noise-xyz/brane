@@ -1,3 +1,20 @@
+/* Angel background for landing page - upper half with 4% opacity */
+[data-layout="landing"]::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100vh;
+  background-image: url('/angel.svg');
+  background-size: contain;
+  background-position: center top;
+  background-repeat: no-repeat;
+  opacity: 0.02;
+  pointer-events: none;
+  z-index: 0;
+}
+
 /* Hide logo/title in header - collapse space */
 .vocs_DesktopTopNav_logo,
 .vocs_DesktopTopNav_logoWrapper {
