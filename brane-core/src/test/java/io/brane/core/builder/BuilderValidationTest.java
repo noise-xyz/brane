@@ -12,7 +12,7 @@ class BuilderValidationTest {
     @Test
     void contractCreationWithEmptyHexDataThrows() {
         // "0x" is empty hex data (0 bytes) - should reject for contract creation
-        HexData emptyData = new HexData("0x");
+        HexData emptyData = HexData.EMPTY;
         assertEquals(0, emptyData.byteLength());
 
         assertThrows(BraneTxBuilderException.class, () -> {
