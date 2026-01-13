@@ -175,7 +175,7 @@ public class ComprehensiveBenchmark {
         result.p95 = latencies.get((int) (latencies.size() * 0.95)) / 1000.0;
         result.p99 = latencies.get((int) (latencies.size() * 0.99)) / 1000.0;
         result.min = latencies.get(0) / 1000.0;
-        result.max = latencies.get(latencies.size() - 1) / 1000.0;
+        result.max = latencies.getLast() / 1000.0;
 
         return result;
     }
