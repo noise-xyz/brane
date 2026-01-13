@@ -121,7 +121,7 @@ class LegacyTransactionTest {
                 Wei.of(20000000000L),
                 53000L, // More gas for contract creation
                 null, // null recipient = contract creation
-                Wei.of(0),
+                Wei.ZERO,
                 HexData.fromBytes(new byte[] { 0x60, 0x60, 0x60, 0x40 }) // Simple bytecode
         );
 
@@ -140,7 +140,7 @@ class LegacyTransactionTest {
                 Wei.of(20000000000L),
                 21000L,
                 Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
-                Wei.of(0),
+                Wei.ZERO,
                 HexData.EMPTY));
     }
 
@@ -151,7 +151,7 @@ class LegacyTransactionTest {
                 Wei.of(20000000000L),
                 0L, // Invalid zero gas limit
                 Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
-                Wei.of(0),
+                Wei.ZERO,
                 HexData.EMPTY));
     }
 
@@ -162,7 +162,7 @@ class LegacyTransactionTest {
                 null, // Null gasPrice
                 21000L,
                 Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
-                Wei.of(0),
+                Wei.ZERO,
                 HexData.EMPTY));
 
         assertThrows(NullPointerException.class, () -> new LegacyTransaction(
@@ -178,7 +178,7 @@ class LegacyTransactionTest {
                 Wei.of(20000000000L),
                 21000L,
                 Address.fromBytes(hexToBytes("3535353535353535353535353535353535353535")),
-                Wei.of(0),
+                Wei.ZERO,
                 null // Null data
         ));
     }
