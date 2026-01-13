@@ -21,6 +21,7 @@ import org.slf4j.LoggerFactory;
 import io.brane.core.RevertDecoder;
 import io.brane.core.chain.ChainProfile;
 import io.brane.core.error.RevertException;
+import io.brane.core.error.RpcException;
 import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.AccessListWithGas;
 import io.brane.core.model.BlockHeader;
@@ -80,8 +81,7 @@ non-sealed class DefaultReader implements Brane.Reader {
         final JsonRpcResponse response = sendWithRetry("eth_chainId", List.of());
         final Object result = response.result();
         if (result == null) {
-            throw new io.brane.core.error.RpcException(
-                    0, "eth_chainId returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult("eth_chainId");
         }
         return io.brane.rpc.internal.RpcUtils.decodeHexBigInteger(result.toString());
     }
@@ -92,8 +92,7 @@ non-sealed class DefaultReader implements Brane.Reader {
         final JsonRpcResponse response = sendWithRetry("eth_getBalance", List.of(address.value(), "latest"));
         final Object result = response.result();
         if (result == null) {
-            throw new io.brane.core.error.RpcException(
-                    0, "eth_getBalance returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult("eth_getBalance");
         }
         return io.brane.rpc.internal.RpcUtils.decodeHexBigInteger(result.toString());
     }
@@ -391,8 +390,7 @@ non-sealed class DefaultReader implements Brane.Reader {
         final JsonRpcResponse response = sendWithRetry("eth_estimateGas", List.of(params));
         final Object result = response.result();
         if (result == null) {
-            throw new io.brane.core.error.RpcException(
-                    0, "eth_estimateGas returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult("eth_estimateGas");
         }
         return RpcUtils.decodeHexBigInteger(result.toString());
     }
@@ -403,8 +401,7 @@ non-sealed class DefaultReader implements Brane.Reader {
         final JsonRpcResponse response = sendWithRetry("eth_blobBaseFee", List.of());
         final Object result = response.result();
         if (result == null) {
-            throw new io.brane.core.error.RpcException(
-                    0, "eth_blobBaseFee returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult("eth_blobBaseFee");
         }
         return new Wei(RpcUtils.decodeHexBigInteger(result.toString()));
     }
@@ -458,8 +455,7 @@ non-sealed class DefaultReader implements Brane.Reader {
         }
         final Object result = response.result();
         if (result == null) {
-            throw new io.brane.core.error.RpcException(
-                    0, "eth_createAccessList returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult("eth_createAccessList");
         }
 
         final Map<String, Object> map = MAPPER.convertValue(
