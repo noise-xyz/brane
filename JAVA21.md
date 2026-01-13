@@ -25,38 +25,112 @@ public non-sealed class TxnException extends BraneException {} // extensible
 - API types with fixed variants (BlockTag, RlpItem)
 - Domain models where invalid states should be unrepresentable
 
-## Pattern Matching
+## Records
 
-### instanceof with binding
+### Compact constructor for validation
 
 ```java
-// YES - pattern matching
-if (obj instanceof Wei weiValue) {
-    return weiValue.toBigInteger();
-}
-
-// NO - old style cast
-if (obj instanceof Wei) {
-    Wei weiValue = (Wei) obj;
+public record RlpList(List<RlpItem> items) implements RlpItem {
+    public RlpList {  // compact constructor - no params
+        Objects.requireNonNull(items);
+        items = List.copyOf(items);  // defensive copy
+    }
 }
 ```
 
-### Pattern variable scoping (non-obvious)
+Use **canonical constructor** when you need different parameter names or complex transformations:
+```java
+public record HexData(byte[] bytes) {
+    // Canonical - when parameter processing is complex
+    public HexData(byte[] bytes) {
+        this.bytes = bytes.clone();  // different name/transformation
+    }
+}
+```
+
+### Records with interfaces
+
+```java
+public record Transfer(Address from, Address to, Wei amount)
+    implements Comparable<Transfer>, Serializable {
+
+    @Override
+    public int compareTo(Transfer o) {
+        return amount.compareTo(o.amount);
+    }
+}
+```
+
+### Local records for ad-hoc grouping
+
+```java
+void process() {
+    record GasEstimate(BigInteger gasLimit, BigInteger maxFee) {}
+    GasEstimate estimate = new GasEstimate(gas, fee);
+}
+```
+
+### Jackson annotations
+
+```java
+@JsonIgnoreProperties(ignoreUnknown = true)
+public record JsonRpcResponse(
+    String jsonrpc,
+    @Nullable Object result,
+    @Nullable JsonRpcError error,
+    @Nullable Object id
+) {}
+```
+
+### Array fields - BROKEN equality
+
+Records with array fields have broken `equals`/`hashCode` because arrays use reference equality:
+
+```java
+// BROKEN - arrays compare by reference, not contents
+record Transaction(byte[] data) {}
+new Transaction(bytes).equals(new Transaction(bytes));  // false!
+
+// FIX: Wrap in immutable type
+record Transaction(HexData data) {}  // HexData has proper equals
+```
+
+**Rule:** Never use raw `byte[]` in records. Use `HexData`, `Hash`, or wrapper types.
+
+### When NOT to use records
+
+```java
+// NO - need mutable state, inheritance, lazy init, or selective equals
+record Counter(int value) {}           // can't increment
+record SpecialTx() extends BaseTx {}   // records are final
+record Expensive(BigObject data) {}    // can't lazy-init
+record CachedResult(String key, Object cached) {}  // cached shouldn't be in equals
+```
+
+## Pattern Matching
+
+### instanceof with binding (null-safe!)
+
+```java
+// Safe! Returns false for null, no NPE
+String s = null;
+if (s instanceof String str) { }  // false, no exception
+
+// This is WHY pattern matching is safer than manual casting
+if (obj instanceof Wei weiValue) {
+    return weiValue.toBigInteger();
+}
+```
+
+### Pattern variable scoping
 
 Pattern variables have flow-sensitive scoping:
 
 ```java
 // Works with && - variable in scope when condition true
 if (obj instanceof String s && s.length() > 5) {
-    return s.toUpperCase();  // s in scope
+    return s.toUpperCase();
 }
-
-// Works with || and negation - variable in scope when test "passes"
-if (!(obj instanceof String s) || s.isEmpty()) {
-    return "invalid";  // s NOT in scope here
-}
-// s IS in scope here - we only reach here if s is a non-empty String
-process(s);
 
 // Common pattern: early return with negated instanceof
 if (!(response instanceof SuccessResponse success)) {
@@ -66,33 +140,32 @@ if (!(response instanceof SuccessResponse success)) {
 return success.data();
 ```
 
-### Negated instanceof - when NOT to use pattern matching
-
-```java
-// KEEP - value isn't used after check, just validation
-if (!(provider instanceof WebSocketProvider)) {
-    throw new UnsupportedOperationException("Requires WebSocket");
-}
-provider.subscribe(...);  // uses interface methods, not cast
-```
-
-### Switch expressions (exhaustive on sealed types and enums)
+### Switch expressions (exhaustive)
 
 ```java
 // Sealed types - compiler enforces all cases
 return switch (blockTag) {
     case BlockTag.Named n -> n.name();
     case BlockTag.Number n -> "0x" + Long.toHexString(n.number());
-};  // compiler enforces exhaustiveness
+};
+```
 
-// Enums - also exhaustive (compiler error if case missing)
-enum TxType { LEGACY, EIP1559, EIP4844 }
+### Switch dominance rules - ORDER MATTERS
 
-int typeCode = switch (txType) {
-    case LEGACY -> 0;
-    case EIP1559 -> 2;
-    case EIP4844 -> 3;
-};  // add new enum value → compiler error until handled
+More specific patterns must come before general ones:
+
+```java
+// COMPILE ERROR - String dominates the guarded pattern
+switch (obj) {
+    case String s -> "any string";
+    case String s when s.isEmpty() -> "empty";  // unreachable!
+}
+
+// CORRECT - specific patterns first
+switch (obj) {
+    case String s when s.isEmpty() -> "empty";
+    case String s -> "any string";
+}
 ```
 
 ### Guarded patterns (`when` clause)
@@ -119,10 +192,7 @@ return switch (schema) {
 
 ### Nested record patterns
 
-Deconstruct multiple levels in one pattern:
-
 ```java
-// Nested deconstruction - extract inner fields directly
 record Response(Result result, Metadata meta) {}
 sealed interface Result permits Ok, Err {}
 record Ok(String data, int count) implements Result {}
@@ -130,13 +200,6 @@ record Err(String message) implements Result {}
 
 // One pattern extracts nested record fields
 if (response instanceof Response(Ok(var data, var count), _)) {
-    process(data, count);
-}
-
-// vs verbose alternative without nested patterns
-if (response instanceof Response r && r.result() instanceof Ok ok) {
-    var data = ok.data();
-    var count = ok.count();
     process(data, count);
 }
 
@@ -149,109 +212,19 @@ return switch (response) {
 
 **Note:** `_` for unused bindings requires Java 22+. On Java 21, use named variables.
 
-## Records
+## Null & Optional Handling
 
-### Compact constructor for validation
-
-```java
-public record RlpList(List<RlpItem> items) implements RlpItem {
-    public RlpList {  // compact constructor - no params
-        Objects.requireNonNull(items);
-        items = List.copyOf(items);  // defensive copy
-    }
-}
-```
-
-### Local records for ad-hoc grouping
+### `requireNonNullElse` for constant defaults
 
 ```java
-void process() {
-    record GasEstimate(BigInteger gasLimit, BigInteger maxFee) {}
-    GasEstimate estimate = new GasEstimate(gas, fee);
-}
-```
-
-### Jackson annotations
-
-```java
-@JsonIgnoreProperties(ignoreUnknown = true)
-public record JsonRpcResponse(
-    String jsonrpc,
-    @Nullable Object result,
-    @Nullable JsonRpcError error,
-    @Nullable Object id
-) {}
-```
-
-### Array fields - BROKEN equality by default
-
-Records with array fields have broken `equals`/`hashCode` because arrays use reference equality:
-
-```java
-// BROKEN - arrays compare by reference, not contents
-record Transaction(byte[] data) {}
-new Transaction(bytes).equals(new Transaction(bytes));  // false!
-
-// FIX 1: Wrap in immutable type
-record Transaction(HexData data) {}  // HexData has proper equals
-
-// FIX 2: Use List (worse performance, but works)
-record Transaction(List<Byte> data) {}
-
-// FIX 3: Override equals/hashCode (last resort)
-record Transaction(byte[] data) {
-    @Override public boolean equals(Object o) {
-        return o instanceof Transaction t && Arrays.equals(data, t.data);
-    }
-    @Override public int hashCode() {
-        return Arrays.hashCode(data);
-    }
-}
-```
-
-**Rule:** Never use raw `byte[]` in records. Use `HexData`, `Hash`, or wrapper types.
-
-### When NOT to use records
-
-Records are not always the right choice:
-
-```java
-// NO - need mutable state after construction
-record Counter(int value) {}  // can't increment
-
-// NO - need inheritance
-record SpecialTx(...) extends BaseTx {}  // records are final
-
-// NO - need lazy initialization
-record Expensive(BigObject data) {}  // data computed on first access
-
-// NO - circular references in construction
-record Node(Node parent, List<Node> children) {}  // construction order issues
-
-// NO - some fields shouldn't be in equals/hashCode
-record CachedResult(String key, int hash, Object cached) {}  // cached is derived
-```
-
-**Use records when:**
-- All fields are set at construction and never change
-- No inheritance needed
-- All fields should participate in equality
-- No circular dependencies during construction
-
-## Null Handling
-
-### Use `Objects.requireNonNullElse` for constant defaults
-
-```java
-// YES
+// YES - constant default
 final Wei value = Objects.requireNonNullElse(input, Wei.ZERO);
-final Object[] args = Objects.requireNonNullElse(input, EMPTY_ARGS);
 
 // NO - verbose ternary
 final Wei value = input != null ? input : Wei.ZERO;
 ```
 
-### KEEP ternary for lazy evaluation
+### KEEP ternary for lazy evaluation or mapping
 
 ```java
 // KEEP - fetchGasPrice() should only be called when needed
@@ -259,26 +232,21 @@ final Wei gasPrice = withDefaults.gasPrice() != null
         ? withDefaults.gasPrice()
         : Wei.of(fetchGasPrice());
 
-// requireNonNullElse evaluates BOTH args eagerly - wastes RPC call!
-// Alternative if you must change:
-final Wei gasPrice = Objects.requireNonNullElseGet(
-        withDefaults.gasPrice(),
-        () -> Wei.of(fetchGasPrice()));  // but ternary is cleaner
+// KEEP - this is mapping, not defaulting (null in -> null out)
+String toValue = to != null ? to.value() : null;
 ```
 
-### KEEP ternary for mapping (null in -> null out)
+### `Optional.or()` for chained fallbacks
 
 ```java
-// KEEP - this is mapping, not defaulting
-String toValue = to != null ? to.value() : null;  // null preserved
+// YES - lazy chain, each supplier called only if previous is empty
+Optional<Config> config = loadFromFile()
+    .or(() -> loadFromEnv())
+    .or(() -> loadDefaults());
 
-// Cannot use requireNonNullElse - it replaces null!
-```
-
-### Use `@Nullable` for optional fields/params
-
-```java
-public record Response(String data, @Nullable String error) {}
+// NO - eager evaluation, calls ALL methods
+Optional<Config> config = loadFromFile()
+    .orElse(loadFromEnv().orElse(loadDefaults()));
 ```
 
 ### `Optional` for return types only
@@ -291,124 +259,119 @@ public Optional<Address> findAddress(String name) { }
 public void process(Optional<String> name) { }
 ```
 
-## Static Constants
+## Collections & Streams
 
-### Use predefined constants for common values
-
-```java
-// YES
-value = Wei.ZERO;
-data = HexData.EMPTY;
-args = EMPTY_ARGS;  // private static final Object[] EMPTY_ARGS = new Object[0];
-
-// NO - allocates each time
-value = Wei.of(0);
-data = new HexData("0x");
-args = new Object[0];
-```
-
-**Available constants:**
-| Type | Constant |
-|------|----------|
-| `Wei` | `Wei.ZERO` |
-| `HexData` | `HexData.EMPTY` |
-| `List` | `List.of()` (JDK cached singleton) |
-| `Map` | `Map.of()` (JDK cached singleton) |
-
-## Collections
-
-### SequencedCollection (Java 21's flagship feature)
-
-New interfaces add first/last element access to ordered collections:
+### SequencedCollection (Java 21)
 
 ```java
 // SequencedCollection<E> - ordered collections with efficient ends
 list.getFirst();      // instead of list.get(0)
 list.getLast();       // instead of list.get(list.size() - 1)
 list.addFirst(e);     // push to front
-list.addLast(e);      // push to back
-list.removeFirst();   // poll from front
-list.removeLast();    // poll from back
 list.reversed();      // reverse view (not a copy)
 
-// SequencedSet<E> - ordered sets (LinkedHashSet, TreeSet)
-set.reversed();       // returns SequencedSet, not just Collection
-
 // SequencedMap<K,V> - ordered maps (LinkedHashMap, TreeMap)
-map.firstEntry();     // first key-value pair
-map.lastEntry();      // last key-value pair
-map.pollFirstEntry(); // remove and return first
-map.pollLastEntry();  // remove and return last
-map.putFirst(k, v);   // insert at front (LinkedHashMap only)
-map.putLast(k, v);    // insert at back (LinkedHashMap only)
-map.reversed();       // reverse view of map
-map.sequencedKeySet();    // SequencedSet view of keys
-map.sequencedValues();    // SequencedCollection view of values
-map.sequencedEntrySet();  // SequencedSet view of entries
+map.firstEntry();
+map.lastEntry();
+map.putFirst(k, v);   // LinkedHashMap only
+map.sequencedKeySet();
 ```
 
-**Use cases:**
-- Processing transactions in order with efficient head/tail access
-- LRU caches with LinkedHashMap
-- Ordered event streams
-
-### Stream.toList()
+### `Stream.toList()` returns UNMODIFIABLE list
 
 ```java
-// YES
-return items.stream().map(Item::name).toList();
+var list = stream.toList();
+list.add("x");  // UnsupportedOperationException!
 
-// NO
-return items.stream().map(Item::name).collect(Collectors.toList());
+// If you need mutable:
+var list = new ArrayList<>(stream.toList());
+// or
+var list = stream.collect(Collectors.toCollection(ArrayList::new));
+```
 
-// OK - Collectors.joining() with prefix/suffix has no simpler alternative
-return components.stream()
-        .map(TypeSchema::typeName)
-        .collect(Collectors.joining(",", "(", ")"));
+### `Predicate.not()` for clean negation
+
+```java
+// YES - static import Predicate.not
+items.stream().filter(not(String::isBlank))
+
+// NO - verbose lambda
+items.stream().filter(s -> !s.isBlank())
 ```
 
 ### Immutability semantics
 
 ```java
-// List.of() - truly immutable, null-hostile (throws on null)
+// List.of() - truly immutable, null-hostile
 List<String> immutable = List.of("a", "b", "c");
 
-// Arrays.asList() - fixed-size but elements are mutable, allows null
+// Arrays.asList() - fixed-size but elements mutable, allows null
 List<String> fixedSize = Arrays.asList("a", "b", null);
-fixedSize.set(0, "x");  // OK - element mutation allowed
+fixedSize.set(0, "x");  // OK
 fixedSize.add("d");     // UnsupportedOperationException
 
 // Defensive copy for untrusted input
-List<T> safe = List.copyOf(untrustedList);   // null-hostile
-Map<K,V> safe = Map.copyOf(untrustedMap);    // null-hostile
-Set<T> safe = Set.copyOf(untrustedSet);      // null-hostile
+List<T> safe = List.copyOf(untrustedList);
 ```
 
-## Factory Methods
+## Utility Methods
 
-### Use `RpcUtils.toRpcException()` for error conversion
+### `Math.clamp()` (Java 21)
 
 ```java
-// YES - uses extractErrorData() for nested structures
-if (response.hasError()) {
-    throw RpcUtils.toRpcException(response.error());
-}
+// YES - Java 21
+int bounded = Math.clamp(value, 0, 100);
 
-// NO - manual construction misses error data extraction
-throw new RpcException(err.code(), err.message(), err.data().toString());
+// NO - verbose
+int bounded = Math.max(0, Math.min(value, 100));
 ```
 
-### Naming conventions
+### `Objects.checkIndex()` for bounds checking
 
-| Method | Semantic | Mutability | Example |
-|--------|----------|------------|---------|
-| `of()` | Static factory for values | Usually immutable | `Wei.of(100)` |
-| `copyOf()` | Defensive copy | Always immutable | `List.copyOf(items)` |
-| `from()` | Conversion/parsing | Depends | `Address.from("0x...")` |
-| `create()` | May have side effects | Depends | `WebSocketProvider.create(url)` |
-| `builder()` | Staged construction | Mutable until `build()` | `RpcConfig.builder().build()` |
-| `parse()` | String parsing | Usually immutable | `Instant.parse("...")` |
-| `wrap()` | Lightweight view | Shares backing data | `ByteBuffer.wrap(bytes)` |
+```java
+// YES - optimized, clear semantics, throws IndexOutOfBoundsException
+Objects.checkIndex(index, array.length);
+Objects.checkFromToIndex(from, to, array.length);
+
+// NO - manual bounds check
+if (index < 0 || index >= array.length) throw new IndexOutOfBoundsException();
+```
+
+### `Path.of()` over `Paths.get()`
+
+```java
+// YES - Java 11+, preferred
+Path p = Path.of("/foo/bar");
+
+// NO - older API
+Path p = Paths.get("/foo/bar");
+```
+
+## I/O Utilities
+
+### `InputStream.transferTo()` and `readAllBytes()`
+
+```java
+// YES - clean I/O
+try (var in = url.openStream(); var out = new FileOutputStream(file)) {
+    in.transferTo(out);
+}
+byte[] bytes = inputStream.readAllBytes();
+
+// NO - manual loop
+byte[] buffer = new byte[8192];
+int read;
+while ((read = in.read(buffer)) != -1) { out.write(buffer, 0, read); }
+```
+
+### Other I/O conveniences
+
+```java
+Files.readString(path);           // read file to String
+Files.writeString(path, content); // write String to file
+Files.mismatch(path1, path2);     // find first differing byte, -1 if equal
+Arrays.mismatch(arr1, arr2);      // same for arrays
+```
 
 ## Virtual Threads
 
@@ -422,16 +385,26 @@ try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
 }
 ```
 
+### Naming patterns for debugging
+
+```java
+// Named virtual threads - helpful in thread dumps
+ThreadFactory factory = Thread.ofVirtual()
+    .name("rpc-worker-", 0)  // rpc-worker-0, rpc-worker-1, ...
+    .factory();
+
+// One-off virtual thread
+Thread.startVirtualThread(() -> doWork());
+```
+
 ### Pinning concerns
 
-Virtual threads "pin" to carrier threads during:
-- `synchronized` blocks (use `ReentrantLock` instead)
-- Native methods (JNI calls)
+Virtual threads "pin" to carrier threads during `synchronized` blocks:
 
 ```java
 // AVOID synchronized in I/O code - pins carrier thread
 synchronized (lock) {
-    httpClient.send(request);  // blocks carrier thread
+    httpClient.send(request);
 }
 
 // PREFER ReentrantLock - virtual thread unmounts while waiting
@@ -445,57 +418,28 @@ try {
 }
 ```
 
-**When pinning matters:** Only at high concurrency (1000s of virtual threads). For typical SDK usage, pinning has negligible impact.
+**When pinning matters:** Only at high concurrency (1000s of virtual threads).
 
-**Diagnostics:** `-Djdk.tracePinnedThreads=short` to log pinning events.
+**Diagnostics:** `-Djdk.tracePinnedThreads=short`
 
-### ThreadLocal vs ScopedValue
+### ThreadLocal caution
 
-`ThreadLocal` is problematic with virtual threads due to unbounded cardinality. Use `ScopedValue` (preview in 21, finalized in 23) for request-scoped data:
-
-```java
-// ThreadLocal - works but creates millions of instances with virtual threads
-private static final ThreadLocal<RequestContext> CONTEXT = new ThreadLocal<>();
-
-// ScopedValue (preview) - designed for virtual threads
-private static final ScopedValue<RequestContext> CONTEXT = ScopedValue.newInstance();
-
-// Usage - value automatically scoped to this call tree
-ScopedValue.runWhere(CONTEXT, new RequestContext(requestId), () -> {
-    // All code here (including spawned virtual threads) sees CONTEXT.get()
-    processRequest();
-});
-```
-
-**For Java 21 LTS without preview:** Continue using `ThreadLocal` but call `remove()` explicitly, or pass context as parameters.
+`ThreadLocal` creates instances per virtual thread. With millions of virtual threads, this explodes memory. Options:
+- Pass context as parameters
+- Use `ScopedValue` (preview in 21, finalized in 23)
+- Call `remove()` explicitly
 
 ### CPU-bound work: use platform threads
 
 ```java
-// Virtual threads are for I/O, not CPU work
 ExecutorService cpuPool = Executors.newFixedThreadPool(
     Runtime.getRuntime().availableProcessors()
 );
 ```
 
-### Structured concurrency (preview)
+## Syntax & Inference
 
-Not available without `--enable-preview`. Use traditional try-with-resources pattern:
-
-```java
-// Available pattern on Java 21 LTS
-try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
-    var futures = tasks.stream()
-        .map(t -> exec.submit(() -> process(t)))
-        .toList();
-
-    for (var future : futures) {
-        results.add(future.get());  // blocks until complete
-    }
-}  // executor shutdown waits for all tasks
-```
-
-## Text Blocks
+### Text blocks
 
 ```java
 String json = """
@@ -510,135 +454,97 @@ String json = """
 - `\s` preserves trailing whitespace
 - Indentation stripped to leftmost non-whitespace
 
-## Try-With-Resources
-
-### Effectively final variables (Java 9+)
-
-Existing effectively-final variables can be used directly:
-
-```java
-// YES - direct use of existing variable
-FileInputStream fis = new FileInputStream(file);
-try (fis) {
-    return fis.readAllBytes();
-}
-
-// Also works with multiple resources
-InputStream in = connection.getInputStream();
-OutputStream out = new FileOutputStream(file);
-try (in; out) {
-    in.transferTo(out);
-}
-```
-
-### Multi-resource declarations
-
-```java
-// Multiple resources in one try (closed in reverse order)
-try (var conn = dataSource.getConnection();
-     var stmt = conn.prepareStatement(sql);
-     var rs = stmt.executeQuery()) {
-    // process results
-}
-```
-
-## Local Variable Type Inference
+### Local variable type inference
 
 ```java
 // YES - type obvious from RHS
 var address = new Address("0x...");
 var mapper = new ObjectMapper();
-var logs = new ArrayList<LogEntry>();
 
 // NO - type unclear
-var result = process(input);  // What type?
+var result = process(input);
 
-// YES - explicit type adds clarity for domain objects
+// YES - explicit type for domain objects
 Address sender = getData();
-TransactionReceipt result = process(input);
 ```
 
-## Anti-Patterns
+### Try-with-resources
 
 ```java
-// NO: Optional.get()
-optional.get();           // throws NoSuchElementException
-optional.orElseThrow();   // explicit, same behavior - USE THIS
+// Effectively final variables can be used directly
+InputStream in = connection.getInputStream();
+OutputStream out = new FileOutputStream(file);
+try (in; out) {
+    in.transferTo(out);
+}
 
-// NO: Raw types
-List items = new ArrayList();
-List<String> items = new ArrayList<>();  // USE THIS
-
-// NO: Swallowing exceptions
-catch (Exception e) {}
-catch (Exception e) { log.warn("...", e); }  // at minimum log
-
-// NO: public fields (except static final)
-public String name;
-public static final int MAX = 100;  // OK
-```
-
-## Performance Considerations
-
-### Records are not inherently faster
-
-Records are syntactic sugar, not a performance optimization:
-```java
-// These have identical runtime performance
-record Point(int x, int y) {}
-class Point { final int x, y; ... }  // with equals/hashCode
-```
-
-Records generate the same bytecode as equivalent hand-written classes.
-
-### Pattern matching switch uses invokedynamic
-
-First invocation of pattern switch is slower (bootstrap overhead):
-```java
-// First call: ~10-100μs bootstrap
-// Subsequent calls: fast (inlined)
-switch (obj) {
-    case String s -> ...
-    case Integer i -> ...
+// Multiple resources (closed in reverse order)
+try (var conn = dataSource.getConnection();
+     var stmt = conn.prepareStatement(sql);
+     var rs = stmt.executeQuery()) {
+    // process
 }
 ```
 
-**Impact:** Negligible for most code. Avoid in ultra-hot paths (millions/sec).
+### Static members in inner classes (Java 16+)
 
-### instanceof patterns have no overhead
-
-Pattern matching `instanceof` compiles to the same bytecode as manual cast:
 ```java
-// These generate identical bytecode
-if (obj instanceof String s) { ... }
-if (obj instanceof String) { String s = (String) obj; ... }
+class Outer {
+    class Inner {
+        static final int CONSTANT = 42;  // Now allowed!
+        static void helper() { }          // Now allowed!
+    }
+}
 ```
 
-### Virtual threads are cheap but not free
+## Gotchas & Anti-Patterns
 
-- **Creation:** ~1μs (vs ~1ms for platform threads)
-- **Memory:** ~1KB initial stack (vs ~1MB for platform threads)
-- **Context switch:** ~100ns when not pinned
+| Anti-Pattern | Fix |
+|--------------|-----|
+| `optional.get()` | `optional.orElseThrow()` - explicit about throwing |
+| Raw types `List items` | `List<String> items` |
+| Swallowing exceptions `catch (e) {}` | At minimum log: `log.warn("...", e)` |
+| Public fields | Use accessors (except `static final`) |
+| `byte[]` in records | Use `HexData`, `Hash` wrapper types |
+| `synchronized` with virtual threads | Use `ReentrantLock` |
 
-**Don't spawn virtual threads for CPU-bound nano-operations** - the overhead exceeds the work.
+### Helpful NPE messages (Java 14+, default in 21)
+
+```java
+// Old: NullPointerException
+// New: Cannot invoke "String.length()" because "str" is null
+```
+
+If disabled: `-XX:+ShowCodeDetailsInExceptionMessages`
+
+## Factory Method Naming
+
+| Method | Semantic | Example |
+|--------|----------|---------|
+| `of()` | Static factory, usually immutable | `Wei.of(100)` |
+| `from()` | Conversion/parsing | `Address.from("0x...")` |
+| `copyOf()` | Defensive copy, always immutable | `List.copyOf(items)` |
+| `create()` | May have side effects | `WebSocketProvider.create(url)` |
+| `builder()` | Staged construction | `RpcConfig.builder().build()` |
+| `parse()` | String parsing | `Instant.parse("...")` |
+
+## Performance Notes
+
+- **Records** are syntactic sugar, not faster than equivalent classes
+- **Pattern switch** has ~10-100μs bootstrap on first call (negligible for most code)
+- **`instanceof` patterns** compile to same bytecode as manual cast - no overhead
+- **Virtual threads:** ~1μs creation, ~1KB stack. Don't spawn for nano-operations
 
 ## Preview Features
 
-**Policy:** Do not use preview features (`--enable-preview`) in production code.
+**Policy:** Do not use preview features in production code.
 
-| Feature | Status | When Safe |
-|---------|--------|-----------|
-| String templates (JEP 430) | **Withdrawn** in Java 23 | Never - removed from language |
-| Unnamed patterns `_` (JEP 443) | Finalized in Java 22 | Java 22+ |
-| Unnamed variables `_` (JEP 456) | Finalized in Java 22 | Java 22+ |
-| Structured concurrency | Preview in 21-24 | Not yet finalized |
-| ScopedValue | Preview in 21-22, Finalized in 23 | Java 23+ |
-| Primitive patterns in switch | Preview in 23+ | Not yet finalized |
-
-**For Java 21 LTS:**
-- Use named variables instead of `_` in patterns
-- Use `ThreadLocal` + explicit `remove()` instead of `ScopedValue`
-- Use try-with-resources instead of structured concurrency
+| Feature | Status |
+|---------|--------|
+| String templates | **Withdrawn** in Java 23 - never use |
+| Unnamed patterns/variables `_` | Finalized in Java 22 |
+| Structured concurrency | Preview through Java 24 |
+| ScopedValue | Finalized in Java 23 |
 
 ## Quick Reference
 
@@ -646,14 +552,13 @@ if (obj instanceof String) { String s = (String) obj; ... }
 |---------|-----|------|
 | Type check | `instanceof Foo` + cast | `instanceof Foo f` |
 | Multi-type | if-else chain | `switch (x) { case Foo f -> }` |
-| Null default (constant) | `x != null ? x : DEFAULT` | `requireNonNullElse(x, DEFAULT)` |
-| Null default (lazy) | - | Keep ternary |
-| Null mapping | - | Keep ternary (`x != null ? x.foo() : null`) |
-| Switch statement | `case X: break;` | `case X -> { }` |
-| Stream to list | `.collect(Collectors.toList())` | `.toList()` |
-| Zero values | `Wei.of(0)` | `Wei.ZERO` |
-| Error conversion | Manual `new RpcException(...)` | `RpcUtils.toRpcException(err)` |
-| First/last element | `list.get(0)` / `list.get(size-1)` | `list.getFirst()` / `list.getLast()` |
-| Records with byte[] | `record Tx(byte[] data)` | `record Tx(HexData data)` |
-| Defensive copy | Trust mutable input | `List.copyOf()` / `Map.copyOf()` |
-| Locking with VT | `synchronized` block | `ReentrantLock` |
+| Null default | `x != null ? x : DEFAULT` | `requireNonNullElse(x, DEFAULT)` |
+| Chained optional | `.orElse(load())` | `.or(() -> load())` |
+| Stream to list | `.collect(toList())` | `.toList()` |
+| Negate predicate | `s -> !s.isBlank()` | `not(String::isBlank)` |
+| Bounds check | manual if/throw | `Objects.checkIndex()` |
+| Clamp value | `max(min, min(val, max))` | `Math.clamp(val, min, max)` |
+| First/last | `get(0)` / `get(size-1)` | `getFirst()` / `getLast()` |
+| File path | `Paths.get()` | `Path.of()` |
+| Copy stream | manual loop | `in.transferTo(out)` |
+| Read file | manual loop | `readAllBytes()` / `readString()` |
