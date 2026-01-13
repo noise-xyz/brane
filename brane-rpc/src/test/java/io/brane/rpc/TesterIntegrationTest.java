@@ -52,7 +52,7 @@ class TesterIntegrationTest {
         JsonRpcResponse response = provider.send("eth_getCode", List.of(address.value(), "latest"));
         Object result = response.result();
         if (result == null) {
-            return new HexData("0x");
+            return HexData.EMPTY;
         }
         return new HexData(result.toString());
     }
@@ -147,7 +147,7 @@ class TesterIntegrationTest {
             tester.setCode(TEST_ADDRESS, SIMPLE_CODE);
 
             // Then clear it
-            tester.setCode(TEST_ADDRESS, new HexData("0x"));
+            tester.setCode(TEST_ADDRESS, HexData.EMPTY);
 
             HexData actualCode = getCode(provider, TEST_ADDRESS);
             assertEquals("0x", actualCode.value());
@@ -180,7 +180,7 @@ class TesterIntegrationTest {
         @DisplayName("getCode via Brane.Reader interface returns empty for EOA")
         void getCodeViaReaderInterfaceReturnsEmptyForEoa(Brane.Tester tester) {
             // Clear any existing code
-            tester.setCode(TEST_ADDRESS, new HexData("0x"));
+            tester.setCode(TEST_ADDRESS, HexData.EMPTY);
 
             // Use the Brane.Reader interface method
             HexData actualCode = tester.getCode(TEST_ADDRESS);
