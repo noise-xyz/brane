@@ -11,9 +11,13 @@ import io.brane.rpc.Brane;
 /**
  * Demonstrates Java 21 pattern matching with the {@link Brane} sealed interface hierarchy.
  *
- * <p>Because {@link Brane} is a sealed interface with exactly two permitted implementations
- * ({@link Brane.Reader} and {@link Brane.Signer}), Java 21 switch expressions provide
- * exhaustive type-safe pattern matching without requiring a default case.
+ * <p>Because {@link Brane} is a sealed interface with three permitted implementations
+ * ({@link Brane.Reader}, {@link Brane.Signer}, and {@link Brane.Tester}), Java 21 switch
+ * expressions provide exhaustive type-safe pattern matching without requiring a default case.
+ *
+ * <p><strong>Important:</strong> Due to the internal class hierarchy where {@code DefaultSigner}
+ * extends {@code DefaultReader} and {@code DefaultTester} extends {@code DefaultSigner}, pattern
+ * matching order matters. Always check more specific types first: Tester → Signer → Reader.
  *
  * <p>This example shows:
  * <ul>
@@ -21,6 +25,7 @@ import io.brane.rpc.Brane;
  *   <li>Exhaustive matching guarantees at compile time</li>
  *   <li>Type-safe access to subtype-specific methods</li>
  *   <li>Practical use cases for differentiating client capabilities</li>
+ *   <li>Correct ordering of cases (most specific to least specific)</li>
  * </ul>
  *
  * <p>Usage:
@@ -67,10 +72,12 @@ public final class BranePatternMatchingExample {
         // Create a read-only client
         Brane readOnlyClient = Brane.connect(RPC_URL);
         try {
+            // Note: Order matters! Check more specific types first since
+            // DefaultSigner extends DefaultReader (and is therefore also a Reader).
             String clientType = switch (readOnlyClient) {
-                case Brane.Reader r -> "Read-only client (Reader)";
-                case Brane.Signer s -> "Signing client (Signer)";
                 case Brane.Tester t -> "Test client (Tester)";
+                case Brane.Signer s -> "Signing client (Signer)";
+                case Brane.Reader r -> "Read-only client (Reader)";
             };
             System.out.println("Client type: " + clientType);
         } finally {
@@ -82,9 +89,9 @@ public final class BranePatternMatchingExample {
         Brane signingClient = Brane.connect(RPC_URL, signer);
         try {
             String clientType = switch (signingClient) {
-                case Brane.Reader r -> "Read-only client (Reader)";
-                case Brane.Signer s -> "Signing client (Signer)";
                 case Brane.Tester t -> "Test client (Tester)";
+                case Brane.Signer s -> "Signing client (Signer)";
+                case Brane.Reader r -> "Read-only client (Reader)";
             };
             System.out.println("Client type: " + clientType);
         } finally {
@@ -107,18 +114,19 @@ public final class BranePatternMatchingExample {
 
         try {
             // Pattern matching extracts the Signer, giving access to signer()
+            // Note: Order matters! Check more specific types first.
             Address signerAddress = switch (client) {
-                case Brane.Reader r -> {
-                    System.out.println("Reader cannot access signer address");
-                    yield null;
+                case Brane.Tester t -> {
+                    System.out.println("Extracted tester with signer address: " + t.signer().address());
+                    yield t.signer().address();
                 }
                 case Brane.Signer s -> {
                     System.out.println("Extracted signer with address: " + s.signer().address());
                     yield s.signer().address();
                 }
-                case Brane.Tester t -> {
-                    System.out.println("Extracted tester with signer address: " + t.signer().address());
-                    yield t.signer().address();
+                case Brane.Reader r -> {
+                    System.out.println("Reader cannot access signer address");
+                    yield null;
                 }
             };
 
@@ -168,17 +176,17 @@ public final class BranePatternMatchingExample {
         // Common operations available on all clients
         BigInteger chainId = client.chainId();
 
-        // Pattern-specific description
+        // Pattern-specific description (order matters - most specific first)
         String description = switch (client) {
-            case Brane.Reader r -> String.format(
-                    "Read-only client on chain %d - can query but cannot send transactions",
-                    chainId);
-            case Brane.Signer s -> String.format(
-                    "Signing client on chain %d - signer address: %s, can send transactions",
-                    chainId, s.signer().address());
             case Brane.Tester t -> String.format(
                     "Test client on chain %d - signer address: %s, can test node operations",
                     chainId, t.signer().address());
+            case Brane.Signer s -> String.format(
+                    "Signing client on chain %d - signer address: %s, can send transactions",
+                    chainId, s.signer().address());
+            case Brane.Reader r -> String.format(
+                    "Read-only client on chain %d - can query but cannot send transactions",
+                    chainId);
         };
 
         System.out.println(description);
