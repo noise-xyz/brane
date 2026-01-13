@@ -98,7 +98,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
                 .orElseGet(() -> estimateGas(withDefaults));
 
         // Prepare value and data
-        final Wei valueOrZero = Objects.requireNonNullElse(withDefaults.value(), Wei.of(0));
+        final Wei valueOrZero = Objects.requireNonNullElse(withDefaults.value(), Wei.ZERO);
         final HexData dataOrEmpty = Objects.requireNonNullElse(withDefaults.data(), HexData.EMPTY);
 
         // Build unsigned transaction
