@@ -2,6 +2,7 @@
 package io.brane.rpc.internal;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 
 import org.jspecify.annotations.Nullable;
@@ -57,8 +58,8 @@ public final class RpcInvoker {
      * @param ensureOpen a runnable that throws if the connection is closed
      */
     public RpcInvoker(RpcSender sender, Runnable ensureOpen) {
-        this.sender = sender;
-        this.ensureOpen = ensureOpen;
+        this.sender = Objects.requireNonNull(sender, "sender");
+        this.ensureOpen = Objects.requireNonNull(ensureOpen, "ensureOpen");
     }
 
     /**
