@@ -24,6 +24,8 @@ import io.brane.rpc.Brane;
  */
 final class SignerContractInvocationHandler extends AbstractContractInvocationHandler<Brane.Signer> {
 
+    private static final Object[] EMPTY_ARGS = new Object[0];
+
     private final ContractOptions options;
 
     SignerContractInvocationHandler(
@@ -47,7 +49,7 @@ final class SignerContractInvocationHandler extends AbstractContractInvocationHa
             return handleObjectMethod(proxy, method, args);
         }
 
-        final Object[] invocationArgs = Objects.requireNonNullElse(args, new Object[0]);
+        final Object[] invocationArgs = Objects.requireNonNullElse(args, EMPTY_ARGS);
         final Abi.FunctionMetadata metadata = binding.resolve(method);
 
         // Handle payable functions - extract Wei value from first parameter.
@@ -59,8 +61,8 @@ final class SignerContractInvocationHandler extends AbstractContractInvocationHa
         final Wei value;
         final Object[] contractArgs;
 
-        if (isPayable && invocationArgs.length > 0 && invocationArgs[0] instanceof Wei) {
-            value = (Wei) invocationArgs[0];
+        if (isPayable && invocationArgs.length > 0 && invocationArgs[0] instanceof Wei weiValue) {
+            value = weiValue;
             contractArgs = Arrays.copyOfRange(invocationArgs, 1, invocationArgs.length);
         } else {
             value = Wei.of(0);

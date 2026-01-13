@@ -108,6 +108,21 @@ final HexData dataOrEmpty = Objects.requireNonNullElse(data, HexData.EMPTY);
 final Object[] args = Objects.requireNonNullElse(args, new Object[0]);
 ```
 
+### ✅ BEST - Use static constants for empty defaults
+```java
+// Avoids allocation on every call
+private static final Object[] EMPTY_ARGS = new Object[0];
+private static final List<String> EMPTY_TOPICS = List.of();
+
+// Zero allocation when args is non-null
+final Object[] invocationArgs = Objects.requireNonNullElse(args, EMPTY_ARGS);
+
+// List.of() already returns cached singleton, so this is fine too:
+final List<String> topics = Objects.requireNonNullElse(inputTopics, List.of());
+```
+
+**Note**: `List.of()`, `Map.of()`, `Set.of()` return cached singletons, so constants aren't needed for these. But `new Object[0]` allocates each time.
+
 ### ⚠️ EXCEPTION - Keep ternary when default requires lazy evaluation
 ```java
 // KEEP AS-IS - fetchGasPrice() should only be called when needed
@@ -198,11 +213,13 @@ return switch (schema) {
 | Type check | `if (x instanceof Foo)` + cast | `if (x instanceof Foo f)` |
 | Multi-type check | if-else chain with instanceof | `switch (x) { case Foo f -> ... }` |
 | Null default (constant) | `x != null ? x : DEFAULT` | `Objects.requireNonNullElse(x, DEFAULT)` |
+| Null default (allocating) | `requireNonNullElse(x, new T[0])` | Use static `EMPTY_T` constant |
 | Null default (lazy) | Keep ternary or use `requireNonNullElseGet` | |
 | Switch statement | `case X: ... break;` | `case X -> { ... }` |
 | Switch return | switch + variable assignment | `var result = switch (x) { ... }` |
 | Stream to list | `.collect(Collectors.toList())` | `.toList()` |
 | Local types | Explicit when obvious | `var` when RHS shows type |
+| Repeated construction | Inline `new Exception(...)` everywhere | Factory method `toException()` |
 
 ---
 
@@ -322,6 +339,79 @@ These cannot be converted to streams without boxing overhead or losing clarity.
 
 ---
 
+## 7. Factory Methods for Repeated Patterns
+
+### ❌ BAD - Duplicated exception construction
+```java
+// Repeated 11 times across codebase
+final JsonRpcError err = response.error();
+throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+```
+
+### ✅ GOOD - Extract factory method
+```java
+// In RpcUtils.java
+public static RpcException toRpcException(final JsonRpcError err) {
+    return new RpcException(err.code(), err.message(), extractErrorData(err.data()), (Long) null);
+}
+
+// Usage - clean and consistent
+if (response.hasError()) {
+    throw RpcUtils.toRpcException(response.error());
+}
+```
+
+**Benefits**:
+- Single point of change for error handling logic
+- Consistent error construction across codebase
+- Easier to add logging, metrics, or error enrichment later
+
+**Existing good example**: `RpcUtils.toRpcException()` added in REVIEW4
+
+### Related: Use extractErrorData() for error data
+
+**Locations still using simple pattern**:
+- `SmartGasStrategy.java:254, 371`
+- `RpcRetry.java:328`
+
+```java
+// ❌ BAD - doesn't handle nested structures
+err.data() != null ? err.data().toString() : null
+
+// ✅ GOOD - handles Map, Array, Iterable wrapping
+RpcUtils.extractErrorData(err.data())
+```
+
+---
+
+## 8. Negated instanceof - When NOT to Use Pattern Matching
+
+### ✅ GOOD - Keep negated instanceof when value isn't used
+
+```java
+// Value isn't used after the check, just validation
+if (!(provider instanceof WebSocketProvider)) {
+    throw new UnsupportedOperationException("Requires WebSocket");
+}
+// provider is used via interface methods, not cast
+provider.subscribe(...);
+```
+
+### ❌ BAD - Refactoring adds verbosity without benefit
+
+```java
+// Don't do this - more verbose, no benefit
+if (provider instanceof WebSocketProvider ws) {
+    ws.subscribe(...);  // But we might not even need ws-specific methods!
+} else {
+    throw new UnsupportedOperationException("Requires WebSocket");
+}
+```
+
+**Rule**: Use pattern matching when you need the casted value. Keep negated instanceof for validation-only checks.
+
+---
+
 ## Codebase Examples
 
 ### Good Examples (follow these)
@@ -330,8 +420,9 @@ These cannot be converted to streams without boxing overhead or losing clarity.
 - `Eip712TypeParser.java` - Switch expressions for type parsing
 - `SmartGasStrategy.java:341` - Arrow syntax switch statement
 
-### Needs Refactoring (avoid these patterns)
-- `WebSocketProvider.java:1341-1355` - if-else chain should be switch
-- `WebSocketProvider.java:1241-1275` - Old-style switch with breaks
-- `InternalAbi.java:551, 651-654` - instanceof without pattern matching
-- `DefaultSigner.java:100-101` - Ternary null checks with constant defaults
+### Refactored in REVIEW4 (now good examples)
+- `WebSocketProvider.java:writeJsonValue` - Pattern matching switch expression
+- `WebSocketProvider.java:writeEscapedString` - Arrow syntax switch
+- `InternalAbi.java:548-552, 653-658` - Pattern matching for instanceof
+- `DefaultSigner.java:100-101` - Uses `Objects.requireNonNullElse()`
+- `CallResult.java:50-57` - Pattern matching for instanceof

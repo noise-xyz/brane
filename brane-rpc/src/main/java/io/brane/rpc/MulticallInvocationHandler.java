@@ -29,6 +29,7 @@ import io.brane.core.types.Address;
  */
 final class MulticallInvocationHandler implements InvocationHandler {
 
+    private static final Object[] EMPTY_ARGS = new Object[0];
     private static final Map<Class<?>, Object> PRIMITIVE_DEFAULTS = Map.of(
             boolean.class, false,
             char.class, (char) 0,
@@ -61,7 +62,7 @@ final class MulticallInvocationHandler implements InvocationHandler {
             return handleObjectMethod(proxy, method, args);
         }
 
-        final Object[] invocationArgs = Objects.requireNonNullElse(args, new Object[0]);
+        final Object[] invocationArgs = Objects.requireNonNullElse(args, EMPTY_ARGS);
         final Abi.FunctionMetadata metadata = binding.resolve(method);
         final Abi.FunctionCall functionCall = abi.encodeFunction(metadata.name(), invocationArgs);
 

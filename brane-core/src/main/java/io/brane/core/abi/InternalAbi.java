@@ -35,6 +35,7 @@ final class InternalAbi implements Abi {
     /** Logger for debug-level diagnostics, e.g., constructor matching failures during event decoding. */
     private static final Logger LOG = LoggerFactory.getLogger(InternalAbi.class);
     private static final ObjectMapper MAPPER = new ObjectMapper();
+    private static final Object[] EMPTY_ARGS = new Object[0];
 
     private final Map<String, AbiFunction> functionsByName;
     private final Map<String, AbiFunction> functionsBySignature;
@@ -51,7 +52,7 @@ final class InternalAbi implements Abi {
 
     @Override
     public FunctionCall encodeFunction(final String name, final Object... args) {
-        final Object[] providedArgs = Objects.requireNonNullElse(args, new Object[0]);
+        final Object[] providedArgs = Objects.requireNonNullElse(args, EMPTY_ARGS);
         final AbiFunction fn = resolveFunction(name, providedArgs.length);
 
         // Calculate selector
@@ -115,7 +116,7 @@ final class InternalAbi implements Abi {
             return HexData.EMPTY;
         }
 
-        final Object[] providedArgs = Objects.requireNonNullElse(args, new Object[0]);
+        final Object[] providedArgs = Objects.requireNonNullElse(args, EMPTY_ARGS);
         if (constructor.inputs().size() != providedArgs.length) {
             throw new AbiEncodingException(
                     "Constructor expects "

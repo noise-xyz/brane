@@ -10,6 +10,7 @@ import java.util.function.Supplier;
 import io.brane.core.error.RevertException;
 import io.brane.core.error.RpcException;
 import io.brane.rpc.exception.RetryExhaustedException;
+import io.brane.rpc.internal.RpcUtils;
 
 /**
  * Internal utility for retrying RPC calls with exponential backoff.
@@ -325,7 +326,7 @@ final class RpcRetry {
                     final RpcException rpcEx = new RpcException(
                             err.code(),
                             err.message(),
-                            err.data() != null ? err.data().toString() : null,
+                            RpcUtils.extractErrorData(err.data()),
                             (Long) null,
                             (Throwable) null);
 

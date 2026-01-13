@@ -251,7 +251,7 @@ final class SmartGasStrategy {
                 throw new RpcException(
                         err.code(),
                         formatEstimateGasError(tx, err.message()),
-                        err.data() != null ? err.data().toString() : null,
+                        RpcUtils.extractErrorData(err.data()),
                         null,
                         null);
             }
@@ -368,7 +368,7 @@ final class SmartGasStrategy {
         if (response.hasError()) {
             final JsonRpcError err = response.error();
             throw new RpcException(
-                    err.code(), err.message(), err.data() != null ? err.data().toString() : null, null, null);
+                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), null, null);
         }
         final Object resultObj = response.result();
         if (resultObj == null) {

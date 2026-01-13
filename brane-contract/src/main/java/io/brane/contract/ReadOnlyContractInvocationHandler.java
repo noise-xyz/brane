@@ -18,6 +18,8 @@ import io.brane.rpc.Brane;
  */
 final class ReadOnlyContractInvocationHandler extends AbstractContractInvocationHandler<Brane> {
 
+    private static final Object[] EMPTY_ARGS = new Object[0];
+
     ReadOnlyContractInvocationHandler(
             final Address address,
             final Abi abi,
@@ -37,7 +39,7 @@ final class ReadOnlyContractInvocationHandler extends AbstractContractInvocation
             return handleObjectMethod(proxy, method, args);
         }
 
-        final Object[] invocationArgs = Objects.requireNonNullElse(args, new Object[0]);
+        final Object[] invocationArgs = Objects.requireNonNullElse(args, EMPTY_ARGS);
         final Abi.FunctionMetadata metadata = binding.resolve(method);
 
         // Read-only handler - only view/pure functions are supported
