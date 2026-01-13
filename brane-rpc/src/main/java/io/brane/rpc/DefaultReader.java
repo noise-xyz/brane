@@ -44,7 +44,7 @@ import io.brane.rpc.internal.RpcUtils;
  *
  * @since 0.1.0
  */
-final class DefaultReader implements Brane.Reader {
+non-sealed class DefaultReader implements Brane.Reader {
 
     private static final Logger log = LoggerFactory.getLogger(DefaultReader.class);
 
