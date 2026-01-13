@@ -2,7 +2,6 @@
 package io.brane.primitives.rlp;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
@@ -33,7 +32,7 @@ public record RlpList(List<RlpItem> items) implements RlpItem {
      * @return {@link RlpList} containing the provided items
      */
     public static RlpList of(final RlpItem... items) {
-        return new RlpList(Arrays.asList(items));
+        return new RlpList(List.of(items));
     }
 
     /**
