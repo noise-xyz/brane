@@ -433,7 +433,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
                 gasLimit,
                 request.to(),
                 request.valueOpt().orElse(Wei.ZERO),
-                request.data() != null ? request.data() : HexData.EMPTY,
+                Objects.requireNonNullElse(request.data(), HexData.EMPTY),
                 request.accessListOrEmpty(),
                 maxFeePerBlobGas,
                 request.blobVersionedHashes());
