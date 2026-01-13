@@ -32,11 +32,11 @@ class BlobSidecarTest {
         Arrays.fill(blobData2, (byte) 0xBB);
         blob2 = new Blob(blobData2);
 
-        byte[] commitmentData1 = new byte[KzgCommitment.SIZE];
+        byte[] commitmentData1 = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(commitmentData1, (byte) 0x11);
         commitment1 = new KzgCommitment(commitmentData1);
 
-        byte[] commitmentData2 = new byte[KzgCommitment.SIZE];
+        byte[] commitmentData2 = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(commitmentData2, (byte) 0x22);
         commitment2 = new KzgCommitment(commitmentData2);
 
@@ -112,7 +112,7 @@ class BlobSidecarTest {
 
         for (int i = 0; i <= BlobSidecar.MAX_BLOBS; i++) {
             byte[] blobData = new byte[Blob.SIZE];
-            byte[] commitmentData = new byte[KzgCommitment.SIZE];
+            byte[] commitmentData = new byte[FixedSizeG1Point.SIZE];
             byte[] proofData = new byte[FixedSizeG1Point.SIZE];
             blobs.add(new Blob(blobData));
             commitments.add(new KzgCommitment(commitmentData));

@@ -210,7 +210,7 @@ public final class CKzg implements Kzg {
             // toBytes() performs defensive copies. The allocation overhead is acceptable since
             // it is negligible compared to the native KZG cryptographic operations.
             byte[] blobsFlat = new byte[blobs.size() * Blob.SIZE];
-            byte[] commitmentsFlat = new byte[commitments.size() * KzgCommitment.SIZE];
+            byte[] commitmentsFlat = new byte[commitments.size() * FixedSizeG1Point.SIZE];
             byte[] proofsFlat = new byte[proofs.size() * FixedSizeG1Point.SIZE];
 
             for (int i = 0; i < blobs.size(); i++) {
@@ -220,7 +220,7 @@ public final class CKzg implements Kzg {
 
                 System.arraycopy(blob.toBytes(), 0, blobsFlat, i * Blob.SIZE, Blob.SIZE);
                 System.arraycopy(commitment.toBytes(), 0, commitmentsFlat,
-                        i * KzgCommitment.SIZE, KzgCommitment.SIZE);
+                        i * FixedSizeG1Point.SIZE, FixedSizeG1Point.SIZE);
                 System.arraycopy(proof.toBytes(), 0, proofsFlat,
                         i * FixedSizeG1Point.SIZE, FixedSizeG1Point.SIZE);
             }

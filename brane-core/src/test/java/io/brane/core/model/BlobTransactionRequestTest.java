@@ -36,7 +36,7 @@ class BlobTransactionRequestTest {
         Arrays.fill(blobData, (byte) 0xAA);
         Blob blob = new Blob(blobData);
 
-        byte[] commitmentData = new byte[KzgCommitment.SIZE];
+        byte[] commitmentData = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(commitmentData, (byte) 0x11);
         commitment = new KzgCommitment(commitmentData);
 

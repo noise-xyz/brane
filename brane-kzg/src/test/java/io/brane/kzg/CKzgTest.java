@@ -59,7 +59,7 @@ class CKzgTest {
         KzgCommitment commitment = kzg.blobToCommitment(blob);
 
         assertNotNull(commitment);
-        assertEquals(KzgCommitment.SIZE, commitment.toBytes().length);
+        assertEquals(FixedSizeG1Point.SIZE, commitment.toBytes().length);
         assertEquals(48, commitment.toBytes().length);
     }
 

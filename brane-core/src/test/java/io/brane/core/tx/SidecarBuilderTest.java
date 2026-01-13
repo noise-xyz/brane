@@ -264,10 +264,10 @@ class SidecarBuilderTest {
         public KzgCommitment blobToCommitment(Blob blob) {
             commitmentCallCount++;
             // Create a deterministic commitment based on blob content
-            byte[] commitmentData = new byte[KzgCommitment.SIZE];
+            byte[] commitmentData = new byte[FixedSizeG1Point.SIZE];
             byte[] blobBytes = blob.toBytes();
             // Use first few bytes of blob to make commitment distinct
-            System.arraycopy(blobBytes, 0, commitmentData, 0, Math.min(blobBytes.length, KzgCommitment.SIZE));
+            System.arraycopy(blobBytes, 0, commitmentData, 0, Math.min(blobBytes.length, FixedSizeG1Point.SIZE));
             return new KzgCommitment(commitmentData);
         }
 
