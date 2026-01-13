@@ -115,7 +115,7 @@ class BlobTransactionRequestTest {
         assertEquals(Wei.of(2), request.maxFeePerGasOpt().orElseThrow());
 
         assertTrue(request.maxFeePerBlobGasOpt().isPresent());
-        assertEquals(Wei.of(3), request.maxFeePerBlobGasOpt().get());
+        assertEquals(Wei.of(3), request.maxFeePerBlobGasOpt().orElseThrow());
 
         assertTrue(request.nonceOpt().isPresent());
         assertEquals(5L, request.nonceOpt().get());
