@@ -437,9 +437,7 @@ non-sealed class DefaultReader implements Brane.Reader {
                 "eth_createAccessList",
                 List.of(params, BlockTag.LATEST.toRpcValue()));
         if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new io.brane.core.error.RpcException(
-                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(response.error());
         }
         final Object result = response.result();
         if (result == null) {
@@ -494,8 +492,7 @@ non-sealed class DefaultReader implements Brane.Reader {
                 throw new io.brane.rpc.exception.SimulateNotSupportedException(
                         "eth_simulateV1 is not supported by this node");
             }
-            throw new io.brane.core.error.RpcException(
-                    err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(err);
         }
         final Object result = response.result();
         if (result == null) {

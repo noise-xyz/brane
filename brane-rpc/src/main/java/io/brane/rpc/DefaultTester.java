@@ -113,7 +113,7 @@ final class DefaultTester extends DefaultSigner implements Brane.Tester {
         final JsonRpcResponse response = sendWithRetry(method, List.of());
         if (response.hasError()) {
             final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(err);
         }
         final Object result = response.result();
         if (result == null) {
@@ -134,7 +134,7 @@ final class DefaultTester extends DefaultSigner implements Brane.Tester {
         final JsonRpcResponse response = sendWithRetry(method, List.of(address.value()));
         if (response.hasError()) {
             final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(err);
         }
         return new DefaultImpersonationSession(this, address);
     }
@@ -223,7 +223,7 @@ final class DefaultTester extends DefaultSigner implements Brane.Tester {
         final JsonRpcResponse response = sendWithRetry(method, List.of());
         if (response.hasError()) {
             final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(err);
         }
         final Object result = response.result();
         if (result == null) {
@@ -311,7 +311,7 @@ final class DefaultTester extends DefaultSigner implements Brane.Tester {
         final JsonRpcResponse response = sendWithRetry("anvil_dumpState", List.of());
         if (response.hasError()) {
             final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(err);
         }
         final Object result = response.result();
         if (result == null) {
@@ -367,7 +367,7 @@ final class DefaultTester extends DefaultSigner implements Brane.Tester {
         final JsonRpcResponse response = sendWithRetry(method, params);
         if (response.hasError()) {
             final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(err);
         }
     }
 
@@ -496,7 +496,7 @@ final class DefaultTester extends DefaultSigner implements Brane.Tester {
             final JsonRpcResponse response = tester.sendWithRetry("eth_sendTransaction", List.of(tx));
             if (response.hasError()) {
                 final JsonRpcError err = response.error();
-                throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+                throw RpcUtils.toRpcException(err);
             }
             final Object result = response.result();
             if (result == null) {

@@ -21,6 +21,7 @@ import io.brane.core.model.AccessListEntry;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.Hash;
+import io.brane.rpc.JsonRpcError;
 
 /**
  * Internal utility methods for RPC data encoding, decoding, and error handling.
@@ -146,6 +147,20 @@ public final class RpcUtils {
             }
         }
         return fallback.toString();
+    }
+
+    /**
+     * Creates an RpcException from a JSON-RPC error response.
+     *
+     * <p>This factory method consolidates the common pattern of converting
+     * a {@link JsonRpcError} to an {@link RpcException}, including proper
+     * extraction of error data.
+     *
+     * @param err the JSON-RPC error from the response
+     * @return a new RpcException with the error details
+     */
+    public static RpcException toRpcException(final JsonRpcError err) {
+        return new RpcException(err.code(), err.message(), extractErrorData(err.data()), (Long) null);
     }
 
     /**

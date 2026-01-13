@@ -223,8 +223,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
         final JsonRpcResponse response = sendWithRetry(
                 "eth_getTransactionCount", List.of(from.value(), "pending"));
         if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(response.error());
         }
         final Object result = response.result();
         if (result == null) {
@@ -239,8 +238,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
     private BigInteger fetchGasPrice() {
         final JsonRpcResponse response = sendWithRetry("eth_gasPrice", List.of());
         if (response.hasError()) {
-            final JsonRpcError err = response.error();
-            throw new RpcException(err.code(), err.message(), RpcUtils.extractErrorData(err.data()), (Long) null);
+            throw RpcUtils.toRpcException(response.error());
         }
         final Object result = response.result();
         if (result == null) {
