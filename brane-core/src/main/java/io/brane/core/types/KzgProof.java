@@ -16,14 +16,6 @@ package io.brane.core.types;
 public final class KzgProof extends FixedSizeG1Point {
 
     /**
-     * Size of a KZG proof in bytes (48 bytes for a compressed G1 point).
-     * @deprecated Use {@link FixedSizeG1Point#SIZE} instead. This constant is retained for
-     *             backward compatibility and will be removed in a future release.
-     */
-    @Deprecated(forRemoval = true)
-    public static final int SIZE = FixedSizeG1Point.SIZE;
-
-    /**
      * Creates a KZG proof from raw bytes.
      *
      * @param data the proof data, must be exactly 48 bytes

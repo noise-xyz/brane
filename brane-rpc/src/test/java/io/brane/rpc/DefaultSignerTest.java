@@ -933,7 +933,7 @@ class DefaultSignerTest {
         io.brane.core.types.KzgCommitment commitment = new io.brane.core.types.KzgCommitment(commitmentData);
 
         // Create a proof (48 bytes) - just use zeros for testing
-        byte[] proofData = new byte[io.brane.core.types.KzgProof.SIZE];
+        byte[] proofData = new byte[io.brane.core.types.FixedSizeG1Point.SIZE];
         io.brane.core.types.KzgProof proof = new io.brane.core.types.KzgProof(proofData);
 
         return new io.brane.core.types.BlobSidecar(

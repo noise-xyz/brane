@@ -9,6 +9,7 @@ import ethereum.ckzg4844.CKZG4844JNI;
 import io.brane.core.crypto.Kzg;
 import io.brane.core.error.KzgException;
 import io.brane.core.types.Blob;
+import io.brane.core.types.FixedSizeG1Point;
 import io.brane.core.types.KzgCommitment;
 import io.brane.core.types.KzgProof;
 
@@ -210,7 +211,7 @@ public final class CKzg implements Kzg {
             // it is negligible compared to the native KZG cryptographic operations.
             byte[] blobsFlat = new byte[blobs.size() * Blob.SIZE];
             byte[] commitmentsFlat = new byte[commitments.size() * KzgCommitment.SIZE];
-            byte[] proofsFlat = new byte[proofs.size() * KzgProof.SIZE];
+            byte[] proofsFlat = new byte[proofs.size() * FixedSizeG1Point.SIZE];
 
             for (int i = 0; i < blobs.size(); i++) {
                 Blob blob = Objects.requireNonNull(blobs.get(i), "blobs[" + i + "]");
@@ -221,7 +222,7 @@ public final class CKzg implements Kzg {
                 System.arraycopy(commitment.toBytes(), 0, commitmentsFlat,
                         i * KzgCommitment.SIZE, KzgCommitment.SIZE);
                 System.arraycopy(proof.toBytes(), 0, proofsFlat,
-                        i * KzgProof.SIZE, KzgProof.SIZE);
+                        i * FixedSizeG1Point.SIZE, FixedSizeG1Point.SIZE);
             }
 
             return CKZG4844JNI.verifyBlobKzgProofBatch(

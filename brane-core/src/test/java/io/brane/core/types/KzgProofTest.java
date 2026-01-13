@@ -11,12 +11,12 @@ class KzgProofTest {
 
     @Test
     void constantsAreCorrect() {
-        assertEquals(48, KzgProof.SIZE);
+        assertEquals(48, FixedSizeG1Point.SIZE);
     }
 
     @Test
     void acceptsCorrectSize() {
-        byte[] data = new byte[KzgProof.SIZE];
+        byte[] data = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data, (byte) 0xAB);
         KzgProof proof = new KzgProof(data);
         assertArrayEquals(data, proof.toBytes());
@@ -29,13 +29,13 @@ class KzgProofTest {
 
     @Test
     void rejectsTooSmall() {
-        byte[] data = new byte[KzgProof.SIZE - 1];
+        byte[] data = new byte[FixedSizeG1Point.SIZE - 1];
         assertThrows(IllegalArgumentException.class, () -> new KzgProof(data));
     }
 
     @Test
     void rejectsTooLarge() {
-        byte[] data = new byte[KzgProof.SIZE + 1];
+        byte[] data = new byte[FixedSizeG1Point.SIZE + 1];
         assertThrows(IllegalArgumentException.class, () -> new KzgProof(data));
     }
 
@@ -47,7 +47,7 @@ class KzgProofTest {
 
     @Test
     void defensiveCopyOnConstruction() {
-        byte[] data = new byte[KzgProof.SIZE];
+        byte[] data = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data, (byte) 0xAB);
         KzgProof proof = new KzgProof(data);
 
@@ -60,7 +60,7 @@ class KzgProofTest {
 
     @Test
     void toBytesReturnsDefensiveCopy() {
-        byte[] data = new byte[KzgProof.SIZE];
+        byte[] data = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data, (byte) 0xAB);
         KzgProof proof = new KzgProof(data);
 
@@ -77,13 +77,13 @@ class KzgProofTest {
 
     @Test
     void equalsAndHashCode() {
-        byte[] data1 = new byte[KzgProof.SIZE];
+        byte[] data1 = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data1, (byte) 0xAB);
 
-        byte[] data2 = new byte[KzgProof.SIZE];
+        byte[] data2 = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data2, (byte) 0xAB);
 
-        byte[] data3 = new byte[KzgProof.SIZE];
+        byte[] data3 = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data3, (byte) 0xCD);
 
         KzgProof proof1 = new KzgProof(data1);
@@ -110,7 +110,7 @@ class KzgProofTest {
 
     @Test
     void toStringContainsHex() {
-        byte[] data = new byte[KzgProof.SIZE];
+        byte[] data = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(data, (byte) 0xAB);
         KzgProof proof = new KzgProof(data);
 

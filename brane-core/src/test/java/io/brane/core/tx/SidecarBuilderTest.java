@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import io.brane.core.crypto.Kzg;
 import io.brane.core.types.Blob;
 import io.brane.core.types.BlobSidecar;
+import io.brane.core.types.FixedSizeG1Point;
 import io.brane.core.types.KzgCommitment;
 import io.brane.core.types.KzgProof;
 
@@ -274,11 +275,11 @@ class SidecarBuilderTest {
         public KzgProof computeProof(Blob blob, KzgCommitment commitment) {
             proofCallCount++;
             // Create a deterministic proof based on blob and commitment
-            byte[] proofData = new byte[KzgProof.SIZE];
+            byte[] proofData = new byte[FixedSizeG1Point.SIZE];
             byte[] blobBytes = blob.toBytes();
             byte[] commitmentBytes = commitment.toBytes();
             // XOR first bytes of blob and commitment to make proof distinct
-            for (int i = 0; i < KzgProof.SIZE; i++) {
+            for (int i = 0; i < FixedSizeG1Point.SIZE; i++) {
                 proofData[i] = (byte) (blobBytes[i % blobBytes.length] ^ commitmentBytes[i % commitmentBytes.length]);
             }
             return new KzgProof(proofData);

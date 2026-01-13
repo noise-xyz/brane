@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import io.brane.core.crypto.Kzg;
 import io.brane.core.types.Blob;
+import io.brane.core.types.FixedSizeG1Point;
 import io.brane.core.types.KzgCommitment;
 import io.brane.core.types.KzgProof;
 
@@ -70,7 +71,7 @@ class CKzgTest {
         KzgProof proof = kzg.computeProof(blob, commitment);
 
         assertNotNull(proof);
-        assertEquals(KzgProof.SIZE, proof.toBytes().length);
+        assertEquals(FixedSizeG1Point.SIZE, proof.toBytes().length);
         assertEquals(48, proof.toBytes().length);
     }
 

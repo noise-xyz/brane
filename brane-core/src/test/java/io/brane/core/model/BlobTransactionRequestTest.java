@@ -13,6 +13,7 @@ import io.brane.core.tx.Eip4844Transaction;
 import io.brane.core.types.Address;
 import io.brane.core.types.Blob;
 import io.brane.core.types.BlobSidecar;
+import io.brane.core.types.FixedSizeG1Point;
 import io.brane.core.types.Hash;
 import io.brane.core.types.HexData;
 import io.brane.core.types.KzgCommitment;
@@ -39,7 +40,7 @@ class BlobTransactionRequestTest {
         Arrays.fill(commitmentData, (byte) 0x11);
         commitment = new KzgCommitment(commitmentData);
 
-        byte[] proofData = new byte[KzgProof.SIZE];
+        byte[] proofData = new byte[FixedSizeG1Point.SIZE];
         Arrays.fill(proofData, (byte) 0x22);
         KzgProof proof = new KzgProof(proofData);
 
