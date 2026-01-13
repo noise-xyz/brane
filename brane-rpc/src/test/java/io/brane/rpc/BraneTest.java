@@ -117,11 +117,13 @@ class BraneTest {
         Signer signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
 
         // Test pattern matching with Reader
+        // Note: Pattern order matters since DefaultSigner extends DefaultReader.
+        // More specific types (Signer, Tester) must be checked before Reader.
         Brane reader = Brane.builder().provider(provider).buildReader();
         String readerResult = switch (reader) {
-            case Brane.Reader r -> "reader";
-            case Brane.Signer s -> "signer";
             case Brane.Tester t -> "tester";
+            case Brane.Signer s -> "signer";
+            case Brane.Reader r -> "reader";
         };
         assertEquals("reader", readerResult);
 
@@ -131,9 +133,9 @@ class BraneTest {
                 .signer(signer)
                 .buildSigner();
         String signerResult = switch (signerClient) {
-            case Brane.Reader r -> "reader";
-            case Brane.Signer s -> "signer";
             case Brane.Tester t -> "tester";
+            case Brane.Signer s -> "signer";
+            case Brane.Reader r -> "reader";
         };
         assertEquals("signer", signerResult);
     }
