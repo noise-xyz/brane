@@ -1,0 +1,73 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+package io.brane.contract;
+
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.util.Objects;
+
+import io.brane.core.abi.Abi;
+import io.brane.core.abi.AbiBinding;
+import io.brane.core.types.Address;
+import io.brane.rpc.Brane;
+
+/**
+ * Base class for contract invocation handlers providing shared fields and constructor.
+ *
+ * <p>This abstract class contains the common infrastructure needed by all contract
+ * proxy implementations: the contract address, ABI definition, method binding, and
+ * RPC client.
+ *
+ * @param <C> the type of Brane client (Reader, Signer, or Tester)
+ */
+abstract class AbstractContractInvocationHandler<C extends Brane> implements InvocationHandler {
+
+    protected final Address address;
+    protected final Abi abi;
+    protected final AbiBinding binding;
+    protected final C client;
+
+    /**
+     * Creates a new contract invocation handler.
+     *
+     * @param address the contract address
+     * @param abi the contract ABI
+     * @param binding the method-to-ABI binding
+     * @param client the RPC client
+     */
+    protected AbstractContractInvocationHandler(
+            final Address address,
+            final Abi abi,
+            final AbiBinding binding,
+            final C client) {
+        this.address = Objects.requireNonNull(address, "address");
+        this.abi = Objects.requireNonNull(abi, "abi");
+        this.binding = Objects.requireNonNull(binding, "binding");
+        this.client = Objects.requireNonNull(client, "client");
+    }
+
+    /**
+     * Handles standard Object methods (toString, hashCode, equals).
+     *
+     * @param proxy the proxy instance
+     * @param method the method being invoked
+     * @param args the method arguments
+     * @param readOnly whether this is a read-only binding
+     * @return the result of the Object method
+     */
+    protected Object handleObjectMethod(
+            final Object proxy,
+            final Method method,
+            final Object[] args,
+            final boolean readOnly) {
+        return switch (method.getName()) {
+            case "toString" -> {
+                var suffix = readOnly ? ", readOnly=true" : "";
+                yield "BraneContractProxy{address=" + address.value() + suffix + "}";
+            }
+            case "hashCode" -> System.identityHashCode(proxy);
+            case "equals" -> proxy == (args == null || args.length == 0 ? null : args[0]);
+            default -> throw new UnsupportedOperationException(
+                    "Object method not supported: " + method.getName());
+        };
+    }
+}

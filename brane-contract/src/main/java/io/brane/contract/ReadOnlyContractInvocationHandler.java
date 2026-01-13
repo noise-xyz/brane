@@ -1,9 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package io.brane.contract;
 
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
-import java.util.Objects;
 
 import io.brane.core.RevertDecoder;
 import io.brane.core.abi.Abi;
@@ -23,28 +21,20 @@ import io.brane.rpc.CallRequest;
  * <p>This handler only supports view/pure functions. Any attempt to invoke
  * state-changing functions will throw {@link UnsupportedOperationException}.
  */
-final class ReadOnlyContractInvocationHandler implements InvocationHandler {
-
-    private final Address address;
-    private final Abi abi;
-    private final AbiBinding binding;
-    private final Brane client;
+final class ReadOnlyContractInvocationHandler extends AbstractContractInvocationHandler<Brane> {
 
     ReadOnlyContractInvocationHandler(
             final Address address,
             final Abi abi,
             final AbiBinding binding,
             final Brane client) {
-        this.address = Objects.requireNonNull(address, "address");
-        this.abi = Objects.requireNonNull(abi, "abi");
-        this.binding = Objects.requireNonNull(binding, "binding");
-        this.client = Objects.requireNonNull(client, "client");
+        super(address, abi, binding, client);
     }
 
     @Override
     public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
         if (MethodUtils.isObjectMethod(method)) {
-            return handleObjectMethod(proxy, method, args);
+            return handleObjectMethod(proxy, method, args, true);
         }
 
         final Object[] invocationArgs = args == null ? new Object[0] : args;
@@ -85,15 +75,4 @@ final class ReadOnlyContractInvocationHandler implements InvocationHandler {
         }
     }
 
-    private Object handleObjectMethod(
-            final Object proxy, final Method method, final Object[] args) {
-        return switch (method.getName()) {
-            case "toString" ->
-                    "BraneContractProxy{" + "address=" + address.value() + ", readOnly=true}";
-            case "hashCode" -> System.identityHashCode(proxy);
-            case "equals" -> proxy == (args == null || args.length == 0 ? null : args[0]);
-            default -> throw new UnsupportedOperationException(
-                    "Object method not supported: " + method.getName());
-        };
-    }
 }

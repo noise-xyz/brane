@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package io.brane.contract;
 
-import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Objects;
@@ -28,12 +27,8 @@ import io.brane.rpc.CallRequest;
  * <p>This handler supports both view/pure functions (via eth_call) and state-changing
  * functions (via sendTransactionAndWait).
  */
-final class SignerContractInvocationHandler implements InvocationHandler {
+final class SignerContractInvocationHandler extends AbstractContractInvocationHandler<Brane.Signer> {
 
-    private final Address address;
-    private final Abi abi;
-    private final AbiBinding binding;
-    private final Brane.Signer signer;
     private final ContractOptions options;
 
     SignerContractInvocationHandler(
@@ -42,17 +37,14 @@ final class SignerContractInvocationHandler implements InvocationHandler {
             final AbiBinding binding,
             final Brane.Signer signer,
             final ContractOptions options) {
-        this.address = Objects.requireNonNull(address, "address");
-        this.abi = Objects.requireNonNull(abi, "abi");
-        this.binding = Objects.requireNonNull(binding, "binding");
-        this.signer = Objects.requireNonNull(signer, "signer");
+        super(address, abi, binding, signer);
         this.options = Objects.requireNonNull(options, "options");
     }
 
     @Override
     public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
         if (MethodUtils.isObjectMethod(method)) {
-            return handleObjectMethod(proxy, method, args);
+            return handleObjectMethod(proxy, method, args, false);
         }
 
         final Object[] invocationArgs = args == null ? new Object[0] : args;
@@ -91,7 +83,7 @@ final class SignerContractInvocationHandler implements InvocationHandler {
                 .build();
 
         try {
-            final HexData output = signer.call(request, BlockTag.LATEST);
+            final HexData output = client.call(request, BlockTag.LATEST);
             final String outputValue = output != null ? output.value() : null;
             if (outputValue == null || outputValue.isBlank() || "0x".equals(outputValue)) {
                 throw new AbiDecodingException(
@@ -111,7 +103,7 @@ final class SignerContractInvocationHandler implements InvocationHandler {
         final TransactionRequest request = buildTransactionRequest(call, value);
 
         final TransactionReceipt receipt =
-                signer.sendTransactionAndWait(
+                client.sendTransactionAndWait(
                         request, options.timeoutMillis(), options.pollIntervalMillis());
         if (method.getReturnType() == void.class || method.getReturnType() == Void.class) {
             return null;
@@ -137,15 +129,4 @@ final class SignerContractInvocationHandler implements InvocationHandler {
                 .build();
     }
 
-    private Object handleObjectMethod(
-            final Object proxy, final Method method, final Object[] args) {
-        return switch (method.getName()) {
-            case "toString" ->
-                    "BraneContractProxy{" + "address=" + address.value() + "}";
-            case "hashCode" -> System.identityHashCode(proxy);
-            case "equals" -> proxy == (args == null || args.length == 0 ? null : args[0]);
-            default -> throw new UnsupportedOperationException(
-                    "Object method not supported: " + method.getName());
-        };
-    }
 }
