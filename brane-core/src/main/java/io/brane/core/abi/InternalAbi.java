@@ -115,7 +115,7 @@ final class InternalAbi implements Abi {
             return HexData.EMPTY;
         }
 
-        final Object[] providedArgs = args == null ? new Object[0] : args;
+        final Object[] providedArgs = Objects.requireNonNullElse(args, new Object[0]);
         if (constructor.inputs().size() != providedArgs.length) {
             throw new AbiEncodingException(
                     "Constructor expects "
