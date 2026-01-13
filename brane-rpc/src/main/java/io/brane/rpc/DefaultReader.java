@@ -90,31 +90,21 @@ non-sealed class DefaultReader implements Brane.Reader {
 
     @Override
     public HexData getCode(final Address address) {
-        ensureOpen();
-        final JsonRpcResponse response = sendWithRetry("eth_getCode", List.of(address.value(), "latest"));
-        final Object result = response.result();
-        if (result == null) {
-            return HexData.EMPTY;
-        }
-        final String hex = result.toString();
-        // eth_getCode returns "0x" for addresses with no code
-        if ("0x".equals(hex)) {
-            return HexData.EMPTY;
-        }
-        return new HexData(hex);
+        return rpc.callWithDefault(
+                "eth_getCode",
+                List.of(address.value(), "latest"),
+                hex -> "0x".equals(hex) ? HexData.EMPTY : new HexData(hex),
+                HexData.EMPTY);
     }
 
     @Override
     public HexData getStorageAt(final Address address, final BigInteger slot) {
-        ensureOpen();
         final String slotHex = "0x" + slot.toString(16);
-        final JsonRpcResponse response = sendWithRetry(
-                "eth_getStorageAt", List.of(address.value(), slotHex, "latest"));
-        final Object result = response.result();
-        if (result == null) {
-            return HexData.EMPTY;
-        }
-        return new HexData(result.toString());
+        return rpc.callWithDefault(
+                "eth_getStorageAt",
+                List.of(address.value(), slotHex, "latest"),
+                HexData::new,
+                HexData.EMPTY);
     }
 
     @Override
