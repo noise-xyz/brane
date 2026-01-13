@@ -192,7 +192,7 @@ final class RpcRetry {
             final java.util.List<Throwable> failedAttempts,
             final long startTime) {
         final long totalDuration = System.currentTimeMillis() - startTime;
-        final Throwable lastFailure = failedAttempts.get(failedAttempts.size() - 1);
+        final Throwable lastFailure = failedAttempts.getLast();
 
         final RetryExhaustedException exhausted = new RetryExhaustedException(
                 failedAttempts.size(),
