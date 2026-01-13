@@ -1,11 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package io.brane.core.types;
 
-import java.util.Arrays;
-import java.util.Objects;
-
 import io.brane.core.crypto.Sha256;
-import io.brane.primitives.Hex;
 
 /**
  * Represents an EIP-4844 KZG commitment - a 48-byte G1 point on the BLS12-381 curve.
@@ -17,32 +13,22 @@ import io.brane.primitives.Hex;
  * This class is immutable and thread-safe. The internal byte array is defensively copied
  * on construction and when accessed via {@link #toBytes()}.
  *
- * <h2>Design Rationale</h2>
- * This is intentionally a class rather than a record for two reasons:
- * <ol>
- *   <li><b>Content-based equality for byte arrays</b>: Records use reference equality for
- *       array components, but we need {@link java.util.Arrays#equals(byte[], byte[])} semantics
- *       so that two commitments with identical bytes are considered equal.</li>
- *   <li><b>Lazy caching</b>: The versioned hash computation (SHA-256) is expensive. We cache
- *       the result in a volatile field, which records cannot express since all their fields
- *       are derived from constructor parameters.</li>
- * </ol>
- *
  * @since 0.2.0
  */
-public final class KzgCommitment {
+public final class KzgCommitment extends FixedSizeG1Point {
 
     /**
      * Size of a KZG commitment in bytes (48 bytes for a compressed G1 point).
+     * @deprecated Use {@link FixedSizeG1Point#SIZE} instead. This constant is retained for
+     *             backward compatibility and will be removed in a future release.
      */
-    public static final int SIZE = 48;
+    @Deprecated(forRemoval = true)
+    public static final int SIZE = FixedSizeG1Point.SIZE;
 
     /**
      * Version byte for KZG versioned hashes (EIP-4844).
      */
     private static final byte VERSIONED_HASH_VERSION_KZG = 0x01;
-
-    private final byte[] data;
 
     /**
      * Cached versioned hash. Computed lazily and cached for performance.
@@ -53,38 +39,12 @@ public final class KzgCommitment {
     /**
      * Creates a KZG commitment from raw bytes.
      *
-     * @param data the commitment data, must be exactly {@value #SIZE} bytes
+     * @param data the commitment data, must be exactly 48 bytes
      * @throws NullPointerException if data is null
-     * @throws IllegalArgumentException if data is not exactly {@value #SIZE} bytes
+     * @throws IllegalArgumentException if data is not exactly 48 bytes
      */
     public KzgCommitment(final byte[] data) {
-        Objects.requireNonNull(data, "data");
-        if (data.length != SIZE) {
-            throw new IllegalArgumentException(
-                    "KZG commitment must be exactly " + SIZE + " bytes, got " + data.length);
-        }
-        this.data = data.clone();
-    }
-
-    /**
-     * Returns a copy of the commitment data.
-     *
-     * @return a defensive copy of the commitment bytes
-     */
-    public byte[] toBytes() {
-        return data.clone();
-    }
-
-    /**
-     * Returns the raw byte array without copying.
-     * <p>
-     * Package-private for performance-critical internal use only.
-     * Callers must not modify the returned array.
-     *
-     * @return the internal byte array (do not modify)
-     */
-    byte[] toBytesUnsafe() {
-        return data;
+        super(data, "KZG commitment");
     }
 
     /**
@@ -109,20 +69,7 @@ public final class KzgCommitment {
     }
 
     @Override
-    public boolean equals(final Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        KzgCommitment that = (KzgCommitment) o;
-        return Arrays.equals(data, that.data);
-    }
-
-    @Override
-    public int hashCode() {
-        return Arrays.hashCode(data);
-    }
-
-    @Override
-    public String toString() {
-        return "KzgCommitment[0x" + Hex.encodeNoPrefix(data) + "]";
+    protected String typeName() {
+        return "KzgCommitment";
     }
 }

@@ -4,6 +4,8 @@ package io.brane.core.types;
 import java.util.Arrays;
 import java.util.Objects;
 
+import io.brane.primitives.Hex;
+
 /**
  * Abstract base class for fixed-size 48-byte G1 points on the BLS12-381 curve.
  * <p>
@@ -78,5 +80,17 @@ public abstract class FixedSizeG1Point {
     @Override
     public int hashCode() {
         return Arrays.hashCode(data);
+    }
+
+    /**
+     * Returns the name of this G1 point type for use in {@link #toString()}.
+     *
+     * @return the type name (e.g., "KzgCommitment", "KzgProof")
+     */
+    protected abstract String typeName();
+
+    @Override
+    public String toString() {
+        return typeName() + "[0x" + Hex.encodeNoPrefix(data) + "]";
     }
 }

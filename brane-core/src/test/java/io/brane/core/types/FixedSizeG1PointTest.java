@@ -21,6 +21,11 @@ class FixedSizeG1PointTest {
         TestG1Point(byte[] data) {
             super(data, "TestG1Point");
         }
+
+        @Override
+        protected String typeName() {
+            return "TestG1Point";
+        }
     }
 
     @Test
@@ -143,5 +148,18 @@ class FixedSizeG1PointTest {
         assertTrue(ex.getMessage().contains("TestG1Point"));
         assertTrue(ex.getMessage().contains("48"));
         assertTrue(ex.getMessage().contains("10"));
+    }
+
+    @Test
+    void toStringContainsTypeNameAndHex() {
+        byte[] data = new byte[FixedSizeG1Point.SIZE];
+        Arrays.fill(data, (byte) 0xAB);
+        var point = new TestG1Point(data);
+
+        String str = point.toString();
+        assertTrue(str.contains("TestG1Point"));
+        assertTrue(str.contains("0x"));
+        // Should contain the hex encoding of 0xAB repeated
+        assertTrue(str.contains("ab"));
     }
 }
