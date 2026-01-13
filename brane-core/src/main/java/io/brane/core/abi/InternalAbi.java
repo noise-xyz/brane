@@ -534,7 +534,7 @@ final class InternalAbi implements Abi {
         }
 
         if (normalizedType.equals("address")) {
-            return new TypeConverter() {
+            return new StaticTypeConverter() {
                 @Override
                 public AbiType convert(Object value) {
                     if (value == null)
@@ -544,21 +544,6 @@ final class InternalAbi implements Abi {
                     if (value instanceof String s)
                         return new AddressType(new Address(s));
                     throw new AbiEncodingException("Expected Address for type 'address'");
-                }
-
-                @Override
-                public boolean isDynamic() {
-                    return false;
-                }
-
-                @Override
-                public int getHeadSize() {
-                    return 32;
-                }
-
-                @Override
-                public int getContentSize(Object value) {
-                    return 32;
                 }
 
                 @Override
