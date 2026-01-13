@@ -653,10 +653,10 @@ final class InternalAbi implements Abi {
                 public void encodeContent(Object value, java.nio.ByteBuffer buffer) {
                     // Static bytes are just right-padded
                     byte[] data;
-                    if (value instanceof byte[]) {
-                        data = (byte[]) value;
-                    } else if (value instanceof HexData) {
-                        data = Hex.decode(((HexData) value).value());
+                    if (value instanceof byte[] bytes) {
+                        data = bytes;
+                    } else if (value instanceof HexData hex) {
+                        data = Hex.decode(hex.value());
                     } else {
                         throw new AbiEncodingException("Expected byte[] or HexData for bytesN");
                     }
