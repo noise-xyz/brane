@@ -573,7 +573,7 @@ final class InternalAbi implements Abi {
         }
 
         if (normalizedType.equals("string")) {
-            return new TypeConverter() {
+            return new DynamicTypeConverter() {
                 @Override
                 public AbiType convert(Object value) {
                     if (value == null)
@@ -581,16 +581,6 @@ final class InternalAbi implements Abi {
                     if (value instanceof String s)
                         return new Utf8String(s);
                     throw new AbiEncodingException("Expected String for type 'string'");
-                }
-
-                @Override
-                public boolean isDynamic() {
-                    return true;
-                }
-
-                @Override
-                public int getHeadSize() {
-                    return 32;
                 }
 
                 @Override
