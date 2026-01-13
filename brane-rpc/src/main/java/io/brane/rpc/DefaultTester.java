@@ -50,12 +50,13 @@ import io.brane.rpc.internal.RpcUtils;
  * Anvil uses {@code evm_*} while other nodes use their standard prefix.
  *
  * <h3>Helper Methods</h3>
- * <p>Three internal helper methods reduce boilerplate for RPC calls:
+ * <p>Two internal helper methods reduce boilerplate for RPC calls:
  * <ul>
- *   <li>{@link #sendWithRetry(String, List)} - Core retry wrapper with exponential backoff</li>
  *   <li>{@link #sendVoid(String, List)} - For methods that don't return meaningful results</li>
  *   <li>{@link #sendBoolResult(String, List)} - For methods returning success/failure boolean</li>
  * </ul>
+ * <p>The inherited {@link DefaultReader#sendWithRetry(String, List)} method provides the core
+ * retry wrapper with exponential backoff.
  *
  * @since 0.3.0
  */
