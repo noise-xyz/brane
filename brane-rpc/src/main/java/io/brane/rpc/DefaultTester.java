@@ -122,7 +122,7 @@ final class DefaultTester extends DefaultSigner implements Brane.Tester {
         }
         final Object result = response.result();
         if (result == null) {
-            throw new RpcException(-32000, method + " returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult(method);
         }
         return SnapshotId.from(result.toString());
     }
@@ -232,7 +232,7 @@ final class DefaultTester extends DefaultSigner implements Brane.Tester {
         }
         final Object result = response.result();
         if (result == null) {
-            throw new RpcException(-32000, method + " returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult(method);
         }
         return Boolean.TRUE.equals(result);
     }
@@ -320,7 +320,7 @@ final class DefaultTester extends DefaultSigner implements Brane.Tester {
         }
         final Object result = response.result();
         if (result == null) {
-            throw new RpcException(-32000, "anvil_dumpState returned null", (String) null, (Throwable) null);
+            throw RpcException.fromNullResult("anvil_dumpState");
         }
         return new HexData(result.toString());
     }
@@ -516,7 +516,7 @@ final class DefaultTester extends DefaultSigner implements Brane.Tester {
             }
             final Object result = response.result();
             if (result == null) {
-                throw new RpcException(-32000, "eth_sendTransaction returned null", (String) null, (Throwable) null);
+                throw RpcException.fromNullResult("eth_sendTransaction");
             }
             return new Hash(result.toString());
         }
