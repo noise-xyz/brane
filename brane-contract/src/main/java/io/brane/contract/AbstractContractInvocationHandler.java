@@ -5,10 +5,16 @@ import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Objects;
 
+import io.brane.core.RevertDecoder;
 import io.brane.core.abi.Abi;
 import io.brane.core.abi.AbiBinding;
+import io.brane.core.error.AbiDecodingException;
+import io.brane.core.error.RpcException;
 import io.brane.core.types.Address;
+import io.brane.core.types.HexData;
+import io.brane.rpc.BlockTag;
 import io.brane.rpc.Brane;
+import io.brane.rpc.CallRequest;
 
 /**
  * Base class for contract invocation handlers providing shared fields and constructor.
@@ -69,5 +75,35 @@ abstract class AbstractContractInvocationHandler<C extends Brane> implements Inv
             default -> throw new UnsupportedOperationException(
                     "Object method not supported: " + method.getName());
         };
+    }
+
+    /**
+     * Invokes a view/pure function via eth_call.
+     *
+     * @param method the Java method being invoked
+     * @param call the encoded function call
+     * @return the decoded result
+     */
+    protected Object invokeView(final Method method, final Abi.FunctionCall call) {
+        final CallRequest request = CallRequest.builder()
+                .to(address)
+                .data(new HexData(call.data()))
+                .build();
+
+        try {
+            final HexData output = client.call(request, BlockTag.LATEST);
+            final String outputValue = output != null ? output.value() : null;
+            if (outputValue == null || outputValue.isBlank() || "0x".equals(outputValue)) {
+                throw new AbiDecodingException(
+                        "eth_call returned empty result for function call");
+            }
+            if (method.getReturnType() == void.class || method.getReturnType() == Void.class) {
+                return null;
+            }
+            return call.decode(outputValue, method.getReturnType());
+        } catch (RpcException e) {
+            RevertDecoder.throwIfRevert(e);
+            throw e;
+        }
     }
 }

@@ -5,21 +5,16 @@ import java.lang.reflect.Method;
 import java.util.Arrays;
 import java.util.Objects;
 
-import io.brane.core.RevertDecoder;
 import io.brane.core.abi.Abi;
 import io.brane.core.abi.AbiBinding;
 import io.brane.core.builder.TxBuilder;
-import io.brane.core.error.AbiDecodingException;
-import io.brane.core.error.RpcException;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.model.TransactionRequest;
 import io.brane.core.types.Address;
 import io.brane.core.types.HexData;
 import io.brane.core.types.Wei;
 import io.brane.core.util.MethodUtils;
-import io.brane.rpc.BlockTag;
 import io.brane.rpc.Brane;
-import io.brane.rpc.CallRequest;
 
 /**
  * Invocation handler for read-write contract proxies using the Brane.Signer API.
@@ -74,29 +69,6 @@ final class SignerContractInvocationHandler extends AbstractContractInvocationHa
         }
 
         return invokeWrite(method, functionCall, value);
-    }
-
-    private Object invokeView(final Method method, final Abi.FunctionCall call) {
-        final CallRequest request = CallRequest.builder()
-                .to(address)
-                .data(new HexData(call.data()))
-                .build();
-
-        try {
-            final HexData output = client.call(request, BlockTag.LATEST);
-            final String outputValue = output != null ? output.value() : null;
-            if (outputValue == null || outputValue.isBlank() || "0x".equals(outputValue)) {
-                throw new AbiDecodingException(
-                        "eth_call returned empty result for function call");
-            }
-            if (method.getReturnType() == void.class || method.getReturnType() == Void.class) {
-                return null;
-            }
-            return call.decode(outputValue, method.getReturnType());
-        } catch (RpcException e) {
-            RevertDecoder.throwIfRevert(e);
-            throw e;
-        }
     }
 
     private Object invokeWrite(final Method method, final Abi.FunctionCall call, final Wei value) {
