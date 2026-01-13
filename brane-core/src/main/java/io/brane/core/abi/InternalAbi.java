@@ -518,27 +518,12 @@ final class InternalAbi implements Abi {
                 width = Integer.parseInt(normalizedType.substring(3));
             }
             final int finalWidth = width;
-            return new TypeConverter() {
+            return new StaticTypeConverter() {
                 @Override
                 public AbiType convert(Object value) {
                     if (value == null)
                         throw new AbiEncodingException("int value cannot be null");
                     return new Int(finalWidth, toBigInteger(value, true));
-                }
-
-                @Override
-                public boolean isDynamic() {
-                    return false;
-                }
-
-                @Override
-                public int getHeadSize() {
-                    return 32;
-                }
-
-                @Override
-                public int getContentSize(Object value) {
-                    return 32;
                 }
 
                 @Override
