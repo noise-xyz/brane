@@ -61,10 +61,7 @@ import io.brane.rpc.internal.RpcUtils;
  */
 final class DefaultTester extends DefaultSigner implements Brane.Tester {
 
-    private final BraneProvider provider;
     private final TestNodeMode mode;
-    private final int maxRetries;
-    private final RpcRetryConfig retryConfig;
 
     /**
      * Creates a new DefaultTester with the specified configuration.
@@ -84,10 +81,7 @@ final class DefaultTester extends DefaultSigner implements Brane.Tester {
             final RpcRetryConfig retryConfig,
             final TestNodeMode mode) {
         super(provider, signer, chain, maxRetries, retryConfig);
-        this.provider = provider;
         this.mode = mode;
-        this.maxRetries = maxRetries;
-        this.retryConfig = retryConfig;
     }
 
     // ==================== Tester Interface Implementation ====================
@@ -357,17 +351,6 @@ final class DefaultTester extends DefaultSigner implements Brane.Tester {
      */
     TestNodeMode testMode() {
         return mode;
-    }
-
-    /**
-     * Sends an RPC request with automatic retry on transient failures.
-     *
-     * @param method the RPC method name
-     * @param params the method parameters
-     * @return the JSON-RPC response
-     */
-    JsonRpcResponse sendWithRetry(final String method, final List<?> params) {
-        return RpcRetry.runRpc(() -> provider.send(method, params), maxRetries + 1, retryConfig);
     }
 
     /**
