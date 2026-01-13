@@ -720,8 +720,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         try {
             return sendAsync(method, params).join();
         } catch (Exception e) {
-            if (e.getCause() instanceof RpcException)
-                throw (RpcException) e.getCause();
+            if (e.getCause() instanceof RpcException rpc) throw rpc;
             throw new RpcException(-32000, "Request failed", null, e);
         }
     }
