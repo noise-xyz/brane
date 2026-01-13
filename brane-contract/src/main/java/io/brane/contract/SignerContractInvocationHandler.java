@@ -37,9 +37,14 @@ final class SignerContractInvocationHandler extends AbstractContractInvocationHa
     }
 
     @Override
+    protected String toStringSuffix() {
+        return "";
+    }
+
+    @Override
     public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
         if (MethodUtils.isObjectMethod(method)) {
-            return handleObjectMethod(proxy, method, args, false);
+            return handleObjectMethod(proxy, method, args);
         }
 
         final Object[] invocationArgs = args == null ? new Object[0] : args;

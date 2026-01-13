@@ -1,1 +1,2 @@
-/Users/liangchenzhou/Documents/Noise/brane/brane-core/src/main/java/io/brane/core/abi/InternalAbi.java|if|method
+/Users/liangchenzhou/Documents/Noise/brane/brane-contract/src/main/java/io/brane/contract/SignerContractInvocationHandler.java|invoke|method
+/Users/liangchenzhou/Documents/Noise/brane/brane-contract/src/main/java/io/brane/contract/ReadOnlyContractInvocationHandler.java|invoke|method

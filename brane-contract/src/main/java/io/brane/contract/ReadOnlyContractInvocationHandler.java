@@ -26,9 +26,14 @@ final class ReadOnlyContractInvocationHandler extends AbstractContractInvocation
     }
 
     @Override
+    protected String toStringSuffix() {
+        return ", readOnly=true";
+    }
+
+    @Override
     public Object invoke(final Object proxy, final Method method, final Object[] args) throws Throwable {
         if (MethodUtils.isObjectMethod(method)) {
-            return handleObjectMethod(proxy, method, args, true);
+            return handleObjectMethod(proxy, method, args);
         }
 
         final Object[] invocationArgs = args == null ? new Object[0] : args;

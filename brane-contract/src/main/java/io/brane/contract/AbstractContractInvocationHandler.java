@@ -52,24 +52,29 @@ abstract class AbstractContractInvocationHandler<C extends Brane> implements Inv
     }
 
     /**
+     * Returns the suffix to append to toString() output.
+     *
+     * <p>Subclasses override this to indicate their specific characteristics,
+     * such as read-only mode.
+     *
+     * @return the toString suffix, or empty string for no suffix
+     */
+    protected abstract String toStringSuffix();
+
+    /**
      * Handles standard Object methods (toString, hashCode, equals).
      *
      * @param proxy the proxy instance
      * @param method the method being invoked
      * @param args the method arguments
-     * @param readOnly whether this is a read-only binding
      * @return the result of the Object method
      */
     protected Object handleObjectMethod(
             final Object proxy,
             final Method method,
-            final Object[] args,
-            final boolean readOnly) {
+            final Object[] args) {
         return switch (method.getName()) {
-            case "toString" -> {
-                var suffix = readOnly ? ", readOnly=true" : "";
-                yield "BraneContractProxy{address=" + address.value() + suffix + "}";
-            }
+            case "toString" -> "BraneContractProxy{address=" + address.value() + toStringSuffix() + "}";
             case "hashCode" -> System.identityHashCode(proxy);
             case "equals" -> proxy == (args == null || args.length == 0 ? null : args[0]);
             default -> throw new UnsupportedOperationException(
