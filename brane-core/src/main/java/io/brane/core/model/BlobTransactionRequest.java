@@ -156,7 +156,7 @@ public record BlobTransactionRequest(
      * @return the access list or empty list
      */
     public List<AccessListEntry> accessListOrEmpty() {
-        return accessList == null ? List.of() : accessList;
+        return Objects.requireNonNullElse(accessList, List.of());
     }
 
     /**
