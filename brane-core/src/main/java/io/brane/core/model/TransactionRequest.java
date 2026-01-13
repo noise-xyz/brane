@@ -130,7 +130,7 @@ public record TransactionRequest(
     }
 
     public List<AccessListEntry> accessListOrEmpty() {
-        return accessList == null ? List.of() : accessList;
+        return Objects.requireNonNullElse(accessList, List.of());
     }
 
     /**
