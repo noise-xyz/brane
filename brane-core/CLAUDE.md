@@ -6,45 +6,45 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 
 | Package | Purpose |
 |---------|---------|
-| `io.brane.core.types` | Value objects: `Address`, `Wei`, `Hash`, `HexData`, `Blob`, `BlobSidecar`, `KzgCommitment`, `KzgProof` |
-| `io.brane.core.abi` | ABI encoding/decoding: `Abi`, `AbiEncoder`, `AbiDecoder` |
-| `io.brane.core.crypto` | ECDSA: `PrivateKey`, `Signer`, `Signature`, `Keccak256`; KZG: `Kzg` interface |
-| `io.brane.core.crypto.hd` | HD Wallet (BIP-39/BIP-44): `MnemonicWallet`, `DerivationPath` |
-| `io.brane.core.crypto.eip712` | EIP-712: `TypedData`, `Eip712Domain`, `TypedDataSigner`, `TypedDataJson` |
-| `io.brane.core.builder` | Transaction builders: `TxBuilder`, `Eip1559Builder`, `LegacyBuilder`, `Eip4844Builder` |
-| `io.brane.core.model` | Data models: `TransactionRequest`, `TransactionReceipt`, `BlockHeader`, `BlobTransactionRequest` |
-| `io.brane.core.tx` | Transaction types: `LegacyTransaction`, `Eip1559Transaction`, `Eip4844Transaction`; Blob utils: `SidecarBuilder`, `BlobDecoder` |
-| `io.brane.core.chain` | Chain profiles: `ChainProfiles.MAINNET`, etc. |
-| `io.brane.core.error` | Exception hierarchy: `BraneException`, `TxnException`, `RevertException` |
-| `io.brane.core.util` | Utilities: `Topics`, `MethodUtils` |
+| `sh.brane.core.types` | Value objects: `Address`, `Wei`, `Hash`, `HexData`, `Blob`, `BlobSidecar`, `KzgCommitment`, `KzgProof` |
+| `sh.brane.core.abi` | ABI encoding/decoding: `Abi`, `AbiEncoder`, `AbiDecoder` |
+| `sh.brane.core.crypto` | ECDSA: `PrivateKey`, `Signer`, `Signature`, `Keccak256`; KZG: `Kzg` interface |
+| `sh.brane.core.crypto.hd` | HD Wallet (BIP-39/BIP-44): `MnemonicWallet`, `DerivationPath` |
+| `sh.brane.core.crypto.eip712` | EIP-712: `TypedData`, `Eip712Domain`, `TypedDataSigner`, `TypedDataJson` |
+| `sh.brane.core.builder` | Transaction builders: `TxBuilder`, `Eip1559Builder`, `LegacyBuilder`, `Eip4844Builder` |
+| `sh.brane.core.model` | Data models: `TransactionRequest`, `TransactionReceipt`, `BlockHeader`, `BlobTransactionRequest` |
+| `sh.brane.core.tx` | Transaction types: `LegacyTransaction`, `Eip1559Transaction`, `Eip4844Transaction`; Blob utils: `SidecarBuilder`, `BlobDecoder` |
+| `sh.brane.core.chain` | Chain profiles: `ChainProfiles.MAINNET`, etc. |
+| `sh.brane.core.error` | Exception hierarchy: `BraneException`, `TxnException`, `RevertException` |
+| `sh.brane.core.util` | Utilities: `Topics`, `MethodUtils` |
 
 ## Key Classes
 
-### Types (`io.brane.core.types`)
+### Types (`sh.brane.core.types`)
 - **`Address`** - 20-byte Ethereum address with checksum validation
 - **`Wei`** - Arbitrary precision wei amount with `fromEther()`, `toEther()`
 - **`Hash`** - 32-byte hash (transaction hash, block hash)
 - **`HexData`** - Arbitrary hex-encoded bytes (thread-safe lazy initialization)
 
-### ABI (`io.brane.core.abi`)
+### ABI (`sh.brane.core.abi`)
 - **`Abi`** - Parse and use ABI definitions
 - **`AbiEncoder`** - Encode function calls and constructor args
 - **`AbiDecoder`** - Decode return values and event logs
 - **`InternalAbi`** - Internal ABI codec (implementation detail)
 
-### Crypto (`io.brane.core.crypto`)
+### Crypto (`sh.brane.core.crypto`)
 - **`PrivateKey`** - Secp256k1 key with `sign()`, `toAddress()`, implements `Destroyable`
 - **`Signer`** - Interface for signing (allows remote signers)
 - **`Signature`** - ECDSA signature with r, s, v components (defensive copies)
 - **`Keccak256`** - Hash utility with ThreadLocal caching - **call `cleanup()` in pooled threads**
 
-### HD Wallet (`io.brane.core.crypto.hd`)
+### HD Wallet (`sh.brane.core.crypto.hd`)
 - **`MnemonicWallet`** - BIP-39/BIP-44 HD wallet with `fromPhrase()`, `generatePhrase()`, `derive()`
 - **`DerivationPath`** - Custom derivation path for non-standard account indices
 - **`Bip39`** - Internal BIP-39 mnemonic implementation
 - **`Bip32`** - Internal BIP-32 key derivation implementation
 
-### EIP-712 (`io.brane.core.crypto.eip712`)
+### EIP-712 (`sh.brane.core.crypto.eip712`)
 - **`TypedData<T>`** - Primary API for type-safe EIP-712 signing with records
 - **`Eip712Domain`** - Domain separator fields with `separator()` method for computing domain hash
 - **`TypedDataSigner`** - Static utility for dynamic/runtime EIP-712 signing
@@ -52,14 +52,14 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 - **`TypeDefinition<T>`** - Type schema with field mappings and extractor
 - **`TypedDataField`** - Single field definition (name + Solidity type)
 
-### Builders (`io.brane.core.builder`)
+### Builders (`sh.brane.core.builder`)
 - **`TxBuilder`** - Sealed interface for transaction building
 - **`Eip1559Builder`** - EIP-1559 transactions (recommended)
 - **`LegacyBuilder`** - Legacy (type 0) transactions
 - **`Eip4844Builder`** - EIP-4844 blob transactions with `blobData()` or `sidecar()` modes
 - **`BuilderValidation`** - Internal validation utility
 
-### EIP-4844 Blobs (`io.brane.core.types`, `io.brane.core.tx`, `io.brane.core.crypto`)
+### EIP-4844 Blobs (`sh.brane.core.types`, `sh.brane.core.tx`, `sh.brane.core.crypto`)
 - **`Blob`** - 128KB blob data (4096 field elements)
 - **`BlobSidecar`** - Container for blobs, KZG commitments, and proofs
 - **`KzgCommitment`** - 48-byte KZG commitment with `toVersionedHash()`
@@ -69,7 +69,7 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 - **`Kzg`** - Interface for KZG operations (implemented by `CKzg` in brane-kzg)
 - **`BlobTransactionRequest`** - Request model containing transaction fields and sidecar
 
-### Error Hierarchy (`io.brane.core.error`)
+### Error Hierarchy (`sh.brane.core.error`)
 ```
 BraneException (sealed)
 ├── AbiDecodingException - ABI decoding failures

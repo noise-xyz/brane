@@ -8,7 +8,7 @@ Brane's WebSocket transport enables persistent connections for real-time subscri
 ## Basic Usage
 
 ```java
-import io.brane.rpc.Brane;
+import sh.brane.rpc.Brane;
 
 // Create a WebSocket-based client
 Brane client = Brane.builder()
@@ -26,8 +26,8 @@ client.close();
 For simple connection without additional configuration:
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.rpc.WebSocketProvider;
+import sh.brane.rpc.Brane;
+import sh.brane.rpc.WebSocketProvider;
 
 // If you need direct provider access
 WebSocketProvider provider = WebSocketProvider.create("wss://ethereum.publicnode.com");
@@ -51,10 +51,10 @@ For production use cases, you'll want fine-grained control over connection behav
 For fine-grained control over WebSocket behavior, configure via `WebSocketConfig`:
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.rpc.WebSocketConfig;
-import io.brane.rpc.WebSocketConfig.WaitStrategyType;
-import io.brane.rpc.WebSocketProvider;
+import sh.brane.rpc.Brane;
+import sh.brane.rpc.WebSocketConfig;
+import sh.brane.rpc.WebSocketConfig.WaitStrategyType;
+import sh.brane.rpc.WebSocketProvider;
 import java.time.Duration;
 
 var config = WebSocketConfig.builder("wss://eth.example.com")
@@ -263,8 +263,8 @@ The provider attempts to reconnect automatically. If the connection is lost whil
 The `WebSocketProvider` exposes its connection state for monitoring and handling edge cases:
 
 ```java
-import io.brane.rpc.WebSocketProvider;
-import io.brane.rpc.WebSocketProvider.ConnectionState;
+import sh.brane.rpc.WebSocketProvider;
+import sh.brane.rpc.WebSocketProvider.ConnectionState;
 
 var provider = WebSocketProvider.create("wss://...");
 
@@ -311,10 +311,10 @@ Use `BraneMetrics.onConnectionLost()` and `onReconnect()` hooks for monitoring c
 The builder creates different client types based on configuration:
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.core.crypto.PrivateKey;
-import io.brane.core.types.Address;
-import io.brane.core.types.Wei;
+import sh.brane.rpc.Brane;
+import sh.brane.core.crypto.PrivateKey;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Wei;
 
 // Read-only client (Brane.Reader) - for queries and subscriptions
 Brane.Reader reader = Brane.builder()

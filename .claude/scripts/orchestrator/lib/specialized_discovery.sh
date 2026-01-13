@@ -137,11 +137,11 @@ Module Dependency Rules (MUST NOT violate):
 - brane-contract: May depend on brane-rpc, brane-core
 
 FORBIDDEN patterns:
-- ANY import of io.brane.internal.* from outside its own module
+- ANY import of sh.brane.internal.* from outside its own module
 - brane-primitives importing anything from brane-core
 - brane-kzg importing from brane-rpc
 - Circular dependencies between any modules
-- web3j types (io.brane.internal.web3j.*) in ANY public API
+- web3j types (sh.brane.internal.web3j.*) in ANY public API
 '
 
 readonly BRANE_SENSITIVE_TYPES='
@@ -200,7 +200,7 @@ EOF
 Identify architectural violations and concerns:
 
 ### MUST FLAG (T1/T2):
-1. **INTERNAL_LEAK**: Any public class/method exposing io.brane.internal.* types
+1. **INTERNAL_LEAK**: Any public class/method exposing sh.brane.internal.* types
    - Check return types, parameter types, thrown exceptions
    - web3j types MUST NOT appear in public API
 
@@ -601,7 +601,7 @@ run_static_prechecks() {
             if [[ -n "$leak_lines" ]]; then
                 while IFS=: read -r line_num content; do
                     findings=$(echo "$findings" | jq --arg f "$file" --argjson l "$line_num" \
-                        --arg d "Internal package io.brane.internal.* exposed in public API" \
+                        --arg d "Internal package sh.brane.internal.* exposed in public API" \
                         '. + [{file: $f, line: $l, category: "ARCH", issue_type: "INTERNAL_LEAK", severity: "T1", description: $d, source: "static"}]')
                 done <<< "$leak_lines"
             fi

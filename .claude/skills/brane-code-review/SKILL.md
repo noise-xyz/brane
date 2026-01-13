@@ -44,6 +44,10 @@ Before reviewing, understand these exemplary implementations:
 
 ## Java 21 Patterns (Required)
 
+> **Full Reference**: See `JAVA21.md` in project root for comprehensive patterns including:
+> sealed types, guarded patterns (`when` clause), null handling rules (lazy eval vs constant defaults),
+> virtual thread pinning, `RpcUtils.toRpcException()`, and static constants (`Wei.ZERO`, `HexData.EMPTY`).
+
 ### Records for Data Types
 
 ```java
@@ -354,6 +358,10 @@ Use `{@code}` for inline code, `<pre>{@code ...}</pre>` for blocks:
 - [ ] Text blocks for multi-line strings
 - [ ] `var` only where type is obvious
 - [ ] `Stream.toList()` not `.collect(Collectors.toList())`
+- [ ] `Objects.requireNonNullElse()` for constant defaults (but keep ternary for lazy eval)
+- [ ] Static constants: `Wei.ZERO`, `HexData.EMPTY`, `EMPTY_ARGS`
+- [ ] `RpcUtils.toRpcException()` for JsonRpcError conversion
+- [ ] `list.getFirst()`/`getLast()` instead of `list.get(0)`/`list.get(size-1)`
 
 ### Type Safety
 - [ ] No raw types (all generics fully typed)

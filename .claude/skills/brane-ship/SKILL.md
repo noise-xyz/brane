@@ -153,7 +153,7 @@ When module X changes, all modules below X in the graph must be tested.
 ./gradlew :brane-rpc:test
 
 # Specific test class
-./gradlew :brane-rpc:test --tests "io.brane.rpc.BraneTest"
+./gradlew :brane-rpc:test --tests "sh.brane.rpc.BraneTest"
 
 # Integration tests (requires Anvil)
 ./scripts/test_integration.sh

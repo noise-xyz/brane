@@ -17,8 +17,8 @@ echo "🧪 [Level 1] Running Unit Tests..."
     :brane-rpc:test \
     :brane-contract:test \
     -Pbrane.unit.tests=true \
-    :brane-examples:run -PmainClass=io.brane.examples.CryptoSanityCheck \
-    :brane-examples:run -PmainClass=io.brane.examples.TransactionSanityCheck \
+    :brane-examples:run -PmainClass=sh.brane.examples.CryptoSanityCheck \
+    :brane-examples:run -PmainClass=sh.brane.examples.TransactionSanityCheck \
     --parallel --no-daemon --console=plain
 
 echo "✅ Unit Tests Passed"

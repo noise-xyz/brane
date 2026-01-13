@@ -42,14 +42,14 @@ dependencies {
 ## Quick Start
 
 ```java
-import io.brane.core.builder.Eip4844Builder;
-import io.brane.core.crypto.Kzg;
-import io.brane.core.model.BlobTransactionRequest;
-import io.brane.core.model.TransactionReceipt;
-import io.brane.core.types.Address;
-import io.brane.core.types.Wei;
-import io.brane.kzg.CKzg;
-import io.brane.rpc.Brane;
+import sh.brane.core.builder.Eip4844Builder;
+import sh.brane.core.crypto.Kzg;
+import sh.brane.core.model.BlobTransactionRequest;
+import sh.brane.core.model.TransactionReceipt;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Wei;
+import sh.brane.kzg.CKzg;
+import sh.brane.rpc.Brane;
 
 // 1. Load KZG trusted setup (once per application)
 Kzg kzg = CKzg.loadFromClasspath();
@@ -93,8 +93,8 @@ The `brane-kzg` module provides KZG (Kate-Zaverucha-Goldberg) commitment operati
 ### Loading the Trusted Setup
 
 ```java
-import io.brane.core.crypto.Kzg;
-import io.brane.kzg.CKzg;
+import sh.brane.core.crypto.Kzg;
+import sh.brane.kzg.CKzg;
 
 // Recommended: Load bundled Ethereum mainnet trusted setup
 Kzg kzg = CKzg.loadFromClasspath();
@@ -114,7 +114,7 @@ The `Kzg` interface is thread-safe. All methods can be called concurrently from 
 ### Validating Proofs
 
 ```java
-import io.brane.core.types.BlobSidecar;
+import sh.brane.core.types.BlobSidecar;
 
 // Validate all KZG proofs in a sidecar
 sidecar.validate(kzg);
@@ -130,8 +130,8 @@ sidecar.validateHashes(transaction.blobVersionedHashes());
 Use `blobData()` when you have raw bytes to encode into blobs. The builder handles encoding, blob creation, and sidecar generation:
 
 ```java
-import io.brane.core.builder.Eip4844Builder;
-import io.brane.core.model.BlobTransactionRequest;
+import sh.brane.core.builder.Eip4844Builder;
+import sh.brane.core.model.BlobTransactionRequest;
 
 byte[] rollupData = getRollupBatchData();
 
@@ -150,8 +150,8 @@ BlobTransactionRequest request = Eip4844Builder.create()
 Use `sidecar()` when you have an existing `BlobSidecar` (e.g., for fee bumping):
 
 ```java
-import io.brane.core.tx.SidecarBuilder;
-import io.brane.core.types.BlobSidecar;
+import sh.brane.core.tx.SidecarBuilder;
+import sh.brane.core.types.BlobSidecar;
 
 // Build sidecar separately
 BlobSidecar sidecar = SidecarBuilder.from(data).build(kzg);
@@ -175,8 +175,8 @@ BlobTransactionRequest request = Eip4844Builder.create()
 Reuse the same sidecar when bumping fees on a pending transaction. This ensures the versioned hashes remain consistent:
 
 ```java
-import io.brane.core.tx.SidecarBuilder;
-import io.brane.core.types.BlobSidecar;
+import sh.brane.core.tx.SidecarBuilder;
+import sh.brane.core.types.BlobSidecar;
 
 // Build sidecar once
 byte[] data = getRollupBatchData();
@@ -215,8 +215,8 @@ assert lowFeeTx.blobVersionedHashes().equals(bumpedTx.blobVersionedHashes());
 Use `BlobDecoder` to extract original data from blobs. This reverses the encoding performed by `SidecarBuilder`:
 
 ```java
-import io.brane.core.tx.BlobDecoder;
-import io.brane.core.types.Blob;
+import sh.brane.core.tx.BlobDecoder;
+import sh.brane.core.types.Blob;
 import java.util.List;
 
 // Decode data from blobs
@@ -238,8 +238,8 @@ assert Arrays.equals(originalData, decodedData);
 Blob transaction errors are part of the Brane exception hierarchy:
 
 ```java
-import io.brane.core.error.KzgException;
-import io.brane.core.builder.BraneTxBuilderException;
+import sh.brane.core.error.KzgException;
+import sh.brane.core.builder.BraneTxBuilderException;
 
 try {
     BlobTransactionRequest request = Eip4844Builder.create()

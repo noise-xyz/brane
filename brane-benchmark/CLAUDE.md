@@ -57,13 +57,13 @@ Benchmarks include web3j comparison where relevant:
 
 ## Adding New Benchmarks
 
-1. Create class in `io.brane.benchmark`
+1. Create class in `sh.brane.benchmark`
 2. Add JMH annotations
 3. Add Gradle task if needed:
    ```groovy
    task runMyBenchmark(type: JavaExec) {
        classpath = sourceSets.main.runtimeClasspath
-       mainClass = 'io.brane.benchmark.MyBenchmark'
+       mainClass = 'sh.brane.benchmark.MyBenchmark'
    }
    ```
 

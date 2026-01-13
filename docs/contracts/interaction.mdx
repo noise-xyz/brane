@@ -11,9 +11,9 @@ Brane provides type-safe contract bindings through `BraneContract.bindReadOnly()
 Used for calling `pure` and `view` functions. Requires a `Brane` client (read-only).
 
 ```java
-import io.brane.contract.BraneContract;
-import io.brane.rpc.Brane;
-import io.brane.core.types.Address;
+import sh.brane.contract.BraneContract;
+import sh.brane.rpc.Brane;
+import sh.brane.core.types.Address;
 import java.math.BigInteger;
 
 // 1. Define interface matching contract ABI
@@ -45,10 +45,10 @@ String tokenName = token.name();
 Used for state-changing transactions. Requires a `Brane.Signer` client.
 
 ```java
-import io.brane.contract.BraneContract;
-import io.brane.rpc.Brane;
-import io.brane.core.types.Address;
-import io.brane.core.model.TransactionReceipt;
+import sh.brane.contract.BraneContract;
+import sh.brane.rpc.Brane;
+import sh.brane.core.types.Address;
+import sh.brane.core.model.TransactionReceipt;
 import java.math.BigInteger;
 
 // 1. Define interface with view and state-changing methods
@@ -85,8 +85,8 @@ if (receipt.status()) {
 Use the `@Payable` annotation for functions that accept ETH:
 
 ```java
-import io.brane.contract.Payable;
-import io.brane.core.types.Wei;
+import sh.brane.contract.Payable;
+import sh.brane.core.types.Wei;
 import java.math.BigDecimal;
 
 // Define interface with payable function
@@ -107,8 +107,8 @@ TransactionReceipt receipt = weth.deposit(Wei.fromEther(new BigDecimal("1.0")));
 Customize transaction behavior with `ContractOptions`:
 
 ```java
-import io.brane.contract.ContractOptions;
-import io.brane.core.types.Wei;
+import sh.brane.contract.ContractOptions;
+import sh.brane.core.types.Wei;
 import java.time.Duration;
 
 ContractOptions options = ContractOptions.builder()
@@ -142,11 +142,11 @@ Erc20Contract token = BraneContract.bind(
 Deploy contracts using `BraneContract.deployRequest`:
 
 ```java
-import io.brane.contract.BraneContract;
-import io.brane.rpc.Brane;
-import io.brane.core.model.TransactionRequest;
-import io.brane.core.model.TransactionReceipt;
-import io.brane.core.types.Address;
+import sh.brane.contract.BraneContract;
+import sh.brane.rpc.Brane;
+import sh.brane.core.model.TransactionRequest;
+import sh.brane.core.model.TransactionReceipt;
+import sh.brane.core.types.Address;
 
 String abiJson = "[...]";
 String bytecodeHex = "0x...";

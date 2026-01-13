@@ -22,11 +22,11 @@ public interface Signer {
 Here is how you might implement a signer that delegates to an external API (e.g., Privy or a backend KMS).
 
 ```java
-import io.brane.core.crypto.Signer;
-import io.brane.core.crypto.Signature;
-import io.brane.core.types.Address;
-import io.brane.core.tx.UnsignedTransaction;
-import io.brane.core.crypto.Keccak256;
+import sh.brane.core.crypto.Signer;
+import sh.brane.core.crypto.Signature;
+import sh.brane.core.types.Address;
+import sh.brane.core.tx.UnsignedTransaction;
+import sh.brane.core.crypto.Keccak256;
 
 // Dummy interface for the example
 interface ExternalService {
@@ -87,7 +87,7 @@ public class RemoteSigner implements Signer {
 Once you have your custom signer, pass it to `Brane.connect()` to create a `Brane.Signer` client.
 
 ```java
-import io.brane.rpc.Brane;
+import sh.brane.rpc.Brane;
 
 // Assume service is defined
 ExternalService service = ...;

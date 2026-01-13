@@ -70,9 +70,9 @@ Update MDX files in `docs/`. See Public Docs conventions below.
 
 All public API Javadoc lives in source files:
 ```
-brane-core/src/main/java/io/brane/core/...
-brane-rpc/src/main/java/io/brane/rpc/...
-brane-contract/src/main/java/io/brane/contract/...
+brane-core/src/main/java/sh/brane/core/...
+brane-rpc/src/main/java/sh/brane/rpc/...
+brane-contract/src/main/java/sh/brane/contract/...
 ```
 
 ### Structure Template
@@ -182,7 +182,7 @@ Explanation of the concept.
 
 ```java
 // Code example with imports
-import io.brane.core.types.Address;
+import sh.brane.core.types.Address;
 
 var address = new Address("0x...");
 ```
@@ -327,7 +327,7 @@ var addr = new Address("0x...");
 
 // GOOD - clear imports
 ```java
-import io.brane.core.types.Address;
+import sh.brane.core.types.Address;
 
 var addr = new Address("0x...");
 ```
@@ -404,7 +404,7 @@ Brief intro explaining the feature and when to use it.
 The simplest way to use this feature:
 
 ```java
-import io.brane.xxx.FeatureClass;
+import sh.brane.xxx.FeatureClass;
 
 // Simple example
 var feature = FeatureClass.create(...);
