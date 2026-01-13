@@ -12,6 +12,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 /**
  * BIP-39 English wordlist for mnemonic seed phrase generation.
@@ -94,13 +95,10 @@ final class EnglishWordlist {
 
             var words = new ArrayList<String>(WORDLIST_SIZE);
             try (var reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8))) {
-                String line;
-                while ((line = reader.readLine()) != null) {
-                    String trimmed = line.trim();
-                    if (!trimmed.isEmpty()) {
-                        words.add(trimmed);
-                    }
-                }
+                reader.lines()
+                        .map(String::trim)
+                        .filter(Predicate.not(String::isEmpty))
+                        .forEach(words::add);
             }
 
             if (words.size() != WORDLIST_SIZE) {
