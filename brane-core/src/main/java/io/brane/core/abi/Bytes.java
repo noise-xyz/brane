@@ -11,7 +11,7 @@ import io.brane.core.types.HexData;
  * @param value     the HexData wrapper containing the byte array
  * @param isDynamic true for 'bytes', false for 'bytesN'
  */
-public record Bytes(HexData value, boolean isDynamic) implements AbiType {
+public record Bytes(HexData value, boolean isDynamic) implements DynamicAbiType {
 
     /** Maximum size for static bytesN types (bytes1 to bytes32). */
     private static final int MAX_STATIC_BYTES = 32;

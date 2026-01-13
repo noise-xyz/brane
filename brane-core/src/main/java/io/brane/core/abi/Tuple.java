@@ -10,7 +10,7 @@ import java.util.stream.Collectors;
  *
  * @param components the list of component types
  */
-public record Tuple(List<AbiType> components) implements AbiType {
+public record Tuple(List<AbiType> components) implements DynamicAbiType {
     public Tuple {
         Objects.requireNonNull(components, "components cannot be null");
         components = List.copyOf(components);

@@ -38,7 +38,7 @@ import java.util.Objects;
  * @param <T>             the type of elements
  */
 public record Array<T extends AbiType>(List<T> values, Class<T> type, boolean isDynamicLength, String elementTypeName)
-        implements AbiType {
+        implements DynamicAbiType {
     public Array {
         Objects.requireNonNull(values, "values cannot be null");
         Objects.requireNonNull(type, "type cannot be null");
