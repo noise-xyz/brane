@@ -17,7 +17,7 @@ anvil  # In separate terminal
 
 ## Main Class
 
-`io.brane.smoke.SmokeApp` - Comprehensive test runner
+`sh.brane.smoke.SmokeApp` - Comprehensive test runner
 
 ## Test Coverage
 

@@ -18,7 +18,7 @@ Modern, type-safe Java 21 SDK for Ethereum/EVM. Inspired by viem (TS) and alloy 
 ## Critical Rules
 
 1. **Java 21 Only**: Records, sealed classes, pattern matching, virtual threads
-2. **No web3j in Public API**: web3j is vendored under `io.brane.internal.web3j.*` - NEVER expose it
+2. **No web3j in Public API**: web3j is vendored under `sh.brane.internal.web3j.*` - NEVER expose it
 3. **Type Safety**: Use `Address`, `Wei`, `HexData`, `Hash` - avoid raw `String`/`BigInteger`
 4. **Virtual Threads**: Write simple blocking code - no reactive chains
 5. **Use `var` When Type is Obvious**: Use `var` for local variables when the type is immediately clear from the RHS (right-hand side), such as constructor calls (`var map = new LinkedHashMap<>()`), but keep explicit types for domain types (`Address`, `Wei`, `Hash`) where the type name documents intent
@@ -43,7 +43,7 @@ brane-kzg  brane-rpc (Netty, Disruptor)
 ./gradlew compileJava
 
 # Run specific test
-./gradlew test --tests "io.brane.core.MyTest"
+./gradlew test --tests "sh.brane.core.MyTest"
 
 # Full verification (requires Anvil running)
 ./verify_all.sh

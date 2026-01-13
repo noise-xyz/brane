@@ -12,7 +12,7 @@ Subscriptions require a WebSocket provider. HTTP providers do not support `eth_s
 ## Setup
 
 ```java
-import io.brane.rpc.Brane;
+import sh.brane.rpc.Brane;
 
 // Create a WebSocket-based client using the builder
 Brane client = Brane.builder()
@@ -27,8 +27,8 @@ Brane client = Brane.builder()
 Get notified when new blocks are mined:
 
 ```java
-import io.brane.rpc.Subscription;
-import io.brane.core.model.BlockHeader;
+import sh.brane.rpc.Subscription;
+import sh.brane.core.model.BlockHeader;
 
 Subscription subscription = client.onNewHeads(header -> {
     System.out.println("New block #" + header.number());
@@ -64,11 +64,11 @@ subscription.unsubscribe();
 Monitor contract events in real-time:
 
 ```java
-import io.brane.rpc.LogFilter;
-import io.brane.rpc.Subscription;
-import io.brane.core.model.LogEntry;
-import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
+import sh.brane.rpc.LogFilter;
+import sh.brane.rpc.Subscription;
+import sh.brane.core.model.LogEntry;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Hash;
 import java.util.List;
 
 // USDC contract on Ethereum mainnet

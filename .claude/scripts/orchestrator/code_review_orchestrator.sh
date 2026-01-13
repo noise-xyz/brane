@@ -1395,7 +1395,7 @@ report_phase_jobs() {
 #######################################
 # Review Criteria
 #######################################
-readonly CRITERIA_COMPACT="MUST_FLAG(T1/T2):null-deref,unclosed-resource,shared-mutable-no-sync,Optional.get-no-check,swallowed-exception,raw-types|SHOULD_FLAG(T3/T4):if-chain>3->switch,instanceof-no-pattern,string-concat-loop,Collectors.toList->toList|SKIP:private-from-validated,test-code,generated,io.brane.internal.*"
+readonly CRITERIA_COMPACT="MUST_FLAG(T1/T2):null-deref,unclosed-resource,shared-mutable-no-sync,Optional.get-no-check,swallowed-exception,raw-types|SHOULD_FLAG(T3/T4):if-chain>3->switch,instanceof-no-pattern,string-concat-loop,Collectors.toList->toList|SKIP:private-from-validated,test-code,generated,sh.brane.internal.*"
 
 #######################################
 # Phase 0: Setup
@@ -1587,7 +1587,7 @@ These patterns look like issues but are NOT bugs. DO NOT report them:
 - Use ONLY the bracketed numbers shown in the code
 - code_quote MUST be an exact copy from the code, not a description
 - Line numbers MUST match the actual code shown
-- Skip io.brane.internal.* packages
+- Skip sh.brane.internal.* packages
 - Focus on real issues, not style preferences
 - When uncertain, DO NOT report (prefer false negatives over false positives)
 - A finding with no clear bug is worse than missing a minor issue

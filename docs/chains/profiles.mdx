@@ -8,7 +8,7 @@ Brane uses `ChainProfile` to define network-specific settings like chain ID, RPC
 ## Built-in Profiles
 
 ```java
-import io.brane.core.chain.ChainProfiles;
+import sh.brane.core.chain.ChainProfiles;
 
 // Ethereum Mainnet
 var mainnet = ChainProfiles.ETH_MAINNET;
@@ -35,8 +35,8 @@ var local = ChainProfiles.ANVIL_LOCAL;
 Override the default RPC for any built-in chain:
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.core.chain.ChainProfiles;
+import sh.brane.rpc.Brane;
+import sh.brane.core.chain.ChainProfiles;
 
 // Connect with a custom RPC URL and chain profile
 var client = Brane.builder()
@@ -56,9 +56,9 @@ For production, always use a dedicated RPC provider (Alchemy, Infura, QuickNode,
 Define your own chain profile for private networks or L2s:
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.core.chain.ChainProfile;
-import io.brane.core.types.Wei;
+import sh.brane.rpc.Brane;
+import sh.brane.core.chain.ChainProfile;
+import sh.brane.core.types.Wei;
 
 ChainProfile myChain = ChainProfile.of(
     42161L,                            // Chain ID (Arbitrum One)
@@ -122,9 +122,9 @@ Some L2s have different transaction types or gas mechanics. Test thoroughly befo
 Chain profiles integrate with the Brane client API:
 
 ```java
-import io.brane.rpc.Brane;
-import io.brane.core.crypto.PrivateKey;
-import io.brane.core.chain.ChainProfiles;
+import sh.brane.rpc.Brane;
+import sh.brane.core.crypto.PrivateKey;
+import sh.brane.core.chain.ChainProfiles;
 
 // Read-only client with chain profile
 Brane.Reader reader = Brane.builder()

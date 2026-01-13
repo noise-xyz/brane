@@ -24,7 +24,7 @@ This document is the **System Prompt** for any AI agent (LLM) working on the Bra
     *   **Future**: We plan to offer more robust async features.
 
 ## 3. Architecture Overview
-*   **`brane-core`**: The heart. Types, ABI encoding (`io.brane.core.abi`), Crypto (`Signer`), Models.
+*   **`brane-core`**: The heart. Types, ABI encoding (`sh.brane.core.abi`), Crypto (`Signer`), Models.
 *   **`brane-rpc`**: JSON-RPC client. `Brane.Reader` (Read), `Brane.Signer` (Write).
 *   **`brane-contract`**: High-level runtime binding (`BraneContract.bind`). **NO CODEGEN**.
 *   **`brane-primitives`**: Low-level Hex/RLP utils.
@@ -44,19 +44,19 @@ This document is the **System Prompt** for any AI agent (LLM) working on the Bra
 
 ### II. Architectural Guardrails: Web3j Isolation
 > [!IMPORTANT]
-> Brane vendors web3j under `io.brane.internal.web3j.*`. **web3j is an implementation detail only** and must **never** leak into Brane's public API.
+> Brane vendors web3j under `sh.brane.internal.web3j.*`. **web3j is an implementation detail only** and must **never** leak into Brane's public API.
 
 #### 1. Package Restrictions
 
 ✅ **web3j may ONLY be referenced in:**
-- `io.brane.internal.web3j.*`
-- Small, clearly-marked adapter classes in `io.brane.internal.*`
+- `sh.brane.internal.web3j.*`
+- Small, clearly-marked adapter classes in `sh.brane.internal.*`
 
 ❌ **web3j is FORBIDDEN in:**
-- `io.brane.core.*`
-- `io.brane.rpc.*`
-- `io.brane.contract.*`
-- `io.brane.examples.*`
+- `sh.brane.core.*`
+- `sh.brane.rpc.*`
+- `sh.brane.contract.*`
+- `sh.brane.examples.*`
 
 **Rule of thumb:** If a package is public-facing (core/rpc/contract/examples), it must have **zero** `org.web3j.*` imports.
 
@@ -86,14 +86,14 @@ public Object read(...) throws RpcException, RevertException {
 ```
 
 #### 4. Core Module Purity
-`brane-core` (`io.brane.core.*`) **must not depend on web3j at all:**
+`brane-core` (`sh.brane.core.*`) **must not depend on web3j at all:**
 - No imports from `org.web3j.*`
 - No references to "web3j" in type names, method names, or Javadoc
 - Pure Brane domain: types + errors only
 
 #### 5. Review Checklist
 When adding/modifying code:
-1. ✅ File not under `io.brane.internal.*` → **no** `org.web3j.*` imports
+1. ✅ File not under `sh.brane.internal.*` → **no** `org.web3j.*` imports
 2. ✅ Public methods/constructors/fields → only JDK + Brane types
 3. ✅ Exceptions → wrap web3j exceptions in `RpcException`/`RevertException`
 
@@ -180,7 +180,7 @@ For a Pull Request to be merged, it must:
 3.  **Develop**: Write code and Unit Tests.
 4.  **Targeted Test**: Run *only* your new test to iterate fast.
     *   Unit: `./gradlew test --tests "com.package.MyTest"`
-    *   Integration: `./gradlew :brane-examples:run -PmainClass=io.brane.examples.MyExample`
+    *   Integration: `./gradlew :brane-examples:run -PmainClass=sh.brane.examples.MyExample`
 5.  **Test Loop**: Run `./scripts/test_unit.sh` to ensure no regressions.
 6.  **Verify**: Run `./scripts/test_integration.sh` before pushing.
 7.  **Final Check**: Run `./verify_all.sh` to run the full suite.
@@ -192,8 +192,8 @@ For a Pull Request to be merged, it must:
 *   **Goal**: Verify your specific change works in isolation.
 *   **Action**: Run **ONLY** the test case you just wrote or modified.
 *   **Commands**:
-    *   Unit: `./gradlew test --tests "io.brane.core.MyClassTest"`
-    *   Integration: `./gradlew :brane-examples:run -PmainClass=io.brane.examples.MyNewExample`
+    *   Unit: `./gradlew test --tests "sh.brane.core.MyClassTest"`
+    *   Integration: `./gradlew :brane-examples:run -PmainClass=sh.brane.examples.MyNewExample`
 *   **Rule**: If this fails, **STOP**. Fix the code. Do not run other tests.
 
 #### Step 2: Layer Verification (The "Regression" Check)
@@ -230,7 +230,7 @@ For a Pull Request to be merged, it must:
 
 ### Creating an Integration Test
 *   **Goal**: Verify interaction with a real EVM (Anvil).
-*   **Location**: `brane-examples/src/main/java/io/brane/examples/...` (as a standalone example) OR `brane-core/src/test/java/...` (with `@Tag("integration")`).
+*   **Location**: `brane-examples/src/main/java/sh/brane/examples/...` (as a standalone example) OR `brane-core/src/test/java/...` (with `@Tag("integration")`).
 *   **Pattern**:
     *   Use `Brane.connect(url, signer)` to connect to `http://127.0.0.1:8545`.
     *   Use the default Anvil private key: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`.
@@ -239,7 +239,7 @@ For a Pull Request to be merged, it must:
 
 ### Adding to Smoke Tests (`SmokeApp.java`)
 *   **Goal**: Stress test a feature in a "real world" scenario.
-*   **Location**: `smoke-test/src/main/java/io/brane/smoke/SmokeApp.java`
+*   **Location**: `smoke-test/src/main/java/sh/brane/smoke/SmokeApp.java`
 *   **Pattern**:
     *   Add a new `private static void testMyFeature()` method.
     *   Call it from `main()`.

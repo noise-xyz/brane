@@ -1,0 +1,262 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+package sh.brane.core.crypto.hd;
+
+import java.security.GeneralSecurityException;
+import java.security.SecureRandom;
+import java.text.Normalizer;
+import java.util.Arrays;
+import java.util.Set;
+
+import javax.crypto.SecretKeyFactory;
+import javax.crypto.spec.PBEKeySpec;
+
+/**
+ * BIP-39 mnemonic seed phrase generation and validation.
+ *
+ * <p>
+ * This class provides methods for generating, validating, and deriving seeds from
+ * BIP-39 mnemonic phrases using the English wordlist.
+ *
+ * @see <a href="https://github.com/bitcoin/bips/blob/master/bip-0039.mediawiki">BIP-39</a>
+ */
+final class Bip39 {
+
+    private static final int PBKDF2_ITERATIONS = 2048;
+    private static final int SEED_LENGTH_BYTES = 64;
+    private static final String PBKDF2_ALGORITHM = "PBKDF2WithHmacSHA512";
+    private static final String SALT_PREFIX = "mnemonic";
+    private static final Set<Integer> VALID_WORD_COUNTS = Set.of(12, 15, 18, 21, 24);
+
+    private Bip39() {
+        // Utility class
+    }
+
+    /**
+     * Validates a mnemonic phrase.
+     *
+     * <p>
+     * A valid mnemonic must:
+     * <ul>
+     * <li>Have a valid word count (12, 15, 18, 21, or 24 words)</li>
+     * <li>Contain only words from the BIP-39 English wordlist</li>
+     * <li>Have a valid checksum</li>
+     * </ul>
+     *
+     * @param mnemonic the mnemonic phrase (space-separated words)
+     * @return true if the mnemonic is valid, false otherwise
+     */
+    static boolean isValid(String mnemonic) {
+        if (mnemonic == null || mnemonic.isBlank()) {
+            return false;
+        }
+
+        String normalized = normalizeNfkd(mnemonic);
+        String[] words = normalized.trim().split("\\s+");
+
+        if (!VALID_WORD_COUNTS.contains(words.length)) {
+            return false;
+        }
+
+        // Verify checksum (also validates all words are in wordlist)
+        return verifyChecksum(words);
+    }
+
+    /**
+     * Generates a new mnemonic phrase with the specified word count.
+     *
+     * @param wordCount the number of words (12, 15, 18, 21, or 24)
+     * @param random    the source of randomness
+     * @return a new mnemonic phrase
+     * @throws IllegalArgumentException if wordCount is not valid
+     */
+    static String generate(int wordCount, SecureRandom random) {
+        if (!VALID_WORD_COUNTS.contains(wordCount)) {
+            throw new IllegalArgumentException(
+                    "Word count must be 12, 15, 18, 21, or 24, got " + wordCount);
+        }
+
+        // Calculate entropy bits: wordCount * 11 bits = entropy + checksum
+        // checksum = entropy / 32
+        // So: wordCount * 11 = entropy + entropy/32 = 33*entropy/32
+        // entropy = wordCount * 11 * 32 / 33
+        int entropyBits = wordCount * 11 * 32 / 33;
+        int entropyBytes = entropyBits / 8;
+
+        byte[] entropy = new byte[entropyBytes];
+        random.nextBytes(entropy);
+
+        try {
+            return entropyToMnemonic(entropy);
+        } finally {
+            Arrays.fill(entropy, (byte) 0);
+        }
+    }
+
+    /**
+     * Derives a 64-byte seed from a mnemonic phrase and passphrase using PBKDF2-HMAC-SHA512.
+     *
+     * <p>
+     * Does not validate mnemonic format. Any string produces a valid seed per BIP-39
+     * specification. Use {@link #isValid(String)} first if validation is required.
+     *
+     * <p>
+     * Both the mnemonic and passphrase are NFKD-normalized before processing, as required
+     * by BIP-39.
+     *
+     * @param mnemonic   the mnemonic phrase
+     * @param passphrase the passphrase (can be empty string, but not null)
+     * @return 64-byte seed suitable for HD key derivation
+     * @throws IllegalArgumentException if mnemonic is null or passphrase is null
+     * @throws IllegalStateException    if JVM lacks required PBKDF2WithHmacSHA512 algorithm
+     */
+    static byte[] toSeed(String mnemonic, String passphrase) {
+        if (mnemonic == null) {
+            throw new IllegalArgumentException("Mnemonic cannot be null");
+        }
+        if (passphrase == null) {
+            throw new IllegalArgumentException("Passphrase cannot be null");
+        }
+
+        // NFKD normalization as required by BIP-39
+        String normalizedMnemonic = normalizeNfkd(mnemonic);
+        String normalizedPassphrase = normalizeNfkd(passphrase);
+
+        // Salt is "mnemonic" + passphrase
+        String salt = SALT_PREFIX + normalizedPassphrase;
+
+        try {
+            var spec = new PBEKeySpec(
+                    normalizedMnemonic.toCharArray(),
+                    salt.getBytes(java.nio.charset.StandardCharsets.UTF_8),
+                    PBKDF2_ITERATIONS,
+                    SEED_LENGTH_BYTES * 8);
+
+            SecretKeyFactory factory = SecretKeyFactory.getInstance(PBKDF2_ALGORITHM);
+            byte[] seed = factory.generateSecret(spec).getEncoded();
+            spec.clearPassword();
+            return seed;
+        } catch (GeneralSecurityException e) {
+            throw new IllegalStateException("PBKDF2WithHmacSHA512 unavailable - JVM misconfigured", e);
+        }
+    }
+
+    /**
+     * Converts entropy bytes to a mnemonic phrase.
+     */
+    private static String entropyToMnemonic(byte[] entropy) {
+        int entropyBits = entropy.length * 8;
+        int checksumBits = entropyBits / 32;
+        int totalBits = entropyBits + checksumBits;
+        int wordCount = totalBits / 11;
+
+        // Calculate SHA-256 checksum
+        byte[] hash = sha256(entropy);
+
+        // Combine entropy and checksum into a bit array
+        boolean[] bits = new boolean[totalBits];
+
+        // Add entropy bits
+        for (int i = 0; i < entropyBits; i++) {
+            bits[i] = (entropy[i / 8] & (1 << (7 - (i % 8)))) != 0;
+        }
+
+        // Add checksum bits
+        for (int i = 0; i < checksumBits; i++) {
+            bits[entropyBits + i] = (hash[i / 8] & (1 << (7 - (i % 8)))) != 0;
+        }
+
+        // Convert to words
+        var words = new StringBuilder();
+        for (int i = 0; i < wordCount; i++) {
+            int index = 0;
+            for (int j = 0; j < 11; j++) {
+                if (bits[i * 11 + j]) {
+                    index |= (1 << (10 - j));
+                }
+            }
+            if (i > 0) {
+                words.append(' ');
+            }
+            words.append(EnglishWordlist.getWord(index));
+        }
+
+        // Clear sensitive data
+        Arrays.fill(hash, (byte) 0);
+
+        return words.toString();
+    }
+
+    /**
+     * Verifies the checksum of a mnemonic.
+     *
+     * <p>
+     * Returns false if any word is not in the BIP-39 wordlist.
+     */
+    private static boolean verifyChecksum(String[] words) {
+        int wordCount = words.length;
+        int totalBits = wordCount * 11;
+        int checksumBits = wordCount / 3;
+        int entropyBits = totalBits - checksumBits;
+        int entropyBytes = entropyBits / 8;
+
+        // Convert words to bits
+        boolean[] bits = new boolean[totalBits];
+        for (int i = 0; i < wordCount; i++) {
+            int index;
+            try {
+                index = EnglishWordlist.getIndex(words[i]);
+            } catch (IllegalArgumentException e) {
+                // Word not in wordlist
+                return false;
+            }
+            for (int j = 0; j < 11; j++) {
+                bits[i * 11 + j] = (index & (1 << (10 - j))) != 0;
+            }
+        }
+
+        // Extract entropy
+        byte[] entropy = new byte[entropyBytes];
+        for (int i = 0; i < entropyBits; i++) {
+            if (bits[i]) {
+                entropy[i / 8] |= (1 << (7 - (i % 8)));
+            }
+        }
+
+        // Calculate expected checksum
+        byte[] hash = sha256(entropy);
+
+        try {
+            // Constant-time comparison to prevent timing attacks
+            int mismatch = 0;
+            for (int i = 0; i < checksumBits; i++) {
+                boolean expectedBit = (hash[i / 8] & (1 << (7 - (i % 8)))) != 0;
+                boolean actualBit = bits[entropyBits + i];
+                // XOR the boolean values: different values produce 1, same values produce 0
+                mismatch |= (expectedBit ? 1 : 0) ^ (actualBit ? 1 : 0);
+            }
+
+            return mismatch == 0;
+        } finally {
+            Arrays.fill(entropy, (byte) 0);
+            Arrays.fill(hash, (byte) 0);
+        }
+    }
+
+    /**
+     * Computes SHA-256 hash of the input.
+     */
+    private static byte[] sha256(byte[] input) {
+        try {
+            return java.security.MessageDigest.getInstance("SHA-256").digest(input);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 unavailable - JVM misconfigured", e);
+        }
+    }
+
+    /**
+     * Applies NFKD normalization to a string.
+     */
+    private static String normalizeNfkd(String input) {
+        return Normalizer.normalize(input, Normalizer.Form.NFKD);
+    }
+}

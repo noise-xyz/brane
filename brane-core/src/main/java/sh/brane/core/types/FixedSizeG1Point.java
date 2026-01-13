@@ -1,0 +1,83 @@
+// SPDX-License-Identifier: MIT OR Apache-2.0
+package sh.brane.core.types;
+
+import java.util.Arrays;
+import java.util.Objects;
+
+import sh.brane.primitives.Hex;
+
+/**
+ * Abstract base class for fixed-size 48-byte G1 points on the BLS12-381 curve.
+ * <p>
+ * Both KZG commitments and KZG proofs are compressed G1 points of exactly 48 bytes.
+ * This sealed class provides the common functionality for size validation, defensive
+ * copying, and content-based equality semantics.
+ * <p>
+ * This class is immutable and thread-safe. The internal byte array is defensively copied
+ * on construction and when accessed via {@link #toBytes()}.
+ *
+ * @since 0.2.0
+ */
+public abstract sealed class FixedSizeG1Point permits KzgCommitment, KzgProof {
+
+    /**
+     * Size of a G1 point in bytes (48 bytes for a compressed G1 point on BLS12-381).
+     */
+    public static final int SIZE = 48;
+
+    /**
+     * The raw bytes of the G1 point.
+     */
+    protected final byte[] data;
+
+    /**
+     * Creates a G1 point from raw bytes.
+     *
+     * @param data the point data, must be exactly {@value #SIZE} bytes
+     * @param typeName the name of the concrete type (for error messages)
+     * @throws NullPointerException if data is null
+     * @throws IllegalArgumentException if data is not exactly {@value #SIZE} bytes
+     */
+    protected FixedSizeG1Point(final byte[] data, final String typeName) {
+        Objects.requireNonNull(data, "data");
+        if (data.length != SIZE) {
+            throw new IllegalArgumentException(
+                    typeName + " must be exactly " + SIZE + " bytes, got " + data.length);
+        }
+        this.data = data.clone();
+    }
+
+    /**
+     * Returns a copy of the point data.
+     *
+     * @return a defensive copy of the point bytes
+     */
+    public byte[] toBytes() {
+        return data.clone();
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        FixedSizeG1Point that = (FixedSizeG1Point) o;
+        return Arrays.equals(data, that.data);
+    }
+
+    @Override
+    public int hashCode() {
+        return Arrays.hashCode(data);
+    }
+
+    /**
+     * Returns the name of this G1 point type for use in {@link #toString()}.
+     *
+     * @return the type name (e.g., "KzgCommitment", "KzgProof")
+     */
+    protected abstract String typeName();
+
+    @Override
+    public String toString() {
+        return typeName() + "[0x" + Hex.encodeNoPrefix(data) + "]";
+    }
+}

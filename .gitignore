@@ -44,3 +44,6 @@ spec/
 # Local MCP/LSP config
 .mcp.json
 .cclsp.json
+
+# Claude Code session files
+.claude/.session-id

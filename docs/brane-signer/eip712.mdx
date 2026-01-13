@@ -21,9 +21,9 @@ Use Java records with `TypeDefinition` for compile-time type safety. This is the
 ### Defining a Type
 
 ```java
-import io.brane.core.crypto.eip712.TypeDefinition;
-import io.brane.core.crypto.eip712.TypedDataField;
-import io.brane.core.types.Address;
+import sh.brane.core.crypto.eip712.TypeDefinition;
+import sh.brane.core.crypto.eip712.TypedDataField;
+import sh.brane.core.types.Address;
 import java.math.BigInteger;
 import java.util.List;
 import java.util.Map;
@@ -79,12 +79,12 @@ public record Mail(Person from, Person to, String contents) {
 ### Signing
 
 ```java
-import io.brane.core.crypto.PrivateKeySigner;
-import io.brane.core.crypto.Signature;
-import io.brane.core.crypto.eip712.Eip712Domain;
-import io.brane.core.crypto.eip712.TypedData;
-import io.brane.core.types.Address;
-import io.brane.core.types.Hash;
+import sh.brane.core.crypto.PrivateKeySigner;
+import sh.brane.core.crypto.Signature;
+import sh.brane.core.crypto.eip712.Eip712Domain;
+import sh.brane.core.crypto.eip712.TypedData;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Hash;
 
 // Create signer
 var signer = new PrivateKeySigner("0x...");
@@ -134,9 +134,9 @@ Use `TypedDataJson` for wallet-style signing when receiving JSON from dapps via 
 ### Parsing JSON
 
 ```java
-import io.brane.core.crypto.eip712.TypedData;
-import io.brane.core.crypto.eip712.TypedDataJson;
-import io.brane.core.crypto.eip712.TypedDataPayload;
+import sh.brane.core.crypto.eip712.TypedData;
+import sh.brane.core.crypto.eip712.TypedDataJson;
+import sh.brane.core.crypto.eip712.TypedDataPayload;
 
 String jsonFromDapp = """
         {
@@ -276,8 +276,8 @@ The domain separator uniquely identifies the protocol/contract that will verify 
 ### Builder API
 
 ```java
-import io.brane.core.crypto.eip712.Eip712Domain;
-import io.brane.core.types.Address;
+import sh.brane.core.crypto.eip712.Eip712Domain;
+import sh.brane.core.types.Address;
 
 // Minimal domain (e.g., Permit2 style)
 Eip712Domain minimalDomain = Eip712Domain.builder()
@@ -348,7 +348,7 @@ Address contract = domain.verifyingContract();
 ## Error Handling
 
 ```java
-import io.brane.core.error.Eip712Exception;
+import sh.brane.core.error.Eip712Exception;
 
 try {
     TypedData<?> typedData = TypedDataJson.parseAndValidate(invalidJson);
