@@ -127,7 +127,7 @@ public final class HttpBraneProvider implements BraneProvider {
     @Override
     public JsonRpcResponse send(final String method, final List<?> params) throws RpcException {
         Objects.requireNonNull(method, "method");
-        final List<?> safeParams = params == null ? List.of() : params;
+        final List<?> safeParams = Objects.requireNonNullElse(params, List.of());
         final long requestId = ids.getAndIncrement();
         final JsonRpcRequest request = new JsonRpcRequest("2.0", method, safeParams, String.valueOf(requestId));
 
