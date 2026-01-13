@@ -7,14 +7,13 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
+import org.junit.jupiter.api.extension.ExtendWith;
 
 import io.brane.core.crypto.Kzg;
-import io.brane.core.crypto.PrivateKeySigner;
 import io.brane.core.model.BlobTransactionRequest;
 import io.brane.core.model.TransactionReceipt;
 import io.brane.core.tx.SidecarBuilder;
@@ -23,6 +22,7 @@ import io.brane.core.types.BlobSidecar;
 import io.brane.core.types.Hash;
 import io.brane.core.types.Wei;
 import io.brane.kzg.CKzg;
+import io.brane.rpc.test.BraneTestExtension;
 
 /**
  * Integration tests for EIP-4844 blob transactions against Anvil with Cancun fork.
@@ -38,43 +38,18 @@ import io.brane.kzg.CKzg;
  * </pre>
  */
 @EnabledIfSystemProperty(named = "brane.integration.tests", matches = "true")
+@ExtendWith(BraneTestExtension.class)
 class BlobTransactionIntegrationTest {
-
-    private static final String TEST_PRIVATE_KEY =
-            "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80";
 
     private static final Address RECIPIENT =
             new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
 
-    private static Brane.Tester tester;
     private static Kzg kzg;
-    private SnapshotId snapshot;
 
     @BeforeAll
-    static void setupClient() {
-        String rpcUrl = System.getProperty("brane.examples.rpc", "http://127.0.0.1:8545");
-        var signer = new PrivateKeySigner(TEST_PRIVATE_KEY);
-        BraneProvider provider = HttpBraneProvider.builder(rpcUrl).build();
-        tester = Brane.builder()
-                .provider(provider)
-                .signer(signer)
-                .testMode(TestNodeMode.ANVIL)
-                .buildTester();
-
-        // Load KZG trusted setup for blob operations
+    static void setupKzg() {
+        // Load KZG trusted setup for blob operations (test-specific)
         kzg = CKzg.loadFromClasspath();
-    }
-
-    @BeforeEach
-    void createSnapshot() {
-        snapshot = tester.snapshot();
-    }
-
-    @org.junit.jupiter.api.AfterEach
-    void revertSnapshot() {
-        if (snapshot != null) {
-            tester.revert(snapshot);
-        }
     }
 
     // ==================== getBlobBaseFee() Integration Tests ====================
@@ -85,7 +60,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("getBlobBaseFee returns non-negative value")
-        void getBlobBaseFeeReturnsNonNegativeValue() {
+        void getBlobBaseFeeReturnsNonNegativeValue(Brane.Tester tester) {
             Wei blobBaseFee = tester.getBlobBaseFee();
 
             assertNotNull(blobBaseFee);
@@ -95,7 +70,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("getBlobBaseFee returns reasonable value")
-        void getBlobBaseFeeReturnsReasonableValue() {
+        void getBlobBaseFeeReturnsReasonableValue(Brane.Tester tester) {
             Wei blobBaseFee = tester.getBlobBaseFee();
 
             // Blob base fee should be > 0 on Cancun fork
@@ -106,7 +81,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("getBlobBaseFee is consistent across calls")
-        void getBlobBaseFeeIsConsistentAcrossCalls() {
+        void getBlobBaseFeeIsConsistentAcrossCalls(Brane.Tester tester) {
             Wei fee1 = tester.getBlobBaseFee();
             Wei fee2 = tester.getBlobBaseFee();
 
@@ -117,7 +92,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("getBlobBaseFee can change after blocks are mined")
-        void getBlobBaseFeeCanChangeAfterMining() {
+        void getBlobBaseFeeCanChangeAfterMining(Brane.Tester tester) {
             Wei initialFee = tester.getBlobBaseFee();
             assertNotNull(initialFee);
 
@@ -140,7 +115,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("sendBlobTransaction submits transaction and returns hash")
-        void sendBlobTransactionReturnsHash() {
+        void sendBlobTransactionReturnsHash(Brane.Tester tester) {
             byte[] testData = "Hello, EIP-4844 blobs!".getBytes();
             BlobSidecar sidecar = SidecarBuilder.from(testData).build(kzg);
 
@@ -166,7 +141,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("sendBlobTransactionAndWait confirms transaction")
-        void sendBlobTransactionAndWaitConfirmsTransaction() {
+        void sendBlobTransactionAndWaitConfirmsTransaction(Brane.Tester tester) {
             byte[] testData = "Test blob data for confirmation".getBytes();
             BlobSidecar sidecar = SidecarBuilder.from(testData).build(kzg);
 
@@ -184,7 +159,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("sendBlobTransaction with value transfers ETH")
-        void sendBlobTransactionWithValueTransfersEth() {
+        void sendBlobTransactionWithValueTransfersEth(Brane.Tester tester) {
             BigInteger recipientBalanceBefore = tester.getBalance(RECIPIENT);
             Wei transferAmount = Wei.fromEther(new BigDecimal("0.01"));
 
@@ -205,7 +180,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("sendBlobTransaction with multiple blobs")
-        void sendBlobTransactionWithMultipleBlobs() {
+        void sendBlobTransactionWithMultipleBlobs(Brane.Tester tester) {
             // Create enough data to span multiple blobs (each blob holds ~127KB of user data)
             byte[] largeData = new byte[150_000]; // ~150KB will require 2 blobs
             for (int i = 0; i < largeData.length; i++) {
@@ -225,7 +200,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("sendBlobTransaction consecutive transactions increment nonce")
-        void sendBlobTransactionIncrementNonce() {
+        void sendBlobTransactionIncrementNonce(Brane.Tester tester) {
             byte[] testData1 = "First blob transaction".getBytes();
             byte[] testData2 = "Second blob transaction".getBytes();
             BlobSidecar sidecar1 = SidecarBuilder.from(testData1).build(kzg);
@@ -256,7 +231,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("auto-fills maxFeePerBlobGas when not provided")
-        void autoFillsMaxFeePerBlobGas() {
+        void autoFillsMaxFeePerBlobGas(Brane.Tester tester) {
             byte[] testData = "Test auto-fill blob gas".getBytes();
             BlobSidecar sidecar = SidecarBuilder.from(testData).build(kzg);
 
@@ -272,7 +247,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("auto-fills maxFeePerGas and maxPriorityFeePerGas when not provided")
-        void autoFillsEip1559Fees() {
+        void autoFillsEip1559Fees(Brane.Tester tester) {
             byte[] testData = "Test auto-fill EIP-1559 fees".getBytes();
             BlobSidecar sidecar = SidecarBuilder.from(testData).build(kzg);
 
@@ -287,7 +262,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("auto-fills gasLimit when not provided")
-        void autoFillsGasLimit() {
+        void autoFillsGasLimit(Brane.Tester tester) {
             byte[] testData = "Test auto-fill gas limit".getBytes();
             BlobSidecar sidecar = SidecarBuilder.from(testData).build(kzg);
 
@@ -302,7 +277,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("auto-fills nonce when not provided")
-        void autoFillsNonce() {
+        void autoFillsNonce(Brane.Tester tester) {
             byte[] testData = "Test auto-fill nonce".getBytes();
             BlobSidecar sidecar = SidecarBuilder.from(testData).build(kzg);
 
@@ -317,7 +292,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("uses provided maxFeePerBlobGas when specified")
-        void usesProvidedMaxFeePerBlobGas() {
+        void usesProvidedMaxFeePerBlobGas(Brane.Tester tester) {
             byte[] testData = "Test provided blob gas fee".getBytes();
             BlobSidecar sidecar = SidecarBuilder.from(testData).build(kzg);
 
@@ -345,7 +320,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("uses provided nonce when specified")
-        void usesProvidedNonce() {
+        void usesProvidedNonce(Brane.Tester tester) {
             byte[] testData = "Test provided nonce".getBytes();
             BlobSidecar sidecar = SidecarBuilder.from(testData).build(kzg);
 
@@ -373,7 +348,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("uses provided gasLimit when specified")
-        void usesProvidedGasLimit() {
+        void usesProvidedGasLimit(Brane.Tester tester) {
             byte[] testData = "Test provided gas limit".getBytes();
             BlobSidecar sidecar = SidecarBuilder.from(testData).build(kzg);
 
@@ -400,7 +375,7 @@ class BlobTransactionIntegrationTest {
 
         @Test
         @DisplayName("all fields auto-filled produces valid transaction")
-        void allFieldsAutoFilledProducesValidTransaction() {
+        void allFieldsAutoFilledProducesValidTransaction(Brane.Tester tester) {
             byte[] testData = "Complete auto-fill test".getBytes();
             BlobSidecar sidecar = SidecarBuilder.from(testData).build(kzg);
 
