@@ -1,0 +1,305 @@
+# Error Handling
+
+## Exception Hierarchy
+
+All Brane exceptions extend `BraneException`, which is a sealed class:
+
+```
+BraneException (sealed root)
+├── AbiDecodingException - ABI decoding failures
+├── AbiEncodingException - ABI encoding failures
+├── Eip712Exception - EIP-712 typed data failures
+├── KzgException - KZG commitment failures (EIP-4844)
+├── RevertException - EVM execution reverts
+├── RpcException - JSON-RPC communication failures
+└── TxnException - Transaction-specific failures (non-sealed)
+    ├── BraneTxBuilderException - Transaction building failures
+    ├── ChainMismatchException - Chain ID mismatch errors
+    └── InvalidSenderException - Invalid sender address errors
+```
+
+### Catching All Brane Errors
+
+```java
+import sh.brane.core.error.BraneException;
+
+try {
+    client.sendTransaction(request);
+} catch (BraneException e) {
+    // Catches any Brane SDK error
+    System.err.println("Brane error: " + e.getMessage());
+}
+```
+
+### Catching Specific Errors
+
+```java
+import sh.brane.core.error.RevertException;
+import sh.brane.core.error.RpcException;
+import sh.brane.core.error.TxnException;
+
+try {
+    client.sendTransaction(request);
+} catch (RevertException e) {
+    // Contract execution reverted
+    System.err.println("Reverted: " + e.revertReason());
+} catch (RpcException e) {
+    // Network/RPC error
+    System.err.println("RPC Error: " + e.getMessage());
+} catch (TxnException e) {
+    // Transaction building/validation error
+    System.err.println("Transaction Error: " + e.getMessage());
+}
+```
+
+## RpcException
+
+Thrown when the JSON-RPC node returns an error (e.g., rate limiting, invalid request).
+
+```java
+import sh.brane.rpc.Brane;
+import sh.brane.core.types.Address;
+import sh.brane.core.error.RpcException;
+
+Brane client = Brane.connect("https://eth.example.com");
+Address address = new Address("0x...");
+
+try {
+    client.getBalance(address);
+} catch (RpcException e) {
+    System.err.println("RPC Error: " + e.getMessage());
+    System.err.println("Code: " + e.code());
+}
+```
+
+## RevertException
+
+Thrown when a smart contract execution reverts.
+
+```java
+import sh.brane.rpc.Brane;
+import sh.brane.contract.BraneContract;
+import sh.brane.core.error.RevertException;
+
+Brane.Signer client = Brane.connect("https://eth.example.com", signer);
+MyToken token = BraneContract.bind(MyToken.class, abi, tokenAddress, client);
+
+try {
+    token.transfer(recipient, amount);
+} catch (RevertException e) {
+    System.err.println("Transaction Reverted: " + e.revertReason());
+    // e.revertReason() automatically decodes standard string reverts
+}
+```
+
+## ABI Exceptions
+
+Thrown when ABI encoding or decoding fails.
+
+```java
+import sh.brane.core.error.AbiEncodingException;
+import sh.brane.core.error.AbiDecodingException;
+
+try {
+    abi.encodeFunction("transfer", invalidArg);
+} catch (AbiEncodingException e) {
+    System.err.println("Encoding failed: " + e.getMessage());
+}
+
+try {
+    abi.decodeFunction("balanceOf", malformedData);
+} catch (AbiDecodingException e) {
+    System.err.println("Decoding failed: " + e.getMessage());
+}
+```
+
+## Eip712Exception
+
+Thrown when EIP-712 typed data encoding, parsing, or validation fails. This includes invalid JSON format, missing required fields, unknown types, and value encoding errors.
+
+```java
+import sh.brane.core.crypto.eip712.TypedDataJson;
+import sh.brane.core.error.Eip712Exception;
+
+try {
+    TypedData<?> typedData = TypedDataJson.parseAndValidate(jsonFromDapp);
+} catch (Eip712Exception e) {
+    System.err.println("EIP-712 error: " + e.getMessage());
+    // Examples:
+    // "Invalid EIP-712 JSON: ..."
+    // "Unknown EIP-712 type: InvalidType"
+    // "Missing field 'owner' in type 'Permit'"
+    // "Value out of range for 'uint8': 256 (exceeds 8 bits)"
+}
+```
+
+See [EIP-712 Typed Data](/signer/eip712) for details on typed data signing.
+
+## KzgException
+
+Thrown when KZG commitment operations fail during EIP-4844 blob transaction processing.
+
+```java
+import sh.brane.core.error.KzgException;
+import sh.brane.kzg.CKzg;
+
+try {
+    Kzg kzg = CKzg.loadFromClasspath();
+    BlobSidecar sidecar = SidecarBuilder.from(data).build(kzg);
+} catch (KzgException e) {
+    System.err.println("KZG error [" + e.kind() + "]: " + e.getMessage());
+}
+```
+
+### KzgException Kinds
+
+| Kind | Description |
+|------|-------------|
+| `INVALID_BLOB` | Invalid blob data format or content |
+| `INVALID_PROOF` | KZG proof verification failed |
+| `SETUP_ERROR` | Trusted setup loading failed |
+| `COMMITMENT_ERROR` | Failed to compute KZG commitment |
+| `PROOF_ERROR` | Failed to compute or verify KZG proof |
+
+See [Blob Transactions](/signer/blobs) for details on EIP-4844 support.
+
+## Transaction Exceptions
+
+`TxnException` is the base for transaction-specific errors. Unlike other `BraneException` subtypes, it is **non-sealed** to allow for future extensibility.
+
+### BraneTxBuilderException
+
+Thrown when transaction building fails due to invalid parameters.
+
+```java
+import sh.brane.core.builder.Eip1559Builder;
+import sh.brane.core.builder.BraneTxBuilderException;
+
+try {
+    // Missing required fields
+    Eip1559Builder.create()
+        .value(Wei.fromEther(new java.math.BigDecimal("1.0")))
+        // Missing .to() and .data()
+        .build(signer, client);
+} catch (BraneTxBuilderException e) {
+    System.err.println("Builder error: " + e.getMessage());
+    // "Transaction must have a recipient or data"
+}
+```
+
+### ChainMismatchException
+
+Thrown when the transaction's chain ID doesn't match the connected network.
+
+```java
+import sh.brane.core.error.ChainMismatchException;
+
+try {
+    // Trying to send a mainnet transaction to a testnet
+    client.sendTransaction(mainnetTx);
+} catch (ChainMismatchException e) {
+    System.err.println("Wrong network: " + e.getMessage());
+}
+```
+
+### InvalidSenderException
+
+Thrown when the transaction sender address is invalid or doesn't match the signer.
+
+```java
+import sh.brane.core.error.InvalidSenderException;
+
+try {
+    client.sendTransaction(txWithWrongSender);
+} catch (InvalidSenderException e) {
+    System.err.println("Invalid sender: " + e.getMessage());
+}
+```
+
+## RPC-Layer Exceptions
+
+The `sh.brane.rpc.exception` package contains RPC-specific exceptions that are separate from the core `BraneException` hierarchy.
+
+### RetryExhaustedException
+
+Thrown when all retry attempts have been exhausted for transient RPC failures.
+
+```java
+import sh.brane.rpc.exception.RetryExhaustedException;
+import sh.brane.core.error.RpcException;
+
+try {
+    client.getLatestBlock();
+} catch (RetryExhaustedException e) {
+    System.err.println("Failed after " + e.getAttemptCount() + " attempts");
+    System.err.println("Total retry time: " + e.getTotalRetryDurationMs() + "ms");
+
+    // Access all failed attempts
+    for (Throwable suppressed : e.getSuppressed()) {
+        System.err.println("  - " + suppressed.getMessage());
+    }
+
+    // Access original RPC error if available
+    if (e.getCause() instanceof RpcException rpc) {
+        System.err.println("RPC Error: " + rpc.code() + " - " + rpc.getMessage());
+    }
+}
+```
+
+### SimulateNotSupportedException
+
+Thrown when `eth_simulateV1` is not supported by the RPC node. See [Transaction Simulation](/reader/simulate) for details.
+
+```java
+import sh.brane.rpc.exception.SimulateNotSupportedException;
+
+try {
+    client.simulate(request);
+} catch (SimulateNotSupportedException e) {
+    // Node does not support eth_simulateV1
+    // Consider falling back to eth_call
+    System.err.println(e.getMessage());
+}
+```
+
+## Decoding Custom Errors
+
+If your contract throws a custom error (e.g., `error InsufficientFunds(uint256 available, uint256 required)`), you can decode it using `RevertDecoder`.
+
+```java
+import sh.brane.core.RevertDecoder;
+import sh.brane.core.abi.TypeSchema;
+import sh.brane.core.abi.Abi;
+import sh.brane.rpc.Brane;
+import sh.brane.contract.BraneContract;
+import sh.brane.core.error.RevertException;
+
+Brane client = Brane.connect("https://eth.example.com");
+MyToken token = BraneContract.bind(MyToken.class, abi, tokenAddress, client);
+
+// 1. Define the Error Schema
+var customError = new RevertDecoder.CustomErrorAbi(
+    "InsufficientFunds",
+    List.of(
+        new TypeSchema.UIntSchema(256), // available
+        new TypeSchema.UIntSchema(256)  // required
+    )
+);
+
+// 2. Decode
+try {
+    token.balanceOf(address);
+} catch (RevertException e) {
+    String data = e.rawDataHex();
+    String selector = Abi.getSelector("InsufficientFunds(uint256,uint256)");
+
+    var decoded = RevertDecoder.decode(
+        data,
+        Map.of(selector, customError)
+    );
+
+    if (decoded.kind() == RevertDecoder.RevertKind.CUSTOM) {
+        System.out.println("Custom Error: " + decoded.reason());
+    }
+}
+```

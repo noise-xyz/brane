@@ -1,0 +1,373 @@
+# Account Manipulation
+
+## Overview
+
+`Brane.Tester` provides methods to directly manipulate account state on test nodes without sending transactions. This enables rapid test setup, edge case testing, and precise state control that would be difficult or impossible to achieve through normal blockchain operations.
+
+## setBalance / deal
+
+Sets the ETH balance of any account directly. This is commonly called "dealing" ETH to an address in testing frameworks.
+
+```java
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Wei;
+import sh.brane.rpc.Brane;
+
+Brane.Tester tester = Brane.connectTest();
+
+// Set balance to exactly 1000 ETH
+Address testAccount = new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
+tester.setBalance(testAccount, Wei.fromEther(new java.math.BigDecimal("1000")));
+
+// Verify the new balance
+BigInteger balance = tester.getBalance(testAccount);
+System.out.println("Balance: " + Wei.of(balance).toEther() + " ETH");
+```
+
+### Use Cases
+
+**Funding test accounts:**
+```java
+// Fund a fresh address for testing
+Address freshAccount = new Address("0x1234567890123456789012345678901234567890");
+tester.setBalance(freshAccount, Wei.fromEther(new java.math.BigDecimal("100")));
+```
+
+**Testing insufficient balance scenarios:**
+```java
+// Set balance to exactly what's needed for a specific test
+Address user = new Address("0x...");
+tester.setBalance(user, Wei.fromEther(new java.math.BigDecimal("0.001"))); // Just enough for gas
+```
+
+**Simulating whale accounts:**
+```java
+// Give an address a massive balance for testing large transfers
+Address whale = new Address("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+tester.setBalance(whale, Wei.fromEther(new java.math.BigDecimal("1000000")));
+
+// Now impersonate and test large transfer behavior
+try (ImpersonationSession session = tester.impersonate(whale)) {
+    var request = TxBuilder.eip1559()
+        .to(recipient)
+        .value(Wei.fromEther(new java.math.BigDecimal("500000")))
+        .build();
+    session.sendTransactionAndWait(request);
+}
+```
+
+**Testing exact balance boundaries:**
+```java
+// Test behavior at exact balance limits
+Wei exactAmount = Wei.gwei(21000); // Exactly enough for gas
+tester.setBalance(testAccount, exactAmount);
+// Now test what happens when balance equals gas cost exactly
+```
+
+## setCode
+
+Deploys arbitrary bytecode at any address. This allows you to place contract code at specific addresses without going through the normal deployment process.
+
+```java
+import sh.brane.core.types.HexData;
+
+// Deploy bytecode that always returns 42
+HexData bytecode = new HexData("0x602a60005260206000f3");
+Address targetAddress = new Address("0x1234567890123456789012345678901234567890");
+tester.setCode(targetAddress, bytecode);
+```
+
+### Use Cases
+
+**Replace contract implementation:**
+```java
+// Replace a deployed contract with a mock version
+Address existingContract = new Address("0x...");
+
+// Mock bytecode that always returns success
+HexData mockCode = new HexData("0x6001600052602060006000f3");
+tester.setCode(existingContract, mockCode);
+
+// Now calls to existingContract use the mock implementation
+```
+
+**Deploy to a specific address:**
+```java
+// Place a contract at a deterministic address for testing
+// Useful when testing systems that rely on specific contract addresses
+Address targetAddr = new Address("0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF");
+HexData contractBytecode = new HexData("0x608060405234...");
+tester.setCode(targetAddr, contractBytecode);
+```
+
+**Create minimal proxy contracts:**
+```java
+// Deploy a minimal proxy (EIP-1167) pointing to an implementation
+Address implementation = new Address("0x...");
+String proxyBytecode = "0x363d3d373d3d3d363d73" +
+    implementation.value().substring(2) + // Remove 0x prefix
+    "5af43d82803e903d91602b57fd5bf3";
+tester.setCode(proxyAddress, new HexData(proxyBytecode));
+```
+
+**Clear contract code:**
+```java
+// Remove code from an address (make it an EOA)
+tester.setCode(contractAddress, new HexData("0x"));
+```
+
+:::note
+Setting code does not run constructors. If your contract relies on constructor initialization, you'll also need to set the appropriate storage slots manually.
+:::
+
+## setNonce
+
+Sets the transaction nonce for an account. The nonce determines the order of transactions and is critical for transaction validity.
+
+```java
+// Set nonce to a specific value
+Address account = new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
+tester.setNonce(account, 42);
+```
+
+### Use Cases
+
+**Test nonce gap handling:**
+```java
+// Create a nonce gap to test pending transaction behavior
+Address sender = AnvilSigners.keyAt(0).address();
+tester.setNonce(sender, 100);
+
+// Transactions with nonce < 100 will now be invalid
+// Transactions must start from nonce 100
+```
+
+**Reset nonce after failed transactions:**
+```java
+// If a transaction fails and leaves nonce in bad state, reset it
+Address account = signer.address();
+// Query current nonce from chain
+BigInteger currentNonce = ... // eth_getTransactionCount
+tester.setNonce(account, currentNonce.longValue());
+```
+
+**Test CREATE2 address calculation:**
+```java
+// CREATE2 addresses depend on sender nonce for counterfactual deployment
+Address deployer = new Address("0x...");
+tester.setNonce(deployer, 0); // Reset to known state
+// Now CREATE2 addresses are predictable
+```
+
+**Simulate account with transaction history:**
+```java
+// Make an account appear to have sent many transactions
+Address oldAccount = new Address("0x...");
+tester.setNonce(oldAccount, 10_000);
+// Account now looks like it has 10,000 previous transactions
+```
+
+:::warning
+Setting a nonce lower than the actual number of transactions from that account can cause issues. Transactions with nonces that have already been used will be rejected.
+:::
+
+## setStorageAt
+
+Directly writes to a contract's storage slots. This is the most powerful manipulation method, allowing you to modify any internal state of a contract.
+
+```java
+import sh.brane.core.types.Hash;
+
+Address contract = new Address("0x...");
+
+// Storage slot 0 (often used for simple variables)
+Hash slot = new Hash("0x0000000000000000000000000000000000000000000000000000000000000000");
+
+// Set value to 42 (0x2a in hex, padded to 32 bytes)
+Hash value = new Hash("0x000000000000000000000000000000000000000000000000000000000000002a");
+
+tester.setStorageAt(contract, slot, value);
+```
+
+### Storage Slot Layout
+
+Solidity uses specific rules for storage layout:
+
+| Variable Type | Slot Calculation |
+|---------------|------------------|
+| Simple variables | Sequential from slot 0 |
+| Mappings | `keccak256(key . slot)` |
+| Dynamic arrays | Length at slot, data at `keccak256(slot)` |
+| Strings/bytes | If < 32 bytes, in-place; otherwise like arrays |
+
+### Use Cases
+
+**Modify ERC20 balance directly:**
+```java
+import sh.brane.core.crypto.Keccak256;
+
+Address tokenContract = new Address("0x...");
+Address holder = new Address("0x...");
+
+// ERC20 balances are typically in a mapping at slot 0 or slot 1
+// Storage slot = keccak256(holder || balanceSlot)
+int balanceSlot = 0;
+
+// Calculate the storage slot for the balance mapping
+byte[] slotKey = new byte[64];
+System.arraycopy(holder.toBytes(), 0, slotKey, 12, 20); // Left-pad address to 32 bytes
+slotKey[63] = (byte) balanceSlot; // Slot number in last position
+
+byte[] calculatedSlot = Keccak256.hash(slotKey);
+Hash storageSlot = new Hash(calculatedSlot);
+
+// Set balance to 1 million tokens (assuming 18 decimals)
+BigInteger amount = new BigInteger("1000000000000000000000000"); // 1M * 10^18
+Hash balanceValue = new Hash("0x" + String.format("%064x", amount));
+
+tester.setStorageAt(tokenContract, storageSlot, balanceValue);
+```
+
+**Bypass access control:**
+```java
+// Assume an Ownable contract with owner at slot 0
+Address contract = new Address("0x...");
+Address newOwner = new Address("0x...");
+
+// Convert address to 32-byte padded value
+Hash ownerValue = new Hash("0x000000000000000000000000" + newOwner.value().substring(2));
+tester.setStorageAt(contract, Hash.ZERO, ownerValue);
+
+// newOwner is now the contract owner
+```
+
+**Set timelock timestamps:**
+```java
+// Bypass a timelock by setting the unlock timestamp to the past
+Address timelockContract = new Address("0x...");
+Hash timestampSlot = new Hash("0x...");
+
+// Set to a past timestamp
+long pastTime = System.currentTimeMillis() / 1000 - 86400; // Yesterday
+Hash pastTimestamp = new Hash("0x" + String.format("%064x", pastTime));
+
+tester.setStorageAt(timelockContract, timestampSlot, pastTimestamp);
+```
+
+**Initialize uninitialized contract:**
+```java
+// Set initial values for a contract that wasn't properly initialized
+Address proxy = new Address("0x...");
+
+// Slot 0: initialized flag
+Hash initializedSlot = Hash.ZERO;
+Hash trueValue = new Hash("0x0000000000000000000000000000000000000000000000000000000000000001");
+tester.setStorageAt(proxy, initializedSlot, trueValue);
+
+// Slot 1: admin address
+Hash adminSlot = new Hash("0x0000000000000000000000000000000000000000000000000000000000000001");
+Hash adminValue = new Hash("0x000000000000000000000000" + adminAddress.value().substring(2));
+tester.setStorageAt(proxy, adminSlot, adminValue);
+```
+
+:::note
+Finding the correct storage slot often requires understanding the contract's storage layout. Tools like `forge inspect <Contract> storage-layout` can help identify slot positions for Solidity contracts.
+:::
+
+## Combining Methods
+
+These methods are most powerful when combined:
+
+```java
+Brane.Tester tester = Brane.connectTest();
+
+// Set up a complex test scenario
+Address tokenContract = new Address("0x6B175474E89094C44Da98b954EescdfeB131e232");
+Address whale = new Address("0xWhaleAddress...");
+Address testUser = new Address("0xTestUser...");
+
+// 1. Fund the whale with ETH for gas
+tester.setBalance(whale, Wei.fromEther(new java.math.BigDecimal("10")));
+
+// 2. Set token balance via storage manipulation
+Hash balanceSlot = calculateErc20BalanceSlot(whale, tokenContract);
+Hash tokenAmount = new Hash("0x" + String.format("%064x",
+    new BigInteger("1000000000000000000000000"))); // 1M tokens
+tester.setStorageAt(tokenContract, balanceSlot, tokenAmount);
+
+// 3. Impersonate the whale and test transfers
+try (ImpersonationSession session = tester.impersonate(whale)) {
+    // Transfer tokens as the whale
+    var transfer = TxBuilder.eip1559()
+        .to(tokenContract)
+        .data(encodeErc20Transfer(testUser, amount))
+        .build();
+    session.sendTransactionAndWait(transfer);
+}
+```
+
+## Test Node Compatibility
+
+All account manipulation methods work across supported test nodes:
+
+| Method | Anvil | Hardhat | Ganache |
+|--------|-------|---------|---------|
+| `setBalance` | `anvil_setBalance` | `hardhat_setBalance` | `evm_setBalance` |
+| `setCode` | `anvil_setCode` | `hardhat_setCode` | `evm_setCode` |
+| `setNonce` | `anvil_setNonce` | `hardhat_setNonce` | `evm_setNonce` |
+| `setStorageAt` | `anvil_setStorageAt` | `hardhat_setStorageAt` | `evm_setStorageAt` |
+
+The correct RPC prefix is selected automatically based on the `TestNodeMode` configured when creating the tester.
+
+## Best Practices
+
+### Always Use Snapshots
+
+Wrap state manipulation in snapshots to ensure test isolation:
+
+```java
+SnapshotId snapshot = tester.snapshot();
+try {
+    // Manipulate state
+    tester.setBalance(address, Wei.fromEther(new java.math.BigDecimal("1000")));
+    tester.setCode(address, bytecode);
+
+    // Run test assertions
+    // ...
+} finally {
+    tester.revert(snapshot);
+}
+```
+
+### Validate After Manipulation
+
+Always verify that manipulation had the expected effect:
+
+```java
+Wei targetBalance = Wei.fromEther(new java.math.BigDecimal("100"));
+tester.setBalance(address, targetBalance);
+
+// Verify
+BigInteger actual = tester.getBalance(address);
+assertEquals(targetBalance.value(), actual, "Balance not set correctly");
+```
+
+### Document Storage Slots
+
+When using `setStorageAt`, document which slots you're modifying:
+
+```java
+// ERC20 token: balances mapping at slot 0
+// Calculated as: keccak256(abi.encode(address, 0))
+Hash balanceSlot = calculateBalanceSlot(holder);
+tester.setStorageAt(token, balanceSlot, balance);
+```
+
+### Consider Side Effects
+
+Manipulating state can have unintended consequences:
+
+- Setting a balance doesn't update total supply in ERC20s
+- Setting code doesn't run constructors
+- Setting nonce affects all future transactions from that address
+- Storage changes may break invariants the contract depends on

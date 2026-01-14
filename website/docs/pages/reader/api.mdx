@@ -1,0 +1,170 @@
+# Reading Data
+
+## Usage
+
+```java
+import sh.brane.rpc.Brane;
+
+// Simple connection - returns Brane.Reader for read-only operations
+Brane client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/your-key");
+
+// Or use the builder for more control
+Brane.Reader reader = Brane.builder()
+    .rpcUrl("https://eth-mainnet.g.alchemy.com/v2/your-key")
+    .buildReader();
+```
+
+## Methods
+
+### getBalance
+
+Returns the balance of an address in Wei.
+
+```java
+Wei balance = client.getBalance(new Address("0x..."));
+```
+
+### getChainId
+
+Returns the chain ID associated with the current network.
+
+```java
+BigInteger chainId = client.getChainId();
+```
+
+### getBlock
+
+Returns information about a block by number or hash.
+
+```java
+// Get latest block
+var block = client.getLatestBlock();
+System.out.println("Block Number: " + block.number());
+
+// Get by number
+var blockByNumber = client.getBlockByNumber(12345678);
+```
+
+### getTransactionByHash
+
+Fetch a transaction by its hash.
+
+```java
+import sh.brane.core.types.Hash;
+
+Hash txHash = new Hash("0x...");
+var tx = client.getTransactionByHash(txHash);
+
+if (tx != null) {
+    System.out.println("From: " + tx.from());
+    System.out.println("Value: " + tx.value());
+}
+```
+
+### call
+
+Executes a new message call immediately without creating a transaction. Useful for reading contract state.
+
+```java
+Map<String, Object> params = Map.of(
+    "to", "0x...",
+    "data", "0x..." // Encoded function call
+);
+String result = client.call(params, "latest");
+```
+
+### getLogs
+
+Returns an array of all logs matching a given filter object.
+
+```java
+import sh.brane.rpc.LogFilter;
+import sh.brane.core.model.LogEntry;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Hash;
+import java.util.List;
+import java.util.Optional;
+
+long blockNumber = 12345678L;
+Address tokenAddress = new Address("0x...");
+
+// Filter for Transfer(address,address,uint256)
+// With block range
+LogFilter filter = new LogFilter(
+    Optional.of(blockNumber), // fromBlock
+    Optional.of(blockNumber), // toBlock
+    Optional.of(tokenAddress), // address
+    Optional.of(List.of(      // topics
+        new Hash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef") // Transfer topic
+    ))
+);
+
+// Or use the simpler factory method (no block range)
+LogFilter simpleFilter = LogFilter.byContract(tokenAddress, List.of(
+    new Hash("0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef")
+));
+
+List<LogEntry> logs = client.getLogs(simpleFilter);
+```
+
+### createAccessList
+
+Generates an **EIP-2930 access list** for a transaction request.
+This allows you to see which storage slots a transaction will touch and how much gas it would consume **without actually sending it**.
+Useful for gas optimization and preparing transactions that conform to EIP-2930.
+
+```java
+import sh.brane.core.model.TransactionRequest;
+import sh.brane.core.model.AccessListWithGas;
+import sh.brane.core.model.AccessListEntry;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.HexData;
+import java.math.BigInteger;
+import java.util.List;
+
+// Build a transaction request
+TransactionRequest txRequest = new TransactionRequest(
+    new Address("0xYourFromAddress"),
+    new Address("0xRecipientAddress"),
+    null, // value
+    null, // gas
+    null, // gasPrice
+    null, // maxFeePerGas
+    null, // maxPriorityFeePerGas
+    null, // nonce
+    new HexData("0xdeadbeef"), // data
+    true,
+    null
+);
+
+AccessListWithGas result = client.createAccessList(txRequest);
+
+System.out.println("Gas used: " + result.gasUsed());
+for (AccessListEntry entry : result.accessList()) {
+    System.out.println("Address: " + entry.address().value());
+    System.out.println("Storage slots: " + entry.storageKeys().size());
+}
+```
+
+### simulateCalls
+
+Simulate one or more calls using `eth_simulateV1` (supports per-call results and optional state overrides).
+
+```java
+import sh.brane.rpc.SimulateCall;
+import sh.brane.rpc.SimulateRequest;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.HexData;
+
+SimulateRequest request = SimulateRequest.builder()
+    .call(SimulateCall.builder()
+        .to(new Address("0x..."))
+        .data(new HexData("0x..."))
+        .build())
+    .traceAssetChanges(true)
+    .build();
+
+var result = client.simulateCalls(request);
+```
+
+For full details (state overrides, result handling, error cases), see [Simulating Calls](/reader/simulate).

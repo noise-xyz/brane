@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520">
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#666"/>
+    </marker>
+    <marker id="arrowhead-dashed" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#999"/>
+    </marker>
+  </defs>
+
+  <style>
+    .title { font-family: system-ui, -apple-system, sans-serif; font-size: 14px; font-weight: 600; }
+    .subtitle { font-family: system-ui, -apple-system, sans-serif; font-size: 11px; fill: #666; font-style: italic; }
+    .label { font-family: system-ui, -apple-system, sans-serif; font-size: 12px; fill: #333; }
+    .group-label { font-family: system-ui, -apple-system, sans-serif; font-size: 13px; font-weight: 600; fill: #444; }
+    .node { fill: #fff; stroke: #ddd; stroke-width: 1.5; rx: 6; }
+    .node-app { fill: #f0f9ff; stroke: #0ea5e9; }
+    .node-ethereum { fill: #fef3c7; stroke: #f59e0b; }
+    .group-box { fill: #f8fafc; stroke: #e2e8f0; stroke-width: 1.5; rx: 8; }
+    .group-brane { fill: #f0fdf4; stroke: #22c55e; }
+    .group-impl { fill: #fefce8; stroke: #eab308; }
+    .group-provider { fill: #faf5ff; stroke: #a855f7; }
+  </style>
+
+  <!-- User Application -->
+  <rect x="300" y="15" width="200" height="45" class="node node-app"/>
+  <text x="400" y="43" text-anchor="middle" class="title">🖥️ USER APPLICATION</text>
+
+  <!-- Arrow: App to Brane -->
+  <line x1="400" y1="60" x2="400" y2="85" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Brane Group -->
+  <rect x="50" y="95" width="700" height="80" class="group-box group-brane"/>
+  <text x="70" y="118" class="group-label">Brane (sealed interface)</text>
+
+  <rect x="70" y="125" width="200" height="40" class="node"/>
+  <text x="170" y="143" text-anchor="middle" class="label">Brane.Reader</text>
+  <text x="170" y="158" text-anchor="middle" class="subtitle">read-only operations</text>
+
+  <rect x="300" y="125" width="200" height="40" class="node"/>
+  <text x="400" y="143" text-anchor="middle" class="label">Brane.Signer</text>
+  <text x="400" y="158" text-anchor="middle" class="subtitle">read + write operations</text>
+
+  <rect x="530" y="125" width="200" height="40" class="node"/>
+  <text x="630" y="143" text-anchor="middle" class="label">Brane.Tester</text>
+  <text x="630" y="158" text-anchor="middle" class="subtitle">test node operations</text>
+
+  <!-- Arrow: Brane to Implementations -->
+  <line x1="400" y1="175" x2="400" y2="200" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Implementations Group -->
+  <rect x="50" y="210" width="700" height="80" class="group-box group-impl"/>
+  <text x="70" y="233" class="group-label">Implementations</text>
+
+  <rect x="70" y="240" width="200" height="40" class="node"/>
+  <text x="170" y="258" text-anchor="middle" class="label">DefaultReader</text>
+  <text x="170" y="273" text-anchor="middle" class="subtitle">implements Reader</text>
+
+  <rect x="300" y="240" width="200" height="40" class="node"/>
+  <text x="400" y="258" text-anchor="middle" class="label">DefaultSigner</text>
+  <text x="400" y="273" text-anchor="middle" class="subtitle">implements Signer</text>
+
+  <rect x="530" y="240" width="200" height="40" class="node"/>
+  <text x="630" y="258" text-anchor="middle" class="label">DefaultTester</text>
+  <text x="630" y="273" text-anchor="middle" class="subtitle">implements Tester</text>
+
+  <!-- Delegation arrows (dashed) -->
+  <path d="M 400 245 Q 320 220 270 245" stroke="#999" stroke-width="1.5" stroke-dasharray="5,3" fill="none" marker-end="url(#arrowhead-dashed)"/>
+  <text x="310" y="218" class="subtitle" font-size="10">delegates to</text>
+
+  <path d="M 630 245 Q 550 220 500 245" stroke="#999" stroke-width="1.5" stroke-dasharray="5,3" fill="none" marker-end="url(#arrowhead-dashed)"/>
+  <text x="540" y="218" class="subtitle" font-size="10">delegates to</text>
+
+  <!-- Arrow: Implementations to Provider -->
+  <line x1="400" y1="290" x2="400" y2="315" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Provider Group -->
+  <rect x="100" y="325" width="600" height="95" class="group-box group-provider"/>
+  <text x="120" y="348" class="group-label">BraneProvider (interface)</text>
+
+  <rect x="130" y="360" width="250" height="50" class="node"/>
+  <text x="255" y="380" text-anchor="middle" class="label">HttpBraneProvider</text>
+  <text x="255" y="395" text-anchor="middle" class="subtitle">• HttpClient • Stateless</text>
+
+  <rect x="420" y="360" width="250" height="50" class="node"/>
+  <text x="545" y="380" text-anchor="middle" class="label">WebSocketProvider</text>
+  <text x="545" y="395" text-anchor="middle" class="subtitle">• Netty / Disruptor • Subscriptions</text>
+
+  <!-- Arrow: Provider to Ethereum -->
+  <line x1="400" y1="420" x2="400" y2="455" stroke="#666" stroke-width="2" marker-end="url(#arrowhead)"/>
+
+  <!-- Ethereum Node -->
+  <rect x="275" y="465" width="250" height="45" class="node node-ethereum"/>
+  <text x="400" y="493" text-anchor="middle" class="title">⛓️ ETHEREUM NODE (JSON-RPC)</text>
+</svg>

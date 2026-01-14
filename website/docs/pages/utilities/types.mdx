@@ -1,0 +1,152 @@
+# Types & Primitives
+
+## Address
+
+Represents a 20-byte Ethereum address. It automatically handles checksum validation.
+
+```java
+import sh.brane.core.types.Address;
+
+// From Hex String
+Address addr = new Address("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
+
+// To String (Checksummed)
+String hex = addr.toString();
+```
+
+## Wei
+
+Represents a monetary value in Wei (10^-18 Ether). It wraps `BigInteger` to prevent unit confusion.
+
+```java
+import sh.brane.core.types.Wei;
+import java.math.BigDecimal;
+
+// From Ether (BigDecimal)
+Wei value = Wei.fromEther(new BigDecimal("1.5"));
+
+// From Gwei
+Wei gasPrice = Wei.gwei(20);
+
+// From Raw Wei (BigInteger)
+Wei raw = Wei.of(1000);
+```
+
+## HexData
+
+Represents arbitrary hex-encoded data (bytes). It is immutable, thread-safe, and uses lazy initialization for efficient memory use.
+
+```java
+import sh.brane.core.types.HexData;
+
+// From Hex String
+HexData data = new HexData("0x1234");
+
+// From Byte Array (creates defensive copy)
+byte[] original = new byte[]{0x12, 0x34};
+HexData fromBytes = new HexData(original);
+// Safe to modify original after - HexData has its own copy
+
+// Empty
+HexData empty = HexData.EMPTY;
+```
+
+### Thread Safety
+
+`HexData` uses double-checked locking for lazy string conversion, making it safe to share across threads without synchronization.
+
+## AccessListWithGas
+
+Result of `createAccessList()`, containing the generated EIP-2930 access list and estimated gas.
+
+```java
+import sh.brane.core.model.AccessListWithGas;
+
+AccessListWithGas result = client.createAccessList(request);
+System.out.println("Gas used: " + result.gasUsed());
+System.out.println("Entries: " + result.accessList().size());
+```
+
+## AccessListEntry
+
+An entry in an EIP-2930 access list, representing a contract address and its accessed storage slots.
+
+```java
+import sh.brane.core.model.AccessListEntry;
+
+for (AccessListEntry entry : result.accessList()) {
+    System.out.println("Contract: " + entry.address());
+    System.out.println("Storage slots: " + entry.storageKeys());
+}
+```
+
+## Transaction
+
+Represents a blockchain transaction with required and optional fields.
+
+```java
+import sh.brane.core.model.Transaction;
+
+Transaction tx = client.getTransactionByHash(hash);
+
+// Required fields (never null)
+Hash txHash = tx.hash();
+Address sender = tx.from();
+HexData input = tx.input();
+Wei value = tx.value();
+Long nonce = tx.nonce();
+```
+
+### Optional Fields
+
+Some fields are nullable with semantic meaning:
+
+| Field | Null Meaning | Accessor |
+|-------|--------------|----------|
+| `to` | Contract creation | `toOpt()` |
+| `blockNumber` | Pending transaction | `blockNumberOpt()` |
+
+```java
+// Option 1: Use *Opt() accessors for Optional handling
+tx.toOpt().ifPresent(addr -> System.out.println("To: " + addr));
+tx.blockNumberOpt().ifPresent(bn -> System.out.println("Block: " + bn));
+
+// Option 2: Use standard null checks
+if (tx.to() == null) {
+    System.out.println("Contract creation transaction");
+}
+
+// Option 3: Check pending status
+boolean isPending = tx.blockNumber() == null;
+```
+
+## Topics
+
+Utility for creating event topics from addresses.
+
+```java
+import sh.brane.core.util.Topics;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Hash;
+
+Address addr = new Address("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
+
+// Create a 32-byte topic (address left-padded with zeros)
+Hash topic = Topics.fromAddress(addr);
+// Result: 0x000000000000000000000000f39Fd6e51aad88F6F4ce6aB8827279cffFb92266
+```
+
+This is useful for filtering logs by indexed address parameters.
+
+## Validation
+
+All Brane model types (records) validate their inputs in compact constructors. Invalid data throws `IllegalArgumentException` immediately rather than failing later during use.
+
+```java
+// These throw IllegalArgumentException immediately
+new Address("invalid");           // Not a valid hex address
+Wei.gwei(-1);                     // Negative gas price
+new Transaction(null, ...);       // Required field is null
+```
+
+This fail-fast behavior makes debugging easier by catching errors at the point of creation.

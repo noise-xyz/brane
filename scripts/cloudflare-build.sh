@@ -30,13 +30,13 @@ echo "Generating Javadocs..."
 ./gradlew allJavadoc
 
 # 2. Prepare destination
-mkdir -p website/public/javadoc
+mkdir -p website/docs/public/javadoc
 
 # 3. Copy Javadocs
 echo "Copying Javadocs..."
-cp -r build/docs/javadoc/* website/public/javadoc/
+cp -r build/docs/javadoc/* website/docs/public/javadoc/
 
-# 4. Build Next.js
+# 4. Build vocs docs
 echo "Building Website..."
 cd website
 npm install

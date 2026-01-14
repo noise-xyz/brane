@@ -1,0 +1,123 @@
+# ABI Utilities
+
+## Function Selectors
+
+Compute the 4-byte function selector for any function signature.
+
+```java
+import sh.brane.core.abi.Abi;
+import sh.brane.core.types.HexData;
+
+// "transfer(address,uint256)" -> 0xa9059cbb
+HexData selector = Abi.functionSelector("transfer(address,uint256)");
+```
+
+## Event Topics
+
+Compute the 32-byte topic hash for an event signature.
+
+```java
+import sh.brane.core.abi.Abi;
+import sh.brane.core.types.Hash;
+
+// "Transfer(address,address,uint256)" -> 0xddf252...
+Hash topic = Abi.eventTopic("Transfer(address,address,uint256)");
+```
+
+## Decoding Events
+
+Decode raw logs into Java objects using `Abi.decodeEvents`.
+
+```java
+import sh.brane.rpc.Brane;
+import sh.brane.rpc.LogFilter;
+import sh.brane.core.abi.Abi;
+
+Brane client = Brane.connect("https://eth-mainnet.example.com");
+LogFilter filter = ...;
+Abi abi = ...;
+
+// 1. Define the Event Class
+public static class TransferEvent {
+    public Address from;
+    public Address to;
+    public BigInteger value;
+}
+
+// 2. Fetch Logs
+var logs = client.getLogs(filter);
+
+// 3. Decode
+var transfers = abi.decodeEvents("Transfer", logs, TransferEvent.class);
+
+for (var event : transfers) {
+    System.out.println("Transfer: " + event.value);
+}
+```
+
+## FastAbiEncoder
+
+For zero-allocation, low-level encoding of arguments (useful for manual `eth_call` construction).
+
+```java
+import sh.brane.core.abi.FastAbiEncoder;
+import sh.brane.core.abi.UInt;
+
+byte[] encoded = FastAbiEncoder.encode(List.of(
+    new UInt(256, BigInteger.TEN)
+));
+```
+
+## Array Type
+
+The `Array<T>` record represents Solidity arrays (both static `T[N]` and dynamic `T[]`).
+
+### Creating Arrays
+
+Arrays require an `elementTypeName` parameter for correct ABI encoding:
+
+```java
+import sh.brane.core.abi.Array;
+import sh.brane.core.abi.UInt;
+
+// Dynamic array: uint256[]
+Array<UInt> dynamicArray = new Array<>(
+    List.of(new UInt(256, BigInteger.ONE), new UInt(256, BigInteger.TWO)),
+    UInt.class,
+    true,       // isDynamicLength
+    "uint256"   // elementTypeName
+);
+
+// Static array: address[3]
+Array<sh.brane.core.abi.Address> staticArray = new Array<>(
+    List.of(addr1, addr2, addr3),
+    sh.brane.core.abi.Address.class,
+    false,      // isDynamicLength (fixed size)
+    "address"   // elementTypeName
+);
+```
+
+### Why elementTypeName is Required
+
+Java's type erasure prevents inferring the Solidity type at runtime. The `elementTypeName` ensures correct type signatures for:
+
+- **Function selectors:** `transfer(address,uint256[])` vs `transfer(address,uint128[])`
+- **Event topics:** Correct hashing of event signatures
+- **Empty arrays:** No elements to inspect for type inference
+
+| Parameter | Description |
+|-----------|-------------|
+| `values` | List of elements (may be empty) |
+| `type` | Java class of elements (e.g., `UInt.class`) |
+| `isDynamicLength` | `true` for `T[]`, `false` for `T[N]` |
+| `elementTypeName` | Solidity type name (e.g., `"uint256"`, `"address"`) |
+
+### Array Methods
+
+```java
+Array<UInt> arr = new Array<>(values, UInt.class, true, "uint256");
+
+arr.typeName();      // "uint256[]" or "uint256[3]"
+arr.isDynamic();     // true if dynamic length or element is dynamic
+arr.byteSize();      // ABI-encoded byte size
+```
