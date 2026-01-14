@@ -44,10 +44,17 @@
   position: inherit;
 }
 
+#home-install {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
 #home-install .vocs_CodeGroup {
   display: flex;
   height: 100%;
   flex-direction: column;
+  flex: 1;
 }
 
 #home-install .vocs_Tabs_content {
@@ -67,4 +74,293 @@
 
 .vocs_Sidebar_logo {
   height: 40px !important;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   ============================================ */
+
+/* Landing page hero section */
+.landing-hero {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 4rem;
+  margin-top: 2rem;
+  margin-bottom: 3rem;
+  margin-left: -25%;
+  margin-right: -25%;
+  width: 150%;
+}
+
+.landing-hero-left {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  max-width: 480px;
+  flex-shrink: 0;
+}
+
+.landing-hero-right {
+  display: flex;
+  flex-direction: column;
+  justify-content: stretch;
+  width: 480px;
+  gap: 1.5rem;
+  flex-shrink: 0;
+}
+
+.landing-hero-image {
+  height: 240px;
+  width: auto;
+  border-radius: 11px;
+  position: relative;
+  z-index: 1;
+}
+
+.landing-hero-description {
+  font-size: 1.3rem;
+  color: #919193;
+  line-height: 1.6;
+}
+
+.landing-hero-buttons {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+/* Feature cards grid */
+.landing-features {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  margin-top: 2rem;
+  margin-left: -25%;
+  margin-right: -25%;
+  width: 150%;
+  gap: 0.5rem;
+}
+
+.landing-feature-card {
+  flex: 1 1 23%;
+  min-width: 200px;
+}
+
+.landing-feature-card-inner {
+  height: 142px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(12px);
+}
+
+/* Architecture page images */
+.architecture-diagram {
+  max-width: 100%;
+  height: auto;
+  margin: 2rem auto;
+  display: block;
+}
+
+.architecture-overview {
+  max-width: 600px;
+}
+
+.module-dependencies {
+  max-width: 400px;
+}
+
+/* ============================================
+   TABLET BREAKPOINT (max-width: 1024px)
+   ============================================ */
+@media (max-width: 1024px) {
+  .landing-hero {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+    gap: 2rem;
+    align-items: flex-start;
+  }
+
+  .landing-features {
+    margin-left: 0;
+    margin-right: 0;
+    width: 100%;
+  }
+
+  .landing-hero-left,
+  .landing-hero-right {
+    max-width: none;
+    width: auto;
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
+  /* Make hero image scale with container */
+  .landing-hero-image {
+    height: auto;
+    width: 100%;
+    max-height: 180px;
+    object-fit: contain;
+  }
+
+  /* Compact the code block */
+  #home-install {
+    height: auto;
+  }
+
+  #home-install .vocs_CodeGroup {
+    height: auto;
+  }
+
+  /* Scale down code font size */
+  #home-install .vocs_Code {
+    font-size: 14px;
+  }
+
+  /* Feature cards as 2x2 grid */
+  .landing-feature-card {
+    flex: 1 1 45%;
+  }
+}
+
+/* ============================================
+   MOBILE BREAKPOINT (max-width: 768px)
+   ============================================ */
+@media (max-width: 768px) {
+  .landing-hero {
+    flex-direction: column;
+    gap: 1.5rem;
+    justify-content: center;
+  }
+
+  /* Center the hero left content */
+  .landing-hero-left {
+    width: 100%;
+    align-items: center;
+    text-align: center;
+  }
+
+  /* Center the buttons */
+  .landing-hero-buttons {
+    justify-content: center;
+  }
+
+  /* Hide the terminal/install code section */
+  .landing-hero-right {
+    display: none;
+  }
+
+  .landing-hero-image {
+    height: auto;
+    max-height: 200px;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+  }
+
+  /* Hide feature cards on mobile */
+  .landing-features {
+    display: none;
+  }
+
+  /* Add padding to text content only - code blocks stay full width to avoid black columns */
+  /* Exclude ul/ol to avoid breaking tab components which use ul internally */
+  [data-layout="landing"] h2,
+  [data-layout="landing"] h3,
+  [data-layout="landing"] p {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Only pad content lists (not UI lists like tabs) - use direct child of Content */
+  [data-layout="landing"] .vocs_Content > ul,
+  [data-layout="landing"] .vocs_Content > ol {
+    padding-left: 2rem;
+    padding-right: 1rem;
+  }
+
+  /* Code blocks: ensure they scroll horizontally and don't overflow */
+  [data-layout="landing"] pre {
+    max-width: 100%;
+    overflow-x: auto;
+  }
+
+  /* Angel background adjustments for mobile */
+  [data-layout="landing"]::before {
+    background-size: cover;
+    background-position: center top;
+  }
+
+  /* Architecture diagrams full width on mobile */
+  .architecture-overview,
+  .module-dependencies {
+    max-width: 100%;
+  }
+}
+
+/* ============================================
+   SMALL MOBILE BREAKPOINT (max-width: 480px)
+   ============================================ */
+@media (max-width: 480px) {
+  .landing-hero-image {
+    max-height: 160px;
+  }
+
+  /* Slightly less padding on very small screens */
+  [data-layout="landing"] h2,
+  [data-layout="landing"] h3,
+  [data-layout="landing"] p {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  [data-layout="landing"] .vocs_Content > ul,
+  [data-layout="landing"] .vocs_Content > ol {
+    padding-left: 1.75rem;
+    padding-right: 0.75rem;
+  }
+}
+
+/* ============================================
+   GLOBAL RESPONSIVE IMPROVEMENTS
+   ============================================ */
+
+/* Ensure code blocks scroll horizontally on small screens */
+.vocs_Code,
+.vocs_CodeBlock,
+pre {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Tables responsive wrapper */
+.vocs_Table {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure images don't overflow */
+img {
+  max-width: 100%;
+  height: auto;
+}
+
+/* Better touch targets for mobile */
+@media (max-width: 768px) {
+  .vocs_Button_button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Improve readability on mobile */
+  .vocs_Content {
+    font-size: 16px;
+    line-height: 1.7;
+  }
 }
