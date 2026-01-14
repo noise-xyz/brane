@@ -94,6 +94,10 @@ export default defineConfig({
         { text: 'Mining & Time Control', link: '/testing/mining-time' },
       ],
     },
+    {
+      text: 'Javadoc',
+      link: '/javadoc/',
+    },
   ],
   theme: {
     colorScheme: 'dark',
