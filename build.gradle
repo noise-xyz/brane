@@ -92,7 +92,7 @@ subprojects {
     }
 }
 
-// Aggregated Javadoc
+// Aggregated Javadoc (Configuration Cache compatible)
 tasks.register('allJavadoc', Javadoc) {
     description = 'Generates aggregated Javadoc for all modules'
     group = 'documentation'
@@ -100,18 +100,28 @@ tasks.register('allJavadoc', Javadoc) {
     destinationDir = layout.buildDirectory.dir("docs/javadoc").get().asFile
     title = "Brane SDK ${version} API"
 
-    // Exclude examples and benchmark from API docs
-    def docProjects = subprojects.findAll { !['brane-examples', 'brane-benchmark', 'smoke-test'].contains(it.name) }
+    // Resolve everything at configuration time - no Project references stored
+    def docProjectNames = subprojects
+        .findAll { !['brane-examples', 'brane-benchmark', 'smoke-test'].contains(it.name) }
+        .collect { it.name }
 
-    // Depend on compileJava to ensure classes are available
-    dependsOn docProjects.collect { it.tasks.named('compileJava') }
+    // Collect source directories eagerly
+    def sourceDirs = subprojects
+        .findAll { !['brane-examples', 'brane-benchmark', 'smoke-test'].contains(it.name) }
+        .collect { it.sourceSets.main.allJava }
 
-    source docProjects.collect { it.sourceSets.main.allJava }
+    // Collect classpath eagerly
+    def classpathFiles = files(subprojects
+        .findAll { !['brane-examples', 'brane-benchmark', 'smoke-test'].contains(it.name) }
+        .collect { it.sourceSets.main.compileClasspath })
 
-    // Defer classpath resolution to execution time (Gradle 9 compatibility)
-    doFirst {
-        classpath = files(docProjects.collect { it.sourceSets.main.compileClasspath })
+    // Use string-based task paths for dependencies
+    docProjectNames.each { name ->
+        dependsOn ":${name}:compileJava"
     }
+
+    source sourceDirs
+    classpath = classpathFiles
 
     exclude 'sh/brane/internal/**'
     options.addStringOption('Xdoclint:none', '-quiet')
