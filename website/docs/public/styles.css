@@ -24,14 +24,19 @@
   padding: 0 !important;
 }
 
-/* Remove the withLogo modifier spacing */
+/* Remove the withLogo modifier spacing but keep aligned with right side */
 .vocs_DesktopTopNav.vocs_DesktopTopNav_withLogo {
-  padding-left: 0;
+  padding-left: var(--vocs-content_horizontalPadding);
 }
 
 /* Ensure nav items stay on the right */
 .vocs_DesktopTopNav_section:has(.vocs_DesktopTopNav_group) {
   margin-left: auto;
+}
+
+/* Fix mobile nav search alignment (override inline marginRight: -8px) */
+.vocs_MobileTopNav .vocs_MobileTopNav_group:has(.vocs_MobileSearch_searchButton) {
+  margin-right: 0 !important;
 }
 
 [data-layout="landing"] .vocs_Button_button {
