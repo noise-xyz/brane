@@ -1,4 +1,4 @@
-/* Angel background for landing page - upper half with 4% opacity */
+/* Angel background for landing page - subtle 1% opacity */
 [data-layout="landing"]::before {
   content: '';
   position: fixed;
@@ -10,7 +10,7 @@
   background-size: contain;
   background-position: 40% top;
   background-repeat: no-repeat;
-  opacity: 0.02;
+  opacity: 0.01;
   pointer-events: none;
   z-index: 0;
 }
