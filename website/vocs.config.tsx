@@ -96,7 +96,7 @@ export default defineConfig({
     },
     {
       text: 'Javadoc',
-      link: '/javadoc/',
+      link: '/javadoc/index.html',
     },
   ],
   theme: {
