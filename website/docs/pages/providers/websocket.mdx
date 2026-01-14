@@ -309,28 +309,30 @@ The builder creates different client types based on configuration:
 
 ```java
 import sh.brane.rpc.Brane;
-import sh.brane.core.crypto.PrivateKey;
+import sh.brane.core.crypto.PrivateKeySigner;
+import sh.brane.core.builder.TxBuilder;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.Wei;
+import java.math.BigDecimal;
 
 // Read-only client (Brane.Reader) - for queries and subscriptions
 Brane.Reader reader = Brane.builder()
     .wsUrl("wss://ethereum.publicnode.com")
     .buildReader();
 
-var balance = reader.getBalance(Address.from("0x..."));
+var balance = reader.getBalance(new Address("0x..."));
 var sub = reader.onNewHeads(header -> System.out.println("Block: " + header.number()));
 
 // Signing client (Brane.Signer) - can send transactions
 Brane.Signer signer = Brane.builder()
     .wsUrl("wss://ethereum.publicnode.com")
-    .signer(PrivateKey.fromHex("0x..."))
+    .signer(new PrivateKeySigner("0x..."))
     .buildSigner();
 
 // Create and send a transaction over WebSocket
-var request = signer.eip1559()
-    .to(Address.from("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"))
-    .value(Wei.fromEther("0.01"))
+var request = TxBuilder.eip1559()
+    .to(new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"))
+    .value(Wei.fromEther(new BigDecimal("0.01")))
     .build();
 
 var receipt = signer.sendTransactionAndWait(request);

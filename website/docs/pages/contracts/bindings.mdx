@@ -27,11 +27,11 @@ Use `BraneContract.bind` to create an instance of your interface.
 ```java
 import sh.brane.contract.BraneContract;
 
+// signerClient is a Brane.Signer (which also has Reader methods)
 Erc20 token = BraneContract.bind(
     new Address("0x..."),
     abiJson,
-    publicClient,
-    walletClient,
+    signerClient,
     Erc20.class
 );
 ```
@@ -98,7 +98,7 @@ public interface WethContract {
 **Usage:**
 
 ```java
-WethContract weth = BraneContract.bind(address, abiJson, publicClient, walletClient, WethContract.class);
+WethContract weth = BraneContract.bind(address, abiJson, signerClient, WethContract.class);
 
 // Wrap 1 ETH
 weth.deposit(Wei.fromEther(new BigDecimal("1.0")));
@@ -134,8 +134,7 @@ ContractOptions options = ContractOptions.builder()
 Erc20 token = BraneContract.bind(
     address,
     abiJson,
-    publicClient,
-    walletClient,
+    signerClient,
     Erc20.class,
     options  // Pass custom options
 );
@@ -176,11 +175,17 @@ public interface MyContract {
 }
 ```
 
-**Workaround:** Use `ReadOnlyContract` or `ReadWriteContract` and manually decode the response:
+**Workaround:** Use the low-level RPC client to call the function and manually decode the response:
 
 ```java
-ReadOnlyContract contract = ReadOnlyContract.from(address, abi, publicClient);
-// Call returns raw hex, decode manually
-String rawHex = contract.call("getPosition", String.class);
-// Decode using AbiDecoder...
+// Encode the function call manually
+HexData calldata = Abi.encodeCall(abi, "getPosition");
+
+// Make a raw eth_call
+String rawHex = client.call(Map.of(
+    "to", address.value(),
+    "data", calldata.value()
+), "latest");
+
+// Decode the response using Abi.decode()...
 ```

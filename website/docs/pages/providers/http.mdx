@@ -153,19 +153,20 @@ The builder creates different client types based on configuration:
 
 ```java
 import sh.brane.rpc.Brane;
-import sh.brane.core.crypto.PrivateKey;
+import sh.brane.core.crypto.PrivateKeySigner;
+import sh.brane.core.types.Address;
 
 // Read-only client (Brane.Reader)
 Brane.Reader reader = Brane.builder()
     .rpcUrl("https://eth.llamarpc.com")
     .buildReader();
 
-var balance = reader.getBalance(Address.from("0x..."));
+var balance = reader.getBalance(new Address("0x..."));
 
 // Signing client (Brane.Signer) - can send transactions
 Brane.Signer signer = Brane.builder()
     .rpcUrl("https://eth.llamarpc.com")
-    .signer(PrivateKey.fromHex("0x..."))
+    .signer(new PrivateKeySigner("0x..."))
     .buildSigner();
 
 Hash txHash = signer.sendTransaction(request);
