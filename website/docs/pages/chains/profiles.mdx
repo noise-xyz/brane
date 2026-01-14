@@ -1,7 +1,5 @@
 # Chain Profiles
 
-Brane uses `ChainProfile` to define network-specific settings like chain ID, RPC URL, and gas defaults.
-
 ## Built-in Profiles
 
 ```java
@@ -25,8 +23,6 @@ var local = ChainProfiles.ANVIL_LOCAL;
 | `ETH_SEPOLIA` | 11155111 | Public endpoint |
 | `ANVIL_LOCAL` | 31337 | `http://127.0.0.1:8545` |
 
----
-
 ## Custom RPC URL
 
 Override the default RPC for any built-in chain:
@@ -45,8 +41,6 @@ var client = Brane.builder()
 :::tip
 For production, always use a dedicated RPC provider (Alchemy, Infura, QuickNode, etc.) rather than public endpoints.
 :::
-
----
 
 ## Custom Chain
 
@@ -80,8 +74,6 @@ var client = Brane.builder()
 | `supportsEip1559` | `boolean` | Use EIP-1559 gas pricing? |
 | `defaultPriorityFeePerGas` | `Wei` | Default priority fee (for EIP-1559) |
 
----
-
 ## L2 Support
 
 Brane works with any EVM-compatible chain:
@@ -112,8 +104,6 @@ ChainProfile polygon = ChainProfile.of(
 Some L2s have different transaction types or gas mechanics. Test thoroughly before production.
 :::
 
----
-
 ## Using with Clients
 
 Chain profiles integrate with the Brane client API:
@@ -137,8 +127,6 @@ Brane.Signer client = Brane.builder()
     .signer(signer)
     .buildSigner();
 ```
-
----
 
 ## Chain ID Verification
 

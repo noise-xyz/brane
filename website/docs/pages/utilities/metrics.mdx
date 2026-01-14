@@ -1,7 +1,5 @@
 # Metrics & Observability
 
-Brane provides hooks for collecting metrics from the RPC layer, enabling integration with Micrometer, Prometheus, Datadog, or custom monitoring solutions.
-
 ## BraneMetrics Interface
 
 Implement the `BraneMetrics` interface to receive callbacks on RPC events:
@@ -34,8 +32,6 @@ public class MyMetrics implements BraneMetrics {
 }
 ```
 
----
-
 ## Wiring Up Metrics
 
 Attach your metrics implementation to a WebSocket provider:
@@ -46,8 +42,6 @@ import sh.brane.rpc.WebSocketProvider;
 var provider = WebSocketProvider.create("wss://...");
 provider.setMetrics(new MyMetrics());
 ```
-
----
 
 ## Available Hooks
 
@@ -64,8 +58,6 @@ provider.setMetrics(new MyMetrics());
 | `onRingBufferSaturation(remaining, size)` | Buffer nearing capacity | Early warning |
 | `onOrphanedResponse(reason)` | Response with no matching request | Detect timeouts, network issues |
 | `onSubscriptionCallbackError(id, error)` | Subscription callback throws | Debug misbehaving callbacks |
-
----
 
 ## Micrometer Integration
 
@@ -153,8 +145,6 @@ provider.setMetrics(new MicrometerMetrics(registry));
 // registry.scrape() returns Prometheus format
 ```
 
----
-
 ## Prometheus Metrics Example
 
 With the Micrometer integration above, you'll get metrics like:
@@ -171,8 +161,6 @@ brane_rpc_backpressure_total 3
 # TYPE brane_rpc_timeout_total counter
 brane_rpc_timeout_total{method="eth_getLogs"} 2
 ```
-
----
 
 ## Ring Buffer Saturation
 
@@ -192,8 +180,6 @@ public void onRingBufferSaturation(long remaining, int size) {
 :::tip
 `onRingBufferSaturation` is a leading indicator. `onBackpressure` means requests are already being rejected. Use saturation alerts to prevent backpressure.
 :::
-
----
 
 ## Simple Logging Implementation
 
@@ -239,8 +225,6 @@ public class LoggingMetrics implements BraneMetrics {
 }
 ```
 
----
-
 ## Thread Safety
 
 All `BraneMetrics` methods may be called from multiple threads concurrently. Ensure your implementation is thread-safe:
@@ -248,8 +232,6 @@ All `BraneMetrics` methods may be called from multiple threads concurrently. Ens
 - Use atomic counters or thread-safe collections
 - Avoid blocking in callbacks (they're called from I/O threads)
 - Micrometer's `MeterRegistry` is thread-safe by design
-
----
 
 ## Disabling Metrics
 

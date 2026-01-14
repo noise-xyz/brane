@@ -1,10 +1,10 @@
 # Architecture
 
-Understanding the Brane SDK structure.
-
 ## Overview
 
 Brane provides a layered architecture separating client APIs from transport providers.
+
+<img src="/images/architecture-overview.svg" alt="Architecture Overview" style={{ maxWidth: '600px', margin: '2rem auto', display: 'block' }} />
 
 ## Client Layer
 
@@ -26,6 +26,8 @@ The `Brane` sealed interface is the main entry point:
 | `WebSocketProvider` | Real-time subscriptions, persistent connection |
 
 ## Module Dependencies
+
+<img src="/images/module-dependencies.svg" alt="Module Dependencies" style={{ maxWidth: '400px', margin: '2rem auto', display: 'block' }} />
 
 | Module | Purpose | Dependencies |
 |--------|---------|--------------|

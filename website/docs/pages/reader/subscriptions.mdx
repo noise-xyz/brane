@@ -1,9 +1,5 @@
 # Real-time Subscriptions
 
-Subscribe to blocks, logs, and pending transactions in real-time.
-
-Brane provides type-safe subscriptions for real-time blockchain events over WebSocket.
-
 :::warning
 Subscriptions require a WebSocket provider. HTTP providers do not support `eth_subscribe`.
 :::
@@ -18,8 +14,6 @@ Brane client = Brane.builder()
     .wsUrl("wss://ethereum.publicnode.com")
     .build();
 ```
-
----
 
 ## Subscribe to New Blocks
 
@@ -55,8 +49,6 @@ subscription.unsubscribe();
 | `parentHash()` | `Hash` | Parent block hash |
 | `timestamp()` | `Long` | Unix timestamp |
 | `baseFeePerGas()` | `Wei` | EIP-1559 base fee (null for pre-London) |
-
----
 
 ## Subscribe to Logs
 
@@ -100,8 +92,6 @@ Subscription subscription = client.onLogs(filter, log -> {
 | `logIndex()` | `int` | Log index in the block |
 | `removed()` | `boolean` | True if log was reverted (reorg) |
 
----
-
 ## Subscribe to Pending Transactions
 
 :::warning
@@ -120,8 +110,6 @@ String subscriptionId = provider.subscribe("newPendingTransactions", null, event
 // Later, unsubscribe
 provider.unsubscribe(subscriptionId);
 ```
-
----
 
 ## Managing Subscriptions
 
@@ -147,8 +135,6 @@ var logSub = client.onLogs(filter, log -> { ... });
 // Both run concurrently on the same WebSocket connection
 ```
 
----
-
 ## Callback Threading
 
 By default, callbacks run on **virtual threads** to prevent blocking the Netty I/O thread.
@@ -169,8 +155,6 @@ provider.setSubscriptionExecutor(
 :::warning
 Never block in callbacks if using the default executor or Netty I/O thread. Use `setSubscriptionExecutor()` for heavy processing.
 :::
-
----
 
 ## Error Handling
 
@@ -208,8 +192,6 @@ try {
     System.err.println("Subscription failed: " + e.getMessage());
 }
 ```
-
----
 
 ## Best Practices
 

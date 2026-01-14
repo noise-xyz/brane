@@ -1,7 +1,5 @@
 # Performance
 
-Brane performance benchmarks and optimization guide.
-
 Brane is optimized for low latency and high throughput. Here's what to expect and how to tune for your use case.
 
 ## Key Numbers
@@ -16,8 +14,6 @@ Brane is optimized for low latency and high throughput. Here's what to expect an
 WebSocket batching is **4-5x faster** than HTTP for high-throughput scenarios.
 :::
 
----
-
 ## WebSocket vs HTTP
 
 ### When WebSocket Wins
@@ -31,8 +27,6 @@ WebSocket batching is **4-5x faster** than HTTP for high-throughput scenarios.
 - Serverless / Lambda (no persistent connections)
 - Low request volume (< 100 req/s)
 - Simple read-only operations
-
----
 
 ## Optimizing Throughput
 
@@ -73,8 +67,6 @@ var config = WebSocketConfig.builder("wss://...")
     .build();
 ```
 
----
-
 ## Optimizing Latency
 
 ### Per-Request Timeouts
@@ -100,8 +92,6 @@ var provider = WebSocketProvider.create("wss://...");
 // Don't create/close per request
 ```
 
----
-
 ## ABI Encoding Performance
 
 | Operation | Throughput |
@@ -111,8 +101,6 @@ var provider = WebSocketProvider.create("wss://...");
 | **Brane Speedup** | **6.3x** |
 
 Brane's ABI encoder is optimized for zero-allocation encoding in hot paths.
-
----
 
 ## Running Your Own Benchmarks
 
@@ -147,8 +135,6 @@ Then:
 ./gradlew :brane-benchmark:runRealWorldBenchmark
 ```
 
----
-
 ## Methodology
 
 All benchmarks use:
@@ -160,8 +146,6 @@ All benchmarks use:
 :::warning
 Real network latency (~20-50ms) dominates performance. Local benchmarks isolate client efficiency; production throughput depends on your RPC provider's rate limits and network distance.
 :::
-
----
 
 ## Performance Monitoring
 

@@ -1,7 +1,5 @@
 # Simulating Calls
 
-Simulate one or more calls, apply state overrides, and inspect per-call results without changing chain state.
-
 Brane exposes `eth_simulateV1` via `Brane.simulate()`. This lets you **dry-run** one or more calls (in sequence), optionally applying **state overrides** (balance/nonce/code/storage) and collecting richer output such as **per-call gas used**, **logs**, and **asset changes**.
 
 :::warning

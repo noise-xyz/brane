@@ -1,7 +1,5 @@
 # WebSocket Provider
 
-Brane's WebSocket transport enables persistent connections for real-time subscriptions and lower-latency RPC calls.
-
 ## Basic Usage
 
 ```java
@@ -36,8 +34,6 @@ Brane client = Brane.builder()
 :::tip
 Use `wss://` for secure connections. The provider automatically handles SSL/TLS.
 :::
-
----
 
 ## Advanced Configuration
 
@@ -86,8 +82,6 @@ Brane client = Brane.builder()
 **When to use BLOCKING:** Long-running services, batch processing, or when running alongside other CPU-intensive workloads.
 :::
 
----
-
 ## Request Timeouts
 
 Every async request has a configurable timeout to prevent hanging requests.
@@ -120,8 +114,6 @@ var logs = provider.sendAsync("eth_getLogs", List.of(filter), Duration.ofSeconds
 :::warning
 When a request times out, the slot is freed but the request may still complete on the server side. Design your application to handle this.
 :::
-
----
 
 ## Subscriptions
 
@@ -195,8 +187,6 @@ provider.setSubscriptionExecutor(Runnable::run);
 If you set a single-threaded executor or run callbacks on the I/O thread, ensure callbacks complete quickly. Blocking operations will stall all WebSocket I/O.
 :::
 
----
-
 ## High-Performance Batching
 
 For high-throughput scenarios, use `sendAsyncBatch()` which uses an LMAX Disruptor ring buffer for optimal batching:
@@ -226,8 +216,6 @@ This batches network writes together, reducing syscall overhead.
 
 **Rule of thumb:** Use `sendAsync()` normally. Switch to `sendAsyncBatch()` when sending many requests in a tight loop.
 
----
-
 ## Backpressure & Error Handling
 
 The provider has built-in backpressure to prevent overwhelming the connection.
@@ -252,8 +240,6 @@ try {
 ### Connection Lost
 
 The provider attempts to reconnect automatically. If the connection is lost while requests are in-flight, those futures will complete exceptionally.
-
----
 
 ## Connection State Machine
 
@@ -301,8 +287,6 @@ if (state == ConnectionState.CLOSED) {
 Use `BraneMetrics.onConnectionLost()` and `onReconnect()` hooks for monitoring connection health instead of polling `getConnectionState()`.
 :::
 
----
-
 ## Client Types
 
 The builder creates different client types based on configuration:
@@ -337,8 +321,6 @@ var request = TxBuilder.eip1559()
 
 var receipt = signer.sendTransactionAndWait(request);
 ```
-
----
 
 ## When to Use WebSocket
 

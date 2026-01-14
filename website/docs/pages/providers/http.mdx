@@ -1,7 +1,5 @@
 # HTTP Provider
 
-The HTTP provider is the default transport for most use cases. Brane uses Java 21's virtual threads for efficient concurrent I/O.
-
 ## Basic Usage
 
 ```java
@@ -25,8 +23,6 @@ Brane client = Brane.builder()
     .retries(5)
     .build();
 ```
-
----
 
 ## Why Loom (Virtual Threads)?
 
@@ -58,8 +54,6 @@ try (var exec = Executors.newVirtualThreadPerTaskExecutor()) {
 Brane was designed for Loom from day one. web3j predates virtual threads and requires more ceremony for high-concurrency use cases.
 :::
 
----
-
 ## Builder Options
 
 ```java
@@ -78,8 +72,6 @@ The builder provides a clean fluent API for configuration:
 | `chain(ChainProfile)` | Network-specific configuration (EIP-1559 support, etc.) |
 | `retries(int)` | Max retry attempts for transient failures (default: 3) |
 | `retryConfig(RpcRetryConfig)` | Custom backoff timing configuration |
-
----
 
 ## Raw JSON-RPC Access
 
@@ -100,8 +92,6 @@ System.out.println("Chain ID: " + response.result());
 JsonRpcResponse balance = provider.send("eth_getBalance",
     List.of("0xd8dA6BF26964aF9D7eEd9e03E53415D37aA96045", "latest"));
 ```
-
----
 
 ## Parallel Requests
 
@@ -131,8 +121,6 @@ try (var exec = BraneExecutors.newIoBoundExecutor()) {
 Use `BraneExecutors.newIoBoundExecutor()` for I/O-bound work. See [Threading & Executors](/utilities/threading) for details.
 :::
 
----
-
 ## HTTP vs WebSocket
 
 | Use Case | Recommended |
@@ -144,8 +132,6 @@ Use `BraneExecutors.newIoBoundExecutor()` for I/O-bound work. See [Threading & E
 | Real-time subscriptions | WebSocket |
 | High-frequency trading | WebSocket |
 | Persistent connections | WebSocket |
-
----
 
 ## Client Types
 
@@ -172,8 +158,6 @@ Brane.Signer signer = Brane.builder()
 Hash txHash = signer.sendTransaction(request);
 ```
 
----
-
 ## Error Handling
 
 HTTP transport errors are wrapped in `RpcException`:
@@ -188,8 +172,6 @@ try {
     System.err.println("Error Code: " + e.code());
 }
 ```
-
----
 
 ## When to Use HTTP
 

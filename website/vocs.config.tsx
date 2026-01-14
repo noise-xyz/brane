@@ -96,6 +96,7 @@ export default defineConfig({
     },
   ],
   theme: {
+    colorScheme: 'dark',
     accentColor: {
       light: '#f34533',
       dark: '#f34533',
