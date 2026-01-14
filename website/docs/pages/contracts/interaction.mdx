@@ -25,7 +25,7 @@ Brane client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...");
 
 // 3. Bind interface to deployed contract
 Erc20View token = BraneContract.bindReadOnly(
-    Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+    new Address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
     abiJson,
     client,
     Erc20View.class
@@ -59,7 +59,7 @@ Brane.Signer client = Brane.connect("https://eth-mainnet.g.alchemy.com/v2/...", 
 
 // 3. Bind interface to deployed contract
 Erc20Contract token = BraneContract.bind(
-    Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
+    new Address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48"),
     abiJson,
     client,
     Erc20Contract.class

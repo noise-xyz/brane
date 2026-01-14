@@ -167,17 +167,17 @@ var tester = Brane.connectTest();
 var snapshot = tester.snapshot();
 
 // Fund test accounts
-var testAccount = Address.from("0x1234...");
-tester.setBalance(testAccount, Wei.fromEther("1000"));
+var testAccount = new Address("0x1234...");
+tester.setBalance(testAccount, Wei.fromEther(new java.math.BigDecimal("1000")));
 
 // Impersonate any address without private key
-var whaleAddress = Address.from("0xWhale...");
+var whaleAddress = new Address("0xWhale...");
 try (var session = tester.impersonate(whaleAddress)) {
     // Execute transactions as whale
     var receipt = session.sendTransactionAndWait(
         Eip1559Builder.create()
             .to(recipient)
-            .value(Wei.fromEther("100"))
+            .value(Wei.fromEther(new java.math.BigDecimal("100")))
             .build()
     );
     log.info("Whale transfer confirmed: {}", receipt.transactionHash());

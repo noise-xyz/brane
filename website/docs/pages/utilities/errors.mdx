@@ -64,7 +64,7 @@ import sh.brane.core.types.Address;
 import sh.brane.core.error.RpcException;
 
 Brane client = Brane.connect("https://eth.example.com");
-Address address = Address.from("0x...");
+Address address = new Address("0x...");
 
 try {
     client.getBalance(address);
@@ -180,7 +180,7 @@ import sh.brane.core.builder.BraneTxBuilderException;
 try {
     // Missing required fields
     Eip1559Builder.create()
-        .value(Wei.fromEther("1.0"))
+        .value(Wei.fromEther(new java.math.BigDecimal("1.0")))
         // Missing .to() and .data()
         .build(signer, client);
 } catch (BraneTxBuilderException e) {

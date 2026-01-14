@@ -297,7 +297,7 @@ Eip712Domain domainWithSalt = Eip712Domain.builder()
         .version("1")
         .chainId(1L)
         .verifyingContract(contractAddress)
-        .salt(Hash.from("0x..."))
+        .salt(new Hash("0x..."))
         .build();
 ```
 

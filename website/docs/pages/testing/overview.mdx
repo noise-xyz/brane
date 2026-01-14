@@ -43,6 +43,7 @@ import sh.brane.rpc.SnapshotId;
 import sh.brane.rpc.ImpersonationSession;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.Wei;
+import sh.brane.core.builder.TxBuilder;
 
 public class TesterExample {
     public static void main(String[] args) {
@@ -53,17 +54,17 @@ public class TesterExample {
         SnapshotId snapshot = tester.snapshot();
         try {
             // 3. Manipulate account state
-            Address testAccount = Address.from("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
-            tester.setBalance(testAccount, Wei.fromEther("1000"));
+            Address testAccount = new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
+            tester.setBalance(testAccount, Wei.fromEther(new java.math.BigDecimal("1000")));
 
             // 4. Impersonate any address
-            Address whale = Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
-            tester.setBalance(whale, Wei.fromEther("10000"));
+            Address whale = new Address("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+            tester.setBalance(whale, Wei.fromEther(new java.math.BigDecimal("10000")));
 
             try (ImpersonationSession session = tester.impersonate(whale)) {
-                var request = TransactionRequest.builder()
+                var request = TxBuilder.eip1559()
                     .to(testAccount)
-                    .value(Wei.fromEther("100"))
+                    .value(Wei.fromEther(new java.math.BigDecimal("100")))
                     .build();
                 var receipt = session.sendTransactionAndWait(request);
                 System.out.println("Transfer from whale: " + receipt.transactionHash());
@@ -117,9 +118,9 @@ Use Hardhat or Ganache instead of Anvil:
 
 ```java
 import sh.brane.rpc.TestNodeMode;
-import sh.brane.core.crypto.PrivateKey;
+import sh.brane.core.crypto.PrivateKeySigner;
 
-var signer = PrivateKey.fromHex("0x...");
+var signer = new PrivateKeySigner("0x...");
 Brane.Tester tester = Brane.connectTest(
     "http://localhost:8545",
     signer,
@@ -149,7 +150,7 @@ Snapshots save the entire chain state, allowing you to restore it later. This is
 SnapshotId snapshot = tester.snapshot();
 try {
     // Run test operations that modify state
-    tester.setBalance(address, Wei.fromEther("1000"));
+    tester.setBalance(address, Wei.fromEther(new java.math.BigDecimal("1000")));
     tester.sendTransactionAndWait(request);
 } finally {
     // Always restore - ensures clean state for next test
@@ -166,15 +167,15 @@ After reverting, the snapshot is consumed. Take a new snapshot if you need to re
 Impersonation lets you send transactions from any address without possessing its private key. This is invaluable for testing interactions with whale accounts, DAO contracts, or protocol admins.
 
 ```java
-Address whale = Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+Address whale = new Address("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
 
 // Fund the address first (impersonation doesn't create ETH)
-tester.setBalance(whale, Wei.fromEther("10000"));
+tester.setBalance(whale, Wei.fromEther(new java.math.BigDecimal("10000")));
 
 try (ImpersonationSession session = tester.impersonate(whale)) {
-    var request = TransactionRequest.builder()
+    var request = TxBuilder.eip1559()
         .to(recipient)
-        .value(Wei.fromEther("1000"))
+        .value(Wei.fromEther(new java.math.BigDecimal("1000")))
         .build();
 
     // Transaction sent as whale, without whale's private key
@@ -204,17 +205,17 @@ Directly modify account state without transactions:
 
 ```java
 // Set ETH balance
-tester.setBalance(address, Wei.fromEther("1000"));
+tester.setBalance(address, Wei.fromEther(new java.math.BigDecimal("1000")));
 
 // Set nonce (useful for testing nonce-dependent logic)
 tester.setNonce(address, 42);
 
 // Deploy bytecode at address
-tester.setCode(address, HexData.from("0x608060405234..."));
+tester.setCode(address, new HexData("0x608060405234..."));
 
 // Set storage slot
-Hash slot = Hash.from("0x0000...0000");
-Hash value = Hash.from("0x0000...002a");
+Hash slot = new Hash("0x0000000000000000000000000000000000000000000000000000000000000000");
+Hash value = new Hash("0x000000000000000000000000000000000000000000000000000000000000002a");
 tester.setStorageAt(contractAddress, slot, value);
 ```
 

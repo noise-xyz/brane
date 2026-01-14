@@ -155,9 +155,9 @@ Signer signer = wallet.derive(0);
 Brane.Signer client = Brane.connect("http://127.0.0.1:8545", signer);
 
 // Send transaction
-var receipt = client.sendTransactionAndWait(TransactionRequest.builder()
+var receipt = client.sendTransactionAndWait(TxBuilder.eip1559()
     .to(recipient)
-    .value(Wei.fromEther("0.1"))
+    .value(Wei.fromEther(new java.math.BigDecimal("0.1")))
     .build());
 ```
 

@@ -26,7 +26,7 @@ Brane.Tester tester = Brane.connectTest();
 SnapshotId snapshot = tester.snapshot();
 try {
     // Modify state
-    tester.setBalance(testAccount, Wei.fromEther("1000"));
+    tester.setBalance(testAccount, Wei.fromEther(new java.math.BigDecimal("1000")));
     Hash txHash = tester.sendTransaction(request);
 
     // Run assertions...
@@ -64,7 +64,7 @@ You can nest snapshots for complex test scenarios:
 SnapshotId outerSnapshot = tester.snapshot();
 try {
     // Setup shared state
-    tester.setBalance(contractOwner, Wei.fromEther("100"));
+    tester.setBalance(contractOwner, Wei.fromEther(new java.math.BigDecimal("100")));
     deployContract();
 
     SnapshotId innerSnapshot = tester.snapshot();
@@ -136,7 +136,7 @@ class MyContractTest {
     @Test
     void testDeposit() {
         // Test modifies state freely - will be reverted
-        tester.setBalance(user, Wei.fromEther("100"));
+        tester.setBalance(user, Wei.fromEther(new java.math.BigDecimal("100")));
         TransactionReceipt receipt = tester.sendTransactionAndWait(depositRequest);
 
         assertThat(receipt.status()).isTrue();
@@ -147,7 +147,7 @@ class MyContractTest {
     void testWithdraw() {
         // Previous test's state changes are already reverted
         // This test starts with clean state
-        tester.setBalance(user, Wei.fromEther("50"));
+        tester.setBalance(user, Wei.fromEther(new java.math.BigDecimal("50")));
         // ...
     }
 }
@@ -247,8 +247,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 // Set up test state
-tester.setBalance(account1, Wei.fromEther("1000"));
-tester.setBalance(account2, Wei.fromEther("500"));
+tester.setBalance(account1, Wei.fromEther(new java.math.BigDecimal("1000")));
+tester.setBalance(account2, Wei.fromEther(new java.math.BigDecimal("500")));
 deployContracts();
 
 // Dump entire chain state to hex string
@@ -264,7 +264,7 @@ System.out.println("State saved: " + state.value().length() + " bytes");
 ```java
 // Read saved state
 String savedState = Files.readString(Path.of("test-fixture.hex"));
-HexData state = HexData.from(savedState);
+HexData state = new HexData(savedState);
 
 // Load into Anvil - merges with current state
 boolean success = tester.loadState(state);
@@ -284,7 +284,7 @@ class FixtureBasedTest {
     static void loadFixture() throws IOException {
         tester = Brane.connectTest();
         String savedState = Files.readString(FIXTURE_PATH);
-        tester.loadState(HexData.from(savedState));
+        tester.loadState(new HexData(savedState));
     }
 
     @Test
@@ -303,7 +303,7 @@ Files.writeString(Path.of("/tmp/shared-state.hex"), state.value());
 
 // Process 2: Load and test
 String loaded = Files.readString(Path.of("/tmp/shared-state.hex"));
-tester.loadState(HexData.from(loaded));
+tester.loadState(new HexData(loaded));
 ```
 
 **CI/CD fixture generation:**
@@ -357,7 +357,7 @@ tester.reset(mainnetRpc, 18_000_000L);
 
 // Now you have mainnet state at that block
 // Query real contract state
-Address uniswapRouter = Address.from("0xE592427A0AEce92De3Edee1F18E0157C05861564");
+Address uniswapRouter = new Address("0xE592427A0AEce92De3Edee1F18E0157C05861564");
 BigInteger balance = tester.getBalance(uniswapRouter);
 ```
 
@@ -375,11 +375,11 @@ class UniswapIntegrationTest {
 
     // Known mainnet addresses
     private static final Address UNISWAP_ROUTER =
-        Address.from("0xE592427A0AEce92De3Edee1F18E0157C05861564");
+        new Address("0xE592427A0AEce92De3Edee1F18E0157C05861564");
     private static final Address USDC =
-        Address.from("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
+        new Address("0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48");
     private static final Address WETH =
-        Address.from("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2");
+        new Address("0xC02aaA39b223FE8D0A0e5C4F27eAD9083C756Cc2");
 
     @BeforeAll
     static void fork() {
@@ -400,8 +400,8 @@ class UniswapIntegrationTest {
     @Test
     void testSwapOnMainnetFork() {
         // Fund test account with real USDC from a whale
-        Address usdcWhale = Address.from("0x...");
-        tester.setBalance(usdcWhale, Wei.fromEther("1")); // For gas
+        Address usdcWhale = new Address("0x...");
+        tester.setBalance(usdcWhale, Wei.fromEther(new java.math.BigDecimal("1"))); // For gas
 
         try (ImpersonationSession session = tester.impersonate(usdcWhale)) {
             // Transfer USDC to our test account
@@ -446,17 +446,17 @@ void testWhaleInteraction() {
     tester.reset(MAINNET_RPC, FORK_BLOCK);
 
     // Known whale with large USDC balance
-    Address whale = Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+    Address whale = new Address("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
 
     // Fund whale with ETH for gas (they may have tokens but no ETH)
-    tester.setBalance(whale, Wei.fromEther("10"));
+    tester.setBalance(whale, Wei.fromEther(new java.math.BigDecimal("10")));
 
     // Impersonate and execute
     try (ImpersonationSession session = tester.impersonate(whale)) {
         // Whale's token balances are real mainnet balances
         // Execute transactions as the whale
         TransactionReceipt receipt = session.sendTransactionAndWait(
-            TransactionRequest.builder()
+            TxBuilder.eip1559()
                 .to(protocolContract)
                 .data(encodeDeposit(whale, largeAmount))
                 .build()
@@ -528,7 +528,7 @@ void generateFixture() throws IOException {
 // Load fixture in tests
 @BeforeAll
 static void loadFixture() throws IOException {
-    tester.loadState(HexData.from(Files.readString(Path.of("fixture.hex"))));
+    tester.loadState(new HexData(Files.readString(Path.of("fixture.hex"))));
 }
 ```
 

@@ -16,8 +16,8 @@ import sh.brane.rpc.Brane;
 Brane.Tester tester = Brane.connectTest();
 
 // Set balance to exactly 1000 ETH
-Address testAccount = Address.from("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
-tester.setBalance(testAccount, Wei.fromEther("1000"));
+Address testAccount = new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
+tester.setBalance(testAccount, Wei.fromEther(new java.math.BigDecimal("1000")));
 
 // Verify the new balance
 BigInteger balance = tester.getBalance(testAccount);
@@ -29,28 +29,28 @@ System.out.println("Balance: " + Wei.of(balance).toEther() + " ETH");
 **Funding test accounts:**
 ```java
 // Fund a fresh address for testing
-Address freshAccount = Address.from("0x1234567890123456789012345678901234567890");
-tester.setBalance(freshAccount, Wei.fromEther("100"));
+Address freshAccount = new Address("0x1234567890123456789012345678901234567890");
+tester.setBalance(freshAccount, Wei.fromEther(new java.math.BigDecimal("100")));
 ```
 
 **Testing insufficient balance scenarios:**
 ```java
 // Set balance to exactly what's needed for a specific test
-Address user = Address.from("0x...");
-tester.setBalance(user, Wei.fromEther("0.001")); // Just enough for gas
+Address user = new Address("0x...");
+tester.setBalance(user, Wei.fromEther(new java.math.BigDecimal("0.001"))); // Just enough for gas
 ```
 
 **Simulating whale accounts:**
 ```java
 // Give an address a massive balance for testing large transfers
-Address whale = Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
-tester.setBalance(whale, Wei.fromEther("1000000"));
+Address whale = new Address("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+tester.setBalance(whale, Wei.fromEther(new java.math.BigDecimal("1000000")));
 
 // Now impersonate and test large transfer behavior
 try (ImpersonationSession session = tester.impersonate(whale)) {
-    TransactionRequest request = TransactionRequest.builder()
+    var request = TxBuilder.eip1559()
         .to(recipient)
-        .value(Wei.fromEther("500000"))
+        .value(Wei.fromEther(new java.math.BigDecimal("500000")))
         .build();
     session.sendTransactionAndWait(request);
 }
@@ -59,7 +59,7 @@ try (ImpersonationSession session = tester.impersonate(whale)) {
 **Testing exact balance boundaries:**
 ```java
 // Test behavior at exact balance limits
-Wei exactAmount = Wei.fromGwei("21000"); // Exactly enough for gas
+Wei exactAmount = Wei.gwei(21000); // Exactly enough for gas
 tester.setBalance(testAccount, exactAmount);
 // Now test what happens when balance equals gas cost exactly
 ```
@@ -72,8 +72,8 @@ Deploys arbitrary bytecode at any address. This allows you to place contract cod
 import sh.brane.core.types.HexData;
 
 // Deploy bytecode that always returns 42
-HexData bytecode = HexData.from("0x602a60005260206000f3");
-Address targetAddress = Address.from("0x1234567890123456789012345678901234567890");
+HexData bytecode = new HexData("0x602a60005260206000f3");
+Address targetAddress = new Address("0x1234567890123456789012345678901234567890");
 tester.setCode(targetAddress, bytecode);
 ```
 
@@ -82,10 +82,10 @@ tester.setCode(targetAddress, bytecode);
 **Replace contract implementation:**
 ```java
 // Replace a deployed contract with a mock version
-Address existingContract = Address.from("0x...");
+Address existingContract = new Address("0x...");
 
 // Mock bytecode that always returns success
-HexData mockCode = HexData.from("0x6001600052602060006000f3");
+HexData mockCode = new HexData("0x6001600052602060006000f3");
 tester.setCode(existingContract, mockCode);
 
 // Now calls to existingContract use the mock implementation
@@ -95,25 +95,25 @@ tester.setCode(existingContract, mockCode);
 ```java
 // Place a contract at a deterministic address for testing
 // Useful when testing systems that rely on specific contract addresses
-Address targetAddr = Address.from("0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF");
-HexData contractBytecode = HexData.from("0x608060405234...");
+Address targetAddr = new Address("0xDeaDbeefdEAdbeefdEadbEEFdeadbeEFdEaDbeeF");
+HexData contractBytecode = new HexData("0x608060405234...");
 tester.setCode(targetAddr, contractBytecode);
 ```
 
 **Create minimal proxy contracts:**
 ```java
 // Deploy a minimal proxy (EIP-1167) pointing to an implementation
-Address implementation = Address.from("0x...");
+Address implementation = new Address("0x...");
 String proxyBytecode = "0x363d3d373d3d3d363d73" +
     implementation.value().substring(2) + // Remove 0x prefix
     "5af43d82803e903d91602b57fd5bf3";
-tester.setCode(proxyAddress, HexData.from(proxyBytecode));
+tester.setCode(proxyAddress, new HexData(proxyBytecode));
 ```
 
 **Clear contract code:**
 ```java
 // Remove code from an address (make it an EOA)
-tester.setCode(contractAddress, HexData.from("0x"));
+tester.setCode(contractAddress, new HexData("0x"));
 ```
 
 :::note
@@ -126,7 +126,7 @@ Sets the transaction nonce for an account. The nonce determines the order of tra
 
 ```java
 // Set nonce to a specific value
-Address account = Address.from("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
+Address account = new Address("0x70997970C51812dc3A010C7d01b50e0d17dc79C8");
 tester.setNonce(account, 42);
 ```
 
@@ -154,7 +154,7 @@ tester.setNonce(account, currentNonce.longValue());
 **Test CREATE2 address calculation:**
 ```java
 // CREATE2 addresses depend on sender nonce for counterfactual deployment
-Address deployer = Address.from("0x...");
+Address deployer = new Address("0x...");
 tester.setNonce(deployer, 0); // Reset to known state
 // Now CREATE2 addresses are predictable
 ```
@@ -162,7 +162,7 @@ tester.setNonce(deployer, 0); // Reset to known state
 **Simulate account with transaction history:**
 ```java
 // Make an account appear to have sent many transactions
-Address oldAccount = Address.from("0x...");
+Address oldAccount = new Address("0x...");
 tester.setNonce(oldAccount, 10_000);
 // Account now looks like it has 10,000 previous transactions
 ```
@@ -178,13 +178,13 @@ Directly writes to a contract's storage slots. This is the most powerful manipul
 ```java
 import sh.brane.core.types.Hash;
 
-Address contract = Address.from("0x...");
+Address contract = new Address("0x...");
 
 // Storage slot 0 (often used for simple variables)
-Hash slot = Hash.from("0x0000000000000000000000000000000000000000000000000000000000000000");
+Hash slot = new Hash("0x0000000000000000000000000000000000000000000000000000000000000000");
 
 // Set value to 42 (0x2a in hex, padded to 32 bytes)
-Hash value = Hash.from("0x000000000000000000000000000000000000000000000000000000000000002a");
+Hash value = new Hash("0x000000000000000000000000000000000000000000000000000000000000002a");
 
 tester.setStorageAt(contract, slot, value);
 ```
@@ -206,8 +206,8 @@ Solidity uses specific rules for storage layout:
 ```java
 import sh.brane.core.crypto.Keccak256;
 
-Address tokenContract = Address.from("0x...");
-Address holder = Address.from("0x...");
+Address tokenContract = new Address("0x...");
+Address holder = new Address("0x...");
 
 // ERC20 balances are typically in a mapping at slot 0 or slot 1
 // Storage slot = keccak256(holder || balanceSlot)
@@ -219,11 +219,11 @@ System.arraycopy(holder.toBytes(), 0, slotKey, 12, 20); // Left-pad address to 3
 slotKey[63] = (byte) balanceSlot; // Slot number in last position
 
 byte[] calculatedSlot = Keccak256.hash(slotKey);
-Hash storageSlot = Hash.from(calculatedSlot);
+Hash storageSlot = new Hash(calculatedSlot);
 
 // Set balance to 1 million tokens (assuming 18 decimals)
 BigInteger amount = new BigInteger("1000000000000000000000000"); // 1M * 10^18
-Hash balanceValue = Hash.from("0x" + String.format("%064x", amount));
+Hash balanceValue = new Hash("0x" + String.format("%064x", amount));
 
 tester.setStorageAt(tokenContract, storageSlot, balanceValue);
 ```
@@ -231,11 +231,11 @@ tester.setStorageAt(tokenContract, storageSlot, balanceValue);
 **Bypass access control:**
 ```java
 // Assume an Ownable contract with owner at slot 0
-Address contract = Address.from("0x...");
-Address newOwner = Address.from("0x...");
+Address contract = new Address("0x...");
+Address newOwner = new Address("0x...");
 
 // Convert address to 32-byte padded value
-Hash ownerValue = Hash.from("0x000000000000000000000000" + newOwner.value().substring(2));
+Hash ownerValue = new Hash("0x000000000000000000000000" + newOwner.value().substring(2));
 tester.setStorageAt(contract, Hash.ZERO, ownerValue);
 
 // newOwner is now the contract owner
@@ -244,12 +244,12 @@ tester.setStorageAt(contract, Hash.ZERO, ownerValue);
 **Set timelock timestamps:**
 ```java
 // Bypass a timelock by setting the unlock timestamp to the past
-Address timelockContract = Address.from("0x...");
-Hash timestampSlot = Hash.from("0x...");
+Address timelockContract = new Address("0x...");
+Hash timestampSlot = new Hash("0x...");
 
 // Set to a past timestamp
 long pastTime = System.currentTimeMillis() / 1000 - 86400; // Yesterday
-Hash pastTimestamp = Hash.from("0x" + String.format("%064x", pastTime));
+Hash pastTimestamp = new Hash("0x" + String.format("%064x", pastTime));
 
 tester.setStorageAt(timelockContract, timestampSlot, pastTimestamp);
 ```
@@ -257,16 +257,16 @@ tester.setStorageAt(timelockContract, timestampSlot, pastTimestamp);
 **Initialize uninitialized contract:**
 ```java
 // Set initial values for a contract that wasn't properly initialized
-Address proxy = Address.from("0x...");
+Address proxy = new Address("0x...");
 
 // Slot 0: initialized flag
 Hash initializedSlot = Hash.ZERO;
-Hash trueValue = Hash.from("0x0000000000000000000000000000000000000000000000000000000000000001");
+Hash trueValue = new Hash("0x0000000000000000000000000000000000000000000000000000000000000001");
 tester.setStorageAt(proxy, initializedSlot, trueValue);
 
 // Slot 1: admin address
-Hash adminSlot = Hash.from("0x0000000000000000000000000000000000000000000000000000000000000001");
-Hash adminValue = Hash.from("0x000000000000000000000000" + adminAddress.value().substring(2));
+Hash adminSlot = new Hash("0x0000000000000000000000000000000000000000000000000000000000000001");
+Hash adminValue = new Hash("0x000000000000000000000000" + adminAddress.value().substring(2));
 tester.setStorageAt(proxy, adminSlot, adminValue);
 ```
 
@@ -282,23 +282,23 @@ These methods are most powerful when combined:
 Brane.Tester tester = Brane.connectTest();
 
 // Set up a complex test scenario
-Address tokenContract = Address.from("0x6B175474E89094C44Da98b954EescdfeB131e232");
-Address whale = Address.from("0xWhaleAddress...");
-Address testUser = Address.from("0xTestUser...");
+Address tokenContract = new Address("0x6B175474E89094C44Da98b954EescdfeB131e232");
+Address whale = new Address("0xWhaleAddress...");
+Address testUser = new Address("0xTestUser...");
 
 // 1. Fund the whale with ETH for gas
-tester.setBalance(whale, Wei.fromEther("10"));
+tester.setBalance(whale, Wei.fromEther(new java.math.BigDecimal("10")));
 
 // 2. Set token balance via storage manipulation
 Hash balanceSlot = calculateErc20BalanceSlot(whale, tokenContract);
-Hash tokenAmount = Hash.from("0x" + String.format("%064x",
+Hash tokenAmount = new Hash("0x" + String.format("%064x",
     new BigInteger("1000000000000000000000000"))); // 1M tokens
 tester.setStorageAt(tokenContract, balanceSlot, tokenAmount);
 
 // 3. Impersonate the whale and test transfers
 try (ImpersonationSession session = tester.impersonate(whale)) {
     // Transfer tokens as the whale
-    TransactionRequest transfer = TransactionRequest.builder()
+    var transfer = TxBuilder.eip1559()
         .to(tokenContract)
         .data(encodeErc20Transfer(testUser, amount))
         .build();
@@ -329,7 +329,7 @@ Wrap state manipulation in snapshots to ensure test isolation:
 SnapshotId snapshot = tester.snapshot();
 try {
     // Manipulate state
-    tester.setBalance(address, Wei.fromEther("1000"));
+    tester.setBalance(address, Wei.fromEther(new java.math.BigDecimal("1000")));
     tester.setCode(address, bytecode);
 
     // Run test assertions
@@ -344,7 +344,7 @@ try {
 Always verify that manipulation had the expected effect:
 
 ```java
-Wei targetBalance = Wei.fromEther("100");
+Wei targetBalance = Wei.fromEther(new java.math.BigDecimal("100"));
 tester.setBalance(address, targetBalance);
 
 // Verify

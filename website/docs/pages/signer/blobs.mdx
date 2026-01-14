@@ -59,7 +59,7 @@ byte[] data = "Hello, EIP-4844 blobs!".getBytes();
 
 BlobTransactionRequest request = Eip4844Builder.create()
         .to(new Address("0x..."))
-        .value(Wei.fromEther("0.001"))
+        .value(Wei.fromEther(new java.math.BigDecimal("0.001")))
         .blobData(data)
         .build(kzg);
 

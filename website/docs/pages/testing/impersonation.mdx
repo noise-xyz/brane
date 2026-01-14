@@ -27,16 +27,16 @@ import sh.brane.core.model.TransactionRequest;
 Brane.Tester tester = Brane.connectTest();
 
 // Address to impersonate (no private key needed)
-Address whale = Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+Address whale = new Address("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
 
 // Fund the address first (impersonation doesn't create ETH)
-tester.setBalance(whale, Wei.fromEther("10000"));
+tester.setBalance(whale, Wei.fromEther(new java.math.BigDecimal("10000")));
 
 // Impersonate with automatic cleanup
 try (ImpersonationSession session = tester.impersonate(whale)) {
-    TransactionRequest request = TransactionRequest.builder()
+    var request = TxBuilder.eip1559()
         .to(recipient)
-        .value(Wei.fromEther("1000"))
+        .value(Wei.fromEther(new java.math.BigDecimal("1000")))
         .build();
 
     // Transaction is sent from the whale address
@@ -72,9 +72,9 @@ When you call `tester.impersonate(address)`:
 // The session automatically sets the 'from' field
 try (ImpersonationSession session = tester.impersonate(whale)) {
     // This request doesn't need to specify 'from'
-    TransactionRequest request = TransactionRequest.builder()
+    var request = TxBuilder.eip1559()
         .to(recipient)
-        .value(Wei.fromEther("100"))
+        .value(Wei.fromEther(new java.math.BigDecimal("100")))
         .data(calldata)
         .build();
 
@@ -97,29 +97,29 @@ import sh.brane.core.types.Wei;
 public class WhaleTestExample {
     // Known whale addresses (example: Binance hot wallet)
     private static final Address BINANCE_WHALE =
-        Address.from("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
+        new Address("0xBE0eB53F46cd790Cd13851d5EFf43D12404d33E8");
 
     public void testLargeTransfer(Brane.Tester tester) {
         // 1. Take snapshot for test isolation
         SnapshotId snapshot = tester.snapshot();
         try {
-            Address recipient = Address.from("0x...");
+            Address recipient = new Address("0x...");
 
             // 2. Fund the whale with ETH for gas
-            tester.setBalance(BINANCE_WHALE, Wei.fromEther("100"));
+            tester.setBalance(BINANCE_WHALE, Wei.fromEther(new java.math.BigDecimal("100")));
 
             // 3. Impersonate and execute
             try (ImpersonationSession session = tester.impersonate(BINANCE_WHALE)) {
-                TransactionRequest request = TransactionRequest.builder()
+                var request = TxBuilder.eip1559()
                     .to(recipient)
-                    .value(Wei.fromEther("50"))
+                    .value(Wei.fromEther(new java.math.BigDecimal("50")))
                     .build();
 
                 TransactionReceipt receipt = session.sendTransactionAndWait(request);
 
                 // 4. Verify the transfer
                 BigInteger recipientBalance = tester.getBalance(recipient);
-                assert recipientBalance.compareTo(Wei.fromEther("50").value()) >= 0;
+                assert recipientBalance.compareTo(Wei.fromEther(new java.math.BigDecimal("50")).value()) >= 0;
             }
         } finally {
             // 5. Restore state for next test
@@ -138,7 +138,7 @@ For more realistic testing, fork from mainnet to use actual whale balances:
 tester.reset("https://eth-mainnet.alchemyapi.io/v2/YOUR_KEY", 18_000_000L);
 
 // Now impersonate a real whale with their actual balance
-Address usdcWhale = Address.from("0x...");
+Address usdcWhale = new Address("0x...");
 try (ImpersonationSession session = tester.impersonate(usdcWhale)) {
     // Whale already has tokens - no need to set balance
     // Execute ERC20 transfer...
@@ -152,15 +152,15 @@ For simple one-off transactions, you can manually manage impersonation without t
 ### Manual Impersonation (Not Recommended)
 
 ```java
-Address target = Address.from("0x...");
+Address target = new Address("0x...");
 
 // Start impersonation
 ImpersonationSession session = tester.impersonate(target);
 try {
     // Send transaction
-    TransactionRequest request = TransactionRequest.builder()
+    var request = TxBuilder.eip1559()
         .to(recipient)
-        .value(Wei.fromEther("1"))
+        .value(Wei.fromEther(new java.math.BigDecimal("1")))
         .build();
     Hash txHash = session.sendTransaction(request);
 
@@ -177,7 +177,7 @@ try {
 You can also stop impersonation directly via the tester:
 
 ```java
-Address target = Address.from("0x...");
+Address target = new Address("0x...");
 
 // Start impersonation (without session)
 tester.impersonate(target);
@@ -229,11 +229,11 @@ The correct RPC method is selected automatically based on `TestNodeMode`.
 
 ```java
 // Impersonate the contract owner
-Address owner = Address.from("0x..."); // Read from contract
+Address owner = new Address("0x..."); // Read from contract
 try (ImpersonationSession session = tester.impersonate(owner)) {
     // Call admin-only function
     HexData calldata = abi.encode("setFee", newFee);
-    TransactionRequest request = TransactionRequest.builder()
+    var request = TxBuilder.eip1559()
         .to(contractAddress)
         .data(calldata)
         .build();
@@ -245,13 +245,13 @@ try (ImpersonationSession session = tester.impersonate(owner)) {
 
 ```java
 // Impersonate a timelock contract
-Address timelock = Address.from("0x...");
-tester.setBalance(timelock, Wei.fromEther("1")); // For gas
+Address timelock = new Address("0x...");
+tester.setBalance(timelock, Wei.fromEther(new java.math.BigDecimal("1"))); // For gas
 
 try (ImpersonationSession session = tester.impersonate(timelock)) {
     // Execute queued governance proposal
     HexData executeCalldata = abi.encode("execute", proposalId);
-    TransactionRequest request = TransactionRequest.builder()
+    var request = TxBuilder.eip1559()
         .to(governorAddress)
         .data(executeCalldata)
         .build();
@@ -264,11 +264,11 @@ try (ImpersonationSession session = tester.impersonate(timelock)) {
 You can have multiple impersonation sessions, but only one per address:
 
 ```java
-Address alice = Address.from("0xAlice...");
-Address bob = Address.from("0xBob...");
+Address alice = new Address("0xAlice...");
+Address bob = new Address("0xBob...");
 
-tester.setBalance(alice, Wei.fromEther("10"));
-tester.setBalance(bob, Wei.fromEther("10"));
+tester.setBalance(alice, Wei.fromEther(new java.math.BigDecimal("10")));
+tester.setBalance(bob, Wei.fromEther(new java.math.BigDecimal("10")));
 
 // Sequential impersonations
 try (ImpersonationSession aliceSession = tester.impersonate(alice)) {
@@ -326,7 +326,7 @@ session.close(); // Easy to forget, especially with exceptions
 
 ```java
 // Good - fund first
-tester.setBalance(whale, Wei.fromEther("100"));
+tester.setBalance(whale, Wei.fromEther(new java.math.BigDecimal("100")));
 try (ImpersonationSession session = tester.impersonate(whale)) {
     session.sendTransactionAndWait(request);
 }
@@ -342,7 +342,7 @@ try (ImpersonationSession session = tester.impersonate(whale)) {
 ```java
 SnapshotId snapshot = tester.snapshot();
 try {
-    tester.setBalance(whale, Wei.fromEther("1000"));
+    tester.setBalance(whale, Wei.fromEther(new java.math.BigDecimal("1000")));
     try (ImpersonationSession session = tester.impersonate(whale)) {
         session.sendTransactionAndWait(request);
     }
@@ -357,7 +357,7 @@ try {
 ```java
 // Good - clear context
 // Impersonate Uniswap V3 Router for swap testing
-Address uniswapRouter = Address.from("0xE592427A0AEce92De3Edee1F18E0157C05861564");
+Address uniswapRouter = new Address("0xE592427A0AEce92De3Edee1F18E0157C05861564");
 try (ImpersonationSession session = tester.impersonate(uniswapRouter)) {
     // ...
 }

@@ -253,7 +253,7 @@ void testVestingUnlock() {
 
     try {
         // Setup: create vesting position
-        Address beneficiary = Address.from("0x...");
+        Address beneficiary = new Address("0x...");
         createVestingPosition(beneficiary, tokenAmount, THIRTY_DAYS);
 
         // Initially, nothing should be vested
@@ -294,7 +294,7 @@ void testAuctionDeadline() {
         Address auctionContract = createAuction(auctionDuration);
 
         // Place a bid (should succeed)
-        TransactionReceipt bid1 = placeBid(Wei.fromEther("1"));
+        TransactionReceipt bid1 = placeBid(Wei.fromEther(new java.math.BigDecimal("1")));
         assertTrue(bid1.status());
 
         // Advance time past auction end
@@ -302,7 +302,7 @@ void testAuctionDeadline() {
         tester.mine();
 
         // Bid after deadline should fail
-        assertThrows(RevertException.class, () -> placeBid(Wei.fromEther("2")));
+        assertThrows(RevertException.class, () -> placeBid(Wei.fromEther(new java.math.BigDecimal("2"))));
 
         // Settlement should now succeed
         TransactionReceipt settlement = settleAuction();

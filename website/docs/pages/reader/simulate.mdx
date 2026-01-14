@@ -92,7 +92,7 @@ SimulateRequest requestWithOverride = SimulateRequest.builder()
     .account(from)
     .call(SimulateCall.builder().to(to).data(new HexData("0x1234")).build())
     .stateOverride(who, AccountOverride.builder()
-        .balance(Wei.fromEther("1000"))
+        .balance(Wei.fromEther(new java.math.BigDecimal("1000")))
         .build())
     .build();
 ```
