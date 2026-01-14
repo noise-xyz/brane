@@ -104,7 +104,6 @@
 .landing-hero-right {
   display: flex;
   flex-direction: column;
-  justify-content: stretch;
   width: 480px;
   gap: 1.5rem;
   flex-shrink: 0;
@@ -114,14 +113,17 @@
   height: 240px;
   width: auto;
   border-radius: 11px;
-  position: relative;
-  z-index: 1;
 }
 
 .landing-hero-description {
   font-size: 1.3rem;
-  color: #919193;
+  color: var(--color-muted, #919193);
   line-height: 1.6;
+}
+
+/* Highlighted text in description */
+.highlight-text {
+  color: var(--vocs-color_text);
 }
 
 .landing-hero-buttons {
@@ -159,6 +161,28 @@
   backdrop-filter: blur(12px);
 }
 
+.feature-title {
+  font-size: 1.25rem;
+  font-weight: 500;
+  color: #fff;
+}
+
+.feature-description {
+  font-size: 1.05rem;
+  color: var(--color-muted, #919193);
+}
+
+/* Section spacing utilities */
+.section-spacer {
+  margin-top: 3rem;
+}
+
+.section-divider {
+  border-top: 1px solid var(--vocs-color_border);
+  margin-top: 1rem;
+  margin-bottom: 1.5rem;
+}
+
 /* Architecture page images */
 .architecture-diagram {
   max-width: 100%;
@@ -183,6 +207,8 @@
     margin-left: 0;
     margin-right: 0;
     width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
     gap: 2rem;
     align-items: flex-start;
   }
@@ -191,6 +217,8 @@
     margin-left: 0;
     margin-right: 0;
     width: 100%;
+    padding-left: 1rem;
+    padding-right: 1rem;
   }
 
   .landing-hero-left,
@@ -336,13 +364,11 @@
 .vocs_CodeBlock,
 pre {
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Tables responsive wrapper */
 .vocs_Table {
   overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
 }
 
 /* Ensure images don't overflow */

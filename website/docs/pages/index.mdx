@@ -10,7 +10,7 @@ import { HomePage } from 'vocs/components'
     <img src="/brand/hero-image-dark.svg" alt="Brane" className="landing-hero-image" />
 
     <div className="landing-hero-description">
-      <span style={{ color: 'var(--vocs-color_text)' }}>Type-safe</span>, <span style={{ color: 'var(--vocs-color_text)' }}>performant</span> Java 21 SDK for Ethereum.
+      <span className="highlight-text">Type-safe</span>, <span className="highlight-text">performant</span> Java 21 SDK for Ethereum.
     </div>
 
     <div className="landing-hero-buttons">
@@ -46,26 +46,26 @@ implementation 'sh.brane:brane-rpc:0.3.0'
 <div className="landing-features">
   <div className="landing-feature-card">
     <div className="landing-feature-card-inner">
-      <div style={{ fontSize: '1.25rem', fontWeight: 500, color: '#fff' }}>Zero Codegen</div>
-      <div style={{ fontSize: '1.05rem', color: '#919193' }}>Bind interfaces to ABI at runtime. No build step.</div>
+      <div className="feature-title">Zero Codegen</div>
+      <div className="feature-description">Bind interfaces to ABI at runtime. No build step.</div>
     </div>
   </div>
   <div className="landing-feature-card">
     <div className="landing-feature-card-inner">
-      <div style={{ fontSize: '1.25rem', fontWeight: 500, color: '#fff' }}>Type-Safe Primitives</div>
-      <div style={{ fontSize: '1.05rem', color: '#919193' }}><code>Address</code>, <code>Wei</code>, <code>Hash</code> — catch bugs at compile time.</div>
+      <div className="feature-title">Type-Safe Primitives</div>
+      <div className="feature-description"><code>Address</code>, <code>Wei</code>, <code>Hash</code> — catch bugs at compile time.</div>
     </div>
   </div>
   <div className="landing-feature-card">
     <div className="landing-feature-card-inner">
-      <div style={{ fontSize: '1.25rem', fontWeight: 500, color: '#fff' }}>Virtual Thread Native</div>
-      <div style={{ fontSize: '1.05rem', color: '#919193' }}>Simple blocking code that scales. No reactive chains.</div>
+      <div className="feature-title">Virtual Thread Native</div>
+      <div className="feature-description">Simple blocking code that scales. No reactive chains.</div>
     </div>
   </div>
   <div className="landing-feature-card">
     <div className="landing-feature-card-inner">
-      <div style={{ fontSize: '1.25rem', fontWeight: 500, color: '#fff' }}>Sealed Exceptions</div>
-      <div style={{ fontSize: '1.05rem', color: '#919193' }}>Exhaustive error handling with pattern matching.</div>
+      <div className="feature-title">Sealed Exceptions</div>
+      <div className="feature-description">Exhaustive error handling with pattern matching.</div>
     </div>
   </div>
 </div>
@@ -197,11 +197,11 @@ tester.revert(snapshot);
 
 :::
 
-<div style={{ marginTop: '3rem' }} />
+<div className="section-spacer" />
 
 ## Features [](#features)
 
-<div style={{ borderTop: '1px solid var(--vocs-color_border)', marginTop: '1rem', marginBottom: '1.5rem' }} />
+<div className="section-divider" />
 
 - EIP-1559 and [EIP-4844 blob](/signer/blobs) transactions
 - [HD wallets](/signer/hd-wallets) (BIP-39/44) and [EIP-712](/signer/eip712) signing
@@ -211,19 +211,20 @@ tester.revert(snapshot);
 - [Anvil testing](/testing/overview): snapshots, impersonation, time control
 - [Transaction simulation](/reader/simulate) with state overrides
 
-<div style={{ marginTop: '3rem' }} />
+<div className="section-spacer" />
 
 ## Community [](#community)
 
-<div style={{ borderTop: '1px solid var(--vocs-color_border)', marginTop: '1rem', marginBottom: '1.5rem' }} />
+<div className="section-divider" />
 
 - Follow [@s8torxyz](https://x.com/s8torxyz) and [@noise_xyz](https://x.com/noise_xyz) on Twitter for project updates
 - Join the discussions on [GitHub](https://github.com/noise-xyz/brane/discussions)
+- Looking for contributors and maintainers — DM [@s8torxyz](https://x.com/s8torxyz) or [apply here](https://tally.so/r/eq5XYO)
 
-<div style={{ marginTop: '3rem' }} />
+<div className="section-spacer" />
 
 ## Supporters & Sponsors [](#supporters-sponsors)
 
-<div style={{ borderTop: '1px solid var(--vocs-color_border)', marginTop: '1rem', marginBottom: '1.5rem' }} />
+<div className="section-divider" />
 
 ::sponsors
