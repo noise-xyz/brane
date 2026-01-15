@@ -58,7 +58,7 @@ Signer account0 = wallet.derive(0); // m/44'/60'/0'/0/0
 Signer account1 = wallet.derive(1); // m/44'/60'/0'/0/1
 ```
 
-HD wallets follow BIP-39 for mnemonic phrases and BIP-44 for Ethereum key derivation. For comprehensive documentation including passphrases, custom derivation paths, and security best practices, see [HD Wallets](/signer/hd-wallets).
+HD wallets follow BIP-39 for mnemonic phrases and BIP-44 for Ethereum key derivation. For comprehensive documentation including passphrases, custom derivation paths, and security best practices, see [HD Wallets](/docs/signer/hd-wallets).
 
 ## PrivateKey
 
@@ -182,4 +182,4 @@ TypedData<Permit> typedData = TypedData.create(domain, Permit.DEFINITION, permit
 Signature sig = signer.signTypedData(typedData);
 ```
 
-For comprehensive documentation on EIP-712 typed data signing, including type definitions, nested types, and JSON parsing for wallet integration, see [EIP-712 Typed Data](/signer/eip712).
+For comprehensive documentation on EIP-712 typed data signing, including type definitions, nested types, and JSON parsing for wallet integration, see [EIP-712 Typed Data](/docs/signer/eip712).
