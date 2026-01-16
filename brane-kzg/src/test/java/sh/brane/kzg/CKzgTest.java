@@ -63,7 +63,6 @@ class CKzgTest {
 
         assertNotNull(commitment);
         assertEquals(FixedSizeG1Point.SIZE, commitment.toBytes().length);
-        assertEquals(48, commitment.toBytes().length);
     }
 
     @Test
@@ -75,7 +74,6 @@ class CKzgTest {
 
         assertNotNull(proof);
         assertEquals(FixedSizeG1Point.SIZE, proof.toBytes().length);
-        assertEquals(48, proof.toBytes().length);
     }
 
     @Test
