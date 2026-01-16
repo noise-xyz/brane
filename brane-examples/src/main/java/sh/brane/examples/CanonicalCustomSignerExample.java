@@ -213,7 +213,7 @@ public final class CanonicalCustomSignerExample {
 
         public MpcSigner(MockMpcCluster cluster) {
             this.cluster = cluster;
-            this.address = cluster.getPublicKey().toAddress();
+            this.address = cluster.getPrivateKey().toAddress();
         }
 
         @Override
@@ -273,7 +273,7 @@ public final class CanonicalCustomSignerExample {
             this.threshold = threshold;
         }
 
-        public PrivateKey getPublicKey() {
+        public PrivateKey getPrivateKey() {
             return privateKey;
         }
 
