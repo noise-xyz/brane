@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.rpc;
 
+import static sh.brane.rpc.internal.RpcUtils.toQuantityHex;
+
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -68,16 +70,16 @@ public record SimulateCall(
             map.put("value", value.toHexString());
         }
         if (gas != null) {
-            map.put("gas", "0x" + gas.toString(16));
+            map.put("gas", toQuantityHex(gas));
         }
         if (gasPrice != null) {
-            map.put("gasPrice", "0x" + gasPrice.toString(16));
+            map.put("gasPrice", toQuantityHex(gasPrice));
         }
         if (maxFeePerGas != null) {
-            map.put("maxFeePerGas", "0x" + maxFeePerGas.toString(16));
+            map.put("maxFeePerGas", toQuantityHex(maxFeePerGas));
         }
         if (maxPriorityFeePerGas != null) {
-            map.put("maxPriorityFeePerGas", "0x" + maxPriorityFeePerGas.toString(16));
+            map.put("maxPriorityFeePerGas", toQuantityHex(maxPriorityFeePerGas));
         }
 
         return map;

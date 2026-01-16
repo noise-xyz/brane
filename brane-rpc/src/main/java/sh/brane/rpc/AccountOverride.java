@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.rpc;
 
+import static sh.brane.rpc.internal.RpcUtils.toQuantityHex;
+
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -49,7 +51,7 @@ public record AccountOverride(
             map.put("balance", balance.toHexString());
         }
         if (nonce != null) {
-            map.put("nonce", "0x" + Long.toHexString(nonce));
+            map.put("nonce", toQuantityHex(nonce));
         }
         if (code != null) {
             map.put("code", code.value());

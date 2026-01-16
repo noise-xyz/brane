@@ -247,9 +247,22 @@ public final class RpcUtils {
 
     /**
      * Converts BigInteger to hex quantity string with "0x" prefix.
+     *
+     * @param value the BigInteger value to convert
+     * @return hex string with "0x" prefix (e.g., "0x1a" for 26)
      */
     public static String toQuantityHex(final BigInteger value) {
         return "0x" + value.toString(16);
+    }
+
+    /**
+     * Converts long to hex quantity string with "0x" prefix.
+     *
+     * @param value the long value to convert
+     * @return hex string with "0x" prefix (e.g., "0x1a" for 26)
+     */
+    public static String toQuantityHex(final long value) {
+        return "0x" + Long.toHexString(value);
     }
 
     /**
