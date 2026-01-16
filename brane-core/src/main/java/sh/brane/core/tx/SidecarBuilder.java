@@ -118,7 +118,7 @@ public final class SidecarBuilder {
         // Calculate number of blobs needed
         int blobsNeeded = (fieldElementsNeeded + FIELD_ELEMENTS_PER_BLOB - 1) / FIELD_ELEMENTS_PER_BLOB;
 
-        List<Blob> blobs = new ArrayList<>(blobsNeeded);
+        var blobs = new ArrayList<Blob>(blobsNeeded);
         int dataOffset = 0;
 
         for (int blobIndex = 0; blobIndex < blobsNeeded; blobIndex++) {

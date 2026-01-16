@@ -105,16 +105,4 @@ public record LogFilter(
         return new LogFilter(Optional.empty(), Optional.empty(), Optional.of(List.copyOf(addresses)), Optional.of(topics));
     }
 
-    /**
-     * Returns the single address if exactly one is specified.
-     *
-     * <p>This is a convenience method for backward compatibility.
-     *
-     * @return the single address, or empty if zero or multiple addresses
-     * @deprecated Access {@link #addresses()} directly instead
-     */
-    @Deprecated(since = "0.5.0", forRemoval = true)
-    public Optional<Address> address() {
-        return addresses.filter(list -> list.size() == 1).map(list -> list.get(0));
-    }
 }

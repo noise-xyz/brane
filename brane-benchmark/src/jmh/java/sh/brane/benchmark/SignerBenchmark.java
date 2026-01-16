@@ -1,11 +1,15 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.benchmark;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.openjdk.jmh.annotations.*;
 
 import sh.brane.core.crypto.PrivateKeySigner;
+import sh.brane.core.crypto.Signature;
+import sh.brane.core.tx.Eip1559Transaction;
 import sh.brane.core.tx.LegacyTransaction;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.HexData;
@@ -30,7 +34,7 @@ public class SignerBenchmark {
 
     private PrivateKeySigner signer;
     private LegacyTransaction legacyTx;
-    private sh.brane.core.tx.Eip1559Transaction eip1559Tx;
+    private Eip1559Transaction eip1559Tx;
     private LegacyTransaction largeTx;
 
     @Setup
@@ -47,7 +51,7 @@ public class SignerBenchmark {
                 Wei.of(1),
                 HexData.EMPTY);
 
-        eip1559Tx = new sh.brane.core.tx.Eip1559Transaction(
+        eip1559Tx = new Eip1559Transaction(
                 11155111,
                 0,
                 Wei.of(1000000000), // maxPriorityFeePerGas
@@ -56,11 +60,11 @@ public class SignerBenchmark {
                 to,
                 Wei.of(1),
                 HexData.EMPTY,
-                java.util.List.of());
+                List.of());
 
         // Large payload (10KB)
         byte[] largeData = new byte[10240];
-        java.util.Arrays.fill(largeData, (byte) 0xAA);
+        Arrays.fill(largeData, (byte) 0xAA);
         largeTx = new LegacyTransaction(
                 1,
                 Wei.of(1000000000),
@@ -71,17 +75,17 @@ public class SignerBenchmark {
     }
 
     @Benchmark
-    public sh.brane.core.crypto.Signature signLegacy() {
+    public Signature signLegacy() {
         return signer.signTransaction(legacyTx, 31337);
     }
 
     @Benchmark
-    public sh.brane.core.crypto.Signature signEip1559() {
+    public Signature signEip1559() {
         return signer.signTransaction(eip1559Tx, 11155111);
     }
 
     @Benchmark
-    public sh.brane.core.crypto.Signature signLargePayload() {
+    public Signature signLargePayload() {
         return signer.signTransaction(largeTx, 31337);
     }
 }

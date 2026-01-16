@@ -27,6 +27,9 @@ import sh.brane.rpc.CallRequest;
  */
 abstract class AbstractContractInvocationHandler<C extends Brane> implements InvocationHandler {
 
+    /** Empty array used as default when method arguments are null. */
+    protected static final Object[] EMPTY_ARGS = new Object[0];
+
     protected final Address address;
     protected final Abi abi;
     protected final AbiBinding binding;

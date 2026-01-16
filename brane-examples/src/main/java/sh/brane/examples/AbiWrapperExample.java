@@ -59,7 +59,9 @@ public final class AbiWrapperExample {
     final String privateKey = System.getProperty("brane.examples.pk");
     final String contractAddr = System.getProperty("brane.examples.contract");
 
-    if (isBlank(rpcUrl) || isBlank(privateKey) || isBlank(contractAddr)) {
+    if (rpcUrl == null || rpcUrl.isBlank()
+        || privateKey == null || privateKey.isBlank()
+        || contractAddr == null || contractAddr.isBlank()) {
       System.out.println("""
           Please set the following system properties:
             -Dbrane.examples.rpc=<RPC URL>
@@ -121,9 +123,5 @@ public final class AbiWrapperExample {
       System.err.println("Error: " + e.getMessage());
       e.printStackTrace();
     }
-  }
-
-  private static boolean isBlank(final String value) {
-    return value == null || value.isBlank();
   }
 }

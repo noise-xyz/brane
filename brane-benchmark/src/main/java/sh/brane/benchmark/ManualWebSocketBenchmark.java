@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.benchmark;
 
-import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 
 import sh.brane.rpc.WebSocketProvider;
@@ -18,7 +18,7 @@ public class ManualWebSocketBenchmark {
             // Warmup
             System.out.print("Warming up...");
             for (int i = 0; i < 100; i++) {
-                provider.sendAsync("eth_blockNumber", Collections.emptyList()).join();
+                provider.sendAsync("eth_blockNumber", List.of()).join();
             }
             System.out.println(" Done.");
 
@@ -26,7 +26,7 @@ public class ManualWebSocketBenchmark {
             CompletableFuture<?>[] futures = new CompletableFuture[ITERATIONS];
 
             for (int i = 0; i < ITERATIONS; i++) {
-                futures[i] = provider.sendAsyncBatch("eth_blockNumber", Collections.emptyList());
+                futures[i] = provider.sendAsyncBatch("eth_blockNumber", List.of());
             }
 
             CompletableFuture.allOf(futures).join();

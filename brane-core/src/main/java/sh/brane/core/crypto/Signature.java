@@ -43,6 +43,9 @@ import sh.brane.primitives.Hex;
  */
 public record Signature(byte[] r, byte[] s, int v) {
 
+    /** Size in bytes of each signature component (r and s). */
+    private static final int COMPONENT_SIZE = 32;
+
     /**
      * Maximum bytes to display in full hex in toString().
      * Beyond this, just show the byte count to keep logs readable.
@@ -53,16 +56,16 @@ public record Signature(byte[] r, byte[] s, int v) {
         Objects.requireNonNull(r, "r cannot be null");
         Objects.requireNonNull(s, "s cannot be null");
 
-        if (r.length != 32) {
-            throw new IllegalArgumentException("r must be 32 bytes, got " + r.length);
+        if (r.length != COMPONENT_SIZE) {
+            throw new IllegalArgumentException("r must be " + COMPONENT_SIZE + " bytes, got " + r.length);
         }
-        if (s.length != 32) {
-            throw new IllegalArgumentException("s must be 32 bytes, got " + s.length);
+        if (s.length != COMPONENT_SIZE) {
+            throw new IllegalArgumentException("s must be " + COMPONENT_SIZE + " bytes, got " + s.length);
         }
 
         // Make defensive copies to ensure immutability
-        r = Arrays.copyOf(r, 32);
-        s = Arrays.copyOf(s, 32);
+        r = Arrays.copyOf(r, COMPONENT_SIZE);
+        s = Arrays.copyOf(s, COMPONENT_SIZE);
     }
 
     /**

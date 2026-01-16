@@ -2,7 +2,6 @@
 package sh.brane.benchmark;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,7 +120,7 @@ public class ClientOverheadBenchmark {
         Map<String, Object> request = new HashMap<>();
         request.put("jsonrpc", "2.0");
         request.put("method", "eth_chainId");
-        request.put("params", Collections.emptyList());
+        request.put("params", List.of());
         request.put("id", idCounter.incrementAndGet());
 
         bh.consume(objectMapper.writeValueAsString(request));
@@ -244,7 +243,7 @@ public class ClientOverheadBenchmark {
         Map<String, Object> request = new HashMap<>();
         request.put("jsonrpc", "2.0");
         request.put("method", "eth_chainId");
-        request.put("params", Collections.emptyList());
+        request.put("params", List.of());
         request.put("id", idCounter.incrementAndGet());
         bh.consume(objectMapper.writeValueAsString(request));
 
@@ -333,89 +332,97 @@ public class ClientOverheadBenchmark {
     }
 
     private String extractValue(char[] chars, int start, int len) {
-        if (chars[start] == '"') {
-            // String value
-            int end = start + 1;
-            while (end < len && chars[end] != '"') {
-                if (chars[end] == '\\')
-                    end++; // skip escaped char
-                end++;
+        return switch (chars[start]) {
+            case '"' -> {
+                // String value
+                int end = start + 1;
+                while (end < len && chars[end] != '"') {
+                    if (chars[end] == '\\')
+                        end++; // skip escaped char
+                    end++;
+                }
+                yield new String(chars, start + 1, end - start - 1);
             }
-            return new String(chars, start + 1, end - start - 1);
-        } else if (chars[start] == '{' || chars[start] == '[') {
-            // Object or array - return as-is
-            int end = skipValue(chars, start, len);
-            return new String(chars, start, end - start);
-        } else {
-            // Primitive
-            int end = start;
-            while (end < len && chars[end] != ',' && chars[end] != '}' && chars[end] != ']')
-                end++;
-            return new String(chars, start, end - start).trim();
-        }
+            case '{', '[' -> {
+                // Object or array - return as-is
+                int end = skipValue(chars, start, len);
+                yield new String(chars, start, end - start);
+            }
+            default -> {
+                // Primitive
+                int end = start;
+                while (end < len && chars[end] != ',' && chars[end] != '}' && chars[end] != ']')
+                    end++;
+                yield new String(chars, start, end - start).trim();
+            }
+        };
     }
 
     private int skipValue(char[] chars, int start, int len) {
         if (start >= len)
             return len;
 
-        char c = chars[start];
-        if (c == '"') {
-            // String
-            int i = start + 1;
-            while (i < len && chars[i] != '"') {
-                if (chars[i] == '\\')
-                    i++;
-                i++;
-            }
-            return i + 1;
-        } else if (c == '{') {
-            // Object
-            int depth = 1;
-            int i = start + 1;
-            while (i < len && depth > 0) {
-                if (chars[i] == '{')
-                    depth++;
-                else if (chars[i] == '}')
-                    depth--;
-                else if (chars[i] == '"') {
-                    i++;
-                    while (i < len && chars[i] != '"') {
-                        if (chars[i] == '\\')
-                            i++;
+        return switch (chars[start]) {
+            case '"' -> {
+                // String
+                int i = start + 1;
+                while (i < len && chars[i] != '"') {
+                    if (chars[i] == '\\')
                         i++;
-                    }
-                }
-                i++;
-            }
-            return i;
-        } else if (c == '[') {
-            // Array
-            int depth = 1;
-            int i = start + 1;
-            while (i < len && depth > 0) {
-                if (chars[i] == '[')
-                    depth++;
-                else if (chars[i] == ']')
-                    depth--;
-                else if (chars[i] == '"') {
                     i++;
-                    while (i < len && chars[i] != '"') {
-                        if (chars[i] == '\\')
-                            i++;
-                        i++;
-                    }
                 }
-                i++;
+                yield i + 1;
             }
-            return i;
-        } else {
-            // Primitive
-            int i = start;
-            while (i < len && chars[i] != ',' && chars[i] != '}' && chars[i] != ']')
-                i++;
-            return i;
-        }
+            case '{' -> {
+                // Object
+                int depth = 1;
+                int i = start + 1;
+                while (i < len && depth > 0) {
+                    if (chars[i] == '{')
+                        depth++;
+                    else if (chars[i] == '}')
+                        depth--;
+                    else if (chars[i] == '"') {
+                        i++;
+                        while (i < len && chars[i] != '"') {
+                            if (chars[i] == '\\')
+                                i++;
+                            i++;
+                        }
+                    }
+                    i++;
+                }
+                yield i;
+            }
+            case '[' -> {
+                // Array
+                int depth = 1;
+                int i = start + 1;
+                while (i < len && depth > 0) {
+                    if (chars[i] == '[')
+                        depth++;
+                    else if (chars[i] == ']')
+                        depth--;
+                    else if (chars[i] == '"') {
+                        i++;
+                        while (i < len && chars[i] != '"') {
+                            if (chars[i] == '\\')
+                                i++;
+                            i++;
+                        }
+                    }
+                    i++;
+                }
+                yield i;
+            }
+            default -> {
+                // Primitive
+                int i = start;
+                while (i < len && chars[i] != ',' && chars[i] != '}' && chars[i] != ']')
+                    i++;
+                yield i;
+            }
+        };
     }
 
     private record ParsedResponse(Long id, String result, String error) {

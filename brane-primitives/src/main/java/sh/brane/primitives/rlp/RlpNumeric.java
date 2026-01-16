@@ -43,19 +43,7 @@ public final class RlpNumeric {
             return Rlp.encodeString(EMPTY);
         }
 
-        // If value fits in single byte <= 0x7F, we can use the Rlp.encodeString rules directly
-        // by constructing the minimal big-endian representation.
-        // We'll still go through the generic path for uniformity, but without BigInteger.
-        final int size = minimalByteSize(value);
-        final byte[] raw = new byte[size];
-
-        long tmp = value;
-        for (int i = size - 1; i >= 0; i--) {
-            raw[i] = (byte) tmp;
-            tmp >>>= 8;
-        }
-
-        return Rlp.encodeString(raw);
+        return Rlp.encodeString(longToMinimalBytes(value));
     }
 
     /**
@@ -73,16 +61,7 @@ public final class RlpNumeric {
             return new RlpString(EMPTY);
         }
 
-        final int size = minimalByteSize(value);
-        final byte[] raw = new byte[size];
-
-        long tmp = value;
-        for (int i = size - 1; i >= 0; i--) {
-            raw[i] = (byte) tmp;
-            tmp >>>= 8;
-        }
-
-        return new RlpString(raw);
+        return new RlpString(longToMinimalBytes(value));
     }
 
     /**
@@ -103,26 +82,7 @@ public final class RlpNumeric {
             return Rlp.encodeString(EMPTY);
         }
 
-        // BigInteger.toByteArray() returns a two's complement representation:
-        // there may be a leading 0x00 byte to preserve sign for positive numbers.
-        final byte[] twosComp = value.toByteArray();
-        final int offset = (twosComp[0] == 0x00) ? 1 : 0;
-        final int length = twosComp.length - offset;
-
-        if (length == 0) {
-            // Shouldn't really happen: non-zero BigInteger should have non-empty magnitude.
-            return Rlp.encodeString(EMPTY);
-        }
-
-        if (offset == 0) {
-            // No leading sign byte; we can reuse the array directly.
-            return Rlp.encodeString(twosComp);
-        }
-
-        // Strip the leading sign byte.
-        final byte[] raw = new byte[length];
-        System.arraycopy(twosComp, offset, raw, 0, length);
-        return Rlp.encodeString(raw);
+        return Rlp.encodeString(bigIntegerToMinimalBytes(value));
     }
 
     /**
@@ -138,23 +98,51 @@ public final class RlpNumeric {
             return new RlpString(EMPTY);
         }
 
+        return new RlpString(bigIntegerToMinimalBytes(value));
+    }
+
+    /**
+     * Convert a positive long to its minimal big-endian byte representation.
+     * Callers must ensure value > 0.
+     */
+    private static byte[] longToMinimalBytes(final long value) {
+        final int size = minimalByteSize(value);
+        final byte[] raw = new byte[size];
+
+        long tmp = value;
+        for (int i = size - 1; i >= 0; i--) {
+            raw[i] = (byte) tmp;
+            tmp >>>= 8;
+        }
+
+        return raw;
+    }
+
+    /**
+     * Convert a positive BigInteger to its minimal unsigned big-endian byte representation.
+     * Callers must ensure value > 0 (signum() > 0).
+     */
+    private static byte[] bigIntegerToMinimalBytes(final BigInteger value) {
+        // BigInteger.toByteArray() returns a two's complement representation:
+        // there may be a leading 0x00 byte to preserve sign for positive numbers.
         final byte[] twosComp = value.toByteArray();
         final int offset = (twosComp[0] == 0x00) ? 1 : 0;
         final int length = twosComp.length - offset;
 
         if (length == 0) {
-            return new RlpString(EMPTY);
+            // Shouldn't really happen: non-zero BigInteger should have non-empty magnitude.
+            return EMPTY;
         }
 
         if (offset == 0) {
-            // Directly wrap; RlpString is a "by-value" wrapper over the byte[].
-            // If in future you make RlpString zero-copy, you can use a slice constructor.
-            return new RlpString(twosComp);
+            // No leading sign byte; we can reuse the array directly.
+            return twosComp;
         }
 
+        // Strip the leading sign byte.
         final byte[] raw = new byte[length];
         System.arraycopy(twosComp, offset, raw, 0, length);
-        return new RlpString(raw);
+        return raw;
     }
 
     /**

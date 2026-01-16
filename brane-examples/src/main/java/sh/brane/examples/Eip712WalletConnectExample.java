@@ -8,6 +8,7 @@ import sh.brane.core.crypto.eip712.TypedData;
 import sh.brane.core.crypto.eip712.TypedDataJson;
 import sh.brane.core.crypto.eip712.TypedDataPayload;
 import sh.brane.core.types.Hash;
+import sh.brane.primitives.Hex;
 
 /**
  * Demonstrates EIP-712 typed data signing from JSON requests as received via WalletConnect.
@@ -291,17 +292,9 @@ public final class Eip712WalletConnectExample {
         Signature sig = typedData.sign(signer);
 
         // Step 6: Return signature components (for WalletConnect response)
-        System.out.println("r: 0x" + bytesToHex(sig.r()));
-        System.out.println("s: 0x" + bytesToHex(sig.s()));
+        System.out.println("r: 0x" + Hex.encodeNoPrefix(sig.r()));
+        System.out.println("s: 0x" + Hex.encodeNoPrefix(sig.s()));
         System.out.println("v: " + sig.v());
         System.out.println(AnsiColors.success("Full signature: " + sig));
-    }
-
-    private static String bytesToHex(byte[] bytes) {
-        var sb = new StringBuilder(bytes.length * 2);
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
     }
 }

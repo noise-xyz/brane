@@ -247,9 +247,22 @@ public final class RpcUtils {
 
     /**
      * Converts BigInteger to hex quantity string with "0x" prefix.
+     *
+     * @param value the BigInteger value to convert
+     * @return hex string with "0x" prefix (e.g., "0x1a" for 26)
      */
     public static String toQuantityHex(final BigInteger value) {
         return "0x" + value.toString(16);
+    }
+
+    /**
+     * Converts long to hex quantity string with "0x" prefix.
+     *
+     * @param value the long value to convert
+     * @return hex string with "0x" prefix (e.g., "0x1a" for 26)
+     */
+    public static String toQuantityHex(final long value) {
+        return "0x" + Long.toHexString(value);
     }
 
     /**
@@ -388,6 +401,38 @@ public final class RpcUtils {
                 throw e;
             }
             throw new IllegalArgumentException("url is not a valid URI: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Puts a value into a map if the value is not null, applying a transformation function.
+     *
+     * <p>This helper reduces verbose null-check-then-put patterns like:
+     * <pre>{@code
+     * if (value != null) {
+     *     map.put("key", value.transform());
+     * }
+     * }</pre>
+     *
+     * <p>To:
+     * <pre>{@code
+     * putIfPresent(map, "key", value, v -> v.transform());
+     * }</pre>
+     *
+     * @param <T> the type of the value
+     * @param map the map to put the value into
+     * @param key the key to use
+     * @param value the nullable value to check
+     * @param mapper the function to transform the value before putting
+     */
+    public static <T> void putIfPresent(
+            final Map<String, Object> map,
+            final String key,
+            final T value,
+            final java.util.function.Function<T, Object> mapper
+    ) {
+        if (value != null) {
+            map.put(key, mapper.apply(value));
         }
     }
 
