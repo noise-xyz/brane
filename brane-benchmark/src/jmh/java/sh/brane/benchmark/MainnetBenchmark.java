@@ -28,10 +28,9 @@ public class MainnetBenchmark {
     private String network;
 
     private String getUrl() {
-        switch (network) {
-            case "Ethereum":
-                return "wss://ethereum-rpc.publicnode.com";
-            case "Base":
+        return switch (network) {
+            case "Ethereum" -> "wss://ethereum-rpc.publicnode.com";
+            case "Base" -> {
                 String useInfura = System.getProperty("brane.benchmark.useInfura");
                 if ("true".equalsIgnoreCase(useInfura)) {
                     String infuraUrl = System.getenv("INFURA_BASE_WSS_URL");
@@ -40,17 +39,16 @@ public class MainnetBenchmark {
                     }
 
                     if (infuraUrl != null && !infuraUrl.isEmpty()) {
-                        return infuraUrl;
+                        yield infuraUrl;
                     }
                     System.err.println(
                             "Warning: brane.benchmark.useInfura=true but INFURA_BASE_WSS_URL not set. Falling back to public node.");
                 }
-                return "wss://base-rpc.publicnode.com";
-            case "Arbitrum":
-                return "wss://arbitrum-one-rpc.publicnode.com";
-            default:
-                throw new IllegalArgumentException("Unknown network: " + network);
-        }
+                yield "wss://base-rpc.publicnode.com";
+            }
+            case "Arbitrum" -> "wss://arbitrum-one-rpc.publicnode.com";
+            default -> throw new IllegalArgumentException("Unknown network: " + network);
+        };
     }
 
     private WebSocketProvider braneProvider;
