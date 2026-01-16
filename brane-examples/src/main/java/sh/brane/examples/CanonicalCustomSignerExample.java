@@ -80,9 +80,9 @@ public final class CanonicalCustomSignerExample {
         System.out.println("[Scenario 2] MPC (Threshold) Signer");
 
         // 1. Setup the MPC Cluster (Simulation)
-        // 3 parties, threshold 2
+        // threshold 2
         String distributedKey = "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d";
-        MockMpcCluster mpcCluster = new MockMpcCluster(distributedKey, 3, 2);
+        MockMpcCluster mpcCluster = new MockMpcCluster(distributedKey, 2);
 
         // 2. Create the MPC Signer
         Signer signer = new MpcSigner(mpcCluster);
@@ -268,7 +268,7 @@ public final class CanonicalCustomSignerExample {
         private final ReentrantLock lock = new ReentrantLock();
         private final Condition thresholdReached = lock.newCondition();
 
-        public MockMpcCluster(String privateKeyHex, int totalParties, int threshold) {
+        public MockMpcCluster(String privateKeyHex, int threshold) {
             this.privateKey = PrivateKey.fromHex(privateKeyHex);
             this.threshold = threshold;
         }
