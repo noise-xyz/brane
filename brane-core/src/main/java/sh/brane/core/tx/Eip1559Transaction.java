@@ -146,7 +146,7 @@ public record Eip1559Transaction(
      * @return RLP-encoded payload
      */
     private byte[] encodePayload(final boolean includeSig, final Signature signature) {
-        final List<RlpItem> items = new ArrayList<>(12);
+        var items = new ArrayList<RlpItem>(12);
 
         items.add(RlpNumeric.encodeLongUnsignedItem(chainId));
         items.add(RlpNumeric.encodeLongUnsignedItem(nonce));
@@ -186,9 +186,9 @@ public record Eip1559Transaction(
             return new RlpList(List.of());
         }
 
-        final List<RlpItem> entries = new ArrayList<>(accessList.size());
+        var entries = new ArrayList<RlpItem>(accessList.size());
         for (AccessListEntry entry : accessList) {
-            final List<RlpItem> entryItems = new ArrayList<>(2);
+            var entryItems = new ArrayList<RlpItem>(2);
             entryItems.add(new RlpString(entry.address().toBytes()));
 
             // Encode storage keys
