@@ -9,6 +9,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import sh.brane.core.crypto.Kzg;
+import sh.brane.core.error.KzgException;
 import sh.brane.core.types.Blob;
 import sh.brane.core.types.FixedSizeG1Point;
 import sh.brane.core.types.KzgCommitment;
@@ -174,4 +175,37 @@ class CKzgTest {
 
         assertTrue(ex.getMessage().contains("Lists must have same size"));
     }
+
+    // Tests for loadTrustedSetup(String)
+
+    @Test
+    void loadTrustedSetupThrowsOnNullPath() {
+        assertThrows(NullPointerException.class, () -> CKzg.loadTrustedSetup(null));
+    }
+
+    @Test
+    void loadTrustedSetupThrowsWhenAlreadyLoaded() throws Exception {
+        // Get the path to the trusted setup from classpath resource
+        var resourceUrl = CKzgTest.class.getResource("/trusted_setup.txt");
+        assertNotNull(resourceUrl, "trusted_setup.txt should be on classpath");
+
+        String path = java.nio.file.Path.of(resourceUrl.toURI()).toString();
+
+        // The native library maintains global state and was already loaded in @BeforeAll.
+        // Attempting to reload throws KzgException with "already loaded" message.
+        // Note: This does NOT corrupt the global state since the native library
+        // checks for existing setup before attempting to free/reload.
+        KzgException ex = assertThrows(KzgException.class, () ->
+                CKzg.loadTrustedSetup(path));
+
+        assertTrue(ex.getMessage().contains("Failed to load trusted setup"));
+        assertNotNull(ex.getCause());
+        assertTrue(ex.getCause().getMessage().contains("already loaded"));
+    }
+
+    // Note: Testing loadTrustedSetup with a non-existent file is intentionally omitted.
+    // The native c-kzg-4844 library frees any existing trusted setup before attempting
+    // to load a new one. If the load fails (e.g., file not found), the global state is
+    // corrupted and all subsequent KZG operations fail. This is a limitation of the
+    // native library's global state design.
 }
