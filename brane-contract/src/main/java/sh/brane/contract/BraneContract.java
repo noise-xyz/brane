@@ -551,7 +551,7 @@ public final class BraneContract {
             final Method method,
             final List<String> outputs,
             final java.util.function.Predicate<String> validator) {
-        if (outputs.size() != 1 || !validator.test(outputs.getFirst())) {
+        if (outputs.size() != 1 || !validator.test(outputs.getFirst().toLowerCase(Locale.ROOT))) {
             throw new IllegalArgumentException(
                     "Return type for " + method.getName() + " does not match ABI outputs");
         }
@@ -593,26 +593,24 @@ public final class BraneContract {
     }
 
     private static boolean isNumericType(final String solidityType) {
-        final String normalized = solidityType.toLowerCase(Locale.ROOT);
-        return normalized.startsWith("uint") || normalized.startsWith("int");
+        return solidityType.startsWith("uint") || solidityType.startsWith("int");
     }
 
     private static boolean isAddressType(final String solidityType) {
-        return "address".equals(solidityType.toLowerCase(Locale.ROOT));
+        return "address".equals(solidityType);
     }
 
     private static boolean isBoolType(final String solidityType) {
-        return "bool".equals(solidityType.toLowerCase(Locale.ROOT));
+        return "bool".equals(solidityType);
     }
 
     private static boolean isStringType(final String solidityType) {
-        return "string".equals(solidityType.toLowerCase(Locale.ROOT));
+        return "string".equals(solidityType);
     }
 
     private static boolean isBytesType(final String solidityType) {
-        final String normalized = solidityType.toLowerCase(Locale.ROOT);
         // Match "bytes" (dynamic) or "bytesN" (fixed-size like bytes32)
-        return normalized.equals("bytes") || normalized.matches("bytes\\d+");
+        return solidityType.equals("bytes") || solidityType.matches("bytes\\d+");
     }
 
     private static boolean isArrayType(final String solidityType) {
