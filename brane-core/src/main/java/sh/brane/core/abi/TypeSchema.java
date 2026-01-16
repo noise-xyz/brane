@@ -49,11 +49,22 @@ public sealed interface TypeSchema permits
         return 32;
     }
 
+    /**
+     * Validates that an integer width is valid for Solidity int/uint types.
+     *
+     * @param width    the bit width to validate
+     * @param typeName the type name for error messages (e.g., "int", "uint")
+     * @throws IllegalArgumentException if width is not a multiple of 8, or not in range [8, 256]
+     */
+    private static void validateIntWidth(int width, String typeName) {
+        if (width % 8 != 0 || width < 8 || width > 256) {
+            throw new IllegalArgumentException("Invalid " + typeName + " width: " + width);
+        }
+    }
+
     record UIntSchema(int width) implements TypeSchema {
         public UIntSchema {
-            if (width % 8 != 0 || width < 8 || width > 256) {
-                throw new IllegalArgumentException("Invalid uint width: " + width);
-            }
+            validateIntWidth(width, "uint");
         }
 
         @Override
@@ -69,9 +80,7 @@ public sealed interface TypeSchema permits
 
     record IntSchema(int width) implements TypeSchema {
         public IntSchema {
-            if (width % 8 != 0 || width < 8 || width > 256) {
-                throw new IllegalArgumentException("Invalid int width: " + width);
-            }
+            validateIntWidth(width, "int");
         }
 
         @Override
