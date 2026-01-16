@@ -134,9 +134,7 @@ public class ComprehensiveBenchmark {
 
     // ==================== LATENCY ====================
 
-    static class LatencyResult {
-        double avg, p50, p95, p99, min, max;
-    }
+    record LatencyResult(double avg, double p50, double p95, double p99, double min, double max) {}
 
     private static LatencyResult measureLatency(WebSocketProvider provider) throws Exception {
         List<Long> latencies = new ArrayList<>(LATENCY_SAMPLES);
@@ -168,16 +166,15 @@ public class ComprehensiveBenchmark {
 
     private static LatencyResult calculateLatencyStats(List<Long> latencies) {
         Collections.sort(latencies);
-        LatencyResult result = new LatencyResult();
 
-        result.avg = latencies.stream().mapToLong(Long::longValue).average().orElse(0) / 1000.0; // ms
-        result.p50 = latencies.get((int) (latencies.size() * 0.50)) / 1000.0;
-        result.p95 = latencies.get((int) (latencies.size() * 0.95)) / 1000.0;
-        result.p99 = latencies.get((int) (latencies.size() * 0.99)) / 1000.0;
-        result.min = latencies.get(0) / 1000.0;
-        result.max = latencies.getLast() / 1000.0;
+        double avg = latencies.stream().mapToLong(Long::longValue).average().orElse(0) / 1000.0; // ms
+        double p50 = latencies.get((int) (latencies.size() * 0.50)) / 1000.0;
+        double p95 = latencies.get((int) (latencies.size() * 0.95)) / 1000.0;
+        double p99 = latencies.get((int) (latencies.size() * 0.99)) / 1000.0;
+        double min = latencies.get(0) / 1000.0;
+        double max = latencies.getLast() / 1000.0;
 
-        return result;
+        return new LatencyResult(avg, p50, p95, p99, min, max);
     }
 
     private static void printLatencyComparison(LatencyResult brane, LatencyResult web3j) {
@@ -185,13 +182,13 @@ public class ComprehensiveBenchmark {
         System.out.println("     │   Metric   │   Brane  │  Web3j   │  Winner  │");
         System.out.println("     ├────────────┼──────────┼──────────┼──────────┤");
         System.out.printf("     │ Avg        │ %6.2f ms│ %6.2f ms│ %8s │%n",
-                brane.avg, web3j.avg, brane.avg < web3j.avg ? "Brane" : "Web3j");
+                brane.avg(), web3j.avg(), brane.avg() < web3j.avg() ? "Brane" : "Web3j");
         System.out.printf("     │ p50        │ %6.2f ms│ %6.2f ms│ %8s │%n",
-                brane.p50, web3j.p50, brane.p50 < web3j.p50 ? "Brane" : "Web3j");
+                brane.p50(), web3j.p50(), brane.p50() < web3j.p50() ? "Brane" : "Web3j");
         System.out.printf("     │ p95        │ %6.2f ms│ %6.2f ms│ %8s │%n",
-                brane.p95, web3j.p95, brane.p95 < web3j.p95 ? "Brane" : "Web3j");
+                brane.p95(), web3j.p95(), brane.p95() < web3j.p95() ? "Brane" : "Web3j");
         System.out.printf("     │ p99        │ %6.2f ms│ %6.2f ms│ %8s │%n",
-                brane.p99, web3j.p99, brane.p99 < web3j.p99 ? "Brane" : "Web3j");
+                brane.p99(), web3j.p99(), brane.p99() < web3j.p99() ? "Brane" : "Web3j");
         System.out.println("     └────────────┴──────────┴──────────┴──────────┘");
     }
 
