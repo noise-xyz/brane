@@ -7,6 +7,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 
 import sh.brane.core.abi.Abi;
@@ -379,31 +380,11 @@ public final class BraneContract {
     }
 
     private static void validateMethods(final Class<?> contractInterface, final Abi abi) {
-        for (Method method : contractInterface.getMethods()) {
-            if (method.getDeclaringClass() == Object.class) {
-                continue;
-            }
-
-            final Abi.FunctionMetadata metadata = abi.getFunction(method.getName())
-                    .orElseThrow(
-                            () -> new IllegalArgumentException(
-                                    "No ABI function named '" + method.getName() + "'"));
-            validateParameters(method, metadata);
-            validateReturnType(method, metadata);
-        }
+        validateMethodsWithCheck(contractInterface, abi, (method, metadata) -> {});
     }
 
     private static void validateReadOnlyMethods(final Class<?> contractInterface, final Abi abi) {
-        for (Method method : contractInterface.getMethods()) {
-            if (method.getDeclaringClass() == Object.class) {
-                continue;
-            }
-
-            final Abi.FunctionMetadata metadata = abi.getFunction(method.getName())
-                    .orElseThrow(
-                            () -> new IllegalArgumentException(
-                                    "No ABI function named '" + method.getName() + "'"));
-
+        validateMethodsWithCheck(contractInterface, abi, (method, metadata) -> {
             // Ensure all methods are view/pure for read-only binding
             if (!metadata.isView()) {
                 throw new IllegalArgumentException(
@@ -413,7 +394,24 @@ public final class BraneContract {
                                 + metadata.stateMutability()
                                 + "'");
             }
+        });
+    }
 
+    private static void validateMethodsWithCheck(
+            final Class<?> contractInterface,
+            final Abi abi,
+            final BiConsumer<Method, Abi.FunctionMetadata> additionalCheck) {
+        for (Method method : contractInterface.getMethods()) {
+            if (method.getDeclaringClass() == Object.class) {
+                continue;
+            }
+
+            final Abi.FunctionMetadata metadata = abi.getFunction(method.getName())
+                    .orElseThrow(
+                            () -> new IllegalArgumentException(
+                                    "No ABI function named '" + method.getName() + "'"));
+
+            additionalCheck.accept(method, metadata);
             validateParameters(method, metadata);
             validateReturnType(method, metadata);
         }
