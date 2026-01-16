@@ -82,26 +82,7 @@ public final class RlpNumeric {
             return Rlp.encodeString(EMPTY);
         }
 
-        // BigInteger.toByteArray() returns a two's complement representation:
-        // there may be a leading 0x00 byte to preserve sign for positive numbers.
-        final byte[] twosComp = value.toByteArray();
-        final int offset = (twosComp[0] == 0x00) ? 1 : 0;
-        final int length = twosComp.length - offset;
-
-        if (length == 0) {
-            // Shouldn't really happen: non-zero BigInteger should have non-empty magnitude.
-            return Rlp.encodeString(EMPTY);
-        }
-
-        if (offset == 0) {
-            // No leading sign byte; we can reuse the array directly.
-            return Rlp.encodeString(twosComp);
-        }
-
-        // Strip the leading sign byte.
-        final byte[] raw = new byte[length];
-        System.arraycopy(twosComp, offset, raw, 0, length);
-        return Rlp.encodeString(raw);
+        return Rlp.encodeString(bigIntegerToMinimalBytes(value));
     }
 
     /**
@@ -117,23 +98,7 @@ public final class RlpNumeric {
             return new RlpString(EMPTY);
         }
 
-        final byte[] twosComp = value.toByteArray();
-        final int offset = (twosComp[0] == 0x00) ? 1 : 0;
-        final int length = twosComp.length - offset;
-
-        if (length == 0) {
-            return new RlpString(EMPTY);
-        }
-
-        if (offset == 0) {
-            // Directly wrap; RlpString is a "by-value" wrapper over the byte[].
-            // If in future you make RlpString zero-copy, you can use a slice constructor.
-            return new RlpString(twosComp);
-        }
-
-        final byte[] raw = new byte[length];
-        System.arraycopy(twosComp, offset, raw, 0, length);
-        return new RlpString(raw);
+        return new RlpString(bigIntegerToMinimalBytes(value));
     }
 
     /**
@@ -150,6 +115,33 @@ public final class RlpNumeric {
             tmp >>>= 8;
         }
 
+        return raw;
+    }
+
+    /**
+     * Convert a positive BigInteger to its minimal unsigned big-endian byte representation.
+     * Callers must ensure value > 0 (signum() > 0).
+     */
+    private static byte[] bigIntegerToMinimalBytes(final BigInteger value) {
+        // BigInteger.toByteArray() returns a two's complement representation:
+        // there may be a leading 0x00 byte to preserve sign for positive numbers.
+        final byte[] twosComp = value.toByteArray();
+        final int offset = (twosComp[0] == 0x00) ? 1 : 0;
+        final int length = twosComp.length - offset;
+
+        if (length == 0) {
+            // Shouldn't really happen: non-zero BigInteger should have non-empty magnitude.
+            return EMPTY;
+        }
+
+        if (offset == 0) {
+            // No leading sign byte; we can reuse the array directly.
+            return twosComp;
+        }
+
+        // Strip the leading sign byte.
+        final byte[] raw = new byte[length];
+        System.arraycopy(twosComp, offset, raw, 0, length);
         return raw;
     }
 
