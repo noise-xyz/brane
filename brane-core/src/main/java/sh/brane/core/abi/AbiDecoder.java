@@ -41,6 +41,11 @@ import sh.brane.primitives.Hex;
 public final class AbiDecoder {
 
     /**
+     * Size of an ABI slot in bytes. All ABI types occupy multiples of 32 bytes.
+     */
+    private static final int SLOT_SIZE = 32;
+
+    /**
      * Number of padding bytes before an address in a 32-byte ABI slot.
      * Addresses are 20 bytes, so they are left-padded with 12 zero bytes (32 - 20 = 12).
      */
@@ -87,7 +92,7 @@ public final class AbiDecoder {
                 int absoluteOffset = offset + relativeOffset;
                 validateOffset(data, absoluteOffset, "dynamic type data");
                 results.add(decodeDynamic(data, absoluteOffset, schema));
-                currentHeadOffset += 32;
+                currentHeadOffset += SLOT_SIZE;
             } else {
                 // Static type: read directly from head
                 results.add(decodeStatic(data, currentHeadOffset, schema));
