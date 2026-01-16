@@ -69,24 +69,6 @@
             "command": "jq -r '.tool_input.file_path' | grep -qE 'gradle-wrapper\\.properties|java\\.license|deploy\\.yml' && { echo 'Protected file - please confirm with user before modifying' >&2; exit 2; } || exit 0"
           }
         ]
-      },
-      {
-        "matcher": "Read",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/block_large_file_read.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "mcp__cclsp__find_definition|mcp__cclsp__find_references|mcp__cclsp__get_diagnostics|mcp__cclsp__rename_symbol",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd \"$CLAUDE_PROJECT_DIR\" && ./.claude/scripts/track_lsp_explored.sh"
-          }
-        ]
       }
     ]
   },
