@@ -109,7 +109,7 @@ public final class CanonicalErc20Example {
     final String privateKey = System.getProperty("brane.examples.pk");
     String contractAddr = System.getProperty("brane.examples.contract");
 
-    if (isBlank(rpcUrl) || isBlank(privateKey)) {
+    if (rpcUrl == null || rpcUrl.isBlank() || privateKey == null || privateKey.isBlank()) {
       printUsage();
       return;
     }
@@ -123,7 +123,7 @@ public final class CanonicalErc20Example {
       System.out.println("Signer:   " + signer.address().value());
 
       // 1.5 Deploy if needed
-      if (isBlank(contractAddr) || "0x0000000000000000000000000000000000000000".equals(contractAddr)) {
+      if (contractAddr == null || contractAddr.isBlank() || "0x0000000000000000000000000000000000000000".equals(contractAddr)) {
         System.out.println("\n[0] Deploying ERC-20 Contract...");
         final BigInteger initialSupply = BigInteger.valueOf(1_000_000);
         contractAddr = deployErc20(client, initialSupply);
@@ -216,10 +216,6 @@ public final class CanonicalErc20Example {
       throw new RuntimeException("Deployment failed: No contract address returned");
     }
     return receipt.contractAddress().value();
-  }
-
-  private static boolean isBlank(final String value) {
-    return value == null || value.isBlank();
   }
 
   private static void printUsage() {
