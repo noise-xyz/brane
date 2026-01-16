@@ -80,6 +80,19 @@ public final class CKzg implements Kzg {
     }
 
     /**
+     * Loads the native KZG library.
+     *
+     * @throws KzgException with kind SETUP_ERROR if the native library cannot be loaded
+     */
+    private static void loadNativeLibrary() {
+        try {
+            CKZG4844JNI.loadNativeLibrary();
+        } catch (Exception e) {
+            throw KzgException.setupError("Failed to load native KZG library", e);
+        }
+    }
+
+    /**
      * Loads the trusted setup from the bundled classpath resource.
      * <p>
      * This method loads the Ethereum mainnet trusted setup file that is bundled
@@ -91,11 +104,7 @@ public final class CKzg implements Kzg {
      *         or the trusted setup cannot be initialized
      */
     public static Kzg loadFromClasspath() {
-        try {
-            CKZG4844JNI.loadNativeLibrary();
-        } catch (Exception e) {
-            throw KzgException.setupError("Failed to load native KZG library", e);
-        }
+        loadNativeLibrary();
 
         try {
             CKZG4844JNI.loadTrustedSetupFromResource(
@@ -125,11 +134,7 @@ public final class CKzg implements Kzg {
     public static Kzg loadTrustedSetup(String path) {
         Objects.requireNonNull(path, "path");
 
-        try {
-            CKZG4844JNI.loadNativeLibrary();
-        } catch (Exception e) {
-            throw KzgException.setupError("Failed to load native KZG library", e);
-        }
+        loadNativeLibrary();
 
         try {
             CKZG4844JNI.loadTrustedSetup(path, DEFAULT_PRECOMPUTE);

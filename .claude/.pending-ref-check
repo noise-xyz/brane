@@ -1,1 +1,2 @@
-/Users/liangchenzhou/conductor/workspaces/brane/kolkata/brane-examples/src/main/java/sh/brane/examples/CanonicalCustomSignerExample.java|getPublicKey|method
+/Users/liangchenzhou/conductor/workspaces/brane/kolkata/brane-kzg/src/main/java/sh/brane/kzg/CKzg.java|loadFromClasspath|method
+/Users/liangchenzhou/conductor/workspaces/brane/kolkata/brane-kzg/src/main/java/sh/brane/kzg/CKzg.java|loadTrustedSetup|method
