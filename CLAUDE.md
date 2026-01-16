@@ -186,55 +186,31 @@ BraneException (sealed root)
 | Smoke | `./scripts/test_smoke.sh` | Anvil |
 | Full | `./verify_all.sh` | Anvil |
 
-## LSP Setup for Claude Code
+## Large File Navigation
 
-To enable Java LSP features (go-to-definition, find-references), set up cclsp:
-
-```bash
-# 1. Install cclsp globally
-npm install -g cclsp
-
-# 2. Copy example configs and customize paths
-cp .cclsp.example.json .cclsp.json
-cp .mcp.example.json .mcp.json
-
-# 3. Edit .cclsp.json - update jdtls path for your system:
-#    - macOS VSCode: ~/.vscode/extensions/redhat.java-*/server/bin/jdtls
-#    - Or install jdtls separately and use "jdtls" if in PATH
-
-# 4. Patch cclsp for jdtls timeout (run after each cclsp update)
-./.claude/scripts/patch_cclsp_timeout.sh
-```
-
-## Large File Navigation (IMPORTANT - READ THIS)
-
-For Java files over 500 lines, **ALL reads are BLOCKED**. You MUST use cclsp MCP tools.
+For large Java files (500+ lines), use `Grep` and targeted `Read` with line offsets instead of reading the entire file.
 
 **DO NOT ask the user what they want - USE THE TOOLS PROACTIVELY.**
 
-**NOTE:** First LSP call may take 1-3 minutes while jdtls indexes the project. Subsequent calls are fast.
-
 When asked about a large file, immediately:
 1. Use `Grep` to find relevant symbols/patterns
-2. Use `mcp__cclsp__find_definition(file_path, symbol_name)` to get definitions
-3. Use `mcp__cclsp__find_references(file_path, symbol_name)` to find usages
+2. Use `Read` with `offset` and `limit` to read specific sections
 
 **Example - user asks "Read Brane.java":**
 ```
 # WRONG: Asking "what would you like to know?"
-# RIGHT: Immediately search and use LSP tools
+# RIGHT: Immediately search and read targeted sections
 
 Grep("sealed interface", path="brane-rpc/.../Brane.java")
 → Found: line 229: "public sealed interface Brane"
 → Found: line 840: "sealed interface Reader"
-→ Found: line 934: "sealed interface Signer"
 
-mcp__cclsp__find_definition(file_path="brane-rpc/.../Brane.java", symbol_name="Reader")
-→ Returns the Reader interface definition
+Read(file_path="brane-rpc/.../Brane.java", offset=229, limit=50)
+→ Returns the Brane interface definition
 ```
 
-**Large files in this codebase (>500 lines) - CANNOT be read directly:**
-- `brane-rpc/.../Brane.java` (2336 lines) - Main client interface
+**Large files in this codebase (>500 lines):**
+- `brane-rpc/.../Brane.java` (~2300 lines) - Main client interface
 - `brane-core/.../Abi.java` - ABI encoding/decoding
 
 ## Gotchas
