@@ -50,7 +50,7 @@ public final class Erc20TransferLogExample {
     final String fromBlockStr = System.getProperty("brane.examples.erc20.fromBlock");
     final String toBlockStr = System.getProperty("brane.examples.erc20.toBlock");
 
-    if (isBlank(rpcUrl) || isBlank(tokenAddress)) {
+    if (rpcUrl == null || rpcUrl.isBlank() || tokenAddress == null || tokenAddress.isBlank()) {
       System.out.println("Usage: set -Dbrane.examples.erc20.rpc and -Dbrane.examples.erc20.contract");
       return;
     }
@@ -96,9 +96,5 @@ public final class Erc20TransferLogExample {
     } finally {
       client.close();
     }
-  }
-
-  private static boolean isBlank(final String value) {
-    return value == null || value.isBlank();
   }
 }
