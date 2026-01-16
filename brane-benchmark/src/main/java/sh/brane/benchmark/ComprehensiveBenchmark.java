@@ -121,7 +121,7 @@ public class ComprehensiveBenchmark {
     private static void warmup(WebSocketProvider brane, Web3j web3j) throws Exception {
         // Warmup Brane
         for (int i = 0; i < 10; i++) {
-            brane.sendAsync("eth_chainId", Collections.emptyList()).join();
+            brane.sendAsync("eth_chainId", List.of()).join();
         }
 
         // Warmup Web3j
@@ -141,7 +141,7 @@ public class ComprehensiveBenchmark {
 
         for (int i = 0; i < LATENCY_SAMPLES; i++) {
             long start = System.nanoTime();
-            provider.sendAsync("eth_blockNumber", Collections.emptyList()).join();
+            provider.sendAsync("eth_blockNumber", List.of()).join();
             long end = System.nanoTime();
             latencies.add((end - start) / 1000); // microseconds
             Thread.sleep(100); // Small delay between requests
@@ -200,7 +200,7 @@ public class ComprehensiveBenchmark {
         CompletableFuture<?>[] futures = new CompletableFuture[burstSize];
         for (int i = 0; i < burstSize; i++) {
             // Use sendAsyncBatch for burst scenarios to leverage Disruptor batching
-            futures[i] = provider.sendAsyncBatch("eth_blockNumber", Collections.emptyList());
+            futures[i] = provider.sendAsyncBatch("eth_blockNumber", List.of());
         }
         CompletableFuture.allOf(futures).join();
 
@@ -247,7 +247,7 @@ public class ComprehensiveBenchmark {
         while (System.currentTimeMillis() < endTime) {
             // Launch new requests up to maxInflight
             while (inflight < maxInflight && System.currentTimeMillis() < endTime) {
-                CompletableFuture<?> f = provider.sendAsyncBatch("eth_blockNumber", Collections.emptyList())
+                CompletableFuture<?> f = provider.sendAsyncBatch("eth_blockNumber", List.of())
                         .whenComplete((r, e) -> {
                             if (e != null)
                                 errors.incrementAndGet();

@@ -2,7 +2,6 @@
 package sh.brane.benchmark;
 
 import java.nio.charset.StandardCharsets;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -121,7 +120,7 @@ public class ClientOverheadBenchmark {
         Map<String, Object> request = new HashMap<>();
         request.put("jsonrpc", "2.0");
         request.put("method", "eth_chainId");
-        request.put("params", Collections.emptyList());
+        request.put("params", List.of());
         request.put("id", idCounter.incrementAndGet());
 
         bh.consume(objectMapper.writeValueAsString(request));
@@ -244,7 +243,7 @@ public class ClientOverheadBenchmark {
         Map<String, Object> request = new HashMap<>();
         request.put("jsonrpc", "2.0");
         request.put("method", "eth_chainId");
-        request.put("params", Collections.emptyList());
+        request.put("params", List.of());
         request.put("id", idCounter.incrementAndGet());
         bh.consume(objectMapper.writeValueAsString(request));
 
