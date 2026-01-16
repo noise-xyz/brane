@@ -38,7 +38,7 @@ public final class CanonicalRawExample {
         final String rpcUrl = System.getProperty("brane.examples.rpc");
         final String privateKey = System.getProperty("brane.examples.pk");
 
-        if (isBlank(rpcUrl) || isBlank(privateKey)) {
+        if (rpcUrl == null || rpcUrl.isBlank() || privateKey == null || privateKey.isBlank()) {
             printUsage();
             return;
         }
@@ -88,10 +88,6 @@ public final class CanonicalRawExample {
             e.printStackTrace();
             System.exit(1);
         }
-    }
-
-    private static boolean isBlank(final String value) {
-        return value == null || value.isBlank();
     }
 
     private static void printUsage() {
