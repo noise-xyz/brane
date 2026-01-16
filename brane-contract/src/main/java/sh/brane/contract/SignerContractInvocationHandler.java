@@ -24,8 +24,6 @@ import sh.brane.rpc.Brane;
  */
 final class SignerContractInvocationHandler extends AbstractContractInvocationHandler<Brane.Signer> {
 
-    private static final Object[] EMPTY_ARGS = new Object[0];
-
     private final ContractOptions options;
 
     SignerContractInvocationHandler(
