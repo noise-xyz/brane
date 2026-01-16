@@ -89,21 +89,21 @@ final class SignerContractInvocationHandler extends AbstractContractInvocationHa
     }
 
     private TransactionRequest buildTransactionRequest(final Abi.FunctionCall call, final Wei value) {
-        if (options.transactionType() == ContractOptions.TransactionType.LEGACY) {
-            return TxBuilder.legacy()
+        return switch (options.transactionType()) {
+            case LEGACY -> TxBuilder.legacy()
                     .to(address)
                     .data(new HexData(call.data()))
                     .value(value)
                     .gasLimit(options.gasLimit())
                     .build();
-        }
-        return TxBuilder.eip1559()
-                .to(address)
-                .data(new HexData(call.data()))
-                .value(value)
-                .gasLimit(options.gasLimit())
-                .maxPriorityFeePerGas(options.maxPriorityFee())
-                .build();
+            case EIP1559 -> TxBuilder.eip1559()
+                    .to(address)
+                    .data(new HexData(call.data()))
+                    .value(value)
+                    .gasLimit(options.gasLimit())
+                    .maxPriorityFeePerGas(options.maxPriorityFee())
+                    .build();
+        };
     }
 
 }
