@@ -23,7 +23,8 @@ import sh.brane.primitives.Hex;
  * @since 0.1.0-alpha
  */
 public record Address(@com.fasterxml.jackson.annotation.JsonValue String value) {
-    private static final Pattern HEX = Pattern.compile("^0x[0-9a-fA-F]{40}$");
+    private static final int BYTE_LENGTH = 20;
+    private static final Pattern HEX = HexValidator.fixedLength(BYTE_LENGTH);
 
     public Address {
         Objects.requireNonNull(value, "address");
@@ -38,8 +39,8 @@ public record Address(@com.fasterxml.jackson.annotation.JsonValue String value) 
     }
 
     public static Address fromBytes(final byte[] bytes) {
-        if (bytes == null || bytes.length != 20) {
-            throw new IllegalArgumentException("Address must be exactly 20 bytes");
+        if (bytes == null || bytes.length != BYTE_LENGTH) {
+            throw new IllegalArgumentException("Address must be exactly " + BYTE_LENGTH + " bytes");
         }
         return new Address("0x" + Hex.encodeNoPrefix(bytes));
     }

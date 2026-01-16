@@ -21,7 +21,8 @@ import sh.brane.primitives.Hex;
  * @since 0.1.0-alpha
  */
 public record Hash(@com.fasterxml.jackson.annotation.JsonValue String value) {
-    private static final Pattern HEX = Pattern.compile("^0x[0-9a-fA-F]{64}$");
+    private static final int BYTE_LENGTH = 32;
+    private static final Pattern HEX = HexValidator.fixedLength(BYTE_LENGTH);
 
     public Hash {
         Objects.requireNonNull(value, "hash");
@@ -36,8 +37,8 @@ public record Hash(@com.fasterxml.jackson.annotation.JsonValue String value) {
     }
 
     public static Hash fromBytes(final byte[] bytes) {
-        if (bytes == null || bytes.length != 32) {
-            throw new IllegalArgumentException("Hash must be exactly 32 bytes");
+        if (bytes == null || bytes.length != BYTE_LENGTH) {
+            throw new IllegalArgumentException("Hash must be exactly " + BYTE_LENGTH + " bytes");
         }
         return new Hash("0x" + Hex.encodeNoPrefix(bytes));
     }
