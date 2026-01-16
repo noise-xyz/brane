@@ -61,7 +61,7 @@ public final class Erc20TransferLogExample {
         ? Long.parseLong(toBlockStr)
         : null;
 
-    final List<Hash> topics = new ArrayList<>();
+    var topics = new ArrayList<Hash>();
     topics.add(Abi.eventTopic("Transfer(address,address,uint256)"));
     final LogFilter filter = new LogFilter(
         java.util.Optional.ofNullable(fromBlock),
