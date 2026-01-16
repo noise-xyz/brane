@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.rpc;
 
-import static sh.brane.rpc.internal.RpcUtils.toQuantityHex;
 
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
@@ -13,6 +12,7 @@ import org.jspecify.annotations.Nullable;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.HexData;
 import sh.brane.core.types.Wei;
+import sh.brane.rpc.internal.RpcUtils;
 
 /**
  * Represents a single call in a transaction simulation batch.
@@ -57,31 +57,14 @@ public record SimulateCall(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-
-        if (from != null) {
-            map.put("from", from.value());
-        }
+        RpcUtils.putIfPresent(map, "from", from, Address::value);
         map.put("to", to.value());
-
-        if (data != null) {
-            map.put("data", data.value());
-        }
-        if (value != null) {
-            map.put("value", value.toHexString());
-        }
-        if (gas != null) {
-            map.put("gas", toQuantityHex(gas));
-        }
-        if (gasPrice != null) {
-            map.put("gasPrice", toQuantityHex(gasPrice));
-        }
-        if (maxFeePerGas != null) {
-            map.put("maxFeePerGas", toQuantityHex(maxFeePerGas));
-        }
-        if (maxPriorityFeePerGas != null) {
-            map.put("maxPriorityFeePerGas", toQuantityHex(maxPriorityFeePerGas));
-        }
-
+        RpcUtils.putIfPresent(map, "data", data, HexData::value);
+        RpcUtils.putIfPresent(map, "value", value, Wei::toHexString);
+        RpcUtils.putIfPresent(map, "gas", gas, RpcUtils::toQuantityHex);
+        RpcUtils.putIfPresent(map, "gasPrice", gasPrice, RpcUtils::toQuantityHex);
+        RpcUtils.putIfPresent(map, "maxFeePerGas", maxFeePerGas, RpcUtils::toQuantityHex);
+        RpcUtils.putIfPresent(map, "maxPriorityFeePerGas", maxPriorityFeePerGas, RpcUtils::toQuantityHex);
         return map;
     }
 

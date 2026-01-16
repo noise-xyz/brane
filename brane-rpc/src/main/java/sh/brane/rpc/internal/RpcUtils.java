@@ -405,6 +405,38 @@ public final class RpcUtils {
     }
 
     /**
+     * Puts a value into a map if the value is not null, applying a transformation function.
+     *
+     * <p>This helper reduces verbose null-check-then-put patterns like:
+     * <pre>{@code
+     * if (value != null) {
+     *     map.put("key", value.transform());
+     * }
+     * }</pre>
+     *
+     * <p>To:
+     * <pre>{@code
+     * putIfPresent(map, "key", value, v -> v.transform());
+     * }</pre>
+     *
+     * @param <T> the type of the value
+     * @param map the map to put the value into
+     * @param key the key to use
+     * @param value the nullable value to check
+     * @param mapper the function to transform the value before putting
+     */
+    public static <T> void putIfPresent(
+            final Map<String, Object> map,
+            final String key,
+            final T value,
+            final java.util.function.Function<T, Object> mapper
+    ) {
+        if (value != null) {
+            map.put(key, mapper.apply(value));
+        }
+    }
+
+    /**
      * HTTP/HTTPS schemes for RPC endpoint URLs.
      * Insertion order preserved for consistent error messages.
      */

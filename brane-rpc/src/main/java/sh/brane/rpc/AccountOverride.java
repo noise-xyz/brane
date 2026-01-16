@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.rpc;
 
-import static sh.brane.rpc.internal.RpcUtils.toQuantityHex;
-
 import java.util.LinkedHashMap;
 import java.util.Map;
 
@@ -11,6 +9,7 @@ import org.jspecify.annotations.Nullable;
 import sh.brane.core.types.Hash;
 import sh.brane.core.types.HexData;
 import sh.brane.core.types.Wei;
+import sh.brane.rpc.internal.RpcUtils;
 
 /**
  * Represents state overrides for an account during transaction simulation.
@@ -46,22 +45,14 @@ public record AccountOverride(
      */
     public Map<String, Object> toMap() {
         var map = new LinkedHashMap<String, Object>();
-
-        if (balance != null) {
-            map.put("balance", balance.toHexString());
-        }
-        if (nonce != null) {
-            map.put("nonce", toQuantityHex(nonce));
-        }
-        if (code != null) {
-            map.put("code", code.value());
-        }
+        RpcUtils.putIfPresent(map, "balance", balance, Wei::toHexString);
+        RpcUtils.putIfPresent(map, "nonce", nonce, RpcUtils::toQuantityHex);
+        RpcUtils.putIfPresent(map, "code", code, HexData::value);
         if (stateDiff != null && !stateDiff.isEmpty()) {
             var stateDiffMap = new LinkedHashMap<String, String>();
             stateDiff.forEach((key, value) -> stateDiffMap.put(key.value(), value.value()));
             map.put("stateDiff", stateDiffMap);
         }
-
         return map;
     }
 
