@@ -3,6 +3,8 @@ package sh.brane.kzg;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.util.List;
+
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -100,5 +102,76 @@ class CKzgTest {
         boolean isValid = kzg.verifyBlobKzgProof(blob2, commitment1, proof1);
 
         assertFalse(isValid);
+    }
+
+    @Test
+    void verifyBatchReturnsTrueForValidData() {
+        Blob blob1 = createValidBlob((byte) 0x11);
+        Blob blob2 = createValidBlob((byte) 0x22);
+        Blob blob3 = createValidBlob((byte) 0x33);
+
+        KzgCommitment commitment1 = kzg.blobToCommitment(blob1);
+        KzgCommitment commitment2 = kzg.blobToCommitment(blob2);
+        KzgCommitment commitment3 = kzg.blobToCommitment(blob3);
+
+        KzgProof proof1 = kzg.computeProof(blob1, commitment1);
+        KzgProof proof2 = kzg.computeProof(blob2, commitment2);
+        KzgProof proof3 = kzg.computeProof(blob3, commitment3);
+
+        boolean isValid = kzg.verifyBlobKzgProofBatch(
+                List.of(blob1, blob2, blob3),
+                List.of(commitment1, commitment2, commitment3),
+                List.of(proof1, proof2, proof3));
+
+        assertTrue(isValid);
+    }
+
+    @Test
+    void verifyBatchReturnsFalseForInvalidData() {
+        Blob blob1 = createValidBlob((byte) 0x11);
+        Blob blob2 = createValidBlob((byte) 0x22);
+        Blob wrongBlob = createValidBlob((byte) 0x99);
+
+        KzgCommitment commitment1 = kzg.blobToCommitment(blob1);
+        KzgCommitment commitment2 = kzg.blobToCommitment(blob2);
+
+        KzgProof proof1 = kzg.computeProof(blob1, commitment1);
+        KzgProof proof2 = kzg.computeProof(blob2, commitment2);
+
+        // Use wrongBlob instead of blob2 - batch should fail
+        boolean isValid = kzg.verifyBlobKzgProofBatch(
+                List.of(blob1, wrongBlob),
+                List.of(commitment1, commitment2),
+                List.of(proof1, proof2));
+
+        assertFalse(isValid);
+    }
+
+    @Test
+    void verifyBatchReturnsTrueForEmptyLists() {
+        boolean isValid = kzg.verifyBlobKzgProofBatch(
+                List.of(),
+                List.of(),
+                List.of());
+
+        assertTrue(isValid);
+    }
+
+    @Test
+    void verifyBatchThrowsOnSizeMismatch() {
+        Blob blob1 = createValidBlob((byte) 0x11);
+        Blob blob2 = createValidBlob((byte) 0x22);
+
+        KzgCommitment commitment1 = kzg.blobToCommitment(blob1);
+        KzgProof proof1 = kzg.computeProof(blob1, commitment1);
+
+        // 2 blobs but only 1 commitment and 1 proof
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                kzg.verifyBlobKzgProofBatch(
+                        List.of(blob1, blob2),
+                        List.of(commitment1),
+                        List.of(proof1)));
+
+        assertTrue(ex.getMessage().contains("Lists must have same size"));
     }
 }
