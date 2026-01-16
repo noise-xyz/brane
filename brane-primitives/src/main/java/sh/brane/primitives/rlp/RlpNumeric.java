@@ -43,19 +43,7 @@ public final class RlpNumeric {
             return Rlp.encodeString(EMPTY);
         }
 
-        // If value fits in single byte <= 0x7F, we can use the Rlp.encodeString rules directly
-        // by constructing the minimal big-endian representation.
-        // We'll still go through the generic path for uniformity, but without BigInteger.
-        final int size = minimalByteSize(value);
-        final byte[] raw = new byte[size];
-
-        long tmp = value;
-        for (int i = size - 1; i >= 0; i--) {
-            raw[i] = (byte) tmp;
-            tmp >>>= 8;
-        }
-
-        return Rlp.encodeString(raw);
+        return Rlp.encodeString(longToMinimalBytes(value));
     }
 
     /**
@@ -73,16 +61,7 @@ public final class RlpNumeric {
             return new RlpString(EMPTY);
         }
 
-        final int size = minimalByteSize(value);
-        final byte[] raw = new byte[size];
-
-        long tmp = value;
-        for (int i = size - 1; i >= 0; i--) {
-            raw[i] = (byte) tmp;
-            tmp >>>= 8;
-        }
-
-        return new RlpString(raw);
+        return new RlpString(longToMinimalBytes(value));
     }
 
     /**
@@ -155,6 +134,23 @@ public final class RlpNumeric {
         final byte[] raw = new byte[length];
         System.arraycopy(twosComp, offset, raw, 0, length);
         return new RlpString(raw);
+    }
+
+    /**
+     * Convert a positive long to its minimal big-endian byte representation.
+     * Callers must ensure value > 0.
+     */
+    private static byte[] longToMinimalBytes(final long value) {
+        final int size = minimalByteSize(value);
+        final byte[] raw = new byte[size];
+
+        long tmp = value;
+        for (int i = size - 1; i >= 0; i--) {
+            raw[i] = (byte) tmp;
+            tmp >>>= 8;
+        }
+
+        return raw;
     }
 
     /**
