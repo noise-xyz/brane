@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.primitives;
 
+import java.util.Arrays;
+
 /**
  * Utility methods for hex encoding/decoding with optional {@code 0x} prefixes.
  *
@@ -11,9 +13,7 @@ public final class Hex {
     private static final int[] NIBBLE_LOOKUP = new int[128];
 
     static {
-        for (int i = 0; i < NIBBLE_LOOKUP.length; i++) {
-            NIBBLE_LOOKUP[i] = -1;
-        }
+        Arrays.fill(NIBBLE_LOOKUP, -1);
 
         for (int i = 0; i <= 9; i++) {
             NIBBLE_LOOKUP['0' + i] = i;
