@@ -66,7 +66,7 @@ BlobTransactionRequest request = Eip4844Builder.create()
 - **Load once**: Call `loadFromClasspath()` once at startup and reuse the instance
 - **Thread-safe**: All KZG operations can be called concurrently from multiple threads
 - **No cleanup needed**: Native library stays in memory for JVM lifetime
-- **Reloading**: Multiple loads will reload the global setup, affecting all existing instances
+- **Reloading**: Calling `loadFromClasspath()` multiple times reloads the global setup. Only load once at application startup
 
 ## Dependencies
 
