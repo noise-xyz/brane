@@ -225,4 +225,4 @@ Read(file_path="brane-rpc/.../Brane.java", offset=229, limit=50)
 ## For Full Details
 
 - `JAVA21.md` - Java 21 patterns reference (sealed types, pattern matching, records, virtual threads)
-- `AGENT.md` - Comprehensive development standards, testing protocol, and AI agent instructions
+- `TESTING.md` - Testing standards, acceptance criteria, and developer workflow
