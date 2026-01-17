@@ -32,7 +32,7 @@ import sh.brane.rpc.WebSocketProvider;
 @OutputTimeUnit(TimeUnit.SECONDS)
 @Warmup(iterations = 2, time = 5)
 @Measurement(iterations = 3, time = 10)
-@Fork(value = 1, jvmArgs = {"-Xms512m", "-Xmx512m", "-XX:+UseG1GC"})
+@Fork(value = 1, jvmArgs = {"-Xms1g", "-Xmx1g", "-XX:+UseG1GC"})
 public class SustainedLoadBenchmark {
 
     private static final String WS_URL = "ws://127.0.0.1:8545";
@@ -109,22 +109,28 @@ public class SustainedLoadBenchmark {
     /**
      * Measures throughput with concurrent async requests.
      *
-     * <p>This benchmark fires all requests asynchronously then waits for
-     * completion, measuring the system's ability to handle concurrent
-     * in-flight requests under different buffer configurations.
+     * <p>This benchmark fires requests in batches of 1000, then waits for
+     * completion before starting the next batch. This measures the system's
+     * ability to handle concurrent in-flight requests under different buffer
+     * configurations while staying within memory constraints.
      */
     @Benchmark
     public void sustainedLoad_asyncBurst(Blackhole bh) throws Exception {
-        var futures = new java.util.concurrent.CompletableFuture<?>[REQUESTS_PER_BATCH];
+        // Use smaller batch to avoid OOM with many concurrent futures
+        int asyncBatchSize = 1000;
 
-        // Fire all requests
-        for (int i = 0; i < REQUESTS_PER_BATCH; i++) {
-            futures[i] = provider.sendAsync("eth_chainId", List.of());
-        }
+        for (int batch = 0; batch < REQUESTS_PER_BATCH / asyncBatchSize; batch++) {
+            var futures = new java.util.concurrent.CompletableFuture<?>[asyncBatchSize];
 
-        // Wait for all to complete
-        for (var future : futures) {
-            bh.consume(future.join());
+            // Fire batch of requests
+            for (int i = 0; i < asyncBatchSize; i++) {
+                futures[i] = provider.sendAsync("eth_chainId", List.of());
+            }
+
+            // Wait for batch to complete before next
+            for (var future : futures) {
+                bh.consume(future.join());
+            }
         }
     }
 }
