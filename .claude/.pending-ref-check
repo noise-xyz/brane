@@ -9,3 +9,7 @@
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-primitives/src/main/java/sh/brane/primitives/Hex.java|encodeNoPrefix|method
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-primitives/src/main/java/sh/brane/primitives/Hex.java|encodeTo|method
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/abi/FastAbiEncoder.java|signature|method
+/Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-primitives/src/main/java/sh/brane/primitives/Hex.java|encode|method
+/Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/abi/FastAbiEncoder.java|arguments|method
+/Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/types/Address.java|toBytes|method
+/Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/types/Hash.java|toBytes|method
