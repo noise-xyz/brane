@@ -35,8 +35,12 @@ import org.jspecify.annotations.Nullable;
  * <p>
  * <strong>Wait Strategy Guidelines:</strong>
  * <ul>
+ * <li>{@link WaitStrategyType#BUSY_SPIN} - Lowest latency, 100% CPU on one core.
+ * Requires CPU core pinning to be effective.</li>
  * <li>{@link WaitStrategyType#YIELDING} - Ultra-low latency, higher CPU usage.
  * Best for HFT/MEV.</li>
+ * <li>{@link WaitStrategyType#LITE_BLOCKING} - Balanced latency/CPU.
+ * Spins briefly before blocking.</li>
  * <li>{@link WaitStrategyType#BLOCKING} - Lower CPU usage, slightly higher
  * latency. Best for enterprise/batch.</li>
  * </ul>
@@ -99,10 +103,33 @@ public record WebSocketConfig(
      */
     public enum WaitStrategyType {
         /**
+         * Lowest possible latency, consumes 100% of one CPU core.
+         * Uses a tight busy-spin loop with no yielding or parking.
+         *
+         * <p><b>Warning:</b> This strategy requires dedicated CPU core pinning
+         * (e.g., via {@code taskset} on Linux or isolcpus kernel parameter) to be
+         * effective. Without core pinning, OS scheduler interference will actually
+         * increase latency compared to {@link #YIELDING}.
+         *
+         * <p>Only use when sub-microsecond latency is required and you have
+         * isolated CPU cores available.
+         */
+        BUSY_SPIN,
+
+        /**
          * Low latency, high CPU usage. Uses busy-spin/yield.
          * Best for latency-critical applications like HFT or MEV.
          */
         YIELDING,
+
+        /**
+         * Balanced latency and CPU usage. Uses a spin-then-park approach.
+         * Spins briefly before falling back to lock-based blocking.
+         *
+         * <p>Good middle ground when latency matters but 100% CPU usage
+         * from {@link #YIELDING} is unacceptable.
+         */
+        LITE_BLOCKING,
 
         /**
          * Lower CPU usage, slightly higher latency. Uses locks.

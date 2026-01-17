@@ -151,4 +151,70 @@ class WebSocketConfigTest {
                 "ws://localhost:8545", 0, 0, null, null, null, null, 0, null);
         assertEquals(WebSocketConfig.TransportType.AUTO, config.transportType());
     }
+
+    // ==================== WaitStrategyType tests ====================
+
+    @Test
+    void testDefaultWaitStrategyIsYielding() {
+        WebSocketConfig config = WebSocketConfig.withDefaults("ws://localhost:8545");
+        assertEquals(WebSocketConfig.WaitStrategyType.YIELDING, config.waitStrategy());
+    }
+
+    @Test
+    void testBuilderSetsWaitStrategyBusySpin() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .waitStrategy(WebSocketConfig.WaitStrategyType.BUSY_SPIN)
+                .build();
+        assertEquals(WebSocketConfig.WaitStrategyType.BUSY_SPIN, config.waitStrategy());
+    }
+
+    @Test
+    void testBuilderSetsWaitStrategyYielding() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .waitStrategy(WebSocketConfig.WaitStrategyType.YIELDING)
+                .build();
+        assertEquals(WebSocketConfig.WaitStrategyType.YIELDING, config.waitStrategy());
+    }
+
+    @Test
+    void testBuilderSetsWaitStrategyLiteBlocking() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .waitStrategy(WebSocketConfig.WaitStrategyType.LITE_BLOCKING)
+                .build();
+        assertEquals(WebSocketConfig.WaitStrategyType.LITE_BLOCKING, config.waitStrategy());
+    }
+
+    @Test
+    void testBuilderSetsWaitStrategyBlocking() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .waitStrategy(WebSocketConfig.WaitStrategyType.BLOCKING)
+                .build();
+        assertEquals(WebSocketConfig.WaitStrategyType.BLOCKING, config.waitStrategy());
+    }
+
+    @Test
+    void testWaitStrategyTypeEnumValues() {
+        WebSocketConfig.WaitStrategyType[] types = WebSocketConfig.WaitStrategyType.values();
+        assertEquals(4, types.length);
+        assertNotNull(WebSocketConfig.WaitStrategyType.BUSY_SPIN);
+        assertNotNull(WebSocketConfig.WaitStrategyType.YIELDING);
+        assertNotNull(WebSocketConfig.WaitStrategyType.LITE_BLOCKING);
+        assertNotNull(WebSocketConfig.WaitStrategyType.BLOCKING);
+    }
+
+    @Test
+    void testWaitStrategyTypeValueOf() {
+        assertEquals(WebSocketConfig.WaitStrategyType.BUSY_SPIN, WebSocketConfig.WaitStrategyType.valueOf("BUSY_SPIN"));
+        assertEquals(WebSocketConfig.WaitStrategyType.YIELDING, WebSocketConfig.WaitStrategyType.valueOf("YIELDING"));
+        assertEquals(WebSocketConfig.WaitStrategyType.LITE_BLOCKING, WebSocketConfig.WaitStrategyType.valueOf("LITE_BLOCKING"));
+        assertEquals(WebSocketConfig.WaitStrategyType.BLOCKING, WebSocketConfig.WaitStrategyType.valueOf("BLOCKING"));
+    }
+
+    @Test
+    void testNullWaitStrategyDefaultsToYielding() {
+        // When waitStrategy is null, the compact constructor defaults it to YIELDING
+        WebSocketConfig config = new WebSocketConfig(
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null);
+        assertEquals(WebSocketConfig.WaitStrategyType.YIELDING, config.waitStrategy());
+    }
 }

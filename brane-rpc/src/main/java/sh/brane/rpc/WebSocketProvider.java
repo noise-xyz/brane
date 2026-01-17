@@ -23,6 +23,8 @@ import java.util.function.Consumer;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.BusySpinWaitStrategy;
+import com.lmax.disruptor.LiteBlockingWaitStrategy;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.YieldingWaitStrategy;
@@ -471,8 +473,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
         // Configurable wait strategy
         WaitStrategy waitStrategy = switch (config.waitStrategy()) {
-            case BLOCKING -> new BlockingWaitStrategy();
+            case BUSY_SPIN -> new BusySpinWaitStrategy();
             case YIELDING -> new YieldingWaitStrategy();
+            case LITE_BLOCKING -> new LiteBlockingWaitStrategy();
+            case BLOCKING -> new BlockingWaitStrategy();
         };
 
         ThreadFactory threadFactory = r -> {
