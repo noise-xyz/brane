@@ -50,4 +50,9 @@ class WeiTest {
     void oneWeiConstantHasCorrectValue() {
         assertEquals(BigInteger.ONE, Wei.ONE_WEI.value());
     }
+
+    @Test
+    void oneGweiConstantHasCorrectValue() {
+        assertEquals(BigInteger.valueOf(1_000_000_000L), Wei.ONE_GWEI.value());
+    }
 }
