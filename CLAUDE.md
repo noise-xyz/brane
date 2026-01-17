@@ -226,3 +226,11 @@ Read(file_path="brane-rpc/.../Brane.java", offset=229, limit=50)
 
 - `JAVA21.md` - Java 21 patterns reference (sealed types, pattern matching, records, virtual threads)
 - `TESTING.md` - Testing standards, acceptance criteria, and developer workflow
+
+## Module Documentation
+
+@include brane-primitives/CLAUDE.md
+@include brane-core/CLAUDE.md
+@include brane-kzg/CLAUDE.md
+@include brane-rpc/CLAUDE.md
+@include brane-contract/CLAUDE.md
