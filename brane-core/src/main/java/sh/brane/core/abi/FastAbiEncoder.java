@@ -202,6 +202,18 @@ public final class FastAbiEncoder {
     }
 
     /**
+     * Encodes a non-negative int value as a uint256 directly into the buffer.
+     * Convenience overload that delegates to {@link #encodeUint256(long, ByteBuffer)}.
+     *
+     * @param value  the non-negative value to encode
+     * @param buffer the destination buffer
+     * @throws IllegalArgumentException if value is negative
+     */
+    public static void encodeUint256(int value, ByteBuffer buffer) {
+        encodeUint256((long) value, buffer);
+    }
+
+    /**
      * Encodes an int256 value directly into the buffer.
      *
      * <p>Valid range for int256: {@code -2^255} to {@code 2^255 - 1} (inclusive).

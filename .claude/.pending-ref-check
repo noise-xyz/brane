@@ -1,3 +1,5 @@
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/types/Address.java|Address|class
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/types/Wei.java|constant|method
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/types/Wei.java|Wei|class
+/Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/abi/FastAbiEncoder.java|encodeUInt256|method
+/Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/abi/FastAbiEncoder.java|encodeUint256|method
