@@ -1,0 +1,21 @@
+# Phase 1: Measure Baseline - Allocation Benchmarks
+# Format: TASK-ID:Description
+# Run with: .claude/scripts/run_todo_fixes.sh phase1-tasks.task
+
+# Task 1.1: Create AllocationBenchmark.java
+P1-01:Create brane-benchmark/src/jmh/java/sh/brane/benchmark/AllocationBenchmark.java with @State(Scope.Thread) setup class containing test data (hex string, address string, bytes array)
+P1-02:Add addressFromString benchmark method to AllocationBenchmark.java that benchmarks Address.from() with @Benchmark and @BenchmarkMode(Mode.AverageTime)
+P1-03:Add addressToBytes benchmark method to AllocationBenchmark.java that benchmarks Address.toBytes() on a pre-created Address instance
+P1-04:Add hexEncode benchmark method to AllocationBenchmark.java that benchmarks Hex.encode() on a 32-byte array
+P1-05:Add hexDecode benchmark method to AllocationBenchmark.java that benchmarks Hex.decode() on a 64-char hex string
+P1-06:Add weiFromEther benchmark method to AllocationBenchmark.java that benchmarks Wei.fromEther() with BigDecimal.ONE
+P1-07:Add keccak256Hash benchmark method to AllocationBenchmark.java that benchmarks Keccak256.hash() on a 32-byte array
+
+# Task 1.2: Create AbiAllocationBenchmark.java
+P1-08:Create brane-benchmark/src/jmh/java/sh/brane/benchmark/AbiAllocationBenchmark.java with @State(Scope.Thread) setup containing Abi instance loaded from ERC20 ABI JSON
+P1-09:Add encodeUint256 benchmark method to AbiAllocationBenchmark.java that benchmarks FastAbiEncoder.encodeUint256() with BigInteger.valueOf(1000000)
+P1-10:Add encodeAddress benchmark method to AbiAllocationBenchmark.java that benchmarks ABI encoding of an Address type using abi.encodeFunction("transfer", address, amount)
+P1-11:Add decodeUint256 benchmark method to AbiAllocationBenchmark.java that benchmarks ABI decoding of a pre-encoded uint256 value
+
+# Task 1.3: Verify and compile
+P1-12:Run ./gradlew :brane-benchmark:compileJmhJava to verify AllocationBenchmark.java and AbiAllocationBenchmark.java compile without errors. Fix any compilation errors.
