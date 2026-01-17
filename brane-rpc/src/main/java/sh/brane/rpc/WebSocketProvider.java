@@ -160,6 +160,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     // Instance configuration (from WebSocketConfig or defaults)
     private final int maxPendingRequests;
     private final Duration defaultRequestTimeout;
+    private final Duration connectTimeout;
     private final int writeBufferLowWaterMark;
     private final int writeBufferHighWaterMark;
     // Note: slotMask was removed - it was a remnant of slot-based indexing that is no longer used
@@ -456,6 +457,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         this.uri = URI.create(config.url());
         this.maxPendingRequests = config.maxPendingRequests();
         this.defaultRequestTimeout = config.defaultRequestTimeout();
+        this.connectTimeout = config.connectTimeout();
         this.writeBufferLowWaterMark = config.writeBufferLowWaterMark();
         this.writeBufferHighWaterMark = config.writeBufferHighWaterMark();
 
@@ -583,6 +585,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                         .channel(channelClass)
                         .option(ChannelOption.TCP_NODELAY, true)
                         .option(ChannelOption.SO_KEEPALIVE, true)
+                        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) connectTimeout.toMillis())
                         .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                         .option(ChannelOption.WRITE_BUFFER_WATER_MARK,
                                 new WriteBufferWaterMark(writeBufferLowWaterMark, writeBufferHighWaterMark))
