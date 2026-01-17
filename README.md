@@ -33,6 +33,41 @@ dependencies {
 | `brane-primitives` | Zero-dependency Hex and RLP utilities |
 | `brane-kzg` | KZG commitments for EIP-4844 blob transactions |
 
+## Performance
+
+Brane is designed to be allocation-conscious, minimizing GC pressure for high-throughput applications.
+
+### Allocation Budgets
+
+| Operation | Allocations | Notes |
+|-----------|-------------|-------|
+| `Hex.decode()` | 48 B/op | Result array only |
+| `Hex.decodeTo()` | 0 B/op | Writes to pre-allocated buffer |
+| `Hex.encode()` | 264 B/op | char[] + String |
+| `Hex.encodeTo()` | 0 B/op | Writes to pre-allocated buffer |
+| `FastAbiEncoder` (pre-allocated) | ~0 B/op | Direct buffer encoding |
+
+### Zero-Allocation APIs
+
+For hot paths, use the `*To()` variants with pre-allocated buffers:
+
+```java
+byte[] buffer = new byte[32];
+Hex.decodeTo(hexString, 0, hexString.length(), buffer, 0);
+
+char[] charBuf = new char[66];
+Hex.encodeTo(bytes, charBuf, 0, true);
+```
+
+### Running Benchmarks
+
+```bash
+# Run allocation benchmarks
+./gradlew :brane-benchmark:jmh -Pjmh.includes="AllocationBenchmark" -Pjmh.prof="gc"
+```
+
+See [ALLOCATION_OPTIMIZATION.md](ALLOCATION_OPTIMIZATION.md) for detailed performance analysis.
+
 ## Development
 
 Prerequisites: Java 21, [Foundry](https://getfoundry.sh/) (for Anvil).

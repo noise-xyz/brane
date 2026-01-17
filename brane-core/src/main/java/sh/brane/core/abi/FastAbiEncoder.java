@@ -77,6 +77,32 @@ public final class FastAbiEncoder {
     }
 
     /**
+     * Encodes a function call directly to the provided buffer for allocation-conscious encoding.
+     * <p>
+     * This method writes the 4-byte selector followed by the ABI-encoded arguments directly
+     * to the buffer, advancing the buffer's position by the total encoded length.
+     *
+     * <p><b>Allocation:</b> 0 allocations (excluding internal stream operations).
+     * Writes directly to the provided buffer.
+     *
+     * @param selector the 4-byte function selector
+     * @param args     array of ABI typed arguments (elements must be {@link AbiType} instances)
+     * @param buffer   the destination ByteBuffer; position advances by encoded length
+     * @throws IllegalArgumentException if selector is not exactly 4 bytes
+     * @throws ClassCastException       if args contains non-AbiType elements
+     */
+    public static void encodeTo(byte[] selector, Object[] args, ByteBuffer buffer) {
+        if (selector.length != 4) {
+            throw new IllegalArgumentException("Selector must be exactly 4 bytes, got " + selector.length);
+        }
+        buffer.put(selector);
+        List<AbiType> abiArgs = Arrays.stream(args)
+                .map(arg -> (AbiType) arg)
+                .toList();
+        encodeTuple(abiArgs, buffer);
+    }
+
+    /**
      * Encodes a tuple of ABI types directly into the provided ByteBuffer.
      * <p>
      * This method implements the standard ABI encoding for tuples:
@@ -181,6 +207,39 @@ public final class FastAbiEncoder {
         ByteBuffer buffer = ByteBuffer.wrap(result);
         encodeUInt256(value, buffer);
         return result;
+    }
+
+    /**
+     * Encodes a non-negative long value as a uint256 directly into the buffer.
+     *
+     * <p><b>Allocation:</b> 0 allocations. Writes directly to the provided buffer.
+     *
+     * @param value  the non-negative value to encode
+     * @param buffer the destination buffer
+     * @throws IllegalArgumentException if value is negative
+     */
+    public static void encodeUint256(long value, ByteBuffer buffer) {
+        if (value < 0) {
+            throw new IllegalArgumentException("Unsigned value cannot be negative");
+        }
+        buffer.putLong(0L);
+        buffer.putLong(0L);
+        buffer.putLong(0L);
+        buffer.putLong(value);
+    }
+
+    /**
+     * Encodes a non-negative int value as a uint256 directly into the buffer.
+     * Convenience overload that delegates to {@link #encodeUint256(long, ByteBuffer)}.
+     *
+     * <p><b>Allocation:</b> 0 allocations.
+     *
+     * @param value  the non-negative value to encode
+     * @param buffer the destination buffer
+     * @throws IllegalArgumentException if value is negative
+     */
+    public static void encodeUint256(int value, ByteBuffer buffer) {
+        encodeUint256((long) value, buffer);
     }
 
     /**

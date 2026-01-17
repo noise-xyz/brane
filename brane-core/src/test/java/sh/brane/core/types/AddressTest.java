@@ -30,4 +30,9 @@ class AddressTest {
         Address copy = Address.fromBytes(original.toBytes());
         assertEquals(original, copy);
     }
+
+    @Test
+    void zeroConstantHasCorrectValue() {
+        assertEquals("0x0000000000000000000000000000000000000000", Address.ZERO.value());
+    }
 }

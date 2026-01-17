@@ -45,4 +45,19 @@ class WeiTest {
                 () -> Wei.gwei(-1));
         assertTrue(ex.getMessage().contains("gwei cannot be negative"));
     }
+
+    @Test
+    void oneWeiConstantHasCorrectValue() {
+        assertEquals(BigInteger.ONE, Wei.ONE_WEI.value());
+    }
+
+    @Test
+    void oneGweiConstantHasCorrectValue() {
+        assertEquals(BigInteger.valueOf(1_000_000_000L), Wei.ONE_GWEI.value());
+    }
+
+    @Test
+    void oneEtherConstantHasCorrectValue() {
+        assertEquals(new BigInteger("1000000000000000000"), Wei.ONE_ETHER.value());
+    }
 }
