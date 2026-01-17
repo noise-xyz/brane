@@ -130,6 +130,104 @@ public final class Hex {
     }
 
     /**
+     * Decode hex characters directly into a pre-allocated byte array.
+     *
+     * <p>This method decodes hex characters from the specified region of a {@link CharSequence}
+     * directly into the destination byte array, avoiding intermediate allocations.
+     *
+     * @param hex        the hex string to decode (with or without {@code 0x} prefix)
+     * @param hexOffset  the starting offset in the hex string
+     * @param hexLength  the number of characters to decode from the hex string
+     * @param dest       the destination byte array
+     * @param destOffset the offset in the destination array to start writing
+     * @return the number of bytes written to the destination array
+     * @throws IllegalArgumentException if {@code hex} or {@code dest} is {@code null},
+     *                                  if {@code hexLength} is odd,
+     *                                  if the destination buffer is too small,
+     *                                  if offsets or lengths are negative,
+     *                                  if indices are out of bounds,
+     *                                  or if the input contains invalid hex characters
+     */
+    public static int decodeTo(
+            final CharSequence hex,
+            final int hexOffset,
+            final int hexLength,
+            final byte[] dest,
+            final int destOffset) {
+        if (hex == null) {
+            throw new IllegalArgumentException("hex cannot be null");
+        }
+        if (dest == null) {
+            throw new IllegalArgumentException("dest cannot be null");
+        }
+        if (hexOffset < 0) {
+            throw new IllegalArgumentException("hexOffset cannot be negative: " + hexOffset);
+        }
+        if (hexLength < 0) {
+            throw new IllegalArgumentException("hexLength cannot be negative: " + hexLength);
+        }
+        if (destOffset < 0) {
+            throw new IllegalArgumentException("destOffset cannot be negative: " + destOffset);
+        }
+
+        // Check bounds on hex input
+        if (hexOffset + hexLength > hex.length()) {
+            throw new IllegalArgumentException(
+                    "hex region out of bounds: offset=" + hexOffset + ", length=" + hexLength + ", hex.length=" + hex.length());
+        }
+
+        // Skip 0x prefix if present at the start of the region
+        int start = hexOffset;
+        int len = hexLength;
+        if (len >= 2 && hex.charAt(start) == '0' && (hex.charAt(start + 1) == 'x' || hex.charAt(start + 1) == 'X')) {
+            start += 2;
+            len -= 2;
+        }
+
+        // Empty input
+        if (len == 0) {
+            return 0;
+        }
+
+        // Must have even length
+        if ((len & 1) == 1) {
+            throw new IllegalArgumentException("hex string must have even length: " + len);
+        }
+
+        final int bytesToWrite = len / 2;
+
+        // Check destination has enough space
+        if (destOffset + bytesToWrite > dest.length) {
+            throw new IllegalArgumentException(
+                    "destination buffer too small: need " + bytesToWrite + " bytes but only " + (dest.length - destOffset) + " available");
+        }
+
+        // Decode hex pairs into bytes
+        for (int i = 0; i < bytesToWrite; i++) {
+            final char highChar = hex.charAt(start + i * 2);
+            final char lowChar = hex.charAt(start + i * 2 + 1);
+
+            final int high = toNibbleFromChar(highChar);
+            final int low = toNibbleFromChar(lowChar);
+
+            if (high == -1 || low == -1) {
+                throw new IllegalArgumentException("invalid hex character in input");
+            }
+
+            dest[destOffset + i] = (byte) ((high << 4) | low);
+        }
+
+        return bytesToWrite;
+    }
+
+    private static int toNibbleFromChar(final char c) {
+        if (c >= NIBBLE_LOOKUP.length) {
+            return -1;
+        }
+        return NIBBLE_LOOKUP[c];
+    }
+
+    /**
      * Write hex characters to a pre-allocated buffer.
      *
      * @param bytes      the bytes to encode
