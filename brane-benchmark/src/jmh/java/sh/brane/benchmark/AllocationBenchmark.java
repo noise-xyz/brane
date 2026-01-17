@@ -62,7 +62,7 @@ public class AllocationBenchmark {
      * Benchmarks decoding a 64-character hex string (with 0x prefix) to bytes.
      * Input: 66-character string, Output: 32-byte array.
      *
-     * <p><b>Baseline:</b> 128 B/op (JDK 21.0.9, G1GC)
+     * <p><b>Baseline:</b> 48 B/op (JDK 21.0.9, G1GC) - optimized with index-based parsing (no substring)
      *
      * @return the decoded byte array (for blackhole consumption)
      */
