@@ -112,7 +112,8 @@ public class AbiAllocationBenchmark {
      * ABI with a complex nested struct containing arrays and nested tuples.
      * Structure:
      * - addresses: address[] (dynamic array of addresses)
-     * - amounts: uint256[3] (fixed-size array of 3 uint256)
+     * - amounts: uint256[] (dynamic array of uint256 - using dynamic since fixed-size
+     *   arrays like uint256[3] are not yet supported by InternalAbi parser)
      * - nestedData: tuple (nested struct with address, uint256, bytes)
      * - metadata: bytes (dynamic bytes)
      */
@@ -123,7 +124,7 @@ public class AbiAllocationBenchmark {
                   {
                     "components": [
                       { "internalType": "address[]", "name": "addresses", "type": "address[]" },
-                      { "internalType": "uint256[3]", "name": "amounts", "type": "uint256[3]" },
+                      { "internalType": "uint256[]", "name": "amounts", "type": "uint256[]" },
                       {
                         "components": [
                           { "internalType": "address", "name": "addr", "type": "address" },
@@ -365,7 +366,8 @@ public class AbiAllocationBenchmark {
     @Benchmark
     @BenchmarkMode(Mode.AverageTime)
     public Object encodeTuple() {
-        return tupleAbi.encodeFunction("processStruct", tupleInput);
+        // Cast to Object to pass the array as a single tuple argument, not varargs
+        return tupleAbi.encodeFunction("processStruct", (Object) tupleInput);
     }
 
     /**
@@ -384,18 +386,19 @@ public class AbiAllocationBenchmark {
      * Benchmarks ABI encoding of a complex nested struct containing arrays and nested tuples.
      * The struct contains:
      * - address[] (dynamic array of 3 addresses)
-     * - uint256[3] (fixed-size array of 3 uint256)
+     * - uint256[] (dynamic array of 3 uint256)
      * - tuple (nested struct with address, uint256, bytes)
      * - bytes (dynamic bytes metadata)
      *
      * <p>This is the BASELINE before optimization - measures allocation patterns
-     * for complex nested types combining dynamic arrays, fixed arrays, and nested tuples.
+     * for complex nested types combining dynamic arrays and nested tuples.
      *
      * @return the encoded function calldata as HexData (for blackhole consumption)
      */
     @Benchmark
     @BenchmarkMode(Mode.AverageTime)
     public Object encodeComplexNested() {
-        return complexNestedAbi.encodeFunction("processComplex", complexNestedInput);
+        // Cast to Object to pass the array as a single tuple argument, not varargs
+        return complexNestedAbi.encodeFunction("processComplex", (Object) complexNestedInput);
     }
 }
