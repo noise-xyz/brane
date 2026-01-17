@@ -32,6 +32,9 @@ public class AllocationBenchmark {
     /** 32-byte test array for encoding/decoding benchmarks. */
     public byte[] testBytes;
 
+    /** Pre-allocated char array for allocation-free hex encoding (66 chars = "0x" + 64 hex). */
+    public char[] destChars;
+
     @Setup(Level.Trial)
     public void setup() {
         // 64-char hex with 0x prefix = 66 chars total, representing 32 bytes
@@ -42,6 +45,9 @@ public class AllocationBenchmark {
         for (int i = 0; i < 32; i++) {
             testBytes[i] = (byte) i;
         }
+
+        // Pre-allocated char buffer for allocation-free encoding
+        destChars = new char[66];
     }
 
     /**
@@ -56,6 +62,20 @@ public class AllocationBenchmark {
     @BenchmarkMode(Mode.AverageTime)
     public String hexEncode() {
         return Hex.encode(testBytes);
+    }
+
+    /**
+     * Benchmarks allocation-free encoding using pre-allocated char[] buffer.
+     * Input: 32-byte array, Output: writes to pre-allocated 66-char buffer.
+     *
+     * <p><b>Expected:</b> 0 B/op - no allocations, writes directly to pre-allocated buffer.
+     *
+     * @return the number of characters written (for blackhole consumption)
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public int hexEncodeTo() {
+        return Hex.encodeTo(testBytes, destChars, 0, true);
     }
 
     /**
