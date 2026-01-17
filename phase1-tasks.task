@@ -2,20 +2,60 @@
 # Format: TASK-ID:Description
 # Run with: .claude/scripts/run_todo_fixes.sh phase1-tasks.task
 
+# ============================================
 # Task 1.1: Create AllocationBenchmark.java
-P1-01:Create brane-benchmark/src/jmh/java/sh/brane/benchmark/AllocationBenchmark.java with @State(Scope.Thread) setup class containing test data (hex string, address string, bytes array)
-P1-02:Add addressFromString benchmark method to AllocationBenchmark.java that benchmarks Address.from() with @Benchmark and @BenchmarkMode(Mode.AverageTime)
-P1-03:Add addressToBytes benchmark method to AllocationBenchmark.java that benchmarks Address.toBytes() on a pre-created Address instance
-P1-04:Add hexEncode benchmark method to AllocationBenchmark.java that benchmarks Hex.encode() on a 32-byte array
-P1-05:Add hexDecode benchmark method to AllocationBenchmark.java that benchmarks Hex.decode() on a 64-char hex string
-P1-06:Add weiFromEther benchmark method to AllocationBenchmark.java that benchmarks Wei.fromEther() with BigDecimal.ONE
-P1-07:Add keccak256Hash benchmark method to AllocationBenchmark.java that benchmarks Keccak256.hash() on a 32-byte array
+# ============================================
 
+P1-01:Create brane-benchmark/src/jmh/java/sh/brane/benchmark/AllocationBenchmark.java with @State(Scope.Thread) setup class containing test data fields: addressString ("0x742d35Cc6634C0532925a3b844Bc454e4438f44e"), hexString (64-char hex), testBytes (32-byte array), and a pre-created Address instance
+
+P1-02:Add addressFromString benchmark method to AllocationBenchmark.java that benchmarks Address.from(addressString) with @Benchmark and @BenchmarkMode(Mode.AverageTime)
+
+P1-03:Add addressToBytes benchmark method to AllocationBenchmark.java that benchmarks address.toBytes() on the pre-created Address instance with @Benchmark annotation
+
+P1-04:Add hexEncode benchmark method to AllocationBenchmark.java that benchmarks Hex.encode(testBytes) on the 32-byte array with @Benchmark annotation
+
+P1-05:Add hexDecode benchmark method to AllocationBenchmark.java that benchmarks Hex.decode(hexString) on the 64-char hex string with @Benchmark annotation
+
+P1-06:Add weiFromEther benchmark method to AllocationBenchmark.java that benchmarks Wei.fromEther(BigDecimal.ONE) with @Benchmark annotation
+
+P1-07:Add keccak256Hash benchmark method to AllocationBenchmark.java that benchmarks Keccak256.hash(testBytes) on the 32-byte array with @Benchmark annotation
+
+# ============================================
 # Task 1.2: Create AbiAllocationBenchmark.java
-P1-08:Create brane-benchmark/src/jmh/java/sh/brane/benchmark/AbiAllocationBenchmark.java with @State(Scope.Thread) setup containing Abi instance loaded from ERC20 ABI JSON
-P1-09:Add encodeUint256 benchmark method to AbiAllocationBenchmark.java that benchmarks FastAbiEncoder.encodeUint256() with BigInteger.valueOf(1000000)
-P1-10:Add encodeAddress benchmark method to AbiAllocationBenchmark.java that benchmarks ABI encoding of an Address type using abi.encodeFunction("transfer", address, amount)
-P1-11:Add decodeUint256 benchmark method to AbiAllocationBenchmark.java that benchmarks ABI decoding of a pre-encoded uint256 value
+# ============================================
 
-# Task 1.3: Verify and compile
-P1-12:Run ./gradlew :brane-benchmark:compileJmhJava to verify AllocationBenchmark.java and AbiAllocationBenchmark.java compile without errors. Fix any compilation errors.
+P1-08:Create brane-benchmark/src/jmh/java/sh/brane/benchmark/AbiAllocationBenchmark.java with @State(Scope.Thread) setup containing: Abi instance from ERC20 ABI, test Address, test BigInteger amount, pre-encoded bytes for decoding tests
+
+P1-09:Add encodeUint256Fast benchmark method to AbiAllocationBenchmark.java that benchmarks FastAbiEncoder.encodeUint256(BigInteger.valueOf(1000000), ByteBuffer) with @Benchmark annotation
+
+P1-10:Add encodeAddressAbi benchmark method to AbiAllocationBenchmark.java that benchmarks abi.encodeFunction("transfer", testAddress, testAmount) with @Benchmark annotation
+
+P1-11:Add encodeBytes benchmark method to AbiAllocationBenchmark.java that benchmarks ABI encoding of a dynamic bytes value using abi.encodeFunction or FastAbiEncoder
+
+P1-12:Add encodeTuple benchmark method to AbiAllocationBenchmark.java that benchmarks ABI encoding of a tuple/struct with multiple fields (address, uint256, bytes)
+
+P1-13:Add decodeUint256 benchmark method to AbiAllocationBenchmark.java that benchmarks ABI decoding of a pre-encoded uint256 value using AbiDecoder or abi.decodeOutput
+
+P1-14:Add encodeUint256Internal benchmark method to AbiAllocationBenchmark.java that benchmarks InternalAbi path for uint256 encoding to compare with FastAbiEncoder
+
+P1-15:Add encodeComplexNested benchmark method to AbiAllocationBenchmark.java that benchmarks encoding a complex nested struct case (tuple containing arrays and nested tuples)
+
+# ============================================
+# Task 1.3: Compile and Verify
+# ============================================
+
+P1-16:Run ./gradlew :brane-benchmark:compileJmhJava to verify AllocationBenchmark.java and AbiAllocationBenchmark.java compile without errors. Fix any compilation errors found.
+
+P1-17:Run ./gradlew :brane-benchmark:jmh -Pbenchmark=AllocationBenchmark -PjmhArgs="-prof gc -f 1 -wi 1 -i 3" to execute allocation benchmarks and capture gc.alloc.rate.norm output
+
+P1-18:Run ./gradlew :brane-benchmark:jmh -Pbenchmark=AbiAllocationBenchmark -PjmhArgs="-prof gc -f 1 -wi 1 -i 3" to execute ABI allocation benchmarks and capture gc.alloc.rate.norm output
+
+# ============================================
+# Task 1.4: Document Baseline Results
+# ============================================
+
+P1-19:Update ALLOCATION_OPTIMIZATION.md Hot Spots table with actual measured allocations from benchmark runs. Add a new "Baseline Measurements" section with JDK version, GC type (G1GC), and benchmark results table showing bytes allocated per operation for each benchmark
+
+P1-20:Add baseline allocation comments to AllocationBenchmark.java documenting the measured gc.alloc.rate.norm for each benchmark method (e.g., "// Baseline: 152 bytes/op")
+
+P1-21:Add baseline allocation comments to AbiAllocationBenchmark.java documenting the measured gc.alloc.rate.norm for each benchmark method
