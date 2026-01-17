@@ -2,11 +2,22 @@
 
 High-level contract interaction via dynamic proxy binding. No code generation required.
 
+## Commands
+
+```bash
+# Compile
+./gradlew :brane-contract:compileJava
+
+# Run tests
+./gradlew :brane-contract:test
+
+# Run specific test
+./gradlew :brane-contract:test --tests "sh.brane.contract.MyTest"
+```
+
 ## Key Classes
 
-- **`BraneContract`** - Main entry point: `bind()` creates typed contract proxy
-- **`ReadOnlyContract`** - Facade for view/pure functions
-- **`ReadWriteContract`** - Extends ReadOnlyContract with state-changing methods
+- **`BraneContract`** - Main entry point: `bind()` and `bindReadOnly()` create typed contract proxies
 - **`ContractOptions`** - Configuration (gas limit, timeouts, poll intervals)
 - **`@Payable`** - Annotation for payable functions
 
@@ -22,12 +33,20 @@ interface ERC20 {
     Hash approve(Address spender, BigInteger amount);
 }
 
-// Bind to deployed contract
+// Bind to deployed contract (read-write with signer)
 ERC20 token = BraneContract.bind(
-    ERC20.class,
-    abi,
     contractAddress,
-    signerClient
+    abiJson,
+    signerClient,
+    ERC20.class
+);
+
+// Read-only binding (no signer needed)
+ERC20 readOnly = BraneContract.bindReadOnly(
+    contractAddress,
+    abiJson,
+    readerClient,
+    ERC20.class
 );
 
 // Use like a regular Java object
@@ -49,25 +68,17 @@ interface WETH {
 }
 ```
 
-### Low-Level Facade
+### Event Decoding
 ```java
-// When you don't want interface binding
-var contract = new ReadWriteContract(abi, address, signerClient);
-
-// Call view function
-BigInteger balance = contract.call("balanceOf", BigInteger.class, owner);
-
-// Send transaction
-TransactionReceipt receipt = contract.sendAndWait("transfer", to, amount);
-
-// Decode events from receipt
-List<Transfer> events = contract.decodeEvents("Transfer", Transfer.class, receipt);
+// Decode events from transaction receipt using Abi
+Abi abi = Abi.fromJson(abiJson);
+List<Transfer> events = abi.decodeEvents("Transfer", receipt.logs(), Transfer.class);
 ```
 
 ## How It Works
 
 1. `BraneContract.bind()` creates a JDK dynamic proxy
-2. Method calls are intercepted by `ContractInvocationHandler`
+2. Method calls are intercepted by internal invocation handlers
 3. Method signature is validated against ABI
 4. Parameters are ABI-encoded via `brane-core`
 5. View functions → `Brane.call()`
@@ -79,7 +90,7 @@ List<Transfer> events = contract.decodeEvents("Transfer", Transfer.class, receip
 - **Method names must match**: Interface method names must exactly match Solidity function names
 - **Parameter types matter**: Use `BigInteger` for uint/int, `Address` for address, `byte[]` for bytes
 - **No constructor calls**: Use `TxBuilder` to deploy contracts
-- **Events**: Use `ReadOnlyContract.decodeEvents()` or decode logs manually
+- **Events**: Use `Abi.decodeEvents()` to decode events from receipt logs
 
 ## Dependencies
 

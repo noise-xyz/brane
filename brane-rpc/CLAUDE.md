@@ -2,6 +2,19 @@
 
 JSON-RPC client layer with HTTP and WebSocket transports.
 
+## Commands
+
+```bash
+# Compile
+./gradlew :brane-rpc:compileJava
+
+# Run tests
+./gradlew :brane-rpc:test
+
+# Run specific test
+./gradlew :brane-rpc:test --tests "sh.brane.rpc.MyTest"
+```
+
 ## Package Structure
 
 | Package | Purpose |
