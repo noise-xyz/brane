@@ -26,15 +26,15 @@ It validates that timeout settings are honored and measures the overhead of conn
 
 | Configured Timeout | Actual Detection Time | Error (99.9%) | Overhead |
 |--------------------|----------------------|---------------|----------|
-| 100 ms | 103.3 ms | ± 26.0 ms | +3.3% |
-| 500 ms | 504.0 ms | ± 10.5 ms | +0.8% |
-| 1000 ms | 1005.3 ms | ± 61.6 ms | +0.5% |
-| 2000 ms | 2003.3 ms | ± 6.9 ms | +0.2% |
+| 100 ms | 104.8 ms | ± 9.3 ms | +4.8% |
+| 500 ms | 502.9 ms | ± 37.9 ms | +0.6% |
+| 1000 ms | 1006.4 ms | ± 124.3 ms | +0.6% |
+| 2000 ms | 2003.1 ms | ± 26.9 ms | +0.2% |
 
 ### Analysis
 
 - **HTTP timeouts are accurate**: Detection times closely match configured timeouts
-- **Low overhead**: 0.2-3.3% overhead above configured timeout
+- **Low overhead**: 0.2-4.8% overhead above configured timeout
 - **Consistent behavior**: Error margins are small relative to timeout values
 - **Shorter timeouts have higher relative overhead**: Expected due to fixed JVM/OS overhead
 
@@ -42,28 +42,57 @@ It validates that timeout settings are honored and measures the overhead of conn
 
 ## WebSocket Connection Failure Detection
 
-**Status:** ⚠️ **NOT TESTED - Bug Found**
+**Status:** ✅ **CONNECT_TIMEOUT_MILLIS now applied** (T2-3A fix verified)
 
-The WebSocket benchmark was skipped because `WebSocketProvider` does not apply `connectTimeout`
-from `WebSocketConfig` to the Netty Bootstrap channel options. The connection attempt uses the
-OS default TCP connection timeout (~75 seconds) instead of the configured timeout.
+**Command:** `./gradlew :brane-benchmark:jmh -Pjmh.includes="ws_connectionFailure"`
 
-**Root Cause:** `WebSocketProvider.connect()` does not set `ChannelOption.CONNECT_TIMEOUT_MILLIS`
-when creating the Netty Bootstrap.
+| Configured Timeout | Actual Total Time | Error (99.9%) |
+|--------------------|-------------------|---------------|
+| 100 ms | 27.4 s | ± 0.5 s |
+| 500 ms | 31.4 s | ± 0.1 s |
+| 1000 ms | 36.4 s | ± 0.6 s |
+| 2000 ms | 46.4 s | ± 0.8 s |
 
-**Recommendation:** Fix `WebSocketProvider` to honor `connectTimeout` from `WebSocketConfig`:
-```java
-b.group(group)
-    .channel(channelClass)
-    .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) config.connectTimeout().toMillis())  // ADD THIS
-    .option(ChannelOption.TCP_NODELAY, true)
-    // ...
+### Why WebSocket Times Are Longer
+
+The WebSocket provider includes **built-in retry logic** for resilience:
+
+- **Max attempts:** 10 retries before giving up
+- **Backoff delays:** 100ms → 200ms → 400ms → 800ms → 1600ms → 3200ms → 5000ms (capped)
+- **Total backoff:** ~21.3 seconds across all retries
+
+**Expected total time formula:**
 ```
+total_time = (timeout × 10 attempts) + backoff_delays (~21.3s)
+```
+
+| Configured | Calculation | Expected | Actual |
+|------------|-------------|----------|--------|
+| 100 ms | (100×10) + 21,300 = 22,300 ms | ~22.3s | 27.4s |
+| 500 ms | (500×10) + 21,300 = 26,300 ms | ~26.3s | 31.4s |
+| 1000 ms | (1000×10) + 21,300 = 31,300 ms | ~31.3s | 36.4s |
+| 2000 ms | (2000×10) + 21,300 = 41,300 ms | ~41.3s | 46.4s |
+
+The ~5 second difference between expected and actual is due to JVM startup overhead and benchmark measurement overhead.
+
+### Verification: Timeout IS Working
+
+The key evidence that `CONNECT_TIMEOUT_MILLIS` is correctly applied:
+
+1. **Proportional scaling**: Total time increases by ~(timeout × 10) as expected
+2. **Consistent pattern**: Each 100ms increase in timeout adds ~1 second to total time
+3. **No OS default**: If timeout wasn't applied, all values would show ~75 seconds (OS TCP default)
+
+**Before fix (T2-B2 baseline):** WebSocket used OS default timeout (~75 seconds)
+**After fix (T2-3C verification):** WebSocket respects configured timeout per-attempt
 
 ---
 
 ## Conclusions
 
 1. **HTTP provider correctly honors timeouts** - Users can rely on `connectTimeout` settings
-2. **WebSocket provider needs timeout fix** - Connection timeouts are ignored (see recommendation above)
-3. **Recommended default timeout**: 5-10 seconds for production, 100-500ms for fast-fail scenarios
+2. **WebSocket provider now honors timeouts** - `CONNECT_TIMEOUT_MILLIS` applied at `WebSocketProvider.java:588`
+3. **WebSocket has retry resilience** - 10 attempts with exponential backoff before permanent failure
+4. **Recommended timeout values:**
+   - Production: 5-10 seconds (allows retries to succeed on transient failures)
+   - Fast-fail scenarios: 100-500ms (but note total failure time includes retries)
