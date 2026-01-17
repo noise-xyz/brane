@@ -45,6 +45,9 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.websocketx.*;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -165,6 +168,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private final int writeBufferLowWaterMark;
     private final int writeBufferHighWaterMark;
     private final int maxFrameSize;
+    private final Duration readIdleTimeout;
+    private final Duration writeIdleTimeout;
     // Note: slotMask was removed - it was a remnant of slot-based indexing that is no longer used
     // since pending request tracking switched to ConcurrentHashMap.
 
@@ -464,6 +469,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         this.writeBufferHighWaterMark = config.writeBufferHighWaterMark();
         this.maxFrameSize = config.maxFrameSize();
         this.ringBufferSaturationThreshold = config.ringBufferSaturationThreshold();
+        this.readIdleTimeout = config.readIdleTimeout();
+        this.writeIdleTimeout = config.writeIdleTimeout();
 
         // Initialize default subscription executor (owned by this provider)
         this.subscriptionExecutor = Executors.newVirtualThreadPerTaskExecutor();
@@ -603,6 +610,14 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                                 }
                                 p.addLast(new HttpClientCodec());
                                 p.addLast(new HttpObjectAggregator(maxFrameSize));
+                                // Add IdleStateHandler if either timeout is non-zero
+                                if (!readIdleTimeout.isZero() || !writeIdleTimeout.isZero()) {
+                                    p.addLast(new IdleStateHandler(
+                                            readIdleTimeout.toSeconds(),
+                                            writeIdleTimeout.toSeconds(),
+                                            0,
+                                            TimeUnit.SECONDS));
+                                }
                                 p.addLast(connectionHandler);
                             }
                         });
@@ -665,6 +680,19 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 log.warn("Connection lost, triggering reconnect");
                 reconnect();
             }
+        }
+
+        @Override
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+            if (evt instanceof IdleStateEvent idleEvent) {
+                IdleState state = idleEvent.state();
+                if (state == IdleState.READER_IDLE || state == IdleState.WRITER_IDLE) {
+                    // Send WebSocket ping frame to keep connection alive
+                    ctx.writeAndFlush(new PingWebSocketFrame());
+                    log.debug("Sent ping frame due to {} idle", state);
+                }
+            }
+            super.userEventTriggered(ctx, evt);
         }
 
         @Override
