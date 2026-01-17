@@ -289,6 +289,8 @@ public class AbiAllocationBenchmark {
      * Benchmarks encoding a uint256 value (BigInteger) into a pre-allocated ByteBuffer.
      * This is the BASELINE before optimization - measures current allocation patterns.
      *
+     * <p><b>Baseline:</b> ~0 B/op (JDK 21.0.9, G1GC) - pre-allocated buffer avoids allocations
+     *
      * @return the ByteBuffer after encoding (for blackhole consumption)
      */
     @Benchmark
@@ -303,6 +305,8 @@ public class AbiAllocationBenchmark {
      * Benchmarks encoding a uint256 value (long) into a pre-allocated ByteBuffer.
      * This benchmark will use the optimized long overload once Task 2.3 adds
      * FastAbiEncoder.encodeUInt256(long, ByteBuffer).
+     *
+     * <p><b>Baseline:</b> ~0 B/op (JDK 21.0.9, G1GC) - pre-allocated buffer avoids allocations
      *
      * <p>TODO: Replace with FastAbiEncoder.encodeUInt256(uint256LongTestValue, uint256Buffer)
      * once the long overload is added in Task 2.3.
@@ -324,6 +328,8 @@ public class AbiAllocationBenchmark {
      * This provides a comparison against the direct FastAbiEncoder.encodeUInt256 benchmark
      * to measure the overhead of the full ABI encoding pipeline for uint256 values.
      *
+     * <p><b>Baseline:</b> 728 B/op (JDK 21.0.9, G1GC)
+     *
      * @return the encoded function calldata as HexData (for blackhole consumption)
      */
     @Benchmark
@@ -336,6 +342,8 @@ public class AbiAllocationBenchmark {
      * Benchmarks ABI encoding of a transfer function call with address and uint256 arguments.
      * This is the BASELINE before optimization - measures allocation patterns in Abi.encodeFunction.
      *
+     * <p><b>Baseline:</b> 936 B/op (JDK 21.0.9, G1GC)
+     *
      * @return the encoded function calldata as HexData (for blackhole consumption)
      */
     @Benchmark
@@ -347,6 +355,8 @@ public class AbiAllocationBenchmark {
     /**
      * Benchmarks ABI encoding of a function call with dynamic bytes argument.
      * This is the BASELINE before optimization - measures allocation patterns for dynamic types.
+     *
+     * <p><b>Baseline:</b> 1,216 B/op (JDK 21.0.9, G1GC)
      *
      * @return the encoded function calldata as HexData (for blackhole consumption)
      */
@@ -361,6 +371,8 @@ public class AbiAllocationBenchmark {
      * The tuple contains multiple fields: address, uint256, and bytes.
      * This is the BASELINE before optimization - measures allocation patterns for tuple types.
      *
+     * <p><b>Baseline:</b> 2,176 B/op (JDK 21.0.9, G1GC)
+     *
      * @return the encoded function calldata as HexData (for blackhole consumption)
      */
     @Benchmark
@@ -373,6 +385,8 @@ public class AbiAllocationBenchmark {
     /**
      * Benchmarks ABI decoding of a pre-encoded uint256 value.
      * This is the BASELINE before optimization - measures allocation patterns in AbiDecoder.
+     *
+     * <p><b>Baseline:</b> 184 B/op (JDK 21.0.9, G1GC)
      *
      * @return the decoded ABI types list (for blackhole consumption)
      */
@@ -392,6 +406,8 @@ public class AbiAllocationBenchmark {
      *
      * <p>This is the BASELINE before optimization - measures allocation patterns
      * for complex nested types combining dynamic arrays and nested tuples.
+     *
+     * <p><b>Baseline:</b> 5,280 B/op (JDK 21.0.9, G1GC)
      *
      * @return the encoded function calldata as HexData (for blackhole consumption)
      */

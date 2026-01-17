@@ -44,12 +44,28 @@ public class AllocationBenchmark {
         }
     }
 
+    /**
+     * Benchmarks encoding a 32-byte array to a hex string with 0x prefix.
+     * Output: 66-character string (2 prefix + 64 hex chars).
+     *
+     * <p><b>Baseline:</b> 264 B/op (JDK 21.0.9, G1GC)
+     *
+     * @return the encoded hex string (for blackhole consumption)
+     */
     @Benchmark
     @BenchmarkMode(Mode.AverageTime)
     public String hexEncode() {
         return Hex.encode(testBytes);
     }
 
+    /**
+     * Benchmarks decoding a 64-character hex string (with 0x prefix) to bytes.
+     * Input: 66-character string, Output: 32-byte array.
+     *
+     * <p><b>Baseline:</b> 128 B/op (JDK 21.0.9, G1GC)
+     *
+     * @return the decoded byte array (for blackhole consumption)
+     */
     @Benchmark
     @BenchmarkMode(Mode.AverageTime)
     public byte[] hexDecode() {
