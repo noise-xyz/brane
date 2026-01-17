@@ -35,6 +35,9 @@ public record Wei(BigInteger value) {
     /** One gwei constant (10^9 wei, commonly used for gas prices). */
     public static final Wei ONE_GWEI = Wei.gwei(1);
 
+    /** One ether constant (10^18 wei). */
+    public static final Wei ONE_ETHER = Wei.fromEther(BigDecimal.ONE);
+
     public Wei {
         Objects.requireNonNull(value, "value");
         if (value.signum() < 0) {
