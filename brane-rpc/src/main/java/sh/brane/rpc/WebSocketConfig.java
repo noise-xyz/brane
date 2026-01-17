@@ -46,6 +46,7 @@ import org.jspecify.annotations.Nullable;
  *                              power of 2)
  * @param ringBufferSize        Disruptor ring buffer size (must be power of 2)
  * @param waitStrategy          Disruptor wait strategy type
+ * @param transportType         Netty transport type (AUTO, NIO, EPOLL, KQUEUE)
  * @param defaultRequestTimeout default timeout for requests (null = no timeout)
  * @param connectTimeout        connection establishment timeout
  * @param ioThreads             number of Netty I/O threads (typically 1 for
@@ -57,6 +58,7 @@ public record WebSocketConfig(
         int maxPendingRequests,
         int ringBufferSize,
         WaitStrategyType waitStrategy,
+        TransportType transportType,
         Duration defaultRequestTimeout,
         Duration connectTimeout,
         int ioThreads,
@@ -77,6 +79,35 @@ public record WebSocketConfig(
          * Best for enterprise or batch processing workloads.
          */
         BLOCKING
+    }
+
+    /**
+     * Netty transport types for the underlying channel implementation.
+     */
+    public enum TransportType {
+        /**
+         * Automatically select the best available transport for the current platform.
+         * Uses Epoll on Linux, KQueue on macOS/BSD, NIO otherwise.
+         */
+        AUTO,
+
+        /**
+         * Java NIO transport. Works on all platforms but may have higher latency
+         * than native transports.
+         */
+        NIO,
+
+        /**
+         * Linux Epoll transport. Provides lower latency and higher throughput on Linux.
+         * Requires the {@code netty-transport-native-epoll} dependency.
+         */
+        EPOLL,
+
+        /**
+         * macOS/BSD KQueue transport. Provides lower latency on macOS and BSD systems.
+         * Requires the {@code netty-transport-native-kqueue} dependency.
+         */
+        KQUEUE
     }
 
     // Defaults
@@ -119,6 +150,8 @@ public record WebSocketConfig(
             ringBufferSize = DEFAULT_RING_SIZE;
         if (waitStrategy == null)
             waitStrategy = WaitStrategyType.YIELDING;
+        if (transportType == null)
+            transportType = TransportType.AUTO;
         if (defaultRequestTimeout == null)
             defaultRequestTimeout = DEFAULT_TIMEOUT;
         if (connectTimeout == null)
@@ -146,7 +179,7 @@ public record WebSocketConfig(
      * @return a new WebSocketConfig with default settings
      */
     public static WebSocketConfig withDefaults(String url) {
-        return new WebSocketConfig(url, 0, 0, null, null, null, 0, null);
+        return new WebSocketConfig(url, 0, 0, null, null, null, null, 0, null);
     }
 
     /**
@@ -167,6 +200,7 @@ public record WebSocketConfig(
         private int maxPendingRequests = 0;
         private int ringBufferSize = 0;
         private WaitStrategyType waitStrategy = null;
+        private TransportType transportType = null;
         private Duration defaultRequestTimeout = null;
         private Duration connectTimeout = null;
         private int ioThreads = 0;
@@ -200,6 +234,15 @@ public record WebSocketConfig(
          */
         public Builder waitStrategy(WaitStrategyType waitStrategy) {
             this.waitStrategy = waitStrategy;
+            return this;
+        }
+
+        /**
+         * Sets the Netty transport type.
+         * Default: AUTO (selects best available for the platform).
+         */
+        public Builder transportType(TransportType transportType) {
+            this.transportType = transportType;
             return this;
         }
 
@@ -253,6 +296,7 @@ public record WebSocketConfig(
                     maxPendingRequests,
                     ringBufferSize,
                     waitStrategy,
+                    transportType,
                     defaultRequestTimeout,
                     connectTimeout,
                     ioThreads,
