@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 import org.openjdk.jmh.annotations.*;
 
 import sh.brane.core.abi.Abi;
+import sh.brane.core.abi.FastAbiEncoder;
 import sh.brane.core.types.Address;
 import sh.brane.primitives.Hex;
 
@@ -67,6 +68,12 @@ public class AbiAllocationBenchmark {
     /** Pre-allocated ByteBuffer for encoding tests (68 bytes for transfer calldata). */
     public ByteBuffer encodingBuffer;
 
+    /** Pre-allocated ByteBuffer for uint256 encoding tests (32 bytes). */
+    public ByteBuffer uint256Buffer;
+
+    /** Test value for uint256 encoding benchmarks. */
+    public BigInteger uint256TestValue;
+
     @Setup(Level.Trial)
     public void setup() {
         // Initialize ABI from ERC20 JSON
@@ -86,5 +93,25 @@ public class AbiAllocationBenchmark {
         // Pre-allocate ByteBuffer for encoding tests
         // Size: 4 (selector) + 32 (address) + 32 (amount) = 68 bytes
         encodingBuffer = ByteBuffer.allocate(68);
+
+        // Pre-allocate ByteBuffer for uint256 encoding (32 bytes)
+        uint256Buffer = ByteBuffer.allocate(32);
+
+        // Test value for uint256 encoding: 1,000,000
+        uint256TestValue = BigInteger.valueOf(1000000);
+    }
+
+    /**
+     * Benchmarks encoding a uint256 value (BigInteger) into a pre-allocated ByteBuffer.
+     * This is the BASELINE before optimization - measures current allocation patterns.
+     *
+     * @return the ByteBuffer after encoding (for blackhole consumption)
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public ByteBuffer encodeUint256BigInteger() {
+        uint256Buffer.clear();
+        FastAbiEncoder.encodeUInt256(uint256TestValue, uint256Buffer);
+        return uint256Buffer;
     }
 }
