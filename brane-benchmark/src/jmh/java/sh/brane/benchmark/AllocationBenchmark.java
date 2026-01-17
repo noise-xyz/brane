@@ -5,6 +5,8 @@ import java.util.concurrent.TimeUnit;
 
 import org.openjdk.jmh.annotations.*;
 
+import sh.brane.primitives.Hex;
+
 /**
  * JMH benchmark for measuring allocation patterns in Brane SDK operations.
  *
@@ -40,5 +42,11 @@ public class AllocationBenchmark {
         for (int i = 0; i < 32; i++) {
             testBytes[i] = (byte) i;
         }
+    }
+
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public String hexEncode() {
+        return Hex.encode(testBytes);
     }
 }
