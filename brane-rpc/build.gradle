@@ -7,6 +7,12 @@ dependencies {
     implementation "com.fasterxml.jackson.core:jackson-databind:${jacksonVersion}"
     implementation "io.netty:netty-handler:4.1.107.Final"
     implementation "io.netty:netty-codec-http:4.1.107.Final"
+
+    // Native transport for improved performance (optional - graceful fallback to NIO)
+    runtimeOnly("io.netty:netty-transport-native-epoll:4.1.107.Final") { artifact { classifier = "linux-x86_64" } }
+    runtimeOnly("io.netty:netty-transport-native-kqueue:4.1.107.Final") { artifact { classifier = "osx-x86_64" } }
+    runtimeOnly("io.netty:netty-transport-native-kqueue:4.1.107.Final") { artifact { classifier = "osx-aarch_64" } }
+
     implementation "com.lmax:disruptor:3.4.4"
     testImplementation "ch.qos.logback:logback-classic:1.5.6"
     testImplementation project(":brane-kzg")
