@@ -74,6 +74,9 @@ public class AbiAllocationBenchmark {
     /** Test value for uint256 encoding benchmarks. */
     public BigInteger uint256TestValue;
 
+    /** Test value for uint256 long encoding benchmarks. */
+    public long uint256LongTestValue;
+
     @Setup(Level.Trial)
     public void setup() {
         // Initialize ABI from ERC20 JSON
@@ -99,6 +102,9 @@ public class AbiAllocationBenchmark {
 
         // Test value for uint256 encoding: 1,000,000
         uint256TestValue = BigInteger.valueOf(1000000);
+
+        // Test value for uint256 long encoding: 1,000,000
+        uint256LongTestValue = 1000000L;
     }
 
     /**
@@ -112,6 +118,26 @@ public class AbiAllocationBenchmark {
     public ByteBuffer encodeUint256BigInteger() {
         uint256Buffer.clear();
         FastAbiEncoder.encodeUInt256(uint256TestValue, uint256Buffer);
+        return uint256Buffer;
+    }
+
+    /**
+     * Benchmarks encoding a uint256 value (long) into a pre-allocated ByteBuffer.
+     * This benchmark will use the optimized long overload once Task 2.3 adds
+     * FastAbiEncoder.encodeUInt256(long, ByteBuffer).
+     *
+     * <p>TODO: Replace with FastAbiEncoder.encodeUInt256(uint256LongTestValue, uint256Buffer)
+     * once the long overload is added in Task 2.3.
+     *
+     * @return the ByteBuffer after encoding (for blackhole consumption)
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public ByteBuffer encodeUint256Long() {
+        uint256Buffer.clear();
+        // TODO: Replace with FastAbiEncoder.encodeUInt256(uint256LongTestValue, uint256Buffer)
+        // once Task 2.3 adds the long overload. Currently using BigInteger.valueOf() as placeholder.
+        FastAbiEncoder.encodeUInt256(BigInteger.valueOf(uint256LongTestValue), uint256Buffer);
         return uint256Buffer;
     }
 }
