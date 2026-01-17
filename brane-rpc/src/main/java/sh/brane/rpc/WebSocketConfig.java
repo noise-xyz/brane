@@ -91,6 +91,9 @@ import org.jspecify.annotations.Nullable;
  * @param writeBufferHighWaterMark high water mark for Netty write buffer (bytes).
  *                                 When buffer size exceeds this, channel becomes
  *                                 not writable. Default: 32KB.
+ * @param maxFrameSize            maximum WebSocket frame size in bytes. Default: 64KB.
+ *                                Maximum: 16MB. Controls the largest single frame
+ *                                the client will accept.
  * @since 0.2.0
  */
 public record WebSocketConfig(
@@ -104,7 +107,8 @@ public record WebSocketConfig(
         int ioThreads,
         @Nullable EventLoopGroup eventLoopGroup,
         int writeBufferLowWaterMark,
-        int writeBufferHighWaterMark) {
+        int writeBufferHighWaterMark,
+        int maxFrameSize) {
 
     /**
      * Disruptor wait strategy types.
@@ -220,6 +224,8 @@ public record WebSocketConfig(
     private static final int DEFAULT_IO_THREADS = 1;
     private static final int DEFAULT_WRITE_BUFFER_LOW = 8 * 1024;   // 8KB
     private static final int DEFAULT_WRITE_BUFFER_HIGH = 32 * 1024; // 32KB
+    private static final int DEFAULT_MAX_FRAME_SIZE = 64 * 1024;    // 64KB
+    private static final int MAX_FRAME_SIZE_LIMIT = 16 * 1024 * 1024; // 16MB
 
     /**
      * Maximum power of 2 that fits in a signed 32-bit int: 2^30 = 1,073,741,824.
@@ -266,6 +272,14 @@ public record WebSocketConfig(
             writeBufferLowWaterMark = DEFAULT_WRITE_BUFFER_LOW;
         if (writeBufferHighWaterMark <= 0)
             writeBufferHighWaterMark = DEFAULT_WRITE_BUFFER_HIGH;
+        if (maxFrameSize <= 0)
+            maxFrameSize = DEFAULT_MAX_FRAME_SIZE;
+
+        // Validate maxFrameSize
+        if (maxFrameSize > MAX_FRAME_SIZE_LIMIT) {
+            throw new IllegalArgumentException(
+                    "maxFrameSize (" + maxFrameSize + ") exceeds maximum allowed (" + MAX_FRAME_SIZE_LIMIT + " bytes / 16MB)");
+        }
 
         // Validate write buffer water marks
         if (writeBufferLowWaterMark > writeBufferHighWaterMark) {
@@ -294,7 +308,7 @@ public record WebSocketConfig(
      * @return a new WebSocketConfig with default settings
      */
     public static WebSocketConfig withDefaults(String url) {
-        return new WebSocketConfig(url, 0, 0, null, null, null, null, 0, null, 0, 0);
+        return new WebSocketConfig(url, 0, 0, null, null, null, null, 0, null, 0, 0, 0);
     }
 
     /**
@@ -322,6 +336,7 @@ public record WebSocketConfig(
         private EventLoopGroup eventLoopGroup = null;
         private int writeBufferLowWaterMark = 0;
         private int writeBufferHighWaterMark = 0;
+        private int maxFrameSize = 0;
 
         private Builder(String url) {
             this.url = Objects.requireNonNull(url, "url");
@@ -439,6 +454,17 @@ public record WebSocketConfig(
         }
 
         /**
+         * Sets the maximum WebSocket frame size.
+         * Default: 64KB. Maximum: 16MB.
+         *
+         * @param bytes the maximum frame size in bytes
+         */
+        public Builder maxFrameSize(int bytes) {
+            this.maxFrameSize = bytes;
+            return this;
+        }
+
+        /**
          * Builds the WebSocketConfig.
          *
          * @return a new WebSocketConfig
@@ -455,7 +481,8 @@ public record WebSocketConfig(
                     ioThreads,
                     eventLoopGroup,
                     writeBufferLowWaterMark,
-                    writeBufferHighWaterMark);
+                    writeBufferHighWaterMark,
+                    maxFrameSize);
         }
     }
 }

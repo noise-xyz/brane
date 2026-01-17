@@ -148,7 +148,7 @@ class WebSocketConfigTest {
     void testNullTransportTypeDefaultsToAuto() {
         // When transportType is null, the compact constructor defaults it to AUTO
         WebSocketConfig config = new WebSocketConfig(
-                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0);
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0);
         assertEquals(WebSocketConfig.TransportType.AUTO, config.transportType());
     }
 
@@ -214,7 +214,7 @@ class WebSocketConfigTest {
     void testNullWaitStrategyDefaultsToYielding() {
         // When waitStrategy is null, the compact constructor defaults it to YIELDING
         WebSocketConfig config = new WebSocketConfig(
-                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0);
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0);
         assertEquals(WebSocketConfig.WaitStrategyType.YIELDING, config.waitStrategy());
     }
 
@@ -266,8 +266,51 @@ class WebSocketConfigTest {
     @Test
     void testZeroWriteBufferWaterMarksApplyDefaults() {
         WebSocketConfig config = new WebSocketConfig(
-                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0);
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0);
         assertEquals(8 * 1024, config.writeBufferLowWaterMark());
         assertEquals(32 * 1024, config.writeBufferHighWaterMark());
+    }
+
+    // ==================== maxFrameSize tests ====================
+
+    @Test
+    void testDefaultMaxFrameSize() {
+        WebSocketConfig config = WebSocketConfig.withDefaults("ws://localhost:8545");
+        assertEquals(64 * 1024, config.maxFrameSize());
+    }
+
+    @Test
+    void testBuilderSetsMaxFrameSize() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .maxFrameSize(128 * 1024)
+                .build();
+        assertEquals(128 * 1024, config.maxFrameSize());
+    }
+
+    @Test
+    void testMaxFrameSizeValidation() {
+        // 16MB limit
+        int limit = 16 * 1024 * 1024;
+
+        // Valid at exactly limit
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .maxFrameSize(limit)
+                .build();
+        assertEquals(limit, config.maxFrameSize());
+
+        // Invalid exceeding limit
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                WebSocketConfig.builder("ws://localhost:8545")
+                        .maxFrameSize(limit + 1)
+                        .build());
+        assertTrue(ex.getMessage().contains("maxFrameSize"));
+        assertTrue(ex.getMessage().contains("exceeds maximum"));
+    }
+
+    @Test
+    void testZeroMaxFrameSizeAppliesDefault() {
+        WebSocketConfig config = new WebSocketConfig(
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0);
+        assertEquals(64 * 1024, config.maxFrameSize());
     }
 }
