@@ -170,4 +170,91 @@ class HexTest {
         String noPrefix = Hex.encodeNoPrefix(original);
         assertArrayEquals(original, Hex.toBytes(noPrefix));
     }
+
+    @Test
+    @DisplayName("encodeTo writes hex chars with prefix to pre-allocated buffer")
+    void testEncodeToWithPrefix() {
+        byte[] bytes = new byte[] {0x01, 0x23, (byte) 0xAB, (byte) 0xCD};
+        char[] dest = new char[10];
+
+        int written = Hex.encodeTo(bytes, dest, 0, true);
+
+        assertEquals(10, written);
+        assertEquals("0x0123abcd", new String(dest, 0, written));
+    }
+
+    @Test
+    @DisplayName("encodeTo writes hex chars without prefix to pre-allocated buffer")
+    void testEncodeToWithoutPrefix() {
+        byte[] bytes = new byte[] {0x01, 0x23, (byte) 0xAB, (byte) 0xCD};
+        char[] dest = new char[8];
+
+        int written = Hex.encodeTo(bytes, dest, 0, false);
+
+        assertEquals(8, written);
+        assertEquals("0123abcd", new String(dest, 0, written));
+    }
+
+    @Test
+    @DisplayName("encodeTo writes at specified offset")
+    void testEncodeToWithOffset() {
+        byte[] bytes = new byte[] {(byte) 0xFF};
+        char[] dest = new char[10];
+        dest[0] = 'A';
+        dest[1] = 'B';
+
+        int written = Hex.encodeTo(bytes, dest, 2, true);
+
+        assertEquals(4, written);
+        assertEquals("AB0xff", new String(dest, 0, 6));
+    }
+
+    @Test
+    @DisplayName("encodeTo handles empty byte array")
+    void testEncodeToEmpty() {
+        byte[] bytes = new byte[] {};
+        char[] dest = new char[2];
+
+        int writtenWithPrefix = Hex.encodeTo(bytes, dest, 0, true);
+        assertEquals(2, writtenWithPrefix);
+        assertEquals("0x", new String(dest, 0, writtenWithPrefix));
+
+        char[] destNoPrefix = new char[0];
+        int writtenNoPrefix = Hex.encodeTo(bytes, destNoPrefix, 0, false);
+        assertEquals(0, writtenNoPrefix);
+    }
+
+    @Test
+    @DisplayName("encodeTo throws when buffer is too small")
+    void testEncodeToBufferTooSmall() {
+        byte[] bytes = new byte[] {0x01, 0x02};
+        char[] smallDest = new char[3]; // needs 6 chars with prefix
+
+        var ex = assertThrows(IllegalArgumentException.class, () -> Hex.encodeTo(bytes, smallDest, 0, true));
+        assertTrue(ex.getMessage().contains("too small"));
+    }
+
+    @Test
+    @DisplayName("encodeTo throws when offset leaves insufficient space")
+    void testEncodeToInsufficientSpaceWithOffset() {
+        byte[] bytes = new byte[] {0x01};
+        char[] dest = new char[5]; // enough for 4 chars but offset reduces available space
+
+        var ex = assertThrows(IllegalArgumentException.class, () -> Hex.encodeTo(bytes, dest, 3, true));
+        assertTrue(ex.getMessage().contains("too small"));
+    }
+
+    @Test
+    @DisplayName("encodeTo rejects null bytes")
+    void testEncodeToNullBytes() {
+        char[] dest = new char[10];
+        assertThrows(IllegalArgumentException.class, () -> Hex.encodeTo(null, dest, 0, true));
+    }
+
+    @Test
+    @DisplayName("encodeTo rejects null dest")
+    void testEncodeToNullDest() {
+        byte[] bytes = new byte[] {0x01};
+        assertThrows(IllegalArgumentException.class, () -> Hex.encodeTo(bytes, null, 0, true));
+    }
 }

@@ -130,6 +130,49 @@ public final class Hex {
     }
 
     /**
+     * Write hex characters to a pre-allocated buffer.
+     *
+     * @param bytes      the bytes to encode
+     * @param dest       the destination character array
+     * @param destOffset the offset in the destination array to start writing
+     * @param withPrefix if {@code true}, write {@code 0x} prefix before hex characters
+     * @return the number of characters written
+     * @throws IllegalArgumentException if {@code bytes} or {@code dest} is {@code null},
+     *                                  or if the destination buffer is too small
+     */
+    public static int encodeTo(final byte[] bytes, final char[] dest, final int destOffset, final boolean withPrefix) {
+        if (bytes == null) {
+            throw new IllegalArgumentException("bytes cannot be null");
+        }
+        if (dest == null) {
+            throw new IllegalArgumentException("dest cannot be null");
+        }
+
+        final int prefixLen = withPrefix ? 2 : 0;
+        final int charsNeeded = prefixLen + bytes.length * 2;
+        final int available = dest.length - destOffset;
+
+        if (available < charsNeeded) {
+            throw new IllegalArgumentException(
+                    "destination buffer too small: need " + charsNeeded + " chars but only " + available + " available");
+        }
+
+        int pos = destOffset;
+        if (withPrefix) {
+            dest[pos++] = '0';
+            dest[pos++] = 'x';
+        }
+
+        for (final byte b : bytes) {
+            final int v = b & 0xFF;
+            dest[pos++] = HEX_CHARS[v >>> 4];
+            dest[pos++] = HEX_CHARS[v & 0x0F];
+        }
+
+        return charsNeeded;
+    }
+
+    /**
      * Remove a {@code 0x} prefix from the given string if present.
      *
      * @param hexString the string to clean
