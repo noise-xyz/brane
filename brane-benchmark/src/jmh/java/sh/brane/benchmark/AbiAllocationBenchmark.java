@@ -140,4 +140,16 @@ public class AbiAllocationBenchmark {
         FastAbiEncoder.encodeUInt256(BigInteger.valueOf(uint256LongTestValue), uint256Buffer);
         return uint256Buffer;
     }
+
+    /**
+     * Benchmarks ABI encoding of a transfer function call with address and uint256 arguments.
+     * This is the BASELINE before optimization - measures allocation patterns in Abi.encodeFunction.
+     *
+     * @return the encoded function calldata as HexData (for blackhole consumption)
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public Object encodeAddressAbi() {
+        return abi.encodeFunction("transfer", testAddress, testAmount);
+    }
 }
