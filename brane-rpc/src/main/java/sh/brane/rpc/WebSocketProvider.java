@@ -686,10 +686,14 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
             if (evt instanceof IdleStateEvent idleEvent) {
                 IdleState state = idleEvent.state();
-                if (state == IdleState.READER_IDLE || state == IdleState.WRITER_IDLE) {
-                    // Send WebSocket ping frame to keep connection alive
+                if (state == IdleState.WRITER_IDLE) {
+                    // Send WebSocket ping frame to keep connection alive on write idle
                     ctx.writeAndFlush(new PingWebSocketFrame());
-                    log.debug("Sent ping frame due to {} idle", state);
+                    log.debug("Sent ping frame due to write idle");
+                } else if (state == IdleState.READER_IDLE) {
+                    // No response from server for too long - connection is likely dead
+                    log.warn("Closing connection due to read idle timeout (no data received)");
+                    ctx.close();
                 }
             }
             super.userEventTriggered(ctx, evt);
