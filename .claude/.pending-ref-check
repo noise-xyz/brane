@@ -7,3 +7,4 @@
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/abi/FastAbiEncoder.java|for|method
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/abi/FastAbiEncoder.java|long|method
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-primitives/src/main/java/sh/brane/primitives/Hex.java|encodeNoPrefix|method
+/Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-primitives/src/main/java/sh/brane/primitives/Hex.java|encodeTo|method

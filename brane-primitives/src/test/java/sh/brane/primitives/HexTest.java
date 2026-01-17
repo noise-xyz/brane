@@ -370,6 +370,56 @@ class HexTest {
     }
 
     @Test
+    @DisplayName("decodeTo works with various CharSequence implementations")
+    void testDecodeToVariousCharSequences() {
+        byte[] expected = new byte[] {(byte) 0xAB, (byte) 0xCD};
+
+        // String
+        byte[] dest1 = new byte[2];
+        int written1 = Hex.decodeTo("0xabcd", 0, 6, dest1, 0);
+        assertEquals(2, written1);
+        assertArrayEquals(expected, dest1);
+
+        // StringBuilder
+        byte[] dest2 = new byte[2];
+        StringBuilder sb = new StringBuilder("0xabcd");
+        int written2 = Hex.decodeTo(sb, 0, sb.length(), dest2, 0);
+        assertEquals(2, written2);
+        assertArrayEquals(expected, dest2);
+
+        // StringBuffer
+        byte[] dest3 = new byte[2];
+        StringBuffer sbuf = new StringBuffer("0xabcd");
+        int written3 = Hex.decodeTo(sbuf, 0, sbuf.length(), dest3, 0);
+        assertEquals(2, written3);
+        assertArrayEquals(expected, dest3);
+    }
+
+    @Test
+    @DisplayName("decodeTo returns correct byte count for various input lengths")
+    void testDecodeToReturnsCorrectByteCount() {
+        // Empty input (just prefix) returns 0
+        byte[] dest = new byte[10];
+        assertEquals(0, Hex.decodeTo("0x", 0, 2, dest, 0));
+        assertEquals(0, Hex.decodeTo("", 0, 0, dest, 0));
+
+        // 2 hex chars = 1 byte
+        assertEquals(1, Hex.decodeTo("0xff", 0, 4, dest, 0));
+
+        // 4 hex chars = 2 bytes
+        assertEquals(2, Hex.decodeTo("0x1234", 0, 6, dest, 0));
+
+        // 8 hex chars = 4 bytes
+        assertEquals(4, Hex.decodeTo("0x12345678", 0, 10, dest, 0));
+
+        // Without prefix: 6 hex chars = 3 bytes
+        assertEquals(3, Hex.decodeTo("aabbcc", 0, 6, dest, 0));
+
+        // Partial region: 4 hex chars from middle = 2 bytes
+        assertEquals(2, Hex.decodeTo("00112233", 2, 4, dest, 0));
+    }
+
+    @Test
     @DisplayName("decodeTo throws on null hex")
     void testDecodeToNullHex() {
         byte[] dest = new byte[10];
