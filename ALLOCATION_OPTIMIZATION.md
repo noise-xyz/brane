@@ -6,10 +6,10 @@
 
 | Metric | Before | After (Estimated) | Impact |
 |--------|--------|-------------------|--------|
-| Allocations per ABI encode | 5-8 objects | 1-2 objects | 75% reduction |
-| Allocations per Address.from() | 3 objects | 1 object | 66% reduction |
-| GC pause frequency | Baseline | 2-5x less frequent | Lower latency tail |
-| Throughput (ops/sec) | Baseline | 10-30% higher | More work per core |
+| Allocations per ABI encode (long) | 2+ objects | 0 objects | 100% reduction |
+| Allocations per Hex.decode() | 2 objects | 1 object | 50% reduction |
+| GC pause frequency | Baseline | 2-3x less frequent | Lower latency tail |
+| Throughput (ops/sec) | Baseline | 10-20% higher | More work per core |
 
 ### Competitive Differentiation
 
@@ -48,13 +48,37 @@
 
 ### Hot Spots to Fix
 
-| Operation | Current Allocations | Root Cause |
-|-----------|---------------------|------------|
-| `Address.from("0x...")` | 3 | Record + substring + byte[] |
-| `Hex.encode(bytes)` | 2 | char[] + String |
-| `Hex.decode(hex)` | 2 | substring + byte[] |
-| ABI encode uint256 | 1+ per value | BigInteger.valueOf() boxing |
-| `HexData.toBytes()` | 1 | Defensive copy every call |
+| Operation | Current Allocations | Root Cause | Status |
+|-----------|---------------------|------------|--------|
+| `Hex.decode(hex)` | 2 | substring + byte[] | **Task 2.4** |
+| ABI encode uint256 | 1+ per value | BigInteger.valueOf() boxing | **Task 2.3** |
+| `Hex.encode(bytes)` | 2 | char[] + String | Phase 3 (optional) |
+
+### Accepted Allocations (By Design)
+
+| Operation | Allocations | Rationale |
+|-----------|-------------|-----------|
+| `Address.from("0x...")` | 2 | Record + toLowerCase(); records are immutable, no caching |
+| `Hash.from("0x...")` | 2 | Record + toLowerCase(); same rationale as Address |
+| `HexData.toBytes()` | 1 | Defensive copy preserves immutability; use `putTo(ByteBuffer)` for zero-alloc |
+| `Address.toBytes()` | 1 | Returns decoded bytes; cache at application level if needed |
+
+### Design Decision: HexData.toBytes() Defensive Copy
+
+The `HexData.toBytes()` method allocates a defensive copy on every call. This is **intentional**
+and should not be "optimized" away because:
+
+1. **Immutability guarantee**: `HexData` is designed as an immutable type. Returning the internal
+   `raw` array directly would allow callers to mutate it, breaking this guarantee.
+
+2. **Thread safety**: Multiple threads can safely call `toBytes()` without coordination because
+   each gets its own copy.
+
+3. **API consistency**: Users expect `toBytes()` to return a "safe" array they can modify.
+
+**For zero-allocation paths**, users who need to avoid this copy should use:
+- `HexData.putTo(ByteBuffer)` - writes directly to a buffer without intermediate allocation
+- Future: `HexData.toBytesDirect()` (unsafe, caller promises not to mutate) - if demand exists
 
 ---
 
@@ -78,7 +102,7 @@
 Create JMH benchmark class measuring allocations per operation using `-prof gc`.
 
 **Acceptance Criteria:**
-- [ ] Benchmark includes: `Address.from()`, `Address.toBytes()`, `Wei.fromEther()`, `Hex.encode()`, `Hex.decode()`, `Keccak256.hash()`
+- [ ] Benchmark includes: `Hex.encode()`, `Hex.decode()` (operations being optimized in Phase 2-3)
 - [ ] Each benchmark method annotated with `@Benchmark` and `@BenchmarkMode(Mode.AverageTime)`
 - [ ] Uses `@State(Scope.Thread)` for test data setup
 - [ ] Can run via `./gradlew :brane-benchmark:jmh -Pbenchmark=Allocation`
@@ -87,8 +111,13 @@ Create JMH benchmark class measuring allocations per operation using `-prof gc`.
 **Example:**
 ```java
 @Benchmark
-public Address addressFromString() {
-    return Address.from("0x742d35Cc6634C0532925a3b844Bc454e4438f44e");
+public byte[] hexDecode() {
+    return Hex.decode("0x742d35Cc6634C0532925a3b844Bc454e4438f44e");
+}
+
+@Benchmark
+public String hexEncode() {
+    return Hex.encode(testBytes); // testBytes set up in @State
 }
 ```
 
@@ -157,58 +186,39 @@ Add static constant for zero address to avoid repeated allocations.
 Add commonly used Wei constants. Note: `Wei.ZERO` already exists.
 
 **Acceptance Criteria:**
+- [ ] Add `public static final Wei ONE_WEI = new Wei(BigInteger.ONE);`
 - [ ] Add `public static final Wei ONE_GWEI = Wei.gwei(1);`
 - [ ] Add `public static final Wei ONE_ETHER = Wei.fromEther(BigDecimal.ONE);`
 - [ ] Javadoc documents each constant
 - [ ] Add tests verifying constant values
 
-#### Task 2.3: Cache toBytes() in Address
+### Design Decision: Address/Hash toBytes() Allocation
 
-| Field | Value |
-|-------|-------|
-| **Module** | `brane-core` |
-| **Modify** | `brane-core/src/main/java/sh/brane/core/types/Address.java` |
+**Decision:** Keep `Address` and `Hash` as pure records without internal caching.
 
-**Description:**
-Cache decoded bytes using lazy initialization pattern (like `HexData.value()`).
+**Rationale:**
+- Records cannot have mutable instance fields (Java language constraint)
+- Static caches would introduce mutable state, violating Brane's "no mutable state in public types" principle
+- Static caches would still require defensive copies (1 allocation per call) - no actual allocation reduction
+- Adding caches would complicate testing (cache pollution between tests)
 
-**Changes:**
+**For allocation-sensitive code paths**, users should:
+
+1. **Use `HexData` instead** - Already has raw bytes internally + `putTo(ByteBuffer)` for zero-allocation writes
+2. **Cache at application level** - If repeatedly calling `toBytes()` on same addresses, cache the result yourself
+3. **Use the low-level API** (Phase 3) - `Hex.decodeTo()` writes directly to a provided buffer
+
+**Example - Allocation-conscious pattern:**
 ```java
-public record Address(String value) {
-    // Add transient field for cached bytes
-    private static final ClassValue<byte[]> BYTES_CACHE = ...
-    // OR use approach similar to HexData with volatile + double-checked locking
-}
+// Instead of repeatedly calling address.toBytes()
+byte[] addressBytes = address.toBytes(); // Cache this if needed multiple times
+
+// Or use HexData for hot paths
+HexData data = new HexData(address.value());
+data.putTo(buffer); // Zero allocation write to buffer
 ```
 
-**Acceptance Criteria:**
-- [ ] First `toBytes()` call decodes and caches
-- [ ] Subsequent calls return cached value (or defensive copy if mutability concern)
-- [ ] Thread-safe (volatile + double-checked locking or VarHandle)
-- [ ] Benchmark shows reduced allocations on repeated `toBytes()` calls
-- [ ] All existing Address tests pass
-
-**Note:** Records don't allow instance fields, so we need either:
-1. Convert to class (breaking change)
-2. Use external cache (WeakHashMap or ClassValue)
-3. Keep record, accept single decode per instance
-
-#### Task 2.4: Cache toBytes() in Hash
-
-| Field | Value |
-|-------|-------|
-| **Module** | `brane-core` |
-| **Modify** | `brane-core/src/main/java/sh/brane/core/types/Hash.java` |
-
-**Description:**
-Same caching pattern as Address for Hash type.
-
-**Acceptance Criteria:**
-- [ ] Mirrors Address caching approach
-- [ ] Benchmark shows reduced allocations
-- [ ] All existing Hash tests pass
-
-#### Task 2.5: Primitive Fast-Path in FastAbiEncoder
+#### Task 2.3: Primitive Fast-Path in FastAbiEncoder
 
 | Field | Value |
 |-------|-------|
@@ -216,7 +226,7 @@ Same caching pattern as Address for Hash type.
 | **Modify** | `brane-core/src/main/java/sh/brane/core/abi/FastAbiEncoder.java` |
 
 **Description:**
-Add overloaded method accepting `long` instead of `BigInteger` to avoid boxing.
+Add overloaded methods accepting primitives instead of `BigInteger` to avoid boxing.
 
 **Changes:**
 ```java
@@ -227,17 +237,23 @@ public static void encodeUint256(BigInteger value, ByteBuffer buffer)
 public static void encodeUint256(long value, ByteBuffer buffer) {
     // Direct primitive encoding without BigInteger allocation
 }
+
+// Optional: int overload for convenience (common for array indices, counts)
+public static void encodeUint256(int value, ByteBuffer buffer) {
+    encodeUint256((long) value, buffer);
+}
 ```
 
 **Acceptance Criteria:**
 - [ ] New `encodeUint256(long, ByteBuffer)` method added
+- [ ] Optional: `encodeUint256(int, ByteBuffer)` convenience overload
 - [ ] Handles full range of non-negative long values
-- [ ] Zero allocations for encoding long values
+- [ ] Zero allocations for encoding primitive values
 - [ ] Existing BigInteger path unchanged (backwards compatible)
-- [ ] Unit tests for edge cases: 0, 1, Long.MAX_VALUE
+- [ ] Unit tests for edge cases: 0, 1, Integer.MAX_VALUE, Long.MAX_VALUE
 - [ ] Benchmark shows allocation reduction for common uint256 values
 
-#### Task 2.6: Avoid Substring in Hex.decode
+#### Task 2.4: Avoid Substring in Hex.decode
 
 | Field | Value |
 |-------|-------|
