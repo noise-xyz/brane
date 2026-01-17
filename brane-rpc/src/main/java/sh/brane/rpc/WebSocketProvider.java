@@ -143,19 +143,20 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private static final long DEFAULT_TIMEOUT_MS = 60_000;
 
     /**
-     * Ring buffer saturation threshold (10% remaining capacity).
+     * Ring buffer saturation threshold (fraction of total capacity).
      * <p>
      * When remaining capacity drops below this fraction of total buffer size,
      * the metrics callback is invoked to warn of impending backpressure.
      * <p>
-     * 10% threshold chosen because:
+     * Configured via {@link WebSocketConfig#ringBufferSaturationThreshold()}.
+     * Default is 10%, chosen because:
      * <ul>
      *   <li>Early warning before hitting 0% (backpressure limit)</li>
      *   <li>Small enough to avoid false alarms during normal bursts</li>
      *   <li>Allows time for producers to slow down gracefully</li>
      * </ul>
      */
-    private static final double RING_BUFFER_SATURATION_THRESHOLD = 0.1;
+    private final double ringBufferSaturationThreshold;
 
     // Instance configuration (from WebSocketConfig or defaults)
     private final int maxPendingRequests;
@@ -462,6 +463,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         this.writeBufferLowWaterMark = config.writeBufferLowWaterMark();
         this.writeBufferHighWaterMark = config.writeBufferHighWaterMark();
         this.maxFrameSize = config.maxFrameSize();
+        this.ringBufferSaturationThreshold = config.ringBufferSaturationThreshold();
 
         // Initialize default subscription executor (owned by this provider)
         this.subscriptionExecutor = Executors.newVirtualThreadPerTaskExecutor();
@@ -1050,7 +1052,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         // Check ring buffer saturation before publishing (metrics hook for early warning)
         int bufferSize = ringBuffer.getBufferSize();
         long remainingCapacity = ringBuffer.remainingCapacity();
-        if (remainingCapacity < bufferSize * RING_BUFFER_SATURATION_THRESHOLD) {
+        if (remainingCapacity < bufferSize * ringBufferSaturationThreshold) {
             metrics.onRingBufferSaturation(remainingCapacity, bufferSize);
         }
 
