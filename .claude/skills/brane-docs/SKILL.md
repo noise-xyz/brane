@@ -95,6 +95,38 @@ website/docs/pages/docs/
 | Testing feature | `testing/` appropriate file |
 | New major feature | May need new page |
 
+### 5. Evaluate CLAUDE.md Updates
+
+After updating Javadoc and website docs, decide whether CLAUDE.md files need updates.
+
+**Update CLAUDE.md when:**
+- New public class added that users will interact with → Add to "Key Classes" section
+- New usage pattern that differs from existing examples → Add to "Patterns" section
+- Discovered a gotcha or pitfall → Add to "Gotchas" section
+- Significant behavioral change that affects documented patterns
+
+**Skip CLAUDE.md when:**
+- Minor method additions that follow existing patterns
+- Internal implementation changes
+- Bug fixes that don't affect documented behavior
+- Changes already well-represented by existing documentation
+
+**Which CLAUDE.md to update:**
+
+| Change Location | CLAUDE.md File |
+|-----------------|----------------|
+| brane-primitives | `brane-primitives/CLAUDE.md` |
+| brane-core types, ABI, crypto | `brane-core/CLAUDE.md` |
+| brane-kzg | `brane-kzg/CLAUDE.md` |
+| brane-rpc clients, providers | `brane-rpc/CLAUDE.md` |
+| brane-contract | `brane-contract/CLAUDE.md` |
+| Cross-cutting patterns | Root `CLAUDE.md` |
+
+**When updating, follow existing structure:**
+- **Key Classes**: Brief description, key methods/purpose
+- **Patterns**: Working code examples with realistic scenarios
+- **Gotchas**: Specific class/method, clear issue, resolution
+
 ---
 
 ## Accuracy Checklist
@@ -115,3 +147,9 @@ Before finishing, verify:
 **Cross-Reference:**
 - [ ] Javadoc and website docs say the same thing
 - [ ] No contradictions between sources
+
+**CLAUDE.md (if applicable):**
+- [ ] Key classes table includes new public classes
+- [ ] Patterns section has working examples for new patterns
+- [ ] Gotchas are specific and actionable
+- [ ] Module-level and root CLAUDE.md are consistent
