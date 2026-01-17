@@ -77,6 +77,29 @@ public final class FastAbiEncoder {
     }
 
     /**
+     * Encodes a function call directly to the provided buffer for allocation-conscious encoding.
+     * <p>
+     * This method writes the 4-byte selector followed by the ABI-encoded arguments directly
+     * to the buffer, advancing the buffer's position by the total encoded length.
+     *
+     * @param selector the 4-byte function selector
+     * @param args     array of ABI typed arguments (elements must be {@link AbiType} instances)
+     * @param buffer   the destination ByteBuffer; position advances by encoded length
+     * @throws IllegalArgumentException if selector is not exactly 4 bytes
+     * @throws ClassCastException       if args contains non-AbiType elements
+     */
+    public static void encodeTo(byte[] selector, Object[] args, ByteBuffer buffer) {
+        if (selector.length != 4) {
+            throw new IllegalArgumentException("Selector must be exactly 4 bytes, got " + selector.length);
+        }
+        buffer.put(selector);
+        List<AbiType> abiArgs = Arrays.stream(args)
+                .map(arg -> (AbiType) arg)
+                .toList();
+        encodeTuple(abiArgs, buffer);
+    }
+
+    /**
      * Encodes a tuple of ABI types directly into the provided ByteBuffer.
      * <p>
      * This method implements the standard ABI encoding for tuples:

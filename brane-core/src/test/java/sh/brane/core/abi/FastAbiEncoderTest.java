@@ -4,8 +4,15 @@ package sh.brane.core.abi;
 import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigInteger;
+import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
+import java.util.List;
 
 import org.junit.jupiter.api.Test;
+
+import sh.brane.core.crypto.Keccak256;
+import sh.brane.core.types.Address;
 
 class FastAbiEncoderTest {
 
@@ -159,5 +166,96 @@ class FastAbiEncoderTest {
             assertArrayEquals(fromBigInteger, fromLong,
                     "Mismatch for value " + value);
         }
+    }
+
+    @Test
+    void encodeTo_matchesEncodeFunction() {
+        // Test that encodeTo produces identical output to encodeFunction
+        String signature = "transfer(address,uint256)";
+        byte[] selector = Arrays.copyOf(
+                Keccak256.hash(signature.getBytes(StandardCharsets.UTF_8)), 4);
+        Address recipient = new Address("0x1234567890123456789012345678901234567890");
+        BigInteger amount = BigInteger.valueOf(1000);
+
+        Object[] args = {new AddressType(recipient), new UInt(256, amount)};
+        List<AbiType> argsList = List.of(new AddressType(recipient), new UInt(256, amount));
+
+        // Calculate expected size: 4 (selector) + 32 (address) + 32 (uint256)
+        byte[] expected = FastAbiEncoder.encodeFunction(signature, argsList);
+        ByteBuffer buffer = ByteBuffer.allocate(expected.length);
+
+        FastAbiEncoder.encodeTo(selector, args, buffer);
+
+        assertArrayEquals(expected, buffer.array());
+        assertEquals(expected.length, buffer.position(), "Buffer position should advance by encoded length");
+    }
+
+    @Test
+    void encodeTo_advancesBufferPosition() {
+        byte[] selector = new byte[]{0x01, 0x02, 0x03, 0x04};
+        Object[] args = {new UInt(256, BigInteger.TEN)};
+
+        // 4 (selector) + 32 (uint256) = 36 bytes
+        ByteBuffer buffer = ByteBuffer.allocate(64);
+        int startPos = buffer.position();
+
+        FastAbiEncoder.encodeTo(selector, args, buffer);
+
+        assertEquals(startPos + 36, buffer.position());
+    }
+
+    @Test
+    void encodeTo_emptyArgs() {
+        byte[] selector = new byte[]{0x01, 0x02, 0x03, 0x04};
+        Object[] args = {};
+
+        ByteBuffer buffer = ByteBuffer.allocate(4);
+        FastAbiEncoder.encodeTo(selector, args, buffer);
+
+        byte[] result = new byte[4];
+        buffer.flip();
+        buffer.get(result);
+        assertArrayEquals(selector, result);
+    }
+
+    @Test
+    void encodeTo_invalidSelectorLength() {
+        byte[] shortSelector = new byte[]{0x01, 0x02, 0x03};
+        Object[] args = {};
+        ByteBuffer buffer = ByteBuffer.allocate(10);
+
+        var ex = assertThrows(IllegalArgumentException.class,
+                () -> FastAbiEncoder.encodeTo(shortSelector, args, buffer));
+        assertTrue(ex.getMessage().contains("4 bytes"));
+
+        byte[] longSelector = new byte[]{0x01, 0x02, 0x03, 0x04, 0x05};
+        var ex2 = assertThrows(IllegalArgumentException.class,
+                () -> FastAbiEncoder.encodeTo(longSelector, args, buffer));
+        assertTrue(ex2.getMessage().contains("4 bytes"));
+    }
+
+    @Test
+    void encodeTo_multipleArgs() {
+        String signature = "foo(uint256,bool,address)";
+        byte[] selector = Arrays.copyOf(
+                Keccak256.hash(signature.getBytes(StandardCharsets.UTF_8)), 4);
+        Address addr = new Address("0xabcdef0123456789abcdef0123456789abcdef01");
+
+        Object[] args = {
+                new UInt(256, BigInteger.valueOf(42)),
+                new Bool(true),
+                new AddressType(addr)
+        };
+        List<AbiType> argsList = List.of(
+                new UInt(256, BigInteger.valueOf(42)),
+                new Bool(true),
+                new AddressType(addr));
+
+        byte[] expected = FastAbiEncoder.encodeFunction(signature, argsList);
+        ByteBuffer buffer = ByteBuffer.allocate(expected.length);
+
+        FastAbiEncoder.encodeTo(selector, args, buffer);
+
+        assertArrayEquals(expected, buffer.array());
     }
 }
