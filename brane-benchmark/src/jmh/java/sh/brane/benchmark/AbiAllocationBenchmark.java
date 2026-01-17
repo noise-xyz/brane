@@ -108,6 +108,47 @@ public class AbiAllocationBenchmark {
             ]
             """;
 
+    /**
+     * ABI with a complex nested struct containing arrays and nested tuples.
+     * Structure:
+     * - addresses: address[] (dynamic array of addresses)
+     * - amounts: uint256[3] (fixed-size array of 3 uint256)
+     * - nestedData: tuple (nested struct with address, uint256, bytes)
+     * - metadata: bytes (dynamic bytes)
+     */
+    private static final String COMPLEX_NESTED_ABI_JSON = """
+            [
+              {
+                "inputs": [
+                  {
+                    "components": [
+                      { "internalType": "address[]", "name": "addresses", "type": "address[]" },
+                      { "internalType": "uint256[3]", "name": "amounts", "type": "uint256[3]" },
+                      {
+                        "components": [
+                          { "internalType": "address", "name": "addr", "type": "address" },
+                          { "internalType": "uint256", "name": "amount", "type": "uint256" },
+                          { "internalType": "bytes", "name": "data", "type": "bytes" }
+                        ],
+                        "internalType": "struct InnerStruct",
+                        "name": "nestedData",
+                        "type": "tuple"
+                      },
+                      { "internalType": "bytes", "name": "metadata", "type": "bytes" }
+                    ],
+                    "internalType": "struct ComplexStruct",
+                    "name": "input",
+                    "type": "tuple"
+                  }
+                ],
+                "name": "processComplex",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+              }
+            ]
+            """;
+
     /** ABI instance for ERC20 encoding/decoding. */
     public Abi abi;
 
@@ -155,6 +196,12 @@ public class AbiAllocationBenchmark {
 
     /** Schema for decoding a single uint256. */
     public List<TypeSchema> uint256Schema;
+
+    /** ABI instance for complex nested struct encoding. */
+    public Abi complexNestedAbi;
+
+    /** Complex nested input containing (address[], uint256[3], nested tuple, bytes). */
+    public Object[] complexNestedInput;
 
     @Setup(Level.Trial)
     public void setup() {
@@ -213,6 +260,28 @@ public class AbiAllocationBenchmark {
 
         // Schema for decoding a single uint256
         uint256Schema = List.of(new TypeSchema.UIntSchema(256));
+
+        // Initialize complex nested ABI
+        complexNestedAbi = Abi.fromJson(COMPLEX_NESTED_ABI_JSON);
+
+        // Build the complex nested input:
+        // - addresses: address[] (3 addresses)
+        // - amounts: uint256[3] (3 amounts)
+        // - nestedData: tuple (address, uint256, bytes)
+        // - metadata: bytes
+        Address[] addresses = new Address[] {
+            testAddress,
+            new Address("0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"),
+            new Address("0x9876543210987654321098765432109876543210")
+        };
+        BigInteger[] amounts = new BigInteger[] {
+            testAmount,
+            BigInteger.valueOf(2000000),
+            BigInteger.valueOf(3000000)
+        };
+        Object[] nestedTuple = new Object[] {testAddress, testAmount, testBytesData};
+        HexData metadata = new HexData("0x" + "ff".repeat(32));
+        complexNestedInput = new Object[] {addresses, amounts, nestedTuple, metadata};
     }
 
     /**
@@ -309,5 +378,24 @@ public class AbiAllocationBenchmark {
     @BenchmarkMode(Mode.AverageTime)
     public List<AbiType> decodeUint256() {
         return AbiDecoder.decode(preEncodedUint256, uint256Schema);
+    }
+
+    /**
+     * Benchmarks ABI encoding of a complex nested struct containing arrays and nested tuples.
+     * The struct contains:
+     * - address[] (dynamic array of 3 addresses)
+     * - uint256[3] (fixed-size array of 3 uint256)
+     * - tuple (nested struct with address, uint256, bytes)
+     * - bytes (dynamic bytes metadata)
+     *
+     * <p>This is the BASELINE before optimization - measures allocation patterns
+     * for complex nested types combining dynamic arrays, fixed arrays, and nested tuples.
+     *
+     * @return the encoded function calldata as HexData (for blackhole consumption)
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public Object encodeComplexNested() {
+        return complexNestedAbi.encodeFunction("processComplex", complexNestedInput);
     }
 }
