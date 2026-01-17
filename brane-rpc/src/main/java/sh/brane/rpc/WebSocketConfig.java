@@ -94,6 +94,9 @@ import org.jspecify.annotations.Nullable;
  * @param maxFrameSize            maximum WebSocket frame size in bytes. Default: 64KB.
  *                                Maximum: 16MB. Controls the largest single frame
  *                                the client will accept.
+ * @param ringBufferSaturationThreshold threshold (0.0-1.0) for ring buffer saturation
+ *                                      warnings. When remaining capacity falls below
+ *                                      this fraction, a warning is logged. Default: 0.10 (10%).
  * @since 0.2.0
  */
 public record WebSocketConfig(
@@ -108,7 +111,8 @@ public record WebSocketConfig(
         @Nullable EventLoopGroup eventLoopGroup,
         int writeBufferLowWaterMark,
         int writeBufferHighWaterMark,
-        int maxFrameSize) {
+        int maxFrameSize,
+        double ringBufferSaturationThreshold) {
 
     /**
      * Disruptor wait strategy types.
@@ -226,6 +230,7 @@ public record WebSocketConfig(
     private static final int DEFAULT_WRITE_BUFFER_HIGH = 32 * 1024; // 32KB
     private static final int DEFAULT_MAX_FRAME_SIZE = 64 * 1024;    // 64KB
     private static final int MAX_FRAME_SIZE_LIMIT = 16 * 1024 * 1024; // 16MB
+    private static final double DEFAULT_RING_BUFFER_SATURATION_THRESHOLD = 0.10; // 10%
 
     /**
      * Maximum power of 2 that fits in a signed 32-bit int: 2^30 = 1,073,741,824.
@@ -274,6 +279,13 @@ public record WebSocketConfig(
             writeBufferHighWaterMark = DEFAULT_WRITE_BUFFER_HIGH;
         if (maxFrameSize <= 0)
             maxFrameSize = DEFAULT_MAX_FRAME_SIZE;
+        // Validate ringBufferSaturationThreshold before applying default
+        if (ringBufferSaturationThreshold < 0.0 || ringBufferSaturationThreshold > 1.0) {
+            throw new IllegalArgumentException(
+                    "ringBufferSaturationThreshold (" + ringBufferSaturationThreshold + ") must be between 0.0 and 1.0");
+        }
+        if (ringBufferSaturationThreshold == 0.0)
+            ringBufferSaturationThreshold = DEFAULT_RING_BUFFER_SATURATION_THRESHOLD;
 
         // Validate maxFrameSize
         if (maxFrameSize > MAX_FRAME_SIZE_LIMIT) {
@@ -308,7 +320,7 @@ public record WebSocketConfig(
      * @return a new WebSocketConfig with default settings
      */
     public static WebSocketConfig withDefaults(String url) {
-        return new WebSocketConfig(url, 0, 0, null, null, null, null, 0, null, 0, 0, 0);
+        return new WebSocketConfig(url, 0, 0, null, null, null, null, 0, null, 0, 0, 0, 0.0);
     }
 
     /**
@@ -337,6 +349,7 @@ public record WebSocketConfig(
         private int writeBufferLowWaterMark = 0;
         private int writeBufferHighWaterMark = 0;
         private int maxFrameSize = 0;
+        private double ringBufferSaturationThreshold = 0.0;
 
         private Builder(String url) {
             this.url = Objects.requireNonNull(url, "url");
@@ -465,6 +478,18 @@ public record WebSocketConfig(
         }
 
         /**
+         * Sets the ring buffer saturation threshold.
+         * When remaining capacity falls below this fraction, a warning is logged.
+         * Default: 0.10 (10%).
+         *
+         * @param threshold the saturation threshold (0.0-1.0)
+         */
+        public Builder ringBufferSaturationThreshold(double threshold) {
+            this.ringBufferSaturationThreshold = threshold;
+            return this;
+        }
+
+        /**
          * Builds the WebSocketConfig.
          *
          * @return a new WebSocketConfig
@@ -482,7 +507,8 @@ public record WebSocketConfig(
                     eventLoopGroup,
                     writeBufferLowWaterMark,
                     writeBufferHighWaterMark,
-                    maxFrameSize);
+                    maxFrameSize,
+                    ringBufferSaturationThreshold);
         }
     }
 }

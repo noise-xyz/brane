@@ -148,7 +148,7 @@ class WebSocketConfigTest {
     void testNullTransportTypeDefaultsToAuto() {
         // When transportType is null, the compact constructor defaults it to AUTO
         WebSocketConfig config = new WebSocketConfig(
-                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0);
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0, 0.0);
         assertEquals(WebSocketConfig.TransportType.AUTO, config.transportType());
     }
 
@@ -214,7 +214,7 @@ class WebSocketConfigTest {
     void testNullWaitStrategyDefaultsToYielding() {
         // When waitStrategy is null, the compact constructor defaults it to YIELDING
         WebSocketConfig config = new WebSocketConfig(
-                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0);
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0, 0.0);
         assertEquals(WebSocketConfig.WaitStrategyType.YIELDING, config.waitStrategy());
     }
 
@@ -266,7 +266,7 @@ class WebSocketConfigTest {
     @Test
     void testZeroWriteBufferWaterMarksApplyDefaults() {
         WebSocketConfig config = new WebSocketConfig(
-                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0);
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0, 0.0);
         assertEquals(8 * 1024, config.writeBufferLowWaterMark());
         assertEquals(32 * 1024, config.writeBufferHighWaterMark());
     }
@@ -310,18 +310,18 @@ class WebSocketConfigTest {
     @Test
     void testZeroMaxFrameSizeAppliesDefault() {
         WebSocketConfig config = new WebSocketConfig(
-                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0);
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0, 0.0);
         assertEquals(64 * 1024, config.maxFrameSize());
     }
 
     @Test
     void testNegativeMaxFrameSizeAppliesDefault() {
         WebSocketConfig config = new WebSocketConfig(
-                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, -1);
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, -1, 0.0);
         assertEquals(64 * 1024, config.maxFrameSize());
 
         WebSocketConfig config2 = new WebSocketConfig(
-                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, -100);
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, -100, 0.0);
         assertEquals(64 * 1024, config2.maxFrameSize());
     }
 
@@ -378,6 +378,73 @@ class WebSocketConfigTest {
         int limit = 16 * 1024 * 1024;
         assertThrows(IllegalArgumentException.class, () ->
                 new WebSocketConfig(
-                        "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, limit + 1));
+                        "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, limit + 1, 0.0));
+    }
+
+    // ==================== ringBufferSaturationThreshold tests ====================
+
+    @Test
+    void testDefaultRingBufferSaturationThreshold() {
+        WebSocketConfig config = WebSocketConfig.withDefaults("ws://localhost:8545");
+        assertEquals(0.10, config.ringBufferSaturationThreshold(), 0.0001);
+    }
+
+    @Test
+    void testBuilderSetsRingBufferSaturationThreshold() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .ringBufferSaturationThreshold(0.25)
+                .build();
+        assertEquals(0.25, config.ringBufferSaturationThreshold(), 0.0001);
+    }
+
+    @Test
+    void testRingBufferSaturationThresholdAtBoundaryValues() {
+        // Valid at exactly 0.0 (edge case - note: 0.0 triggers default)
+        WebSocketConfig config1 = WebSocketConfig.builder("ws://localhost:8545")
+                .ringBufferSaturationThreshold(0.001)
+                .build();
+        assertEquals(0.001, config1.ringBufferSaturationThreshold(), 0.0001);
+
+        // Valid at exactly 1.0
+        WebSocketConfig config2 = WebSocketConfig.builder("ws://localhost:8545")
+                .ringBufferSaturationThreshold(1.0)
+                .build();
+        assertEquals(1.0, config2.ringBufferSaturationThreshold(), 0.0001);
+    }
+
+    @Test
+    void testRingBufferSaturationThresholdValidationBelowRange() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                WebSocketConfig.builder("ws://localhost:8545")
+                        .ringBufferSaturationThreshold(-0.1)
+                        .build());
+        assertTrue(ex.getMessage().contains("ringBufferSaturationThreshold"));
+        assertTrue(ex.getMessage().contains("must be between 0.0 and 1.0"));
+    }
+
+    @Test
+    void testRingBufferSaturationThresholdValidationAboveRange() {
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                WebSocketConfig.builder("ws://localhost:8545")
+                        .ringBufferSaturationThreshold(1.1)
+                        .build());
+        assertTrue(ex.getMessage().contains("ringBufferSaturationThreshold"));
+        assertTrue(ex.getMessage().contains("must be between 0.0 and 1.0"));
+    }
+
+    @Test
+    void testZeroRingBufferSaturationThresholdAppliesDefault() {
+        WebSocketConfig config = new WebSocketConfig(
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0, 0.0);
+        assertEquals(0.10, config.ringBufferSaturationThreshold(), 0.0001);
+    }
+
+    @Test
+    void testNegativeRingBufferSaturationThresholdValidation() {
+        // Negative values should fail validation (not apply default)
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                new WebSocketConfig(
+                        "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0, -0.5));
+        assertTrue(ex.getMessage().contains("ringBufferSaturationThreshold"));
     }
 }
