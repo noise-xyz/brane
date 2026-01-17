@@ -100,11 +100,23 @@ public record WebSocketConfig(
 
     /**
      * Disruptor wait strategy types.
+     *
+     * <p><b>When to use each strategy:</b>
+     * <ul>
+     * <li>{@link #BUSY_SPIN} - Ultra-low latency HFT/MEV with dedicated CPU cores</li>
+     * <li>{@link #YIELDING} - Low latency HFT/MEV on shared infrastructure</li>
+     * <li>{@link #LITE_BLOCKING} - Lower CPU usage while maintaining reasonable latency</li>
+     * <li>{@link #BLOCKING} - Enterprise/batch workloads where CPU efficiency matters most</li>
+     * </ul>
      */
     public enum WaitStrategyType {
         /**
          * Lowest possible latency, consumes 100% of one CPU core.
          * Uses a tight busy-spin loop with no yielding or parking.
+         *
+         * <p><b>Use case:</b> Ultra-low latency HFT (high-frequency trading) or MEV
+         * (maximal extractable value) applications where sub-microsecond latency is
+         * critical and dedicated CPU cores are available.
          *
          * <p><b>Warning:</b> This strategy requires dedicated CPU core pinning
          * (e.g., via {@code taskset} on Linux or isolcpus kernel parameter) to be
@@ -112,13 +124,20 @@ public record WebSocketConfig(
          * increase latency compared to {@link #YIELDING}.
          *
          * <p>Only use when sub-microsecond latency is required and you have
-         * isolated CPU cores available.
+         * isolated CPU cores available. If you don't have dedicated cores, use
+         * {@link #YIELDING} instead.
          */
         BUSY_SPIN,
 
         /**
-         * Low latency, high CPU usage. Uses busy-spin/yield.
-         * Best for latency-critical applications like HFT or MEV.
+         * Low latency with high CPU usage. Uses busy-spin with occasional yields.
+         *
+         * <p><b>Use case:</b> Latency-critical applications like HFT or MEV where you
+         * need low latency but don't have dedicated/pinned CPU cores. This is the
+         * default strategy and works well for most latency-sensitive workloads.
+         *
+         * <p>CPU usage will be high (near 100% on the consumer thread) but the OS
+         * scheduler can still interrupt when needed.
          */
         YIELDING,
 
@@ -126,14 +145,32 @@ public record WebSocketConfig(
          * Balanced latency and CPU usage. Uses a spin-then-park approach.
          * Spins briefly before falling back to lock-based blocking.
          *
-         * <p>Good middle ground when latency matters but 100% CPU usage
-         * from {@link #YIELDING} is unacceptable.
+         * <p><b>Use case:</b> Applications that need reasonable latency but cannot
+         * afford the high CPU usage of {@link #YIELDING}. Good for:
+         * <ul>
+         * <li>Cloud deployments where CPU is metered</li>
+         * <li>Multi-tenant environments</li>
+         * <li>Applications with moderate latency requirements (milliseconds, not microseconds)</li>
+         * </ul>
+         *
+         * <p>Provides a good middle ground: spins briefly to catch quick responses,
+         * then parks the thread to save CPU if the response takes longer.
          */
         LITE_BLOCKING,
 
         /**
-         * Lower CPU usage, slightly higher latency. Uses locks.
-         * Best for enterprise or batch processing workloads.
+         * Lower CPU usage with slightly higher latency. Uses lock-based blocking.
+         *
+         * <p><b>Use case:</b> Enterprise or batch processing workloads where latency
+         * is less critical than CPU efficiency. Good for:
+         * <ul>
+         * <li>Background indexing or data synchronization</li>
+         * <li>Batch transaction processing</li>
+         * <li>Development and testing environments</li>
+         * </ul>
+         *
+         * <p>The thread will park immediately when waiting, minimizing CPU usage
+         * at the cost of slightly higher wake-up latency.
          */
         BLOCKING
     }
