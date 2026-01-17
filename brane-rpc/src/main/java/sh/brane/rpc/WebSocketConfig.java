@@ -478,11 +478,25 @@ public record WebSocketConfig(
         }
 
         /**
-         * Sets the ring buffer saturation threshold.
-         * When remaining capacity falls below this fraction, a warning is logged.
-         * Default: 0.10 (10%).
+         * Sets the ring buffer saturation threshold for early warning detection.
+         *
+         * <p>When the Disruptor ring buffer's remaining capacity falls below this fraction
+         * of its total size, a saturation warning is emitted via {@code Metrics.onRingBufferSaturation()}.
+         * This provides an early warning before the buffer is completely full and requests
+         * start blocking.
+         *
+         * <p><b>Tuning guidance:</b>
+         * <ul>
+         * <li>Lower values (e.g., 0.05): Fewer warnings, triggered only at severe saturation</li>
+         * <li>Higher values (e.g., 0.25): More proactive alerting, useful for latency-sensitive apps</li>
+         * <li>Set to 1.0 to receive warnings on every request (useful for debugging)</li>
+         * </ul>
+         *
+         * <p>Default: 0.10 (10%). Valid range: 0.0-1.0 (exclusive of 0.0, which uses the default).
          *
          * @param threshold the saturation threshold (0.0-1.0)
+         * @return this builder
+         * @see #ringBufferSize(int)
          */
         public Builder ringBufferSaturationThreshold(double threshold) {
             this.ringBufferSaturationThreshold = threshold;

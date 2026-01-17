@@ -21,3 +21,5 @@
 /Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|build|method
 /Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|eventLoopGroup|method
 /Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|writeBufferWaterMark|method
+/Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|maxFrameSize|method
+/Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|threshold|method
