@@ -303,13 +303,9 @@ public class AbiAllocationBenchmark {
 
     /**
      * Benchmarks encoding a uint256 value (long) into a pre-allocated ByteBuffer.
-     * This benchmark will use the optimized long overload once Task 2.3 adds
-     * FastAbiEncoder.encodeUInt256(long, ByteBuffer).
+     * Uses the optimized primitive long overload for zero-allocation encoding.
      *
-     * <p><b>Baseline:</b> ~0 B/op (JDK 21.0.9, G1GC) - pre-allocated buffer avoids allocations
-     *
-     * <p>TODO: Replace with FastAbiEncoder.encodeUInt256(uint256LongTestValue, uint256Buffer)
-     * once the long overload is added in Task 2.3.
+     * <p><b>Baseline:</b> ~0 B/op (JDK 21.0.9, G1GC) - primitive path avoids BigInteger boxing
      *
      * @return the ByteBuffer after encoding (for blackhole consumption)
      */
@@ -317,9 +313,7 @@ public class AbiAllocationBenchmark {
     @BenchmarkMode(Mode.AverageTime)
     public ByteBuffer encodeUint256Long() {
         uint256Buffer.clear();
-        // TODO: Replace with FastAbiEncoder.encodeUInt256(uint256LongTestValue, uint256Buffer)
-        // once Task 2.3 adds the long overload. Currently using BigInteger.valueOf() as placeholder.
-        FastAbiEncoder.encodeUInt256(BigInteger.valueOf(uint256LongTestValue), uint256Buffer);
+        FastAbiEncoder.encodeUint256(uint256LongTestValue, uint256Buffer);
         return uint256Buffer;
     }
 
