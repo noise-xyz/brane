@@ -19,3 +19,4 @@
 /Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|Builder|class
 /Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|waitStrategy|method
 /Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|build|method
+/Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|eventLoopGroup|method

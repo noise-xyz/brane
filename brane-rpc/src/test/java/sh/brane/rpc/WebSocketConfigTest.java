@@ -148,7 +148,7 @@ class WebSocketConfigTest {
     void testNullTransportTypeDefaultsToAuto() {
         // When transportType is null, the compact constructor defaults it to AUTO
         WebSocketConfig config = new WebSocketConfig(
-                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null);
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0);
         assertEquals(WebSocketConfig.TransportType.AUTO, config.transportType());
     }
 
@@ -214,7 +214,60 @@ class WebSocketConfigTest {
     void testNullWaitStrategyDefaultsToYielding() {
         // When waitStrategy is null, the compact constructor defaults it to YIELDING
         WebSocketConfig config = new WebSocketConfig(
-                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null);
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0);
         assertEquals(WebSocketConfig.WaitStrategyType.YIELDING, config.waitStrategy());
+    }
+
+    // ==================== WriteBufferWaterMark tests ====================
+
+    @Test
+    void testDefaultWriteBufferWaterMarks() {
+        WebSocketConfig config = WebSocketConfig.withDefaults("ws://localhost:8545");
+        assertEquals(8 * 1024, config.writeBufferLowWaterMark());
+        assertEquals(32 * 1024, config.writeBufferHighWaterMark());
+    }
+
+    @Test
+    void testBuilderSetsWriteBufferWaterMarks() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .writeBufferWaterMark(16 * 1024, 64 * 1024)
+                .build();
+        assertEquals(16 * 1024, config.writeBufferLowWaterMark());
+        assertEquals(64 * 1024, config.writeBufferHighWaterMark());
+    }
+
+    @Test
+    void testBuilderSetsWriteBufferLowWaterMark() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .writeBufferLowWaterMark(4 * 1024)
+                .build();
+        assertEquals(4 * 1024, config.writeBufferLowWaterMark());
+        assertEquals(32 * 1024, config.writeBufferHighWaterMark()); // default high
+    }
+
+    @Test
+    void testBuilderSetsWriteBufferHighWaterMark() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .writeBufferHighWaterMark(128 * 1024)
+                .build();
+        assertEquals(8 * 1024, config.writeBufferLowWaterMark()); // default low
+        assertEquals(128 * 1024, config.writeBufferHighWaterMark());
+    }
+
+    @Test
+    void testWriteBufferWaterMarkValidation() {
+        // Low water mark cannot exceed high water mark
+        assertThrows(IllegalArgumentException.class, () ->
+                WebSocketConfig.builder("ws://localhost:8545")
+                        .writeBufferWaterMark(64 * 1024, 16 * 1024)
+                        .build());
+    }
+
+    @Test
+    void testZeroWriteBufferWaterMarksApplyDefaults() {
+        WebSocketConfig config = new WebSocketConfig(
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0);
+        assertEquals(8 * 1024, config.writeBufferLowWaterMark());
+        assertEquals(32 * 1024, config.writeBufferHighWaterMark());
     }
 }

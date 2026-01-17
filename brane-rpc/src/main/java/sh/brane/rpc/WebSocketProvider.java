@@ -160,6 +160,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     // Instance configuration (from WebSocketConfig or defaults)
     private final int maxPendingRequests;
     private final Duration defaultRequestTimeout;
+    private final int writeBufferLowWaterMark;
+    private final int writeBufferHighWaterMark;
     // Note: slotMask was removed - it was a remnant of slot-based indexing that is no longer used
     // since pending request tracking switched to ConcurrentHashMap.
 
@@ -454,6 +456,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         this.uri = URI.create(config.url());
         this.maxPendingRequests = config.maxPendingRequests();
         this.defaultRequestTimeout = config.defaultRequestTimeout();
+        this.writeBufferLowWaterMark = config.writeBufferLowWaterMark();
+        this.writeBufferHighWaterMark = config.writeBufferHighWaterMark();
 
         // Initialize default subscription executor (owned by this provider)
         this.subscriptionExecutor = Executors.newVirtualThreadPerTaskExecutor();
@@ -581,7 +585,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                         .option(ChannelOption.SO_KEEPALIVE, true)
                         .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                         .option(ChannelOption.WRITE_BUFFER_WATER_MARK,
-                                new WriteBufferWaterMark(8 * 1024, 32 * 1024))
+                                new WriteBufferWaterMark(writeBufferLowWaterMark, writeBufferHighWaterMark))
                         .handler(new ChannelInitializer<SocketChannel>() {
                             @Override
                             protected void initChannel(SocketChannel ch) {

@@ -83,8 +83,14 @@ import org.jspecify.annotations.Nullable;
  *                              native transports offer 10-20% throughput gains
  * @param defaultRequestTimeout default timeout for requests (null = no timeout)
  * @param connectTimeout        connection establishment timeout
- * @param ioThreads             number of Netty I/O threads (typically 1 for
- *                              minimal context switching)
+ * @param ioThreads               number of Netty I/O threads (typically 1 for
+ *                                minimal context switching)
+ * @param writeBufferLowWaterMark low water mark for Netty write buffer (bytes).
+ *                                When buffer size drops below this, channel
+ *                                becomes writable again. Default: 8KB.
+ * @param writeBufferHighWaterMark high water mark for Netty write buffer (bytes).
+ *                                 When buffer size exceeds this, channel becomes
+ *                                 not writable. Default: 32KB.
  * @since 0.2.0
  */
 public record WebSocketConfig(
@@ -96,7 +102,9 @@ public record WebSocketConfig(
         Duration defaultRequestTimeout,
         Duration connectTimeout,
         int ioThreads,
-        @Nullable EventLoopGroup eventLoopGroup) {
+        @Nullable EventLoopGroup eventLoopGroup,
+        int writeBufferLowWaterMark,
+        int writeBufferHighWaterMark) {
 
     /**
      * Disruptor wait strategy types.
@@ -210,6 +218,8 @@ public record WebSocketConfig(
     private static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(60);
     private static final Duration DEFAULT_CONNECT_TIMEOUT = Duration.ofSeconds(10);
     private static final int DEFAULT_IO_THREADS = 1;
+    private static final int DEFAULT_WRITE_BUFFER_LOW = 8 * 1024;   // 8KB
+    private static final int DEFAULT_WRITE_BUFFER_HIGH = 32 * 1024; // 32KB
 
     /**
      * Maximum power of 2 that fits in a signed 32-bit int: 2^30 = 1,073,741,824.
@@ -252,6 +262,17 @@ public record WebSocketConfig(
             connectTimeout = DEFAULT_CONNECT_TIMEOUT;
         if (ioThreads <= 0)
             ioThreads = DEFAULT_IO_THREADS;
+        if (writeBufferLowWaterMark <= 0)
+            writeBufferLowWaterMark = DEFAULT_WRITE_BUFFER_LOW;
+        if (writeBufferHighWaterMark <= 0)
+            writeBufferHighWaterMark = DEFAULT_WRITE_BUFFER_HIGH;
+
+        // Validate write buffer water marks
+        if (writeBufferLowWaterMark > writeBufferHighWaterMark) {
+            throw new IllegalArgumentException(
+                    "writeBufferLowWaterMark (" + writeBufferLowWaterMark +
+                            ") must be <= writeBufferHighWaterMark (" + writeBufferHighWaterMark + ")");
+        }
 
         // Validate power of 2 constraints
         if ((maxPendingRequests & (maxPendingRequests - 1)) != 0) {
@@ -273,7 +294,7 @@ public record WebSocketConfig(
      * @return a new WebSocketConfig with default settings
      */
     public static WebSocketConfig withDefaults(String url) {
-        return new WebSocketConfig(url, 0, 0, null, null, null, null, 0, null);
+        return new WebSocketConfig(url, 0, 0, null, null, null, null, 0, null, 0, 0);
     }
 
     /**
@@ -299,6 +320,8 @@ public record WebSocketConfig(
         private Duration connectTimeout = null;
         private int ioThreads = 0;
         private EventLoopGroup eventLoopGroup = null;
+        private int writeBufferLowWaterMark = 0;
+        private int writeBufferHighWaterMark = 0;
 
         private Builder(String url) {
             this.url = Objects.requireNonNull(url, "url");
@@ -380,6 +403,42 @@ public record WebSocketConfig(
         }
 
         /**
+         * Sets the low water mark for the Netty write buffer.
+         * When buffer size drops below this, the channel becomes writable again.
+         * Default: 8KB.
+         *
+         * @param bytes the low water mark in bytes
+         */
+        public Builder writeBufferLowWaterMark(int bytes) {
+            this.writeBufferLowWaterMark = bytes;
+            return this;
+        }
+
+        /**
+         * Sets the high water mark for the Netty write buffer.
+         * When buffer size exceeds this, the channel becomes not writable.
+         * Default: 32KB.
+         *
+         * @param bytes the high water mark in bytes
+         */
+        public Builder writeBufferHighWaterMark(int bytes) {
+            this.writeBufferHighWaterMark = bytes;
+            return this;
+        }
+
+        /**
+         * Sets both low and high water marks for the Netty write buffer.
+         *
+         * @param lowBytes  the low water mark in bytes
+         * @param highBytes the high water mark in bytes
+         */
+        public Builder writeBufferWaterMark(int lowBytes, int highBytes) {
+            this.writeBufferLowWaterMark = lowBytes;
+            this.writeBufferHighWaterMark = highBytes;
+            return this;
+        }
+
+        /**
          * Builds the WebSocketConfig.
          *
          * @return a new WebSocketConfig
@@ -394,7 +453,9 @@ public record WebSocketConfig(
                     defaultRequestTimeout,
                     connectTimeout,
                     ioThreads,
-                    eventLoopGroup);
+                    eventLoopGroup,
+                    writeBufferLowWaterMark,
+                    writeBufferHighWaterMark);
         }
     }
 }
