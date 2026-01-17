@@ -34,7 +34,6 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
@@ -168,6 +167,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private final EventLoopGroup group;
     /** True if we created the EventLoopGroup internally and are responsible for shutting it down. */
     private final boolean ownsEventLoopGroup;
+    /** The socket channel class to use for Bootstrap (NIO, Epoll, or KQueue). */
+    private final Class<? extends Channel> channelClass;
     /**
      * The active WebSocket channel. Volatile because it is accessed from multiple threads:
      * caller threads (sendAsync), Netty I/O thread, and reconnect scheduler.
@@ -353,6 +354,99 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private static final byte[] TRUE_BYTES = "true".getBytes(StandardCharsets.UTF_8);
     private static final byte[] FALSE_BYTES = "false".getBytes(StandardCharsets.UTF_8);
 
+    // ==================== Native Transport Support ====================
+    /**
+     * Holds the selected EventLoopGroup and Channel class for a transport.
+     */
+    private record TransportSelection(EventLoopGroup group, Class<? extends Channel> channelClass) {}
+
+    /**
+     * Selects the appropriate native transport based on the configured type.
+     * <p>
+     * For AUTO mode, the selection order is:
+     * <ol>
+     *   <li>Epoll on Linux (if native library available)</li>
+     *   <li>KQueue on macOS/BSD (if native library available)</li>
+     *   <li>NIO as fallback on all platforms</li>
+     * </ol>
+     */
+    private static TransportSelection selectTransport(WebSocketConfig.TransportType type, int ioThreads) {
+        ThreadFactory threadFactory = r -> {
+            Thread t = new Thread(r, "brane-netty-io");
+            t.setDaemon(true);
+            return t;
+        };
+
+        return switch (type) {
+            case EPOLL -> {
+                if (!io.netty.channel.epoll.Epoll.isAvailable()) {
+                    throw new IllegalStateException("Epoll transport requested but not available: "
+                            + io.netty.channel.epoll.Epoll.unavailabilityCause().getMessage());
+                }
+                log.debug("Using Epoll transport");
+                yield new TransportSelection(
+                        new io.netty.channel.epoll.EpollEventLoopGroup(ioThreads, threadFactory),
+                        io.netty.channel.epoll.EpollSocketChannel.class);
+            }
+            case KQUEUE -> {
+                if (!io.netty.channel.kqueue.KQueue.isAvailable()) {
+                    throw new IllegalStateException("KQueue transport requested but not available: "
+                            + io.netty.channel.kqueue.KQueue.unavailabilityCause().getMessage());
+                }
+                log.debug("Using KQueue transport");
+                yield new TransportSelection(
+                        new io.netty.channel.kqueue.KQueueEventLoopGroup(ioThreads, threadFactory),
+                        io.netty.channel.kqueue.KQueueSocketChannel.class);
+            }
+            case NIO -> {
+                log.debug("Using NIO transport");
+                yield new TransportSelection(
+                        new io.netty.channel.nio.NioEventLoopGroup(ioThreads, threadFactory),
+                        NioSocketChannel.class);
+            }
+            case AUTO -> selectAutoTransport(ioThreads, threadFactory);
+        };
+    }
+
+    /**
+     * Auto-selects the best available transport for the current platform.
+     */
+    private static TransportSelection selectAutoTransport(int ioThreads, ThreadFactory threadFactory) {
+        // Try Epoll first (Linux)
+        if (io.netty.channel.epoll.Epoll.isAvailable()) {
+            log.info("Auto-selected Epoll transport (Linux native)");
+            return new TransportSelection(
+                    new io.netty.channel.epoll.EpollEventLoopGroup(ioThreads, threadFactory),
+                    io.netty.channel.epoll.EpollSocketChannel.class);
+        }
+        // Try KQueue (macOS/BSD)
+        if (io.netty.channel.kqueue.KQueue.isAvailable()) {
+            log.info("Auto-selected KQueue transport (macOS/BSD native)");
+            return new TransportSelection(
+                    new io.netty.channel.kqueue.KQueueEventLoopGroup(ioThreads, threadFactory),
+                    io.netty.channel.kqueue.KQueueSocketChannel.class);
+        }
+        // Fall back to NIO
+        log.info("Auto-selected NIO transport (native transports not available)");
+        return new TransportSelection(
+                new io.netty.channel.nio.NioEventLoopGroup(ioThreads, threadFactory),
+                NioSocketChannel.class);
+    }
+
+    /**
+     * Detects the appropriate channel class for an externally-provided EventLoopGroup.
+     */
+    private static Class<? extends Channel> detectChannelClass(EventLoopGroup group) {
+        if (group instanceof io.netty.channel.epoll.EpollEventLoopGroup) {
+            return io.netty.channel.epoll.EpollSocketChannel.class;
+        }
+        if (group instanceof io.netty.channel.kqueue.KQueueEventLoopGroup) {
+            return io.netty.channel.kqueue.KQueueSocketChannel.class;
+        }
+        // Default to NIO for NioEventLoopGroup or unknown types
+        return NioSocketChannel.class;
+    }
+
     private WebSocketProvider(WebSocketConfig config) {
         this.url = config.url();
         this.uri = URI.create(config.url());
@@ -363,16 +457,15 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         this.subscriptionExecutor = Executors.newVirtualThreadPerTaskExecutor();
         this.ownsSubscriptionExecutor = true;
 
-        // Use provided EventLoopGroup or create default
+        // Use provided EventLoopGroup or create based on transport type
         if (config.eventLoopGroup() != null) {
             this.group = config.eventLoopGroup();
+            this.channelClass = detectChannelClass(config.eventLoopGroup());
             this.ownsEventLoopGroup = false; // External group - caller is responsible for lifecycle
         } else {
-            this.group = new NioEventLoopGroup(config.ioThreads(), r -> {
-                Thread t = new Thread(r, "brane-netty-io");
-                t.setDaemon(true);
-                return t;
-            });
+            TransportSelection transport = selectTransport(config.transportType(), config.ioThreads());
+            this.group = transport.group;
+            this.channelClass = transport.channelClass;
             this.ownsEventLoopGroup = true; // Internal group - we manage lifecycle
         }
 
@@ -479,7 +572,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
                 Bootstrap b = new Bootstrap();
                 b.group(group)
-                        .channel(NioSocketChannel.class)
+                        .channel(channelClass)
                         .option(ChannelOption.TCP_NODELAY, true)
                         .option(ChannelOption.SO_KEEPALIVE, true)
                         .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)

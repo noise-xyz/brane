@@ -13,3 +13,9 @@
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/abi/FastAbiEncoder.java|arguments|method
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/types/Address.java|toBytes|method
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/types/Hash.java|toBytes|method
+/Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|WaitStrategyType|class
+/Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|WebSocketConfig|class
+/Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|withDefaults|method
+/Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|Builder|class
+/Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|waitStrategy|method
+/Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|build|method
