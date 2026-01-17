@@ -111,6 +111,18 @@ class FastAbiEncoderTest {
     }
 
     @Test
+    void encodeUint256Long_integerMaxValue() {
+        var buffer = java.nio.ByteBuffer.allocate(32);
+        FastAbiEncoder.encodeUint256((long) Integer.MAX_VALUE, buffer);
+
+        byte[] encoded = buffer.array();
+        assertEquals(32, encoded.length);
+        // Should match BigInteger encoding
+        byte[] expected = FastAbiEncoder.encodeUInt256(BigInteger.valueOf(Integer.MAX_VALUE));
+        assertArrayEquals(expected, encoded);
+    }
+
+    @Test
     void encodeUint256Long_maxValue() {
         var buffer = java.nio.ByteBuffer.allocate(32);
         FastAbiEncoder.encodeUint256(Long.MAX_VALUE, buffer);
