@@ -28,6 +28,9 @@ public record Wei(BigInteger value) {
     /** Zero wei constant. */
     public static final Wei ZERO = Wei.of(0);
 
+    /** One wei constant (the smallest unit of Ether). */
+    public static final Wei ONE_WEI = new Wei(BigInteger.ONE);
+
     public Wei {
         Objects.requireNonNull(value, "value");
         if (value.signum() < 0) {
