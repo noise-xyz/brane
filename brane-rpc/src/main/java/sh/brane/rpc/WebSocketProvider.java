@@ -163,6 +163,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private final Duration connectTimeout;
     private final int writeBufferLowWaterMark;
     private final int writeBufferHighWaterMark;
+    private final int maxFrameSize;
     // Note: slotMask was removed - it was a remnant of slot-based indexing that is no longer used
     // since pending request tracking switched to ConcurrentHashMap.
 
@@ -460,6 +461,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         this.connectTimeout = config.connectTimeout();
         this.writeBufferLowWaterMark = config.writeBufferLowWaterMark();
         this.writeBufferHighWaterMark = config.writeBufferHighWaterMark();
+        this.maxFrameSize = config.maxFrameSize();
 
         // Initialize default subscription executor (owned by this provider)
         this.subscriptionExecutor = Executors.newVirtualThreadPerTaskExecutor();
@@ -598,7 +600,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                                             uri.getPort() == -1 ? 443 : uri.getPort()));
                                 }
                                 p.addLast(new HttpClientCodec());
-                                p.addLast(new HttpObjectAggregator(65536));
+                                p.addLast(new HttpObjectAggregator(maxFrameSize));
                                 p.addLast(connectionHandler);
                             }
                         });
