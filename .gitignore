@@ -33,6 +33,7 @@ fix_logs/
 benchmark_output.txt
 benchmark-results/*
 !benchmark-results/.gitkeep
+!benchmark-results/*.md
 
 # Security
 .env
