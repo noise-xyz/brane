@@ -41,12 +41,42 @@ import org.jspecify.annotations.Nullable;
  * latency. Best for enterprise/batch.</li>
  * </ul>
  *
+ * <p>
+ * <strong>Transport Type Selection:</strong>
+ * <p>
+ * The {@code transportType} option controls the underlying Netty channel
+ * implementation. Native transports (Epoll on Linux, KQueue on macOS/BSD)
+ * provide 10-20% higher throughput compared to Java NIO by reducing system
+ * call overhead and leveraging platform-specific optimizations.
+ *
+ * <pre>{@code
+ * // Explicitly use native transport for maximum performance
+ * WebSocketConfig config = WebSocketConfig.builder("wss://eth.example.com")
+ *         .transportType(TransportType.AUTO)  // Auto-selects best for platform
+ *         .build();
+ *
+ * // Force NIO for cross-platform consistency (e.g., testing)
+ * WebSocketConfig config = WebSocketConfig.builder("wss://eth.example.com")
+ *         .transportType(TransportType.NIO)
+ *         .build();
+ * }</pre>
+ *
+ * <ul>
+ * <li>{@link TransportType#AUTO} - Automatically selects the best available
+ * transport for the current platform. Default and recommended.</li>
+ * <li>{@link TransportType#NIO} - Java NIO transport. Works everywhere but
+ * may have slightly higher latency.</li>
+ * <li>{@link TransportType#EPOLL} - Linux-only native transport.</li>
+ * <li>{@link TransportType#KQUEUE} - macOS/BSD-only native transport.</li>
+ * </ul>
+ *
  * @param url                   the WebSocket URL (ws:// or wss://)
  * @param maxPendingRequests    maximum concurrent in-flight requests (must be
  *                              power of 2)
  * @param ringBufferSize        Disruptor ring buffer size (must be power of 2)
  * @param waitStrategy          Disruptor wait strategy type
- * @param transportType         Netty transport type (AUTO, NIO, EPOLL, KQUEUE)
+ * @param transportType         Netty transport type (AUTO, NIO, EPOLL, KQUEUE);
+ *                              native transports offer 10-20% throughput gains
  * @param defaultRequestTimeout default timeout for requests (null = no timeout)
  * @param connectTimeout        connection establishment timeout
  * @param ioThreads             number of Netty I/O threads (typically 1 for
