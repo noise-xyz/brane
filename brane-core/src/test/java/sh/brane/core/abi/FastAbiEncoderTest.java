@@ -83,4 +83,69 @@ class FastAbiEncoderTest {
             assertEquals(0xFF, b & 0xFF);
         }
     }
+
+    @Test
+    void encodeUint256Long_zero() {
+        var buffer = java.nio.ByteBuffer.allocate(32);
+        FastAbiEncoder.encodeUint256(0L, buffer);
+
+        byte[] encoded = buffer.array();
+        assertEquals(32, encoded.length);
+        for (byte b : encoded) {
+            assertEquals(0x00, b);
+        }
+    }
+
+    @Test
+    void encodeUint256Long_one() {
+        var buffer = java.nio.ByteBuffer.allocate(32);
+        FastAbiEncoder.encodeUint256(1L, buffer);
+
+        byte[] encoded = buffer.array();
+        assertEquals(32, encoded.length);
+        // Last byte should be 1, all others 0
+        for (int i = 0; i < 31; i++) {
+            assertEquals(0x00, encoded[i]);
+        }
+        assertEquals(0x01, encoded[31]);
+    }
+
+    @Test
+    void encodeUint256Long_maxValue() {
+        var buffer = java.nio.ByteBuffer.allocate(32);
+        FastAbiEncoder.encodeUint256(Long.MAX_VALUE, buffer);
+
+        byte[] encoded = buffer.array();
+        assertEquals(32, encoded.length);
+        // Should match BigInteger encoding
+        byte[] expected = FastAbiEncoder.encodeUInt256(BigInteger.valueOf(Long.MAX_VALUE));
+        assertArrayEquals(expected, encoded);
+    }
+
+    @Test
+    void encodeUint256Long_negativeThrows() {
+        var buffer = java.nio.ByteBuffer.allocate(32);
+
+        IllegalArgumentException ex = assertThrows(
+                IllegalArgumentException.class,
+                () -> FastAbiEncoder.encodeUint256(-1L, buffer));
+        assertTrue(ex.getMessage().contains("negative"));
+    }
+
+    @Test
+    void encodeUint256Long_matchesBigIntegerEncoding() {
+        // Verify the long variant produces identical output to BigInteger variant
+        long[] testValues = {0L, 1L, 255L, 256L, 65535L, 1_000_000L, Long.MAX_VALUE};
+
+        for (long value : testValues) {
+            var buffer = java.nio.ByteBuffer.allocate(32);
+            FastAbiEncoder.encodeUint256(value, buffer);
+            byte[] fromLong = buffer.array();
+
+            byte[] fromBigInteger = FastAbiEncoder.encodeUInt256(BigInteger.valueOf(value));
+
+            assertArrayEquals(fromBigInteger, fromLong,
+                    "Mismatch for value " + value);
+        }
+    }
 }

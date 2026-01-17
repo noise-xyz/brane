@@ -184,6 +184,24 @@ public final class FastAbiEncoder {
     }
 
     /**
+     * Encodes a non-negative long value as a uint256 directly into the buffer.
+     * Zero-allocation variant for values that fit in a long.
+     *
+     * @param value  the non-negative value to encode
+     * @param buffer the destination buffer
+     * @throws IllegalArgumentException if value is negative
+     */
+    public static void encodeUint256(long value, ByteBuffer buffer) {
+        if (value < 0) {
+            throw new IllegalArgumentException("Unsigned value cannot be negative");
+        }
+        buffer.putLong(0L);
+        buffer.putLong(0L);
+        buffer.putLong(0L);
+        buffer.putLong(value);
+    }
+
+    /**
      * Encodes an int256 value directly into the buffer.
      *
      * <p>Valid range for int256: {@code -2^255} to {@code 2^255 - 1} (inclusive).
