@@ -85,4 +85,70 @@ class WebSocketConfigTest {
         );
         assertTrue(ex.getMessage().contains("url must use ws or wss scheme"));
     }
+
+    // ==================== TransportType tests ====================
+
+    @Test
+    void testDefaultTransportTypeIsAuto() {
+        WebSocketConfig config = WebSocketConfig.withDefaults("ws://localhost:8545");
+        assertEquals(WebSocketConfig.TransportType.AUTO, config.transportType());
+    }
+
+    @Test
+    void testBuilderSetsTransportTypeNio() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .transportType(WebSocketConfig.TransportType.NIO)
+                .build();
+        assertEquals(WebSocketConfig.TransportType.NIO, config.transportType());
+    }
+
+    @Test
+    void testBuilderSetsTransportTypeEpoll() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .transportType(WebSocketConfig.TransportType.EPOLL)
+                .build();
+        assertEquals(WebSocketConfig.TransportType.EPOLL, config.transportType());
+    }
+
+    @Test
+    void testBuilderSetsTransportTypeKqueue() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .transportType(WebSocketConfig.TransportType.KQUEUE)
+                .build();
+        assertEquals(WebSocketConfig.TransportType.KQUEUE, config.transportType());
+    }
+
+    @Test
+    void testBuilderSetsTransportTypeAuto() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .transportType(WebSocketConfig.TransportType.AUTO)
+                .build();
+        assertEquals(WebSocketConfig.TransportType.AUTO, config.transportType());
+    }
+
+    @Test
+    void testTransportTypeEnumValues() {
+        WebSocketConfig.TransportType[] types = WebSocketConfig.TransportType.values();
+        assertEquals(4, types.length);
+        assertNotNull(WebSocketConfig.TransportType.AUTO);
+        assertNotNull(WebSocketConfig.TransportType.NIO);
+        assertNotNull(WebSocketConfig.TransportType.EPOLL);
+        assertNotNull(WebSocketConfig.TransportType.KQUEUE);
+    }
+
+    @Test
+    void testTransportTypeValueOf() {
+        assertEquals(WebSocketConfig.TransportType.AUTO, WebSocketConfig.TransportType.valueOf("AUTO"));
+        assertEquals(WebSocketConfig.TransportType.NIO, WebSocketConfig.TransportType.valueOf("NIO"));
+        assertEquals(WebSocketConfig.TransportType.EPOLL, WebSocketConfig.TransportType.valueOf("EPOLL"));
+        assertEquals(WebSocketConfig.TransportType.KQUEUE, WebSocketConfig.TransportType.valueOf("KQUEUE"));
+    }
+
+    @Test
+    void testNullTransportTypeDefaultsToAuto() {
+        // When transportType is null, the compact constructor defaults it to AUTO
+        WebSocketConfig config = new WebSocketConfig(
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null);
+        assertEquals(WebSocketConfig.TransportType.AUTO, config.transportType());
+    }
 }
