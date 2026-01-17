@@ -258,4 +258,186 @@ class FastAbiEncoderTest {
 
         assertArrayEquals(expected, buffer.array());
     }
+
+    @Test
+    void encodeTo_heapBuffer_positionAdvancedCorrectly() {
+        byte[] selector = new byte[]{0x01, 0x02, 0x03, 0x04};
+        Object[] args = {
+                new UInt(256, BigInteger.valueOf(100)),
+                new Bool(false)
+        };
+        // 4 (selector) + 32 (uint256) + 32 (bool) = 68 bytes
+        int expectedSize = 68;
+
+        ByteBuffer heapBuffer = ByteBuffer.allocate(128);
+        assertEquals(0, heapBuffer.position());
+
+        FastAbiEncoder.encodeTo(selector, args, heapBuffer);
+
+        assertEquals(expectedSize, heapBuffer.position(), "Buffer position should advance by exactly 68 bytes");
+
+        // Verify we can continue writing to the same buffer
+        heapBuffer.put((byte) 0xFF);
+        assertEquals(expectedSize + 1, heapBuffer.position());
+    }
+
+    @Test
+    void encodeTo_directBuffer_positionAdvancedCorrectly() {
+        byte[] selector = new byte[]{0x01, 0x02, 0x03, 0x04};
+        Object[] args = {
+                new UInt(256, BigInteger.valueOf(100)),
+                new Bool(false)
+        };
+        // 4 (selector) + 32 (uint256) + 32 (bool) = 68 bytes
+        int expectedSize = 68;
+
+        ByteBuffer directBuffer = ByteBuffer.allocateDirect(128);
+        assertEquals(0, directBuffer.position());
+
+        FastAbiEncoder.encodeTo(selector, args, directBuffer);
+
+        assertEquals(expectedSize, directBuffer.position(), "Direct buffer position should advance by exactly 68 bytes");
+
+        // Verify we can continue writing to the same buffer
+        directBuffer.put((byte) 0xFF);
+        assertEquals(expectedSize + 1, directBuffer.position());
+    }
+
+    @Test
+    void encodeTo_directBuffer_matchesHeapBuffer() {
+        byte[] selector = new byte[]{(byte) 0xA9, 0x05, (byte) 0x9C, (byte) 0xBB}; // transfer selector
+        Address addr = new Address("0x1234567890123456789012345678901234567890");
+        Object[] args = {
+                new AddressType(addr),
+                new UInt(256, BigInteger.valueOf(1000))
+        };
+        int expectedSize = 4 + 32 + 32; // selector + address + uint256
+
+        ByteBuffer heapBuffer = ByteBuffer.allocate(expectedSize);
+        ByteBuffer directBuffer = ByteBuffer.allocateDirect(expectedSize);
+
+        FastAbiEncoder.encodeTo(selector, args, heapBuffer);
+        FastAbiEncoder.encodeTo(selector, args, directBuffer);
+
+        // Both should have same position
+        assertEquals(heapBuffer.position(), directBuffer.position());
+
+        // Compare contents
+        heapBuffer.flip();
+        directBuffer.flip();
+        byte[] heapData = new byte[expectedSize];
+        byte[] directData = new byte[expectedSize];
+        heapBuffer.get(heapData);
+        directBuffer.get(directData);
+
+        assertArrayEquals(heapData, directData, "Direct and heap buffers should produce identical output");
+    }
+
+    @Test
+    void encodeTo_directBuffer_nonZeroStartPosition() {
+        byte[] selector = new byte[]{0x01, 0x02, 0x03, 0x04};
+        Object[] args = {new UInt(256, BigInteger.TEN)};
+        int encodedSize = 4 + 32; // selector + uint256
+
+        ByteBuffer directBuffer = ByteBuffer.allocateDirect(128);
+        // Write some prefix data
+        directBuffer.putLong(0xDEADBEEFL);
+        int startPosition = directBuffer.position(); // 8
+
+        FastAbiEncoder.encodeTo(selector, args, directBuffer);
+
+        assertEquals(startPosition + encodedSize, directBuffer.position(),
+                "Position should advance from non-zero start position correctly");
+    }
+
+    @Test
+    void encodeTo_heapBuffer_nonZeroStartPosition() {
+        byte[] selector = new byte[]{0x01, 0x02, 0x03, 0x04};
+        Object[] args = {new UInt(256, BigInteger.TEN)};
+        int encodedSize = 4 + 32; // selector + uint256
+
+        ByteBuffer heapBuffer = ByteBuffer.allocate(128);
+        // Write some prefix data
+        heapBuffer.putLong(0xDEADBEEFL);
+        int startPosition = heapBuffer.position(); // 8
+
+        FastAbiEncoder.encodeTo(selector, args, heapBuffer);
+
+        assertEquals(startPosition + encodedSize, heapBuffer.position(),
+                "Position should advance from non-zero start position correctly");
+    }
+
+    @Test
+    void encodeTo_insufficientSpace_throwsBufferOverflowException() {
+        byte[] selector = new byte[]{0x01, 0x02, 0x03, 0x04};
+        Object[] args = {new UInt(256, BigInteger.TEN)};
+        // Needs 36 bytes (4 + 32), allocate less
+
+        ByteBuffer tooSmall = ByteBuffer.allocate(10);
+
+        assertThrows(java.nio.BufferOverflowException.class,
+                () -> FastAbiEncoder.encodeTo(selector, args, tooSmall));
+    }
+
+    @Test
+    void encodeTo_insufficientSpaceDirectBuffer_throwsBufferOverflowException() {
+        byte[] selector = new byte[]{0x01, 0x02, 0x03, 0x04};
+        Object[] args = {new UInt(256, BigInteger.TEN)};
+        // Needs 36 bytes (4 + 32), allocate less
+
+        ByteBuffer tooSmall = ByteBuffer.allocateDirect(10);
+
+        assertThrows(java.nio.BufferOverflowException.class,
+                () -> FastAbiEncoder.encodeTo(selector, args, tooSmall));
+    }
+
+    @Test
+    void encodeTo_exactSizeBuffer_succeeds() {
+        byte[] selector = new byte[]{0x01, 0x02, 0x03, 0x04};
+        Object[] args = {new UInt(256, BigInteger.TEN)};
+        int exactSize = 4 + 32; // exactly what we need
+
+        ByteBuffer exact = ByteBuffer.allocate(exactSize);
+        FastAbiEncoder.encodeTo(selector, args, exact);
+
+        assertEquals(exactSize, exact.position());
+        assertEquals(0, exact.remaining(), "Buffer should be exactly full");
+    }
+
+    @Test
+    void encodeTo_exactSizeDirectBuffer_succeeds() {
+        byte[] selector = new byte[]{0x01, 0x02, 0x03, 0x04};
+        Object[] args = {new UInt(256, BigInteger.TEN)};
+        int exactSize = 4 + 32; // exactly what we need
+
+        ByteBuffer exact = ByteBuffer.allocateDirect(exactSize);
+        FastAbiEncoder.encodeTo(selector, args, exact);
+
+        assertEquals(exactSize, exact.position());
+        assertEquals(0, exact.remaining(), "Direct buffer should be exactly full");
+    }
+
+    @Test
+    void encodeTo_insufficientSpaceForSelectorOnly_throwsBufferOverflowException() {
+        byte[] selector = new byte[]{0x01, 0x02, 0x03, 0x04};
+        Object[] args = {};
+        // Needs 4 bytes for selector, allocate 2
+
+        ByteBuffer tooSmall = ByteBuffer.allocate(2);
+
+        assertThrows(java.nio.BufferOverflowException.class,
+                () -> FastAbiEncoder.encodeTo(selector, args, tooSmall));
+    }
+
+    @Test
+    void encodeTo_insufficientSpacePartway_throwsBufferOverflowException() {
+        byte[] selector = new byte[]{0x01, 0x02, 0x03, 0x04};
+        Object[] args = {new UInt(256, BigInteger.TEN)};
+        // Needs 36 bytes total. Allocate 20 - enough for selector but not for argument
+
+        ByteBuffer partialSpace = ByteBuffer.allocate(20);
+
+        assertThrows(java.nio.BufferOverflowException.class,
+                () -> FastAbiEncoder.encodeTo(selector, args, partialSpace));
+    }
 }
