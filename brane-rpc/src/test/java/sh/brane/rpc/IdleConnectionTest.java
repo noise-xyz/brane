@@ -33,6 +33,43 @@ import org.testcontainers.utility.DockerImageName;
  *
  * <p>Tests use Testcontainers to run Anvil in a controlled Docker environment,
  * ensuring reproducible network conditions.
+ *
+ * <h2>Current Behavior (Baseline)</h2>
+ * <p>Without a dedicated {@code IdleStateHandler}, the WebSocket connection relies on:
+ * <ul>
+ *   <li>TCP keep-alive at the OS level (typically 2+ hours before detecting dead connections)</li>
+ *   <li>The application-level request/response pattern to detect connectivity issues</li>
+ *   <li>Server-side timeouts (varies by provider; Anvil doesn't drop idle connections quickly)</li>
+ * </ul>
+ *
+ * <p>All tests currently pass because:
+ * <ul>
+ *   <li>Test idle periods (3-5 seconds) are too short to trigger server-side disconnects</li>
+ *   <li>Anvil (local test node) is permissive and keeps connections open indefinitely</li>
+ *   <li>The WebSocket protocol itself doesn't require ping/pong for basic operation</li>
+ * </ul>
+ *
+ * <h2>Future IdleStateHandler Implementation</h2>
+ * <p>When {@code IdleStateHandler} is added to the Netty pipeline, it will:
+ * <ul>
+ *   <li>Send WebSocket ping frames after configurable idle periods (e.g., 30 seconds)</li>
+ *   <li>Close connections that don't respond to pings within a timeout</li>
+ *   <li>Provide metrics for connection health monitoring</li>
+ *   <li>Enable faster detection of half-open connections (NAT timeouts, network issues)</li>
+ * </ul>
+ *
+ * <p>After IdleStateHandler is implemented, these tests will verify that ping/pong
+ * behavior works correctly and that connections are proactively maintained.
+ *
+ * <h2>Running These Tests</h2>
+ * <pre>{@code
+ * # With Docker (uses Testcontainers):
+ * ./gradlew :brane-rpc:test --tests "sh.brane.rpc.IdleConnectionTest"
+ *
+ * # With local Anvil node:
+ * anvil --host 0.0.0.0 --port 8545  # In separate terminal
+ * ./gradlew :brane-rpc:test --tests "sh.brane.rpc.IdleConnectionTest" -Dbrane.test.useLocalNode=true
+ * }</pre>
  */
 @org.junit.jupiter.api.Tag("integration")
 public class IdleConnectionTest {
