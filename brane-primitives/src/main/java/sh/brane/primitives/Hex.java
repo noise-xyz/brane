@@ -42,21 +42,23 @@ public final class Hex {
             throw new IllegalArgumentException("hex string cannot be null");
         }
 
-        final String cleanHex = cleanPrefix(hexString);
-        if (cleanHex.isEmpty()) {
+        final int start = hasPrefix(hexString) ? 2 : 0;
+        final int hexLength = hexString.length() - start;
+
+        if (hexLength == 0) {
             return new byte[0];
         }
 
-        if ((cleanHex.length() & 1) == 1) {
+        if ((hexLength & 1) == 1) {
             throw new IllegalArgumentException("hex string must have even length: " + hexString);
         }
 
-        final int len = cleanHex.length() / 2;
+        final int len = hexLength / 2;
         final byte[] result = new byte[len];
 
         for (int i = 0; i < len; i++) {
-            final int high = toNibble(cleanHex.charAt(i * 2), hexString);
-            final int low = toNibble(cleanHex.charAt(i * 2 + 1), hexString);
+            final int high = toNibble(hexString.charAt(start + i * 2), hexString);
+            final int low = toNibble(hexString.charAt(start + i * 2 + 1), hexString);
             result[i] = (byte) ((high << 4) | low);
         }
 

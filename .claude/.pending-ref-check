@@ -3,3 +3,4 @@
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/types/Wei.java|Wei|class
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/abi/FastAbiEncoder.java|encodeUInt256|method
 /Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-core/src/main/java/sh/brane/core/abi/FastAbiEncoder.java|encodeUint256|method
+/Users/liangchenzhou/conductor/workspaces/brane/chengdu/brane-primitives/src/main/java/sh/brane/primitives/Hex.java|decode|method
