@@ -10,6 +10,7 @@ import org.openjdk.jmh.annotations.*;
 import sh.brane.core.abi.Abi;
 import sh.brane.core.abi.FastAbiEncoder;
 import sh.brane.core.types.Address;
+import sh.brane.core.types.HexData;
 import sh.brane.primitives.Hex;
 
 /**
@@ -53,6 +54,19 @@ public class AbiAllocationBenchmark {
             ]
             """;
 
+    /** ABI with a function that takes dynamic bytes as input. */
+    private static final String BYTES_ABI_JSON = """
+            [
+              {
+                "inputs": [{ "internalType": "bytes", "name": "data", "type": "bytes" }],
+                "name": "setData",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+              }
+            ]
+            """;
+
     /** ABI instance for ERC20 encoding/decoding. */
     public Abi abi;
 
@@ -76,6 +90,15 @@ public class AbiAllocationBenchmark {
 
     /** Test value for uint256 long encoding benchmarks. */
     public long uint256LongTestValue;
+
+    /** ABI instance for bytes encoding. */
+    public Abi bytesAbi;
+
+    /** Test bytes data for encoding benchmarks (64 bytes of data). */
+    public HexData testBytesData;
+
+    /** Pre-allocated ByteBuffer for bytes encoding tests. */
+    public ByteBuffer bytesBuffer;
 
     @Setup(Level.Trial)
     public void setup() {
@@ -105,6 +128,16 @@ public class AbiAllocationBenchmark {
 
         // Test value for uint256 long encoding: 1,000,000
         uint256LongTestValue = 1000000L;
+
+        // Initialize bytes ABI
+        bytesAbi = Abi.fromJson(BYTES_ABI_JSON);
+
+        // Test bytes data: 64 bytes of data (a typical payload size)
+        testBytesData = new HexData("0x" + "ab".repeat(64));
+
+        // Pre-allocate ByteBuffer for bytes encoding tests
+        // Size: 4 (selector) + 32 (offset) + 32 (length) + 64 (data padded to 64) = 132 bytes
+        bytesBuffer = ByteBuffer.allocate(132);
     }
 
     /**
@@ -151,5 +184,17 @@ public class AbiAllocationBenchmark {
     @BenchmarkMode(Mode.AverageTime)
     public Object encodeAddressAbi() {
         return abi.encodeFunction("transfer", testAddress, testAmount);
+    }
+
+    /**
+     * Benchmarks ABI encoding of a function call with dynamic bytes argument.
+     * This is the BASELINE before optimization - measures allocation patterns for dynamic types.
+     *
+     * @return the encoded function calldata as HexData (for blackhole consumption)
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public Object encodeBytes() {
+        return bytesAbi.encodeFunction("setData", testBytesData);
     }
 }
