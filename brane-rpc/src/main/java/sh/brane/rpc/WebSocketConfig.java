@@ -97,6 +97,15 @@ import org.jspecify.annotations.Nullable;
  * @param ringBufferSaturationThreshold threshold (0.0-1.0) for ring buffer saturation
  *                                      warnings. When remaining capacity falls below
  *                                      this fraction, a warning is logged. Default: 0.10 (10%).
+ * @param readIdleTimeout               duration of read inactivity before sending a WebSocket
+ *                                      ping frame. If no data is received within this duration,
+ *                                      a ping is sent to verify the connection is still alive.
+ *                                      Default: 30 seconds. Set to {@link Duration#ZERO} to disable.
+ * @param writeIdleTimeout              duration of write inactivity before sending a WebSocket
+ *                                      ping frame. If no data is written within this duration,
+ *                                      a ping is sent to keep the connection alive (useful for
+ *                                      NAT traversal). Default: 15 seconds. Set to
+ *                                      {@link Duration#ZERO} to disable.
  * @since 0.2.0
  */
 public record WebSocketConfig(
@@ -112,7 +121,9 @@ public record WebSocketConfig(
         int writeBufferLowWaterMark,
         int writeBufferHighWaterMark,
         int maxFrameSize,
-        double ringBufferSaturationThreshold) {
+        double ringBufferSaturationThreshold,
+        Duration readIdleTimeout,
+        Duration writeIdleTimeout) {
 
     /**
      * Disruptor wait strategy types.
@@ -231,6 +242,8 @@ public record WebSocketConfig(
     private static final int DEFAULT_MAX_FRAME_SIZE = 64 * 1024;    // 64KB
     private static final int MAX_FRAME_SIZE_LIMIT = 16 * 1024 * 1024; // 16MB
     private static final double DEFAULT_RING_BUFFER_SATURATION_THRESHOLD = 0.10; // 10%
+    private static final Duration DEFAULT_READ_IDLE_TIMEOUT = Duration.ofSeconds(30);
+    private static final Duration DEFAULT_WRITE_IDLE_TIMEOUT = Duration.ofSeconds(15);
 
     /**
      * Maximum power of 2 that fits in a signed 32-bit int: 2^30 = 1,073,741,824.
@@ -286,6 +299,10 @@ public record WebSocketConfig(
         }
         if (ringBufferSaturationThreshold == 0.0)
             ringBufferSaturationThreshold = DEFAULT_RING_BUFFER_SATURATION_THRESHOLD;
+        if (readIdleTimeout == null)
+            readIdleTimeout = DEFAULT_READ_IDLE_TIMEOUT;
+        if (writeIdleTimeout == null)
+            writeIdleTimeout = DEFAULT_WRITE_IDLE_TIMEOUT;
 
         // Validate maxFrameSize
         if (maxFrameSize > MAX_FRAME_SIZE_LIMIT) {
@@ -320,7 +337,7 @@ public record WebSocketConfig(
      * @return a new WebSocketConfig with default settings
      */
     public static WebSocketConfig withDefaults(String url) {
-        return new WebSocketConfig(url, 0, 0, null, null, null, null, 0, null, 0, 0, 0, 0.0);
+        return new WebSocketConfig(url, 0, 0, null, null, null, null, 0, null, 0, 0, 0, 0.0, null, null);
     }
 
     /**
@@ -350,6 +367,8 @@ public record WebSocketConfig(
         private int writeBufferHighWaterMark = 0;
         private int maxFrameSize = 0;
         private double ringBufferSaturationThreshold = 0.0;
+        private Duration readIdleTimeout = null;
+        private Duration writeIdleTimeout = null;
 
         private Builder(String url) {
             this.url = Objects.requireNonNull(url, "url");
@@ -504,6 +523,41 @@ public record WebSocketConfig(
         }
 
         /**
+         * Sets the read idle timeout.
+         *
+         * <p>If no data is received within this duration, a WebSocket ping frame is sent
+         * to verify the connection is still alive. This helps detect dead connections
+         * that might otherwise go unnoticed (e.g., when a server crashes or network
+         * path fails).
+         *
+         * <p>Default: 30 seconds. Set to {@link Duration#ZERO} to disable read idle detection.
+         *
+         * @param timeout the read idle timeout
+         * @return this builder
+         */
+        public Builder readIdleTimeout(Duration timeout) {
+            this.readIdleTimeout = timeout;
+            return this;
+        }
+
+        /**
+         * Sets the write idle timeout.
+         *
+         * <p>If no data is written within this duration, a WebSocket ping frame is sent
+         * to keep the connection alive. This is particularly useful for NAT traversal,
+         * as many NAT devices drop idle connections after 30-60 seconds of inactivity.
+         *
+         * <p>Default: 15 seconds. Set to {@link Duration#ZERO} to disable write idle detection.
+         *
+         * @param timeout the write idle timeout
+         * @return this builder
+         */
+        public Builder writeIdleTimeout(Duration timeout) {
+            this.writeIdleTimeout = timeout;
+            return this;
+        }
+
+        /**
          * Builds the WebSocketConfig.
          *
          * @return a new WebSocketConfig
@@ -522,7 +576,9 @@ public record WebSocketConfig(
                     writeBufferLowWaterMark,
                     writeBufferHighWaterMark,
                     maxFrameSize,
-                    ringBufferSaturationThreshold);
+                    ringBufferSaturationThreshold,
+                    readIdleTimeout,
+                    writeIdleTimeout);
         }
     }
 }
