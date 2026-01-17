@@ -67,6 +67,30 @@ public class AbiAllocationBenchmark {
             ]
             """;
 
+    /** ABI with a function that takes a tuple (struct) with multiple fields. */
+    private static final String TUPLE_ABI_JSON = """
+            [
+              {
+                "inputs": [
+                  {
+                    "components": [
+                      { "internalType": "address", "name": "addr", "type": "address" },
+                      { "internalType": "uint256", "name": "amount", "type": "uint256" },
+                      { "internalType": "bytes", "name": "data", "type": "bytes" }
+                    ],
+                    "internalType": "struct MyStruct",
+                    "name": "input",
+                    "type": "tuple"
+                  }
+                ],
+                "name": "processStruct",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+              }
+            ]
+            """;
+
     /** ABI instance for ERC20 encoding/decoding. */
     public Abi abi;
 
@@ -99,6 +123,12 @@ public class AbiAllocationBenchmark {
 
     /** Pre-allocated ByteBuffer for bytes encoding tests. */
     public ByteBuffer bytesBuffer;
+
+    /** ABI instance for tuple encoding. */
+    public Abi tupleAbi;
+
+    /** Tuple input array containing (address, uint256, bytes) for encoding. */
+    public Object[] tupleInput;
 
     @Setup(Level.Trial)
     public void setup() {
@@ -138,6 +168,13 @@ public class AbiAllocationBenchmark {
         // Pre-allocate ByteBuffer for bytes encoding tests
         // Size: 4 (selector) + 32 (offset) + 32 (length) + 64 (data padded to 64) = 132 bytes
         bytesBuffer = ByteBuffer.allocate(132);
+
+        // Initialize tuple ABI
+        tupleAbi = Abi.fromJson(TUPLE_ABI_JSON);
+
+        // Tuple input: (address, uint256, bytes)
+        // Reuse testAddress, testAmount, and testBytesData for consistency
+        tupleInput = new Object[] {testAddress, testAmount, testBytesData};
     }
 
     /**
@@ -196,5 +233,18 @@ public class AbiAllocationBenchmark {
     @BenchmarkMode(Mode.AverageTime)
     public Object encodeBytes() {
         return bytesAbi.encodeFunction("setData", testBytesData);
+    }
+
+    /**
+     * Benchmarks ABI encoding of a function call with a tuple (struct) argument.
+     * The tuple contains multiple fields: address, uint256, and bytes.
+     * This is the BASELINE before optimization - measures allocation patterns for tuple types.
+     *
+     * @return the encoded function calldata as HexData (for blackhole consumption)
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public Object encodeTuple() {
+        return tupleAbi.encodeFunction("processStruct", tupleInput);
     }
 }
