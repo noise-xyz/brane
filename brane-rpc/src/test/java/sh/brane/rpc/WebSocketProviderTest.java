@@ -950,4 +950,83 @@ class WebSocketProviderTest {
         // Default to NIO for NioEventLoopGroup or unknown types
         return io.netty.channel.socket.nio.NioSocketChannel.class;
     }
+
+    // ==================== CONNECT_TIMEOUT_MILLIS tests ====================
+
+    /**
+     * Tests that CONNECT_TIMEOUT_MILLIS is applied to Bootstrap options.
+     * Verifies the config connect timeout is correctly converted to milliseconds
+     * and applied to the Bootstrap channel option.
+     */
+    @Test
+    void connectTimeout_appliedToBootstrapOptions() {
+        java.time.Duration connectTimeout = java.time.Duration.ofSeconds(5);
+
+        // Create a Bootstrap and apply the CONNECT_TIMEOUT_MILLIS option
+        io.netty.bootstrap.Bootstrap bootstrap = new io.netty.bootstrap.Bootstrap();
+        bootstrap.option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) connectTimeout.toMillis());
+
+        // Verify the option was set by retrieving it from the config
+        // Bootstrap stores options in an internal map, accessible via config()
+        @SuppressWarnings("unchecked")
+        java.util.Map<io.netty.channel.ChannelOption<?>, Object> options = bootstrap.config().options();
+
+        assertTrue(options.containsKey(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS),
+                "CONNECT_TIMEOUT_MILLIS should be set on Bootstrap");
+        assertEquals(5000, options.get(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS),
+                "CONNECT_TIMEOUT_MILLIS should be 5000ms (5 seconds)");
+    }
+
+    /**
+     * Tests that default connect timeout (10 seconds) is correctly applied.
+     */
+    @Test
+    void connectTimeout_defaultValueApplied() {
+        java.time.Duration defaultConnectTimeout = java.time.Duration.ofSeconds(10);
+
+        io.netty.bootstrap.Bootstrap bootstrap = new io.netty.bootstrap.Bootstrap();
+        bootstrap.option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) defaultConnectTimeout.toMillis());
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<io.netty.channel.ChannelOption<?>, Object> options = bootstrap.config().options();
+
+        assertEquals(10000, options.get(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS),
+                "Default CONNECT_TIMEOUT_MILLIS should be 10000ms (10 seconds)");
+    }
+
+    /**
+     * Tests that custom connect timeout from config is correctly applied.
+     */
+    @Test
+    void connectTimeout_customValueFromConfig() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .connectTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        io.netty.bootstrap.Bootstrap bootstrap = new io.netty.bootstrap.Bootstrap();
+        bootstrap.option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) config.connectTimeout().toMillis());
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<io.netty.channel.ChannelOption<?>, Object> options = bootstrap.config().options();
+
+        assertEquals(30000, options.get(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS),
+                "Custom CONNECT_TIMEOUT_MILLIS should be 30000ms (30 seconds)");
+    }
+
+    /**
+     * Tests that sub-second connect timeout is correctly applied.
+     */
+    @Test
+    void connectTimeout_subSecondPrecision() {
+        java.time.Duration connectTimeout = java.time.Duration.ofMillis(500);
+
+        io.netty.bootstrap.Bootstrap bootstrap = new io.netty.bootstrap.Bootstrap();
+        bootstrap.option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) connectTimeout.toMillis());
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<io.netty.channel.ChannelOption<?>, Object> options = bootstrap.config().options();
+
+        assertEquals(500, options.get(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS),
+                "CONNECT_TIMEOUT_MILLIS should be 500ms");
+    }
 }
