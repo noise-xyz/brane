@@ -313,4 +313,71 @@ class WebSocketConfigTest {
                 "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, 0);
         assertEquals(64 * 1024, config.maxFrameSize());
     }
+
+    @Test
+    void testNegativeMaxFrameSizeAppliesDefault() {
+        WebSocketConfig config = new WebSocketConfig(
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, -1);
+        assertEquals(64 * 1024, config.maxFrameSize());
+
+        WebSocketConfig config2 = new WebSocketConfig(
+                "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, -100);
+        assertEquals(64 * 1024, config2.maxFrameSize());
+    }
+
+    @Test
+    void testMinimumValidMaxFrameSize() {
+        // 1 byte should be valid (though impractical)
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .maxFrameSize(1)
+                .build();
+        assertEquals(1, config.maxFrameSize());
+    }
+
+    @Test
+    void testMaxFrameSizeAtVariousValidValues() {
+        // Small value (1KB)
+        WebSocketConfig config1 = WebSocketConfig.builder("ws://localhost:8545")
+                .maxFrameSize(1024)
+                .build();
+        assertEquals(1024, config1.maxFrameSize());
+
+        // Medium value (1MB)
+        WebSocketConfig config2 = WebSocketConfig.builder("ws://localhost:8545")
+                .maxFrameSize(1024 * 1024)
+                .build();
+        assertEquals(1024 * 1024, config2.maxFrameSize());
+
+        // Large value just under limit (15MB)
+        WebSocketConfig config3 = WebSocketConfig.builder("ws://localhost:8545")
+                .maxFrameSize(15 * 1024 * 1024)
+                .build();
+        assertEquals(15 * 1024 * 1024, config3.maxFrameSize());
+    }
+
+    @Test
+    void testMaxFrameSizeErrorMessageContent() {
+        int limit = 16 * 1024 * 1024;
+        int overLimit = limit + 1000;
+
+        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class, () ->
+                WebSocketConfig.builder("ws://localhost:8545")
+                        .maxFrameSize(overLimit)
+                        .build());
+
+        // Verify error message contains the actual value and limit
+        assertTrue(ex.getMessage().contains(String.valueOf(overLimit)),
+                "Error message should contain the invalid value");
+        assertTrue(ex.getMessage().contains("16MB"),
+                "Error message should mention the 16MB limit");
+    }
+
+    @Test
+    void testMaxFrameSizeDirectConstructorValidation() {
+        // Direct constructor should also validate
+        int limit = 16 * 1024 * 1024;
+        assertThrows(IllegalArgumentException.class, () ->
+                new WebSocketConfig(
+                        "ws://localhost:8545", 0, 0, null, null, null, null, 0, null, 0, 0, limit + 1));
+    }
 }
