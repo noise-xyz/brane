@@ -66,8 +66,6 @@ Hex.encodeTo(bytes, charBuf, 0, true);
 ./gradlew :brane-benchmark:jmh -Pjmh.includes="AllocationBenchmark" -Pjmh.prof="gc"
 ```
 
-See [ALLOCATION_OPTIMIZATION.md](ALLOCATION_OPTIMIZATION.md) for detailed performance analysis.
-
 ## Development
 
 Prerequisites: Java 21, [Foundry](https://getfoundry.sh/) (for Anvil).

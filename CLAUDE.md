@@ -250,8 +250,6 @@ Use pre-allocated constants to avoid repeated allocations:
 ### Allocation-Aware Methods
 Methods document their allocation behavior in Javadoc with `<b>Allocation:</b>` tags.
 
-See [ALLOCATION_OPTIMIZATION.md](ALLOCATION_OPTIMIZATION.md) for full benchmarks.
-
 ## For Full Details
 
 - `JAVA21.md` - Java 21 patterns reference (sealed types, pattern matching, records, virtual threads)
