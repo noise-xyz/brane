@@ -74,6 +74,42 @@ import org.jspecify.annotations.Nullable;
  * <li>{@link TransportType#KQUEUE} - macOS/BSD-only native transport.</li>
  * </ul>
  *
+ * <p>
+ * <strong>Idle Timeout Configuration:</strong>
+ * <p>
+ * The WebSocket provider includes built-in idle detection to maintain connection
+ * health and detect dead connections:
+ *
+ * <pre>{@code
+ * WebSocketConfig config = WebSocketConfig.builder("wss://eth.example.com")
+ *         .writeIdleTimeout(Duration.ofSeconds(15))  // Ping if no writes for 15s
+ *         .readIdleTimeout(Duration.ofSeconds(30))   // Close if no reads for 30s
+ *         .build();
+ * }</pre>
+ *
+ * <p>
+ * <strong>Behavior:</strong>
+ * <ul>
+ * <li><b>Write idle:</b> When no data has been written for {@code writeIdleTimeout},
+ * a WebSocket ping frame is sent to keep the connection alive. This is particularly
+ * useful for NAT traversal, as many NAT devices drop idle connections after
+ * 30-60 seconds of inactivity.</li>
+ * <li><b>Read idle:</b> When no data has been received for {@code readIdleTimeout},
+ * the connection is closed and transitions to {@code RECONNECTING} state. This
+ * detects dead connections where the server has crashed or the network path has
+ * failed silently.</li>
+ * </ul>
+ *
+ * <p>
+ * <strong>Recommended Configuration:</strong>
+ * <ul>
+ * <li>Set {@code writeIdleTimeout} shorter than {@code readIdleTimeout} so pings
+ * keep the connection alive before read timeout triggers.</li>
+ * <li>Use {@link Duration#ZERO} to disable either timeout if not needed.</li>
+ * <li>For aggressive NAT environments, consider lowering {@code writeIdleTimeout}
+ * to 10-15 seconds.</li>
+ * </ul>
+ *
  * @param url                   the WebSocket URL (ws:// or wss://)
  * @param maxPendingRequests    maximum concurrent in-flight requests (must be
  *                              power of 2)
@@ -97,10 +133,11 @@ import org.jspecify.annotations.Nullable;
  * @param ringBufferSaturationThreshold threshold (0.0-1.0) for ring buffer saturation
  *                                      warnings. When remaining capacity falls below
  *                                      this fraction, a warning is logged. Default: 0.10 (10%).
- * @param readIdleTimeout               duration of read inactivity before sending a WebSocket
- *                                      ping frame. If no data is received within this duration,
- *                                      a ping is sent to verify the connection is still alive.
- *                                      Default: 30 seconds. Set to {@link Duration#ZERO} to disable.
+ * @param readIdleTimeout               duration of read inactivity before closing the connection.
+ *                                      If no data is received within this duration, the connection
+ *                                      is closed and transitions to RECONNECTING state, as the
+ *                                      server is presumed dead. Default: 30 seconds. Set to
+ *                                      {@link Duration#ZERO} to disable.
  * @param writeIdleTimeout              duration of write inactivity before sending a WebSocket
  *                                      ping frame. If no data is written within this duration,
  *                                      a ping is sent to keep the connection alive (useful for
@@ -525,10 +562,10 @@ public record WebSocketConfig(
         /**
          * Sets the read idle timeout.
          *
-         * <p>If no data is received within this duration, a WebSocket ping frame is sent
-         * to verify the connection is still alive. This helps detect dead connections
-         * that might otherwise go unnoticed (e.g., when a server crashes or network
-         * path fails).
+         * <p>If no data is received within this duration, the connection is closed and
+         * transitions to RECONNECTING state. This detects dead connections that might
+         * otherwise go unnoticed (e.g., when a server crashes or network path fails
+         * without sending TCP RST).
          *
          * <p>Default: 30 seconds. Set to {@link Duration#ZERO} to disable read idle detection.
          *
