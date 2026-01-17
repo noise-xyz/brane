@@ -25,3 +25,4 @@
 /Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|threshold|method
 /Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketConfig.java|ringBufferSaturationThreshold|method
 /Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketProvider.java|channelInactive|method
+/Users/liangchenzhou/conductor/workspaces/brane/bangalore/brane-rpc/src/main/java/sh/brane/rpc/WebSocketProvider.java|userEventTriggered|method
