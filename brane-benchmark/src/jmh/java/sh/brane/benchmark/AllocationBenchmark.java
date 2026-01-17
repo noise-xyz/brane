@@ -49,4 +49,10 @@ public class AllocationBenchmark {
     public String hexEncode() {
         return Hex.encode(testBytes);
     }
+
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public byte[] hexDecode() {
+        return Hex.decode(hexString);
+    }
 }
