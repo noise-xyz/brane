@@ -3,12 +3,16 @@ package sh.brane.benchmark;
 
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.openjdk.jmh.annotations.*;
 
 import sh.brane.core.abi.Abi;
+import sh.brane.core.abi.AbiDecoder;
+import sh.brane.core.abi.AbiType;
 import sh.brane.core.abi.FastAbiEncoder;
+import sh.brane.core.abi.TypeSchema;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.HexData;
 import sh.brane.primitives.Hex;
@@ -130,6 +134,12 @@ public class AbiAllocationBenchmark {
     /** Tuple input array containing (address, uint256, bytes) for encoding. */
     public Object[] tupleInput;
 
+    /** Pre-encoded uint256 bytes for decoding benchmarks (32 bytes). */
+    public byte[] preEncodedUint256;
+
+    /** Schema for decoding a single uint256. */
+    public List<TypeSchema> uint256Schema;
+
     @Setup(Level.Trial)
     public void setup() {
         // Initialize ABI from ERC20 JSON
@@ -175,6 +185,15 @@ public class AbiAllocationBenchmark {
         // Tuple input: (address, uint256, bytes)
         // Reuse testAddress, testAmount, and testBytesData for consistency
         tupleInput = new Object[] {testAddress, testAmount, testBytesData};
+
+        // Pre-encode a uint256 value for decoding benchmarks
+        // ABI encoding of uint256 is simply the value left-padded to 32 bytes
+        ByteBuffer encodeBuffer = ByteBuffer.allocate(32);
+        FastAbiEncoder.encodeUInt256(uint256TestValue, encodeBuffer);
+        preEncodedUint256 = encodeBuffer.array();
+
+        // Schema for decoding a single uint256
+        uint256Schema = List.of(new TypeSchema.UIntSchema(256));
     }
 
     /**
@@ -246,5 +265,17 @@ public class AbiAllocationBenchmark {
     @BenchmarkMode(Mode.AverageTime)
     public Object encodeTuple() {
         return tupleAbi.encodeFunction("processStruct", tupleInput);
+    }
+
+    /**
+     * Benchmarks ABI decoding of a pre-encoded uint256 value.
+     * This is the BASELINE before optimization - measures allocation patterns in AbiDecoder.
+     *
+     * @return the decoded ABI types list (for blackhole consumption)
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public List<AbiType> decodeUint256() {
+        return AbiDecoder.decode(preEncodedUint256, uint256Schema);
     }
 }
