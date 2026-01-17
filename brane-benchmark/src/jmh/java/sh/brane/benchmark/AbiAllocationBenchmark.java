@@ -58,6 +58,19 @@ public class AbiAllocationBenchmark {
             ]
             """;
 
+    /** ABI with a function that takes only a uint256 as input. */
+    private static final String UINT256_ABI_JSON = """
+            [
+              {
+                "inputs": [{ "internalType": "uint256", "name": "value", "type": "uint256" }],
+                "name": "setValue",
+                "outputs": [],
+                "stateMutability": "nonpayable",
+                "type": "function"
+              }
+            ]
+            """;
+
     /** ABI with a function that takes dynamic bytes as input. */
     private static final String BYTES_ABI_JSON = """
             [
@@ -131,6 +144,9 @@ public class AbiAllocationBenchmark {
     /** ABI instance for tuple encoding. */
     public Abi tupleAbi;
 
+    /** ABI instance for uint256 encoding via InternalAbi path. */
+    public Abi uint256Abi;
+
     /** Tuple input array containing (address, uint256, bytes) for encoding. */
     public Object[] tupleInput;
 
@@ -182,6 +198,9 @@ public class AbiAllocationBenchmark {
         // Initialize tuple ABI
         tupleAbi = Abi.fromJson(TUPLE_ABI_JSON);
 
+        // Initialize uint256 ABI for InternalAbi path benchmarking
+        uint256Abi = Abi.fromJson(UINT256_ABI_JSON);
+
         // Tuple input: (address, uint256, bytes)
         // Reuse testAddress, testAmount, and testBytesData for consistency
         tupleInput = new Object[] {testAddress, testAmount, testBytesData};
@@ -228,6 +247,19 @@ public class AbiAllocationBenchmark {
         // once Task 2.3 adds the long overload. Currently using BigInteger.valueOf() as placeholder.
         FastAbiEncoder.encodeUInt256(BigInteger.valueOf(uint256LongTestValue), uint256Buffer);
         return uint256Buffer;
+    }
+
+    /**
+     * Benchmarks encoding a uint256 value via the InternalAbi path (Abi.encodeFunction).
+     * This provides a comparison against the direct FastAbiEncoder.encodeUInt256 benchmark
+     * to measure the overhead of the full ABI encoding pipeline for uint256 values.
+     *
+     * @return the encoded function calldata as HexData (for blackhole consumption)
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public Object encodeUint256Internal() {
+        return uint256Abi.encodeFunction("setValue", uint256TestValue);
     }
 
     /**
