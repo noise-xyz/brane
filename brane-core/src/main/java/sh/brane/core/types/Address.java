@@ -26,6 +26,13 @@ public record Address(@com.fasterxml.jackson.annotation.JsonValue String value) 
     private static final int BYTE_LENGTH = 20;
     private static final Pattern HEX = HexValidator.fixedLength(BYTE_LENGTH);
 
+    /**
+     * The zero address ({@code 0x0000000000000000000000000000000000000000}).
+     * <p>
+     * Commonly used as a sentinel value to represent "no address" or the burn address.
+     */
+    public static final Address ZERO = new Address("0x0000000000000000000000000000000000000000");
+
     public Address {
         Objects.requireNonNull(value, "address");
         if (!HEX.matcher(value).matches()) {
