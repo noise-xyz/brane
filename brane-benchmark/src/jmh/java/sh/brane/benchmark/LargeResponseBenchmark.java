@@ -27,6 +27,18 @@ import sh.brane.rpc.internal.LogParser;
  *
  * <p>The benchmark uses synthetic but realistic log entry data matching
  * the structure returned by Ethereum JSON-RPC {@code eth_getLogs}.
+ *
+ * <p><b>Response Size vs maxFrameSize:</b>
+ * <ul>
+ *   <li>100 logs: ~60 KB (well under 64KB default maxFrameSize)</li>
+ *   <li>1000 logs: ~600 KB (requires maxFrameSize >= 1MB)</li>
+ *   <li>5000 logs: ~3 MB (requires maxFrameSize >= 4MB)</li>
+ *   <li>16MB maxFrameSize supports ~26,000+ log entries without truncation</li>
+ * </ul>
+ *
+ * <p>Configure {@link sh.brane.rpc.WebSocketConfig#maxFrameSize()} to handle
+ * large responses. The default 64KB is suitable for typical queries; increase
+ * to 16MB for bulk historical log fetching.
  */
 @State(Scope.Benchmark)
 @OutputTimeUnit(TimeUnit.MILLISECONDS)
@@ -62,11 +74,21 @@ public class LargeResponseBenchmark {
     private Object parsedJsonObject;
     private ObjectMapper objectMapper;
 
+    /** 16MB maxFrameSize limit from {@link sh.brane.rpc.WebSocketConfig}. */
+    private static final int MAX_FRAME_SIZE_16MB = 16 * 1024 * 1024;
+
     @Setup(Level.Trial)
     public void setup() {
         objectMapper = new ObjectMapper();
         largeJsonResponse = generateLargeLogsResponse(logCount);
         largeJsonBytes = largeJsonResponse.getBytes(StandardCharsets.UTF_8);
+
+        // Log response size for verification against maxFrameSize
+        int sizeKB = largeJsonBytes.length / 1024;
+        double sizeMB = largeJsonBytes.length / (1024.0 * 1024.0);
+        System.out.printf("[LargeResponseBenchmark] logCount=%d, responseSize=%d bytes (%.1f KB, %.2f MB), fits16MB=%b%n",
+                logCount, largeJsonBytes.length, (double) sizeKB, sizeMB,
+                largeJsonBytes.length <= MAX_FRAME_SIZE_16MB);
 
         // Pre-parse JSON for LogParser benchmark (simulates what the RPC layer does)
         try {
