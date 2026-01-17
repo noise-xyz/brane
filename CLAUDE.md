@@ -222,6 +222,36 @@ Read(file_path="brane-rpc/.../Brane.java", offset=229, limit=50)
 - **Blob transactions require Cancun**: Start Anvil with `anvil --hardfork cancun` for EIP-4844 support
 - **Default test key**: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
 
+## Allocation Guidelines
+
+Brane is designed to be allocation-conscious. Key patterns:
+
+### Zero-Allocation APIs
+For hot paths, use `*To()` variants that write to pre-allocated buffers:
+```java
+// Instead of Hex.decode() (48 B/op)
+byte[] buffer = new byte[32];
+Hex.decodeTo(hexString, 0, hexString.length(), buffer, 0);  // 0 B/op
+
+// Instead of Hex.encode() (264 B/op)
+char[] charBuf = new char[66];
+Hex.encodeTo(bytes, charBuf, 0, true);  // 0 B/op
+
+// For ABI encoding
+ByteBuffer buffer = ByteBuffer.allocate(size);
+FastAbiEncoder.encodeTo(selector, args, buffer);  // 0 B/op
+```
+
+### Singleton Constants
+Use pre-allocated constants to avoid repeated allocations:
+- `Address.ZERO` - Zero address constant
+- `Wei.ZERO` - Zero wei constant
+
+### Allocation-Aware Methods
+Methods document their allocation behavior in Javadoc with `<b>Allocation:</b>` tags.
+
+See [ALLOCATION_OPTIMIZATION.md](ALLOCATION_OPTIMIZATION.md) for full benchmarks.
+
 ## For Full Details
 
 - `JAVA21.md` - Java 21 patterns reference (sealed types, pattern matching, records, virtual threads)

@@ -50,7 +50,7 @@
 
 | Operation | Current Allocations | Root Cause | Status |
 |-----------|---------------------|------------|--------|
-| `Hex.decode(hex)` | 2 | substring + byte[] | **Task 2.4** |
+| `Hex.decode(hex)` | 1 | byte[] only (substring removed) | **Done** (was 128→48 B/op) |
 | ABI encode uint256 | 1+ per value | BigInteger.valueOf() boxing | **Task 2.3** |
 | `Hex.encode(bytes)` | 2 | char[] + String | Phase 3 (optional) |
 
@@ -172,8 +172,10 @@ Run benchmarks and record baseline allocation rates in this document.
 
 | Benchmark | gc.alloc.rate.norm | Notes |
 |-----------|-------------------|-------|
-| `hexDecode` | **128 B/op** | Decodes 64-char hex (32 bytes output) |
+| `hexDecode` | **48 B/op** | Decodes 64-char hex (32 bytes output); optimized with index-based parsing |
+| `hexDecodeTo` | **~0 B/op** | Allocation-free decode to pre-allocated byte[] buffer |
 | `hexEncode` | **264 B/op** | Encodes 32 bytes to 66-char hex string |
+| `hexEncodeTo` | **~0 B/op** | Allocation-free encode to pre-allocated char[] buffer |
 
 ### ABI Operations (AbiAllocationBenchmark)
 

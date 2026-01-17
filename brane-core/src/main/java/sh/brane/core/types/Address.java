@@ -41,6 +41,14 @@ public record Address(@com.fasterxml.jackson.annotation.JsonValue String value) 
         value = value.toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Decodes this address to a 20-byte array.
+     *
+     * <p><b>Allocation:</b> 1 allocation per call (result byte[]). For hot paths,
+     * cache the result or use {@link Hex#decodeTo} with a pre-allocated buffer.
+     *
+     * @return 20-byte array representation
+     */
     public byte[] toBytes() {
         return Hex.decode(value);
     }

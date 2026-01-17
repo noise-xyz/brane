@@ -32,6 +32,9 @@ public final class Hex {
     /**
      * Convert a {@code 0x}-prefixed hex string into a byte array.
      *
+     * <p><b>Allocation:</b> 1 allocation (result byte[]). For zero-allocation decoding,
+     * use {@link #decodeTo(CharSequence, int, int, byte[], int)}.
+     *
      * @param hexString the string to decode
      * @return the decoded bytes
      * @throws IllegalArgumentException if the input is null, has an odd number of
@@ -88,6 +91,9 @@ public final class Hex {
     /**
      * Convert a byte array into a lowercase hex string with a {@code 0x} prefix.
      *
+     * <p><b>Allocation:</b> 2 allocations (char[] + String). For zero-allocation encoding,
+     * use {@link #encodeTo(byte[], char[], int, boolean)}.
+     *
      * @param bytes the bytes to encode
      * @return hex string with {@code 0x} prefix
      * @throws IllegalArgumentException if {@code bytes} is {@code null}
@@ -134,6 +140,8 @@ public final class Hex {
      *
      * <p>This method decodes hex characters from the specified region of a {@link CharSequence}
      * directly into the destination byte array, avoiding intermediate allocations.
+     *
+     * <p><b>Allocation:</b> 0 allocations. Writes directly to the provided buffer.
      *
      * @param hex        the hex string to decode (with or without {@code 0x} prefix)
      * @param hexOffset  the starting offset in the hex string
@@ -229,6 +237,8 @@ public final class Hex {
 
     /**
      * Write hex characters to a pre-allocated buffer.
+     *
+     * <p><b>Allocation:</b> 0 allocations. Writes directly to the provided buffer.
      *
      * @param bytes      the bytes to encode
      * @param dest       the destination character array

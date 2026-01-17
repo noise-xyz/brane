@@ -82,6 +82,9 @@ public final class FastAbiEncoder {
      * This method writes the 4-byte selector followed by the ABI-encoded arguments directly
      * to the buffer, advancing the buffer's position by the total encoded length.
      *
+     * <p><b>Allocation:</b> 0 allocations (excluding internal stream operations).
+     * Writes directly to the provided buffer.
+     *
      * @param selector the 4-byte function selector
      * @param args     array of ABI typed arguments (elements must be {@link AbiType} instances)
      * @param buffer   the destination ByteBuffer; position advances by encoded length
@@ -208,7 +211,8 @@ public final class FastAbiEncoder {
 
     /**
      * Encodes a non-negative long value as a uint256 directly into the buffer.
-     * Zero-allocation variant for values that fit in a long.
+     *
+     * <p><b>Allocation:</b> 0 allocations. Writes directly to the provided buffer.
      *
      * @param value  the non-negative value to encode
      * @param buffer the destination buffer
@@ -227,6 +231,8 @@ public final class FastAbiEncoder {
     /**
      * Encodes a non-negative int value as a uint256 directly into the buffer.
      * Convenience overload that delegates to {@link #encodeUint256(long, ByteBuffer)}.
+     *
+     * <p><b>Allocation:</b> 0 allocations.
      *
      * @param value  the non-negative value to encode
      * @param buffer the destination buffer
