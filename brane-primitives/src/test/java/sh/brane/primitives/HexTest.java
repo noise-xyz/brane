@@ -62,6 +62,35 @@ class HexTest {
     }
 
     @Test
+    @DisplayName("decode handles empty string edge cases")
+    void testDecodeEmptyEdgeCases() {
+        // Empty string without prefix
+        assertArrayEquals(new byte[] {}, Hex.decode(""));
+
+        // "0x" prefix only
+        assertArrayEquals(new byte[] {}, Hex.decode("0x"));
+
+        // "0X" prefix only (uppercase)
+        assertArrayEquals(new byte[] {}, Hex.decode("0X"));
+    }
+
+    @Test
+    @DisplayName("decode rejects odd-length hex strings")
+    void testDecodeOddLength() {
+        // Single character (odd length)
+        assertThrows(IllegalArgumentException.class, () -> Hex.decode("0x1"));
+        assertThrows(IllegalArgumentException.class, () -> Hex.decode("1"));
+
+        // Three characters (odd length)
+        assertThrows(IllegalArgumentException.class, () -> Hex.decode("0x123"));
+        assertThrows(IllegalArgumentException.class, () -> Hex.decode("123"));
+
+        // Five characters (odd length)
+        assertThrows(IllegalArgumentException.class, () -> Hex.decode("0x12345"));
+        assertThrows(IllegalArgumentException.class, () -> Hex.decode("12345"));
+    }
+
+    @Test
     void testRoundTrip() {
         byte[] values1 = new byte[] {};
         byte[] values2 = new byte[] {0x00, 0x01, 0x7F, (byte) 0x80, (byte) 0xFF};
