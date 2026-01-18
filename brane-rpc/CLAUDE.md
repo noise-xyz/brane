@@ -194,6 +194,58 @@ WebSocketProvider.ConnectionState state = wsProvider.getConnectionState();
 // States: CONNECTING, CONNECTED, RECONNECTING, CLOSED
 ```
 
+### WebSocketConfig Options
+
+```java
+WebSocketConfig config = WebSocketConfig.builder("wss://eth.example.com")
+    // Disruptor settings
+    .maxPendingRequests(32768)     // Max concurrent in-flight requests (power of 2)
+    .ringBufferSize(8192)          // Disruptor ring buffer size (power of 2)
+    .waitStrategy(WaitStrategyType.BLOCKING)  // See below for options
+    .ringBufferSaturationThreshold(0.10)      // Warn when buffer 10% full
+
+    // Transport settings
+    .transportType(TransportType.AUTO)  // AUTO, NIO, EPOLL (Linux), KQUEUE (macOS)
+    .ioThreads(1)                       // Netty I/O threads
+
+    // Timeout settings
+    .defaultRequestTimeout(Duration.ofSeconds(60))
+    .connectTimeout(Duration.ofSeconds(10))
+
+    // Idle timeouts (connection health)
+    .writeIdleTimeout(Duration.ofSeconds(15))  // Ping if no writes for 15s
+    .readIdleTimeout(Duration.ofSeconds(30))   // Close if no reads for 30s
+
+    // Frame and buffer settings
+    .maxFrameSize(64 * 1024)              // Max WebSocket frame (default 64KB, max 16MB)
+    .writeBufferLowWaterMark(8 * 1024)    // Channel writable again below 8KB
+    .writeBufferHighWaterMark(32 * 1024)  // Channel not writable above 32KB
+    .build();
+
+WebSocketProvider provider = WebSocketProvider.create(config);
+```
+
+**Wait Strategy Types:**
+| Strategy | Latency | CPU | Use Case |
+|----------|---------|-----|----------|
+| `BUSY_SPIN` | Ultra-low | 100% | HFT/MEV with pinned CPU cores |
+| `YIELDING` | Low | High | HFT/MEV on shared infrastructure (default) |
+| `LITE_BLOCKING` | Balanced | Medium | Cloud deployments, metered CPU |
+| `BLOCKING` | Higher | Low | Enterprise/batch workloads |
+
+**Transport Types:**
+| Type | Platform | Notes |
+|------|----------|-------|
+| `AUTO` | Any | Auto-selects best (default, recommended) |
+| `NIO` | Any | Java NIO, cross-platform consistent |
+| `EPOLL` | Linux | 10-20% throughput gains |
+| `KQUEUE` | macOS/BSD | 10-20% throughput gains |
+
+**Idle Timeout Behavior:**
+- `writeIdleTimeout`: Sends WebSocket ping to keep connection alive (NAT traversal)
+- `readIdleTimeout`: Closes connection and transitions to RECONNECTING if no data received
+- Set either to `Duration.ZERO` to disable
+
 ### Metrics Integration
 
 ```java

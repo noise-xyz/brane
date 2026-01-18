@@ -67,6 +67,36 @@ var config = WebSocketConfig.builder("wss://...")
     .build();
 ```
 
+### Enable Native Transport
+
+Brane auto-detects and uses native transport (kqueue on macOS, epoll on Linux) for optimal performance:
+
+```java
+// Native transport is auto-enabled - no configuration needed
+var config = WebSocketConfig.builder("wss://...")
+    .build();  // Uses kqueue/epoll automatically
+```
+
+**Benchmark results (local Anvil):**
+
+| Transport | Throughput | Variance |
+|-----------|------------|----------|
+| NIO (Java) | 25,235 ops/s | ±6.6% |
+| **Native (kqueue/epoll)** | **27,918 ops/s** | **±2.6%** |
+| **Improvement** | **+10.6%** | **-57% stdev** |
+
+Native transport provides more consistent performance with significantly lower variance.
+
+### Configure Frame Size for Large Responses
+
+The default 64KB frame limit is configurable via `maxFrameSize()`. For large `eth_getLogs` responses, increase to 4MB or more:
+
+```java
+var config = WebSocketConfig.builder("wss://...")
+    .maxFrameSize(4 * 1024 * 1024)  // 4MB
+    .build();
+```
+
 ## Optimizing Latency
 
 ### Per-Request Timeouts

@@ -93,7 +93,7 @@ public final class HttpBraneProvider implements BraneProvider {
      *
      * @param metrics the metrics collector (must not be null)
      * @throws NullPointerException if metrics is null
-     * @since 0.5.0
+     * @since 0.3.0
      */
     public void setMetrics(BraneMetrics metrics) {
         this.metrics = Objects.requireNonNull(metrics, "metrics");
