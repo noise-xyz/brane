@@ -13,7 +13,7 @@ Modern, type-safe Java 21 SDK for Ethereum/EVM. Inspired by viem (TS) and alloy 
 | `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `ReadOnlyContract` |
 | `brane-examples` | Usage examples & integration tests | Various `*Example.java` |
 | `brane-benchmark` | JMH performance benchmarks | `*Benchmark.java` |
-| `smoke-test` | E2E integration tests | `SmokeApp.java` |
+| `brane-smoke` | E2E integration tests | `SmokeApp.java` |
 
 ## Critical Rules
 
