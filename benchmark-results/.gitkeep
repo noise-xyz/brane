@@ -1,2 +1,0 @@
-# This file ensures the benchmark-results directory exists in git.
-# Actual benchmark results (*.json, *.txt, BASELINE.md) are gitignored.
