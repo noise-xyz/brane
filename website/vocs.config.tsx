@@ -97,7 +97,13 @@ export default defineConfig({
       },
       {
         text: 'Javadoc',
-        link: 'https://javadoc.io/doc/sh.brane/brane-core/latest/index.html',
+        items: [
+          { text: 'brane-rpc', link: 'https://javadoc.io/doc/sh.brane/brane-rpc/latest/index.html' },
+          { text: 'brane-core', link: 'https://javadoc.io/doc/sh.brane/brane-core/latest/index.html' },
+          { text: 'brane-contract', link: 'https://javadoc.io/doc/sh.brane/brane-contract/latest/index.html' },
+          { text: 'brane-primitives', link: 'https://javadoc.io/doc/sh.brane/brane-primitives/latest/index.html' },
+          { text: 'brane-kzg', link: 'https://javadoc.io/doc/sh.brane/brane-kzg/latest/index.html' },
+        ],
       },
     ],
   },
