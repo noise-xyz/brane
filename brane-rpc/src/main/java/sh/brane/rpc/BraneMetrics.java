@@ -56,7 +56,7 @@ public interface BraneMetrics {
      *
      * @param method    the JSON-RPC method name (e.g., "eth_call")
      * @param requestId the unique request ID for correlation with logs
-     * @since 0.5.0
+     * @since 0.3.0
      */
     default void onRequestTimeout(String method, long requestId) {
     }
@@ -78,7 +78,7 @@ public interface BraneMetrics {
      *
      * @param pendingCount       the current number of pending requests when backpressure triggered
      * @param maxPendingRequests the maximum number of pending requests allowed
-     * @since 0.5.0
+     * @since 0.3.0
      */
     default void onBackpressure(int pendingCount, int maxPendingRequests) {
     }
@@ -133,7 +133,7 @@ public interface BraneMetrics {
      *
      * @param reason a description of why the response was orphaned (e.g., "no pending request",
      *               "unparseable ID")
-     * @since 0.5.0
+     * @since 0.3.0
      */
     default void onOrphanedResponse(String reason) {
     }
@@ -154,7 +154,7 @@ public interface BraneMetrics {
      *
      * @param subscriptionId the subscription ID that encountered the error
      * @param error          the exception thrown by the callback
-     * @since 0.5.0
+     * @since 0.3.0
      */
     default void onSubscriptionCallbackError(String subscriptionId, Throwable error) {
     }

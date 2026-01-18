@@ -304,7 +304,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * too aggressive.
      *
      * @return the total count of orphaned responses
-     * @since 0.5.0
+     * @since 0.3.0
      */
     public long getOrphanedResponseCount() {
         return orphanedResponses.sum();
@@ -321,7 +321,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * The state may change immediately after this method returns.
      *
      * @return the current {@link ConnectionState}
-     * @since 0.5.0
+     * @since 0.3.0
      */
     public ConnectionState getConnectionState() {
         return connectionState.get();
@@ -343,7 +343,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * request submission or response processing.
      *
      * @return the number of pending requests
-     * @since 0.6.0
+     * @since 0.3.0
      */
     public int getPendingRequestCount() {
         return pendingRequests.size();
@@ -613,10 +613,10 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                                 // Add IdleStateHandler if either timeout is non-zero
                                 if (!readIdleTimeout.isZero() || !writeIdleTimeout.isZero()) {
                                     p.addLast(new IdleStateHandler(
-                                            readIdleTimeout.toSeconds(),
-                                            writeIdleTimeout.toSeconds(),
+                                            readIdleTimeout.toMillis(),
+                                            writeIdleTimeout.toMillis(),
                                             0,
-                                            TimeUnit.SECONDS));
+                                            TimeUnit.MILLISECONDS));
                                 }
                                 p.addLast(connectionHandler);
                             }
