@@ -54,6 +54,8 @@ spec/
 
 # Claude Code session files
 .claude/.session-id
+.claude/.pending-ref-check
+.claude/.verified-refs
 
 # Build outputs
 .next/

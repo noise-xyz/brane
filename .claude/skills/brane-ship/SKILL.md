@@ -133,7 +133,7 @@ brane-primitives (no deps)
   brane-contract
        |
        v
-  brane-examples / smoke-test
+  brane-examples / brane-smoke
 ```
 
 When module X changes, all modules below X in the graph must be tested.

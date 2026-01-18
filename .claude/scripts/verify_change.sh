@@ -141,19 +141,19 @@ for MODULE in $MODULES_AFFECTED; do
     case $MODULE in
         brane-primitives)
             echo -e "  ${YELLOW}⚠ brane-primitives changed - ALL modules affected${NC}"
-            TRANSITIVELY_AFFECTED="$TRANSITIVELY_AFFECTED brane-core brane-rpc brane-contract brane-examples smoke-test"
+            TRANSITIVELY_AFFECTED="$TRANSITIVELY_AFFECTED brane-core brane-rpc brane-contract brane-examples brane-smoke"
             ;;
         brane-core)
-            echo -e "  ${CYAN}→ brane-core affects: rpc, contract, examples, smoke-test${NC}"
-            TRANSITIVELY_AFFECTED="$TRANSITIVELY_AFFECTED brane-rpc brane-contract brane-examples smoke-test"
+            echo -e "  ${CYAN}→ brane-core affects: rpc, contract, examples, brane-smoke${NC}"
+            TRANSITIVELY_AFFECTED="$TRANSITIVELY_AFFECTED brane-rpc brane-contract brane-examples brane-smoke"
             ;;
         brane-rpc)
-            echo -e "  ${CYAN}→ brane-rpc affects: contract, examples, smoke-test${NC}"
-            TRANSITIVELY_AFFECTED="$TRANSITIVELY_AFFECTED brane-contract brane-examples smoke-test"
+            echo -e "  ${CYAN}→ brane-rpc affects: contract, examples, brane-smoke${NC}"
+            TRANSITIVELY_AFFECTED="$TRANSITIVELY_AFFECTED brane-contract brane-examples brane-smoke"
             ;;
         brane-contract)
-            echo -e "  ${CYAN}→ brane-contract affects: examples, smoke-test${NC}"
-            TRANSITIVELY_AFFECTED="$TRANSITIVELY_AFFECTED brane-examples smoke-test"
+            echo -e "  ${CYAN}→ brane-contract affects: examples, brane-smoke${NC}"
+            TRANSITIVELY_AFFECTED="$TRANSITIVELY_AFFECTED brane-examples brane-smoke"
             ;;
         *)
             echo -e "  ${GREEN}• $MODULE (no downstream dependencies)${NC}"

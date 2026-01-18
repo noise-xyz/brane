@@ -36,7 +36,7 @@ import sh.brane.rpc.SnapshotId;
  *
  * <p><strong>Usage:</strong>
  * <pre>
- * ./gradlew :smoke-test:run -PmainClass=sh.brane.smoke.TesterSmokeTest
+ * ./gradlew :brane-smoke:run -PmainClass=sh.brane.smoke.TesterSmokeTest
  * </pre>
  *
  * @see Brane.Tester

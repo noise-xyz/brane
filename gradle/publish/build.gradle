@@ -48,7 +48,7 @@ publishing {
                     developer {
                         id = findProperty('POM_DEVELOPER_ID') ?: 'noise-xyz'
                         name = findProperty('POM_DEVELOPER_NAME') ?: 'Noise'
-                        email = findProperty('POM_DEVELOPER_EMAIL') ?: 'dev@noise.xyz'
+                        email = findProperty('POM_DEVELOPER_EMAIL') ?: 'admin@brane.sh'
                     }
                 }
 

@@ -1,4 +1,4 @@
-# smoke-test
+# brane-smoke
 
 End-to-end integration testing application. Validates all major SDK features work together.
 
@@ -9,7 +9,7 @@ End-to-end integration testing application. Validates all major SDK features wor
 anvil  # In separate terminal
 
 # Run smoke tests
-./gradlew :smoke-test:run
+./gradlew :brane-smoke:run
 
 # Or via script
 ./scripts/test_smoke.sh
