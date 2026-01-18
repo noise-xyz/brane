@@ -59,7 +59,7 @@ jobs:
           JRELEASER_GPG_PASSPHRASE: ${{ secrets.GPG_PASSPHRASE }}
           JRELEASER_MAVENCENTRAL_CENTRAL_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           JRELEASER_MAVENCENTRAL_CENTRAL_PASSWORD: ${{ secrets.SONATYPE_PASSWORD }}
-        run: ./gradlew jreleaserDeploy
+        run: ./gradlew jreleaserDeploy --no-configuration-cache
 
       - name: Dry run notice
         if: ${{ github.event.inputs.dry_run == 'true' }}
