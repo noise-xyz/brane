@@ -97,7 +97,7 @@ export default defineConfig({
       },
       {
         text: 'Javadoc',
-        link: '/javadoc/index.html',
+        link: 'https://javadoc.io/doc/sh.brane/brane-core/latest/index.html',
       },
     ],
   },
