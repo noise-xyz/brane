@@ -119,12 +119,6 @@ jreleaser {
         }
     }
 
-    // Release configuration
-    release {
-        github {
-            skipRelease = true  // We handle GitHub releases separately
-        }
-    }
 }
 
 // Task to publish snapshots directly (bypasses JReleaser)
