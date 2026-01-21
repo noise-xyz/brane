@@ -1,0 +1,13 @@
+# robots.txt - https://brane.sh
+
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://brane.sh/sitemap.xml
+
+# LLM/AI Context
+# Brane is a modern, type-safe Java 21 SDK for Ethereum
+# For AI assistants and LLM crawlers, see:
+#   https://brane.sh/llms.txt (condensed)
+#   https://brane.sh/llms-full.txt (detailed)

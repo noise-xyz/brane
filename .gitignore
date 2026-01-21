@@ -30,6 +30,11 @@ fix_logs/
 # Logs and Benchmarks
 *.txt
 !**/trusted_setup.txt
+!llms.txt
+!llms-full.txt
+!website/docs/public/llms.txt
+!website/docs/public/llms-full.txt
+!website/docs/public/robots.txt
 benchmark_output.txt
 benchmark-results/*
 !benchmark-results/.gitkeep
