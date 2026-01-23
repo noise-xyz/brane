@@ -4,6 +4,40 @@ export default defineConfig({
   head: () => (
     <>
       <link rel="stylesheet" href="/styles.css" />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareSourceCode",
+            "name": "Brane",
+            "description": "Modern, type-safe Java 21 SDK for Ethereum and EVM blockchains",
+            "programmingLanguage": ["Java", "Kotlin"],
+            "runtimePlatform": "JVM",
+            "url": "https://brane.sh",
+            "codeRepository": "https://github.com/noise-xyz/brane",
+            "license": [
+              "https://opensource.org/licenses/MIT",
+              "https://opensource.org/licenses/Apache-2.0"
+            ],
+            "keywords": [
+              "Ethereum",
+              "Java",
+              "Kotlin",
+              "web3j alternative",
+              "EVM",
+              "blockchain SDK",
+              "smart contracts",
+              "Web3",
+              "JSON-RPC",
+              "EIP-4844",
+              "blob transactions",
+              "Java 21",
+              "virtual threads"
+            ]
+          })
+        }}
+      />
     </>
   ),
   title: 'Brane',
