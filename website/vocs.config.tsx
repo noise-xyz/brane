@@ -42,7 +42,8 @@ export default defineConfig({
   ),
   title: 'Brane',
   titleTemplate: '%s – Brane',
-  description: 'Modern, type-safe Java SDK for Ethereum',
+  description: 'A modern Java SDK for Ethereum',
+  ogImageUrl: 'https://brane.sh/brane-preview.png',
   iconUrl: '/favicon.svg',
   logoUrl: {
     light: '/brane-logo-dark-nowords.svg',
