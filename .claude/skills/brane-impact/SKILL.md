@@ -24,7 +24,7 @@ brane-primitives (no deps)
   brane-contract (depends on: rpc, core, primitives)
        |
        v
-  [Consumer modules: examples, benchmark, smoke-test]
+  [Consumer modules: examples, benchmark, brane-smoke]
 ```
 
 ### Impact Propagation Matrix
@@ -163,7 +163,7 @@ grep -rl "$CLASS_NAME" brane-examples/src/main/java --include="*.java" | grep -v
 | Unit | `*Test.java` | `*/src/test/java/` | No | **NO** |
 | Integration | `*IntegrationTest.java` | `*/src/test/java/` | Yes | **NO** |
 | Examples | `*Example.java` | `brane-examples/src/main/java/` | Yes | **NO** |
-| Smoke | `SmokeApp.java` | `smoke-test/src/main/java/` | Yes | **NO** |
+| Smoke | `SmokeApp.java` | `brane-smoke/src/main/java/` | Yes | **NO** |
 
 ---
 

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.rpc;
 
+import static sh.brane.rpc.internal.RpcUtils.putIfPresent;
+import static sh.brane.rpc.internal.RpcUtils.toQuantityHex;
+
 import java.math.BigInteger;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -12,6 +15,7 @@ import org.jspecify.annotations.Nullable;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.HexData;
 import sh.brane.core.types.Wei;
+import sh.brane.rpc.internal.RpcUtils;
 
 /**
  * Type-safe representation of an eth_call request.
@@ -87,28 +91,14 @@ public record CallRequest(
     public Map<String, Object> toMap() {
         // Pre-size for max 8 fields: from, to, data, value, gas, gasPrice, maxFeePerGas, maxPriorityFeePerGas
         final var map = new LinkedHashMap<String, Object>(8);
-        if (from != null) {
-            map.put("from", from.value());
-        }
+        putIfPresent(map, "from", from, Address::value);
         map.put("to", to.value());
-        if (data != null) {
-            map.put("data", data.value());
-        }
-        if (value != null) {
-            map.put("value", "0x" + value.value().toString(16));
-        }
-        if (gas != null) {
-            map.put("gas", "0x" + gas.toString(16));
-        }
-        if (gasPrice != null) {
-            map.put("gasPrice", "0x" + gasPrice.toString(16));
-        }
-        if (maxFeePerGas != null) {
-            map.put("maxFeePerGas", "0x" + maxFeePerGas.toString(16));
-        }
-        if (maxPriorityFeePerGas != null) {
-            map.put("maxPriorityFeePerGas", "0x" + maxPriorityFeePerGas.toString(16));
-        }
+        putIfPresent(map, "data", data, HexData::value);
+        putIfPresent(map, "value", value, v -> toQuantityHex(v.value()));
+        putIfPresent(map, "gas", gas, RpcUtils::toQuantityHex);
+        putIfPresent(map, "gasPrice", gasPrice, RpcUtils::toQuantityHex);
+        putIfPresent(map, "maxFeePerGas", maxFeePerGas, RpcUtils::toQuantityHex);
+        putIfPresent(map, "maxPriorityFeePerGas", maxPriorityFeePerGas, RpcUtils::toQuantityHex);
         return map;
     }
 

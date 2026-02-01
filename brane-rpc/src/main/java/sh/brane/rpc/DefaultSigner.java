@@ -15,6 +15,7 @@ import sh.brane.core.DebugLogger;
 import sh.brane.core.LogFormatter;
 import sh.brane.core.RevertDecoder;
 import sh.brane.core.chain.ChainProfile;
+import sh.brane.core.crypto.Signature;
 import sh.brane.core.error.ChainMismatchException;
 import sh.brane.core.error.InvalidSenderException;
 import sh.brane.core.error.RevertException;
@@ -22,10 +23,15 @@ import sh.brane.core.error.RpcException;
 import sh.brane.core.model.BlobTransactionRequest;
 import sh.brane.core.model.TransactionReceipt;
 import sh.brane.core.model.TransactionRequest;
+import sh.brane.core.tx.Eip1559Transaction;
+import sh.brane.core.tx.Eip4844Transaction;
+import sh.brane.core.tx.LegacyTransaction;
+import sh.brane.core.tx.UnsignedTransaction;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.Hash;
 import sh.brane.core.types.HexData;
 import sh.brane.core.types.Wei;
+import sh.brane.primitives.Hex;
 import sh.brane.rpc.internal.RpcUtils;
 
 /**
@@ -33,7 +39,7 @@ import sh.brane.rpc.internal.RpcUtils;
  *
  * <p>This implementation extends {@link DefaultReader} to inherit all read operations,
  * and adds transaction signing and sending capabilities using the configured
- * {@link Signer} and {@link SmartGasStrategy}.
+ * {@link sh.brane.core.crypto.Signer} and {@link SmartGasStrategy}.
  *
  * @since 0.1.0
  */
@@ -102,7 +108,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
         final HexData dataOrEmpty = Objects.requireNonNullElse(withDefaults.data(), HexData.EMPTY);
 
         // Build unsigned transaction
-        final sh.brane.core.tx.UnsignedTransaction unsignedTx;
+        final UnsignedTransaction unsignedTx;
         if (withDefaults.isEip1559()) {
             final Wei maxPriority = withDefaults.maxPriorityFeePerGas() != null
                     ? withDefaults.maxPriorityFeePerGas()
@@ -111,7 +117,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
                     ? withDefaults.maxFeePerGas()
                     : maxPriority;
 
-            unsignedTx = new sh.brane.core.tx.Eip1559Transaction(
+            unsignedTx = new Eip1559Transaction(
                     chainId,
                     nonce.longValue(),
                     maxPriority,
@@ -126,7 +132,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
                     ? withDefaults.gasPrice()
                     : Wei.of(fetchGasPrice());
 
-            unsignedTx = new sh.brane.core.tx.LegacyTransaction(
+            unsignedTx = new LegacyTransaction(
                     nonce.longValue(),
                     gasPrice,
                     gasLimit.longValue(),
@@ -143,14 +149,14 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
                 valueOrZero.value()));
 
         // Sign the transaction
-        final sh.brane.core.crypto.Signature baseSig = signer.signTransaction(unsignedTx, chainId);
+        final Signature baseSig = signer.signTransaction(unsignedTx, chainId);
 
         // Adjust V value for legacy transactions (EIP-155)
-        final sh.brane.core.crypto.Signature signature;
-        if (unsignedTx instanceof sh.brane.core.tx.LegacyTransaction) {
+        final Signature signature;
+        if (unsignedTx instanceof LegacyTransaction) {
             // For legacy transactions, use EIP-155 encoding: v = chainId * 2 + 35 + yParity
             final int v = (int) (chainId * 2 + 35 + baseSig.v());
-            signature = new sh.brane.core.crypto.Signature(baseSig.r(), baseSig.s(), v);
+            signature = new Signature(baseSig.r(), baseSig.s(), v);
         } else {
             // For EIP-1559, v is just yParity (0 or 1)
             signature = baseSig;
@@ -158,7 +164,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
 
         // Encode and send
         final byte[] envelope = unsignedTx.encodeAsEnvelope(signature);
-        final String signedHex = sh.brane.primitives.Hex.encode(envelope);
+        final String signedHex = Hex.encode(envelope);
 
         final String txHash;
         final long start = System.nanoTime();
@@ -255,7 +261,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
         if (raw != null && raw.startsWith("0x") && raw.length() > 10) {
             final RevertDecoder.Decoded decoded = RevertDecoder.decode(raw);
             DebugLogger.logTx(LogFormatter.formatTxRevert(null, decoded.kind().toString(), decoded.reason()));
-            throw new sh.brane.core.error.RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), null);
+            throw new RevertException(decoded.kind(), decoded.reason(), decoded.rawDataHex(), null);
         }
     }
 
@@ -425,7 +431,7 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
                 });
 
         // Build the unsigned EIP-4844 transaction
-        final sh.brane.core.tx.Eip4844Transaction unsignedTx = new sh.brane.core.tx.Eip4844Transaction(
+        final Eip4844Transaction unsignedTx = new Eip4844Transaction(
                 chainId,
                 nonce,
                 maxPriorityFeePerGas,
@@ -447,11 +453,11 @@ non-sealed class DefaultSigner extends DefaultReader implements Brane.Signer {
                 valueOrZero.value()));
 
         // Sign the transaction
-        final sh.brane.core.crypto.Signature signature = signer.signTransaction(unsignedTx, chainId);
+        final Signature signature = signer.signTransaction(unsignedTx, chainId);
 
         // Encode with blob sidecar for network transmission
         final byte[] envelope = unsignedTx.encodeAsNetworkWrapper(signature, request.sidecar());
-        final String signedHex = sh.brane.primitives.Hex.encode(envelope);
+        final String signedHex = Hex.encode(envelope);
 
         final String txHash;
         final long start = System.nanoTime();

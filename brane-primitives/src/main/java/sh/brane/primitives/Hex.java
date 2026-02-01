@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.primitives;
 
+import java.util.Arrays;
+
 /**
  * Utility methods for hex encoding/decoding with optional {@code 0x} prefixes.
  *
@@ -11,9 +13,7 @@ public final class Hex {
     private static final int[] NIBBLE_LOOKUP = new int[128];
 
     static {
-        for (int i = 0; i < NIBBLE_LOOKUP.length; i++) {
-            NIBBLE_LOOKUP[i] = -1;
-        }
+        Arrays.fill(NIBBLE_LOOKUP, -1);
 
         for (int i = 0; i <= 9; i++) {
             NIBBLE_LOOKUP['0' + i] = i;
@@ -32,6 +32,9 @@ public final class Hex {
     /**
      * Convert a {@code 0x}-prefixed hex string into a byte array.
      *
+     * <p><b>Allocation:</b> 1 allocation (result byte[]). For zero-allocation decoding,
+     * use {@link #decodeTo(CharSequence, int, int, byte[], int)}.
+     *
      * @param hexString the string to decode
      * @return the decoded bytes
      * @throws IllegalArgumentException if the input is null, has an odd number of
@@ -42,21 +45,23 @@ public final class Hex {
             throw new IllegalArgumentException("hex string cannot be null");
         }
 
-        final String cleanHex = cleanPrefix(hexString);
-        if (cleanHex.isEmpty()) {
+        final int start = hasPrefix(hexString) ? 2 : 0;
+        final int hexLength = hexString.length() - start;
+
+        if (hexLength == 0) {
             return new byte[0];
         }
 
-        if ((cleanHex.length() & 1) == 1) {
+        if ((hexLength & 1) == 1) {
             throw new IllegalArgumentException("hex string must have even length: " + hexString);
         }
 
-        final int len = cleanHex.length() / 2;
+        final int len = hexLength / 2;
         final byte[] result = new byte[len];
 
         for (int i = 0; i < len; i++) {
-            final int high = toNibble(cleanHex.charAt(i * 2), hexString);
-            final int low = toNibble(cleanHex.charAt(i * 2 + 1), hexString);
+            final int high = toNibble(hexString.charAt(start + i * 2), hexString);
+            final int low = toNibble(hexString.charAt(start + i * 2 + 1), hexString);
             result[i] = (byte) ((high << 4) | low);
         }
 
@@ -85,6 +90,9 @@ public final class Hex {
 
     /**
      * Convert a byte array into a lowercase hex string with a {@code 0x} prefix.
+     *
+     * <p><b>Allocation:</b> 2 allocations (char[] + String). For zero-allocation encoding,
+     * use {@link #encodeTo(byte[], char[], int, boolean)}.
      *
      * @param bytes the bytes to encode
      * @return hex string with {@code 0x} prefix
@@ -125,6 +133,151 @@ public final class Hex {
             chars[i * 2 + 1] = HEX_CHARS[v & 0x0F];
         }
         return new String(chars);
+    }
+
+    /**
+     * Decode hex characters directly into a pre-allocated byte array.
+     *
+     * <p>This method decodes hex characters from the specified region of a {@link CharSequence}
+     * directly into the destination byte array, avoiding intermediate allocations.
+     *
+     * <p><b>Allocation:</b> 0 allocations. Writes directly to the provided buffer.
+     *
+     * @param hex        the hex string to decode (with or without {@code 0x} prefix)
+     * @param hexOffset  the starting offset in the hex string
+     * @param hexLength  the number of characters to decode from the hex string
+     * @param dest       the destination byte array
+     * @param destOffset the offset in the destination array to start writing
+     * @return the number of bytes written to the destination array
+     * @throws IllegalArgumentException if {@code hex} or {@code dest} is {@code null},
+     *                                  if {@code hexLength} is odd,
+     *                                  if the destination buffer is too small,
+     *                                  if offsets or lengths are negative,
+     *                                  if indices are out of bounds,
+     *                                  or if the input contains invalid hex characters
+     */
+    public static int decodeTo(
+            final CharSequence hex,
+            final int hexOffset,
+            final int hexLength,
+            final byte[] dest,
+            final int destOffset) {
+        if (hex == null) {
+            throw new IllegalArgumentException("hex cannot be null");
+        }
+        if (dest == null) {
+            throw new IllegalArgumentException("dest cannot be null");
+        }
+        if (hexOffset < 0) {
+            throw new IllegalArgumentException("hexOffset cannot be negative: " + hexOffset);
+        }
+        if (hexLength < 0) {
+            throw new IllegalArgumentException("hexLength cannot be negative: " + hexLength);
+        }
+        if (destOffset < 0) {
+            throw new IllegalArgumentException("destOffset cannot be negative: " + destOffset);
+        }
+
+        // Check bounds on hex input
+        if (hexOffset + hexLength > hex.length()) {
+            throw new IllegalArgumentException(
+                    "hex region out of bounds: offset=" + hexOffset + ", length=" + hexLength + ", hex.length=" + hex.length());
+        }
+
+        // Skip 0x prefix if present at the start of the region
+        int start = hexOffset;
+        int len = hexLength;
+        if (len >= 2 && hex.charAt(start) == '0' && (hex.charAt(start + 1) == 'x' || hex.charAt(start + 1) == 'X')) {
+            start += 2;
+            len -= 2;
+        }
+
+        // Empty input
+        if (len == 0) {
+            return 0;
+        }
+
+        // Must have even length
+        if ((len & 1) == 1) {
+            throw new IllegalArgumentException("hex string must have even length: " + len);
+        }
+
+        final int bytesToWrite = len / 2;
+
+        // Check destination has enough space
+        if (destOffset + bytesToWrite > dest.length) {
+            throw new IllegalArgumentException(
+                    "destination buffer too small: need " + bytesToWrite + " bytes but only " + (dest.length - destOffset) + " available");
+        }
+
+        // Decode hex pairs into bytes
+        for (int i = 0; i < bytesToWrite; i++) {
+            final char highChar = hex.charAt(start + i * 2);
+            final char lowChar = hex.charAt(start + i * 2 + 1);
+
+            final int high = toNibbleFromChar(highChar);
+            final int low = toNibbleFromChar(lowChar);
+
+            if (high == -1 || low == -1) {
+                throw new IllegalArgumentException("invalid hex character in input");
+            }
+
+            dest[destOffset + i] = (byte) ((high << 4) | low);
+        }
+
+        return bytesToWrite;
+    }
+
+    private static int toNibbleFromChar(final char c) {
+        if (c >= NIBBLE_LOOKUP.length) {
+            return -1;
+        }
+        return NIBBLE_LOOKUP[c];
+    }
+
+    /**
+     * Write hex characters to a pre-allocated buffer.
+     *
+     * <p><b>Allocation:</b> 0 allocations. Writes directly to the provided buffer.
+     *
+     * @param bytes      the bytes to encode
+     * @param dest       the destination character array
+     * @param destOffset the offset in the destination array to start writing
+     * @param withPrefix if {@code true}, write {@code 0x} prefix before hex characters
+     * @return the number of characters written
+     * @throws IllegalArgumentException if {@code bytes} or {@code dest} is {@code null},
+     *                                  or if the destination buffer is too small
+     */
+    public static int encodeTo(final byte[] bytes, final char[] dest, final int destOffset, final boolean withPrefix) {
+        if (bytes == null) {
+            throw new IllegalArgumentException("bytes cannot be null");
+        }
+        if (dest == null) {
+            throw new IllegalArgumentException("dest cannot be null");
+        }
+
+        final int prefixLen = withPrefix ? 2 : 0;
+        final int charsNeeded = prefixLen + bytes.length * 2;
+        final int available = dest.length - destOffset;
+
+        if (available < charsNeeded) {
+            throw new IllegalArgumentException(
+                    "destination buffer too small: need " + charsNeeded + " chars but only " + available + " available");
+        }
+
+        int pos = destOffset;
+        if (withPrefix) {
+            dest[pos++] = '0';
+            dest[pos++] = 'x';
+        }
+
+        for (final byte b : bytes) {
+            final int v = b & 0xFF;
+            dest[pos++] = HEX_CHARS[v >>> 4];
+            dest[pos++] = HEX_CHARS[v & 0x0F];
+        }
+
+        return charsNeeded;
     }
 
     /**

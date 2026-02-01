@@ -82,13 +82,7 @@ public record JsonRpcResponse(
             }
             return (Map<String, Object>) map;
         }
-        try {
-            return MAPPER.convertValue(result, new TypeReference<Map<String, Object>>() {});
-        } catch (IllegalArgumentException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Cannot convert result to Map: " + e.getMessage(), e);
-        }
+        return MAPPER.convertValue(result, new TypeReference<Map<String, Object>>() {});
     }
 
     /**
@@ -108,13 +102,7 @@ public record JsonRpcResponse(
         if (result instanceof List<?>) {
             return (List<Object>) result;
         }
-        try {
-            return MAPPER.convertValue(result, new TypeReference<List<Object>>() {});
-        } catch (IllegalArgumentException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Cannot convert result to List: " + e.getMessage(), e);
-        }
+        return MAPPER.convertValue(result, new TypeReference<List<Object>>() {});
     }
 
     /**
@@ -131,13 +119,7 @@ public record JsonRpcResponse(
         if (result == null) {
             return null;
         }
-        try {
-            return MAPPER.convertValue(result, type);
-        } catch (IllegalArgumentException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Cannot convert result to " + type.getName() + ": " + e.getMessage(), e);
-        }
+        return MAPPER.convertValue(result, type);
     }
 
     /**
@@ -154,12 +136,6 @@ public record JsonRpcResponse(
         if (result == null) {
             return null;
         }
-        try {
-            return MAPPER.convertValue(result, typeRef);
-        } catch (IllegalArgumentException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Cannot convert result to specified type: " + e.getMessage(), e);
-        }
+        return MAPPER.convertValue(result, typeRef);
     }
 }

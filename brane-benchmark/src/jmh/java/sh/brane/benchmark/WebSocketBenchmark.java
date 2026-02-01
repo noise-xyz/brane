@@ -2,7 +2,7 @@
 package sh.brane.benchmark;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 
@@ -63,7 +63,7 @@ public class WebSocketBenchmark {
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
     public void brane_throughput_chainId(Blackhole bh) throws Exception {
-        bh.consume(braneProvider.send("eth_chainId", Collections.emptyList()));
+        bh.consume(braneProvider.send("eth_chainId", List.of()));
     }
 
     @Benchmark
@@ -75,7 +75,7 @@ public class WebSocketBenchmark {
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
     public void brane_throughput_blockNumber(Blackhole bh) throws Exception {
-        bh.consume(braneProvider.send("eth_blockNumber", Collections.emptyList()));
+        bh.consume(braneProvider.send("eth_blockNumber", List.of()));
     }
 
     @Benchmark
@@ -88,7 +88,7 @@ public class WebSocketBenchmark {
     @BenchmarkMode(Mode.Throughput)
     public void brane_throughput_getBalance(Blackhole bh) throws Exception {
         bh.consume(braneProvider.send("eth_getBalance",
-                java.util.List.of("0x0000000000000000000000000000000000000000", "latest")));
+                List.of("0x0000000000000000000000000000000000000000", "latest")));
     }
 
     @Benchmark
@@ -104,7 +104,7 @@ public class WebSocketBenchmark {
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
     public void brane_avgLatency_chainId(Blackhole bh) throws Exception {
-        bh.consume(braneProvider.send("eth_chainId", Collections.emptyList()));
+        bh.consume(braneProvider.send("eth_chainId", List.of()));
     }
 
     @Benchmark
@@ -118,7 +118,7 @@ public class WebSocketBenchmark {
     @BenchmarkMode(Mode.AverageTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
     public void brane_avgLatency_blockNumber(Blackhole bh) throws Exception {
-        bh.consume(braneProvider.send("eth_blockNumber", Collections.emptyList()));
+        bh.consume(braneProvider.send("eth_blockNumber", List.of()));
     }
 
     @Benchmark
@@ -135,7 +135,7 @@ public class WebSocketBenchmark {
     @BenchmarkMode(Mode.SampleTime)
     @OutputTimeUnit(TimeUnit.MICROSECONDS)
     public void brane_latencyDist_chainId(Blackhole bh) throws Exception {
-        bh.consume(braneProvider.send("eth_chainId", Collections.emptyList()));
+        bh.consume(braneProvider.send("eth_chainId", List.of()));
     }
 
     @Benchmark
@@ -155,7 +155,7 @@ public class WebSocketBenchmark {
         @SuppressWarnings("unchecked")
         CompletableFuture<?>[] futures = new CompletableFuture[10];
         for (int i = 0; i < 10; i++) {
-            futures[i] = braneProvider.sendAsync("eth_chainId", Collections.emptyList());
+            futures[i] = braneProvider.sendAsync("eth_chainId", List.of());
         }
         for (CompletableFuture<?> f : futures) {
             bh.consume(f.get());
@@ -182,9 +182,9 @@ public class WebSocketBenchmark {
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
     public void brane_batch_10(Blackhole bh) throws Exception {
-        java.util.List<CompletableFuture<?>> futures = new ArrayList<>(10);
+        List<CompletableFuture<?>> futures = new ArrayList<>(10);
         for (int i = 0; i < 10; i++) {
-            futures.add(braneProvider.sendAsyncBatch("eth_chainId", Collections.emptyList()));
+            futures.add(braneProvider.sendAsyncBatch("eth_chainId", List.of()));
         }
         for (CompletableFuture<?> f : futures) {
             bh.consume(f.get());
@@ -199,7 +199,7 @@ public class WebSocketBenchmark {
     @Warmup(iterations = 0)
     @Measurement(iterations = 10)
     public void brane_singleShot_chainId(Blackhole bh) throws Exception {
-        bh.consume(braneProvider.send("eth_chainId", Collections.emptyList()));
+        bh.consume(braneProvider.send("eth_chainId", List.of()));
     }
 
     @Benchmark

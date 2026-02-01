@@ -50,28 +50,15 @@ public interface BraneMetrics {
     /**
      * Called when a request times out.
      *
-     * @param method the JSON-RPC method name
-     * @deprecated Use {@link #onRequestTimeout(String, long)} instead for better debugging context
-     */
-    @Deprecated(since = "0.5.0", forRemoval = true)
-    default void onRequestTimeout(String method) {
-    }
-
-    /**
-     * Called when a request times out.
-     *
      * <p>This method provides the request ID for correlation with logs and other
      * metrics. Use this to track which specific requests are timing out and correlate
      * with server-side logs.
      *
      * @param method    the JSON-RPC method name (e.g., "eth_call")
      * @param requestId the unique request ID for correlation with logs
-     * @since 0.5.0
+     * @since 0.3.0
      */
-    @SuppressWarnings("deprecation")
     default void onRequestTimeout(String method, long requestId) {
-        // Default implementation calls legacy method for backward compatibility
-        onRequestTimeout(method);
     }
 
     /**
@@ -84,16 +71,6 @@ public interface BraneMetrics {
     }
 
     /**
-     * Called when a request is rejected due to backpressure
-     * (too many in-flight requests).
-     *
-     * @deprecated Use {@link #onBackpressure(int, int)} instead for better debugging context
-     */
-    @Deprecated(since = "0.5.0", forRemoval = true)
-    default void onBackpressure() {
-    }
-
-    /**
      * Called when a request is rejected due to backpressure.
      *
      * <p>This method provides context about the current queue state to help
@@ -101,12 +78,9 @@ public interface BraneMetrics {
      *
      * @param pendingCount       the current number of pending requests when backpressure triggered
      * @param maxPendingRequests the maximum number of pending requests allowed
-     * @since 0.5.0
+     * @since 0.3.0
      */
-    @SuppressWarnings("deprecation")
     default void onBackpressure(int pendingCount, int maxPendingRequests) {
-        // Default implementation calls legacy method for backward compatibility
-        onBackpressure();
     }
 
     /**
@@ -159,7 +133,7 @@ public interface BraneMetrics {
      *
      * @param reason a description of why the response was orphaned (e.g., "no pending request",
      *               "unparseable ID")
-     * @since 0.5.0
+     * @since 0.3.0
      */
     default void onOrphanedResponse(String reason) {
     }
@@ -180,7 +154,7 @@ public interface BraneMetrics {
      *
      * @param subscriptionId the subscription ID that encountered the error
      * @param error          the exception thrown by the callback
-     * @since 0.5.0
+     * @since 0.3.0
      */
     default void onSubscriptionCallbackError(String subscriptionId, Throwable error) {
     }

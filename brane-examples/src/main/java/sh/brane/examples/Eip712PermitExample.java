@@ -14,6 +14,7 @@ import sh.brane.core.crypto.eip712.TypedData;
 import sh.brane.core.crypto.eip712.TypedDataField;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.Hash;
+import sh.brane.primitives.Hex;
 
 /**
  * Demonstrates ERC-2612 Permit signing using Brane's type-safe EIP-712 API.
@@ -182,8 +183,8 @@ public final class Eip712PermitExample {
         byte[] s = signature.s();
         int v = signature.v();
 
-        System.out.println("  r: 0x" + bytesToHex(r));
-        System.out.println("  s: 0x" + bytesToHex(s));
+        System.out.println("  r: 0x" + Hex.encodeNoPrefix(r));
+        System.out.println("  s: 0x" + Hex.encodeNoPrefix(s));
         System.out.println("  v: " + v);
 
         // =====================================================================
@@ -196,17 +197,9 @@ public final class Eip712PermitExample {
         System.out.println("    value:    " + value);
         System.out.println("    deadline: " + deadline);
         System.out.println("    v:        " + v);
-        System.out.println("    r:        0x" + bytesToHex(r));
-        System.out.println("    s:        0x" + bytesToHex(s));
+        System.out.println("    r:        0x" + Hex.encodeNoPrefix(r));
+        System.out.println("    s:        0x" + Hex.encodeNoPrefix(s));
 
         System.out.println("\n" + AnsiColors.success("ERC-2612 Permit signing completed successfully!"));
-    }
-
-    private static String bytesToHex(byte[] bytes) {
-        var sb = new StringBuilder();
-        for (byte b : bytes) {
-            sb.append(String.format("%02x", b));
-        }
-        return sb.toString();
     }
 }

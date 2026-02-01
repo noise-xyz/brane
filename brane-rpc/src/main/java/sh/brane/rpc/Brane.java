@@ -413,7 +413,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
      * }</pre>
      *
      * @return the current blob base fee per gas
-     * @since 0.4.0
+     * @since 0.3.0
      */
     Wei getBlobBaseFee();
 
@@ -1042,7 +1042,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @param request the blob transaction request with at minimum a {@code to} address
          *                and {@code sidecar}; all other fields are optional and will be auto-filled
          * @return the transaction hash of the submitted transaction
-         * @since 0.4.0
+         * @since 0.3.0
          */
         Hash sendBlobTransaction(BlobTransactionRequest request);
 
@@ -1067,7 +1067,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          *
          * @param request the blob transaction request
          * @return the transaction receipt once confirmed
-         * @since 0.4.0
+         * @since 0.3.0
          */
         default TransactionReceipt sendBlobTransactionAndWait(BlobTransactionRequest request) {
             return sendBlobTransactionAndWait(request, DEFAULT_TIMEOUT_MILLIS, DEFAULT_BLOB_POLL_INTERVAL_MILLIS);
@@ -1089,7 +1089,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @param timeoutMillis      maximum time to wait for confirmation, in milliseconds
          * @param pollIntervalMillis how often to poll for the receipt, in milliseconds
          * @return the transaction receipt once confirmed
-         * @since 0.4.0
+         * @since 0.3.0
          */
         default TransactionReceipt sendBlobTransactionAndWait(
                 BlobTransactionRequest request, long timeoutMillis, long pollIntervalMillis) {
@@ -1396,7 +1396,7 @@ public sealed interface Brane extends AutoCloseable permits Brane.Reader, Brane.
          * @param request the blob transaction request
          * @return the transaction hash
          * @see Signer#sendBlobTransaction(BlobTransactionRequest)
-         * @since 0.4.0
+         * @since 0.3.0
          */
         Hash sendBlobTransaction(BlobTransactionRequest request);
 

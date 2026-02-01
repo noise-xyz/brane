@@ -316,7 +316,7 @@ IllegalArgumentException: Unsupported parameter type for transfer
 ```
 
 **Checks**:
-1. Java type matches Solidity type (see brane-abi-reference)
+1. Java type matches Solidity type
 2. For arrays: use `List<T>` or `T[]`
 3. For uint256: use `BigInteger`, not `long`
 

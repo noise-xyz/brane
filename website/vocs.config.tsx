@@ -1,7 +1,45 @@
 import { defineConfig } from 'vocs'
 
 export default defineConfig({
-  head: () => <link rel="stylesheet" href="/styles.css" />,
+  head: () => (
+    <>
+      <link rel="stylesheet" href="/styles.css" />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "SoftwareSourceCode",
+            "name": "Brane",
+            "description": "Modern, type-safe Java 21 SDK for Ethereum and EVM blockchains",
+            "programmingLanguage": ["Java", "Kotlin"],
+            "runtimePlatform": "JVM",
+            "url": "https://brane.sh",
+            "codeRepository": "https://github.com/noise-xyz/brane",
+            "license": [
+              "https://opensource.org/licenses/MIT",
+              "https://opensource.org/licenses/Apache-2.0"
+            ],
+            "keywords": [
+              "Ethereum",
+              "Java",
+              "Kotlin",
+              "web3j alternative",
+              "EVM",
+              "blockchain SDK",
+              "smart contracts",
+              "Web3",
+              "JSON-RPC",
+              "EIP-4844",
+              "blob transactions",
+              "Java 21",
+              "virtual threads"
+            ]
+          })
+        }}
+      />
+    </>
+  ),
   title: 'Brane',
   titleTemplate: '%s – Brane',
   description: 'A modern Java SDK for Ethereum',
@@ -94,7 +132,13 @@ export default defineConfig({
       },
       {
         text: 'Javadoc',
-        link: '/javadoc/index.html',
+        items: [
+          { text: 'brane-rpc', link: 'https://javadoc.io/doc/sh.brane/brane-rpc/latest/index.html' },
+          { text: 'brane-core', link: 'https://javadoc.io/doc/sh.brane/brane-core/latest/index.html' },
+          { text: 'brane-contract', link: 'https://javadoc.io/doc/sh.brane/brane-contract/latest/index.html' },
+          { text: 'brane-primitives', link: 'https://javadoc.io/doc/sh.brane/brane-primitives/latest/index.html' },
+          { text: 'brane-kzg', link: 'https://javadoc.io/doc/sh.brane/brane-kzg/latest/index.html' },
+        ],
       },
     ],
   },

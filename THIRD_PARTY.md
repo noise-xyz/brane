@@ -105,7 +105,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 ### Netty
 
-- **Packages**: `io.netty:netty-handler`, `io.netty:netty-codec-http`
+- **Packages**: `io.netty:netty-handler`, `io.netty:netty-codec-http`, `io.netty:netty-transport-native-epoll`, `io.netty:netty-transport-native-kqueue`
 - **Version**: 4.1.107.Final
 - **License**: Apache-2.0
 - **Website**: https://netty.io/

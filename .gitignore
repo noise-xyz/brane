@@ -30,7 +30,15 @@ fix_logs/
 # Logs and Benchmarks
 *.txt
 !**/trusted_setup.txt
+!llms.txt
+!llms-full.txt
+!website/docs/public/llms.txt
+!website/docs/public/llms-full.txt
+!website/docs/public/robots.txt
 benchmark_output.txt
+benchmark-results/*
+!benchmark-results/.gitkeep
+!benchmark-results/*.md
 
 # Security
 .env
@@ -51,6 +59,8 @@ spec/
 
 # Claude Code session files
 .claude/.session-id
+.claude/.pending-ref-check
+.claude/.verified-refs
 
 # Build outputs
 .next/

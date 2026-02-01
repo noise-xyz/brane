@@ -67,6 +67,36 @@ var config = WebSocketConfig.builder("wss://...")
     .build();
 ```
 
+### Enable Native Transport
+
+Brane auto-detects and uses native transport (kqueue on macOS, epoll on Linux) for optimal performance:
+
+```java
+// Native transport is auto-enabled - no configuration needed
+var config = WebSocketConfig.builder("wss://...")
+    .build();  // Uses kqueue/epoll automatically
+```
+
+**Benchmark results (local Anvil):**
+
+| Transport | Throughput | Variance |
+|-----------|------------|----------|
+| NIO (Java) | 25,235 ops/s | ±6.6% |
+| **Native (kqueue/epoll)** | **27,918 ops/s** | **±2.6%** |
+| **Improvement** | **+10.6%** | **-57% stdev** |
+
+Native transport provides more consistent performance with significantly lower variance.
+
+### Configure Frame Size for Large Responses
+
+The default 64KB frame limit is configurable via `maxFrameSize()`. For large `eth_getLogs` responses, increase to 4MB or more:
+
+```java
+var config = WebSocketConfig.builder("wss://...")
+    .maxFrameSize(4 * 1024 * 1024)  // 4MB
+    .build();
+```
+
 ## Optimizing Latency
 
 ### Per-Request Timeouts
@@ -101,6 +131,54 @@ var provider = WebSocketProvider.create("wss://...");
 | **Brane Speedup** | **6.3x** |
 
 Brane's ABI encoder is optimized for zero-allocation encoding in hot paths.
+
+## Allocation-Conscious APIs
+
+For GC-sensitive applications, Brane provides zero-allocation variants of common operations.
+
+### Hex Encoding/Decoding
+
+| Method | Allocation |
+|--------|------------|
+| `Hex.decode()` | 48 B/op (result array) |
+| `Hex.decodeTo()` | **0 B/op** |
+| `Hex.encode()` | 264 B/op (char[] + String) |
+| `Hex.encodeTo()` | **0 B/op** |
+
+```java
+import sh.brane.primitives.Hex;
+
+// Pre-allocate buffers once
+byte[] decodeBuffer = new byte[32];
+char[] encodeBuffer = new char[66];  // 2 prefix + 64 hex
+
+// Zero-allocation decode
+Hex.decodeTo(hexString, 0, hexString.length(), decodeBuffer, 0);
+
+// Zero-allocation encode
+Hex.encodeTo(bytes, encodeBuffer, 0, true);  // true = include "0x" prefix
+```
+
+### ABI Encoding
+
+```java
+import sh.brane.core.abi.FastAbiEncoder;
+import java.nio.ByteBuffer;
+
+// Pre-allocate buffer
+ByteBuffer buffer = ByteBuffer.allocate(68);  // 4 selector + 32*2 args
+
+// Zero-allocation encode
+byte[] selector = new byte[]{...};
+FastAbiEncoder.encodeTo(selector, args, buffer);
+
+// For uint256 with primitives (avoids BigInteger boxing)
+FastAbiEncoder.encodeUint256(42L, buffer);  // 0 B/op
+```
+
+:::tip
+Use `*To()` methods in hot paths (MEV, high-frequency trading). The standard methods are fine for most applications.
+:::
 
 ## Running Your Own Benchmarks
 

@@ -57,7 +57,7 @@ for (var event : transfers) {
 
 ## FastAbiEncoder
 
-For zero-allocation, low-level encoding of arguments (useful for manual `eth_call` construction).
+For low-level encoding of arguments (useful for manual `eth_call` construction).
 
 ```java
 import sh.brane.core.abi.FastAbiEncoder;
@@ -67,6 +67,26 @@ byte[] encoded = FastAbiEncoder.encode(List.of(
     new UInt(256, BigInteger.TEN)
 ));
 ```
+
+### Zero-Allocation Encoding
+
+For hot paths, use `encodeTo()` with a pre-allocated buffer:
+
+```java
+import java.nio.ByteBuffer;
+
+// Pre-allocate once
+ByteBuffer buffer = ByteBuffer.allocate(68);  // 4 selector + 32*2 args
+
+// Encode directly to buffer (0 allocations)
+byte[] selector = Abi.functionSelector("transfer(address,uint256)").toBytes();
+FastAbiEncoder.encodeTo(selector, args, buffer);
+
+// For primitive uint256 values (avoids BigInteger boxing)
+FastAbiEncoder.encodeUint256(42L, buffer);
+```
+
+See [Performance > Allocation-Conscious APIs](/docs/performance#allocation-conscious-apis) for more details.
 
 ## Array Type
 

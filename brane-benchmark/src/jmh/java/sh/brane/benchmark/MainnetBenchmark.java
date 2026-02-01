@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.benchmark;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
@@ -28,10 +27,9 @@ public class MainnetBenchmark {
     private String network;
 
     private String getUrl() {
-        switch (network) {
-            case "Ethereum":
-                return "wss://ethereum-rpc.publicnode.com";
-            case "Base":
+        return switch (network) {
+            case "Ethereum" -> "wss://ethereum-rpc.publicnode.com";
+            case "Base" -> {
                 String useInfura = System.getProperty("brane.benchmark.useInfura");
                 if ("true".equalsIgnoreCase(useInfura)) {
                     String infuraUrl = System.getenv("INFURA_BASE_WSS_URL");
@@ -40,17 +38,16 @@ public class MainnetBenchmark {
                     }
 
                     if (infuraUrl != null && !infuraUrl.isEmpty()) {
-                        return infuraUrl;
+                        yield infuraUrl;
                     }
                     System.err.println(
                             "Warning: brane.benchmark.useInfura=true but INFURA_BASE_WSS_URL not set. Falling back to public node.");
                 }
-                return "wss://base-rpc.publicnode.com";
-            case "Arbitrum":
-                return "wss://arbitrum-one-rpc.publicnode.com";
-            default:
-                throw new IllegalArgumentException("Unknown network: " + network);
-        }
+                yield "wss://base-rpc.publicnode.com";
+            }
+            case "Arbitrum" -> "wss://arbitrum-one-rpc.publicnode.com";
+            default -> throw new IllegalArgumentException("Unknown network: " + network);
+        };
     }
 
     private WebSocketProvider braneProvider;
@@ -68,7 +65,7 @@ public class MainnetBenchmark {
             // 1. Brane WebSocketProvider
             try {
                 braneProvider = WebSocketProvider.create(url);
-                braneProvider.send("eth_chainId", Collections.emptyList());
+                braneProvider.send("eth_chainId", List.of());
             } catch (Exception e) {
                 System.err.println("Brane init failed: " + e.getMessage());
             }
@@ -120,7 +117,7 @@ public class MainnetBenchmark {
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
     public void brane_chainId(Blackhole bh) throws Exception {
-        bh.consume(braneProvider.send("eth_chainId", Collections.emptyList()));
+        bh.consume(braneProvider.send("eth_chainId", List.of()));
     }
 
     @Benchmark
@@ -134,7 +131,7 @@ public class MainnetBenchmark {
     @Benchmark
     @BenchmarkMode(Mode.Throughput)
     public void brane_blockNumber(Blackhole bh) throws Exception {
-        bh.consume(braneProvider.send("eth_blockNumber", Collections.emptyList()));
+        bh.consume(braneProvider.send("eth_blockNumber", List.of()));
     }
 
     @Benchmark
@@ -164,7 +161,7 @@ public class MainnetBenchmark {
     @BenchmarkMode({ Mode.AverageTime, Mode.SampleTime })
     @OutputTimeUnit(TimeUnit.MILLISECONDS)
     public void brane_latency_blockNumber(Blackhole bh) throws Exception {
-        bh.consume(braneProvider.send("eth_blockNumber", Collections.emptyList()));
+        bh.consume(braneProvider.send("eth_blockNumber", List.of()));
     }
 
     @Benchmark
@@ -181,7 +178,7 @@ public class MainnetBenchmark {
     public void brane_pipeline_5(Blackhole bh) throws Exception {
         CompletableFuture<?>[] futures = new CompletableFuture[5];
         for (int i = 0; i < 5; i++) {
-            futures[i] = braneProvider.sendAsync("eth_blockNumber", Collections.emptyList());
+            futures[i] = braneProvider.sendAsync("eth_blockNumber", List.of());
         }
         for (CompletableFuture<?> f : futures) {
             bh.consume(f.get());

@@ -24,9 +24,19 @@ import java.util.Objects;
  */
 public record Wei(BigInteger value) {
     private static final BigDecimal WEI_PER_ETHER = BigDecimal.TEN.pow(18);
+    private static final BigInteger GWEI_MULTIPLIER = BigInteger.valueOf(1_000_000_000L);
 
     /** Zero wei constant. */
     public static final Wei ZERO = Wei.of(0);
+
+    /** One wei constant (the smallest unit of Ether). */
+    public static final Wei ONE_WEI = new Wei(BigInteger.ONE);
+
+    /** One gwei constant (10^9 wei, commonly used for gas prices). */
+    public static final Wei ONE_GWEI = Wei.gwei(1);
+
+    /** One ether constant (10^18 wei). */
+    public static final Wei ONE_ETHER = Wei.fromEther(BigDecimal.ONE);
 
     public Wei {
         Objects.requireNonNull(value, "value");
@@ -59,8 +69,6 @@ public record Wei(BigInteger value) {
                     "Ether value " + ether + " results in fractional wei", e);
         }
     }
-
-    private static final BigInteger GWEI_MULTIPLIER = BigInteger.valueOf(1_000_000_000L);
 
     /**
      * Creates a Wei value from a gwei amount.

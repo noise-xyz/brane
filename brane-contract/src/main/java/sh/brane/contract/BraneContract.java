@@ -7,6 +7,7 @@ import java.math.BigInteger;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.function.BiConsumer;
 import java.util.regex.Pattern;
 
 import sh.brane.core.abi.Abi;
@@ -379,31 +380,11 @@ public final class BraneContract {
     }
 
     private static void validateMethods(final Class<?> contractInterface, final Abi abi) {
-        for (Method method : contractInterface.getMethods()) {
-            if (method.getDeclaringClass() == Object.class) {
-                continue;
-            }
-
-            final Abi.FunctionMetadata metadata = abi.getFunction(method.getName())
-                    .orElseThrow(
-                            () -> new IllegalArgumentException(
-                                    "No ABI function named '" + method.getName() + "'"));
-            validateParameters(method, metadata);
-            validateReturnType(method, metadata);
-        }
+        validateMethodsWithCheck(contractInterface, abi, (method, metadata) -> {});
     }
 
     private static void validateReadOnlyMethods(final Class<?> contractInterface, final Abi abi) {
-        for (Method method : contractInterface.getMethods()) {
-            if (method.getDeclaringClass() == Object.class) {
-                continue;
-            }
-
-            final Abi.FunctionMetadata metadata = abi.getFunction(method.getName())
-                    .orElseThrow(
-                            () -> new IllegalArgumentException(
-                                    "No ABI function named '" + method.getName() + "'"));
-
+        validateMethodsWithCheck(contractInterface, abi, (method, metadata) -> {
             // Ensure all methods are view/pure for read-only binding
             if (!metadata.isView()) {
                 throw new IllegalArgumentException(
@@ -413,7 +394,24 @@ public final class BraneContract {
                                 + metadata.stateMutability()
                                 + "'");
             }
+        });
+    }
 
+    private static void validateMethodsWithCheck(
+            final Class<?> contractInterface,
+            final Abi abi,
+            final BiConsumer<Method, Abi.FunctionMetadata> additionalCheck) {
+        for (Method method : contractInterface.getMethods()) {
+            if (method.getDeclaringClass() == Object.class) {
+                continue;
+            }
+
+            final Abi.FunctionMetadata metadata = abi.getFunction(method.getName())
+                    .orElseThrow(
+                            () -> new IllegalArgumentException(
+                                    "No ABI function named '" + method.getName() + "'"));
+
+            additionalCheck.accept(method, metadata);
             validateParameters(method, metadata);
             validateReturnType(method, metadata);
         }
@@ -553,7 +551,7 @@ public final class BraneContract {
             final Method method,
             final List<String> outputs,
             final java.util.function.Predicate<String> validator) {
-        if (outputs.size() != 1 || !validator.test(outputs.getFirst())) {
+        if (outputs.size() != 1 || !validator.test(outputs.getFirst().toLowerCase(Locale.ROOT))) {
             throw new IllegalArgumentException(
                     "Return type for " + method.getName() + " does not match ABI outputs");
         }
@@ -595,26 +593,24 @@ public final class BraneContract {
     }
 
     private static boolean isNumericType(final String solidityType) {
-        final String normalized = solidityType.toLowerCase(Locale.ROOT);
-        return normalized.startsWith("uint") || normalized.startsWith("int");
+        return solidityType.startsWith("uint") || solidityType.startsWith("int");
     }
 
     private static boolean isAddressType(final String solidityType) {
-        return "address".equals(solidityType.toLowerCase(Locale.ROOT));
+        return "address".equals(solidityType);
     }
 
     private static boolean isBoolType(final String solidityType) {
-        return "bool".equals(solidityType.toLowerCase(Locale.ROOT));
+        return "bool".equals(solidityType);
     }
 
     private static boolean isStringType(final String solidityType) {
-        return "string".equals(solidityType.toLowerCase(Locale.ROOT));
+        return "string".equals(solidityType);
     }
 
     private static boolean isBytesType(final String solidityType) {
-        final String normalized = solidityType.toLowerCase(Locale.ROOT);
         // Match "bytes" (dynamic) or "bytesN" (fixed-size like bytes32)
-        return normalized.equals("bytes") || normalized.matches("bytes\\d+");
+        return solidityType.equals("bytes") || solidityType.matches("bytes\\d+");
     }
 
     private static boolean isArrayType(final String solidityType) {

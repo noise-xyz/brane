@@ -23,7 +23,15 @@ import sh.brane.primitives.Hex;
  * @since 0.1.0-alpha
  */
 public record Address(@com.fasterxml.jackson.annotation.JsonValue String value) {
-    private static final Pattern HEX = Pattern.compile("^0x[0-9a-fA-F]{40}$");
+    private static final int BYTE_LENGTH = 20;
+    private static final Pattern HEX = HexValidator.fixedLength(BYTE_LENGTH);
+
+    /**
+     * The zero address ({@code 0x0000000000000000000000000000000000000000}).
+     * <p>
+     * Commonly used as a sentinel value to represent "no address" or the burn address.
+     */
+    public static final Address ZERO = new Address("0x0000000000000000000000000000000000000000");
 
     public Address {
         Objects.requireNonNull(value, "address");
@@ -33,13 +41,21 @@ public record Address(@com.fasterxml.jackson.annotation.JsonValue String value) 
         value = value.toLowerCase(Locale.ROOT);
     }
 
+    /**
+     * Decodes this address to a 20-byte array.
+     *
+     * <p><b>Allocation:</b> 1 allocation per call (result byte[]). For hot paths,
+     * cache the result or use {@link Hex#decodeTo} with a pre-allocated buffer.
+     *
+     * @return 20-byte array representation
+     */
     public byte[] toBytes() {
         return Hex.decode(value);
     }
 
     public static Address fromBytes(final byte[] bytes) {
-        if (bytes == null || bytes.length != 20) {
-            throw new IllegalArgumentException("Address must be exactly 20 bytes");
+        if (bytes == null || bytes.length != BYTE_LENGTH) {
+            throw new IllegalArgumentException("Address must be exactly " + BYTE_LENGTH + " bytes");
         }
         return new Address("0x" + Hex.encodeNoPrefix(bytes));
     }

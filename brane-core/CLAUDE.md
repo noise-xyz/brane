@@ -2,6 +2,19 @@
 
 The foundation module. Types, ABI encoding/decoding, crypto, transaction building, and data models.
 
+## Commands
+
+```bash
+# Compile
+./gradlew :brane-core:compileJava
+
+# Run tests
+./gradlew :brane-core:test
+
+# Run specific test
+./gradlew :brane-core:test --tests "sh.brane.core.MyTest"
+```
+
 ## Package Structure
 
 | Package | Purpose |
@@ -74,6 +87,7 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 BraneException (sealed)
 ├── AbiDecodingException - ABI decoding failures
 ├── AbiEncodingException - ABI encoding failures
+├── Eip712Exception - EIP-712 typed data failures
 ├── KzgException - KZG proof/commitment failures
 ├── RevertException - EVM execution reverts
 ├── RpcException - JSON-RPC communication failures

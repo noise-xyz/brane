@@ -23,6 +23,8 @@ import java.util.function.Consumer;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.lmax.disruptor.BlockingWaitStrategy;
+import com.lmax.disruptor.BusySpinWaitStrategy;
+import com.lmax.disruptor.LiteBlockingWaitStrategy;
 import com.lmax.disruptor.RingBuffer;
 import com.lmax.disruptor.WaitStrategy;
 import com.lmax.disruptor.YieldingWaitStrategy;
@@ -34,7 +36,6 @@ import io.netty.buffer.ByteBufInputStream;
 import io.netty.buffer.PooledByteBufAllocator;
 import io.netty.channel.*;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioSocketChannel;
 import io.netty.handler.codec.http.DefaultHttpHeaders;
@@ -44,6 +45,9 @@ import io.netty.handler.codec.http.HttpObjectAggregator;
 import io.netty.handler.codec.http.websocketx.*;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
+import io.netty.handler.timeout.IdleState;
+import io.netty.handler.timeout.IdleStateEvent;
+import io.netty.handler.timeout.IdleStateHandler;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -142,23 +146,30 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private static final long DEFAULT_TIMEOUT_MS = 60_000;
 
     /**
-     * Ring buffer saturation threshold (10% remaining capacity).
+     * Ring buffer saturation threshold (fraction of total capacity).
      * <p>
      * When remaining capacity drops below this fraction of total buffer size,
      * the metrics callback is invoked to warn of impending backpressure.
      * <p>
-     * 10% threshold chosen because:
+     * Configured via {@link WebSocketConfig#ringBufferSaturationThreshold()}.
+     * Default is 10%, chosen because:
      * <ul>
      *   <li>Early warning before hitting 0% (backpressure limit)</li>
      *   <li>Small enough to avoid false alarms during normal bursts</li>
      *   <li>Allows time for producers to slow down gracefully</li>
      * </ul>
      */
-    private static final double RING_BUFFER_SATURATION_THRESHOLD = 0.1;
+    private final double ringBufferSaturationThreshold;
 
     // Instance configuration (from WebSocketConfig or defaults)
     private final int maxPendingRequests;
     private final Duration defaultRequestTimeout;
+    private final Duration connectTimeout;
+    private final int writeBufferLowWaterMark;
+    private final int writeBufferHighWaterMark;
+    private final int maxFrameSize;
+    private final Duration readIdleTimeout;
+    private final Duration writeIdleTimeout;
     // Note: slotMask was removed - it was a remnant of slot-based indexing that is no longer used
     // since pending request tracking switched to ConcurrentHashMap.
 
@@ -168,6 +179,8 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private final EventLoopGroup group;
     /** True if we created the EventLoopGroup internally and are responsible for shutting it down. */
     private final boolean ownsEventLoopGroup;
+    /** The socket channel class to use for Bootstrap (NIO, Epoll, or KQueue). */
+    private final Class<? extends Channel> channelClass;
     /**
      * The active WebSocket channel. Volatile because it is accessed from multiple threads:
      * caller threads (sendAsync), Netty I/O thread, and reconnect scheduler.
@@ -291,7 +304,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * too aggressive.
      *
      * @return the total count of orphaned responses
-     * @since 0.5.0
+     * @since 0.3.0
      */
     public long getOrphanedResponseCount() {
         return orphanedResponses.sum();
@@ -308,7 +321,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * The state may change immediately after this method returns.
      *
      * @return the current {@link ConnectionState}
-     * @since 0.5.0
+     * @since 0.3.0
      */
     public ConnectionState getConnectionState() {
         return connectionState.get();
@@ -330,7 +343,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
      * request submission or response processing.
      *
      * @return the number of pending requests
-     * @since 0.6.0
+     * @since 0.3.0
      */
     public int getPendingRequestCount() {
         return pendingRequests.size();
@@ -353,33 +366,134 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
     private static final byte[] TRUE_BYTES = "true".getBytes(StandardCharsets.UTF_8);
     private static final byte[] FALSE_BYTES = "false".getBytes(StandardCharsets.UTF_8);
 
+    // ==================== Native Transport Support ====================
+    /**
+     * Holds the selected EventLoopGroup and Channel class for a transport.
+     */
+    private record TransportSelection(EventLoopGroup group, Class<? extends Channel> channelClass) {}
+
+    /**
+     * Selects the appropriate native transport based on the configured type.
+     * <p>
+     * For AUTO mode, the selection order is:
+     * <ol>
+     *   <li>Epoll on Linux (if native library available)</li>
+     *   <li>KQueue on macOS/BSD (if native library available)</li>
+     *   <li>NIO as fallback on all platforms</li>
+     * </ol>
+     */
+    private static TransportSelection selectTransport(WebSocketConfig.TransportType type, int ioThreads) {
+        ThreadFactory threadFactory = r -> {
+            Thread t = new Thread(r, "brane-netty-io");
+            t.setDaemon(true);
+            return t;
+        };
+
+        return switch (type) {
+            case EPOLL -> {
+                if (!io.netty.channel.epoll.Epoll.isAvailable()) {
+                    throw new IllegalStateException("Epoll transport requested but not available: "
+                            + io.netty.channel.epoll.Epoll.unavailabilityCause().getMessage());
+                }
+                log.debug("Using Epoll transport");
+                yield new TransportSelection(
+                        new io.netty.channel.epoll.EpollEventLoopGroup(ioThreads, threadFactory),
+                        io.netty.channel.epoll.EpollSocketChannel.class);
+            }
+            case KQUEUE -> {
+                if (!io.netty.channel.kqueue.KQueue.isAvailable()) {
+                    throw new IllegalStateException("KQueue transport requested but not available: "
+                            + io.netty.channel.kqueue.KQueue.unavailabilityCause().getMessage());
+                }
+                log.debug("Using KQueue transport");
+                yield new TransportSelection(
+                        new io.netty.channel.kqueue.KQueueEventLoopGroup(ioThreads, threadFactory),
+                        io.netty.channel.kqueue.KQueueSocketChannel.class);
+            }
+            case NIO -> {
+                log.debug("Using NIO transport");
+                yield new TransportSelection(
+                        new io.netty.channel.nio.NioEventLoopGroup(ioThreads, threadFactory),
+                        NioSocketChannel.class);
+            }
+            case AUTO -> selectAutoTransport(ioThreads, threadFactory);
+        };
+    }
+
+    /**
+     * Auto-selects the best available transport for the current platform.
+     */
+    private static TransportSelection selectAutoTransport(int ioThreads, ThreadFactory threadFactory) {
+        // Try Epoll first (Linux)
+        if (io.netty.channel.epoll.Epoll.isAvailable()) {
+            log.info("Auto-selected Epoll transport (Linux native)");
+            return new TransportSelection(
+                    new io.netty.channel.epoll.EpollEventLoopGroup(ioThreads, threadFactory),
+                    io.netty.channel.epoll.EpollSocketChannel.class);
+        }
+        // Try KQueue (macOS/BSD)
+        if (io.netty.channel.kqueue.KQueue.isAvailable()) {
+            log.info("Auto-selected KQueue transport (macOS/BSD native)");
+            return new TransportSelection(
+                    new io.netty.channel.kqueue.KQueueEventLoopGroup(ioThreads, threadFactory),
+                    io.netty.channel.kqueue.KQueueSocketChannel.class);
+        }
+        // Fall back to NIO
+        log.info("Auto-selected NIO transport (native transports not available)");
+        return new TransportSelection(
+                new io.netty.channel.nio.NioEventLoopGroup(ioThreads, threadFactory),
+                NioSocketChannel.class);
+    }
+
+    /**
+     * Detects the appropriate channel class for an externally-provided EventLoopGroup.
+     */
+    private static Class<? extends Channel> detectChannelClass(EventLoopGroup group) {
+        if (group instanceof io.netty.channel.epoll.EpollEventLoopGroup) {
+            return io.netty.channel.epoll.EpollSocketChannel.class;
+        }
+        if (group instanceof io.netty.channel.kqueue.KQueueEventLoopGroup) {
+            return io.netty.channel.kqueue.KQueueSocketChannel.class;
+        }
+        // Default to NIO for NioEventLoopGroup or unknown types
+        return NioSocketChannel.class;
+    }
+
     private WebSocketProvider(WebSocketConfig config) {
         this.url = config.url();
         this.uri = URI.create(config.url());
         this.maxPendingRequests = config.maxPendingRequests();
         this.defaultRequestTimeout = config.defaultRequestTimeout();
+        this.connectTimeout = config.connectTimeout();
+        this.writeBufferLowWaterMark = config.writeBufferLowWaterMark();
+        this.writeBufferHighWaterMark = config.writeBufferHighWaterMark();
+        this.maxFrameSize = config.maxFrameSize();
+        this.ringBufferSaturationThreshold = config.ringBufferSaturationThreshold();
+        this.readIdleTimeout = config.readIdleTimeout();
+        this.writeIdleTimeout = config.writeIdleTimeout();
 
         // Initialize default subscription executor (owned by this provider)
         this.subscriptionExecutor = Executors.newVirtualThreadPerTaskExecutor();
         this.ownsSubscriptionExecutor = true;
 
-        // Use provided EventLoopGroup or create default
+        // Use provided EventLoopGroup or create based on transport type
         if (config.eventLoopGroup() != null) {
             this.group = config.eventLoopGroup();
+            this.channelClass = detectChannelClass(config.eventLoopGroup());
             this.ownsEventLoopGroup = false; // External group - caller is responsible for lifecycle
         } else {
-            this.group = new NioEventLoopGroup(config.ioThreads(), r -> {
-                Thread t = new Thread(r, "brane-netty-io");
-                t.setDaemon(true);
-                return t;
-            });
+            TransportSelection transport = selectTransport(config.transportType(), config.ioThreads());
+            this.group = transport.group;
+            this.channelClass = transport.channelClass;
             this.ownsEventLoopGroup = true; // Internal group - we manage lifecycle
         }
 
         // Configurable wait strategy
         WaitStrategy waitStrategy = switch (config.waitStrategy()) {
-            case BLOCKING -> new BlockingWaitStrategy();
+            case BUSY_SPIN -> new BusySpinWaitStrategy();
             case YIELDING -> new YieldingWaitStrategy();
+            case LITE_BLOCKING -> new LiteBlockingWaitStrategy();
+            case BLOCKING -> new BlockingWaitStrategy();
         };
 
         ThreadFactory threadFactory = r -> {
@@ -479,12 +593,13 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
 
                 Bootstrap b = new Bootstrap();
                 b.group(group)
-                        .channel(NioSocketChannel.class)
+                        .channel(channelClass)
                         .option(ChannelOption.TCP_NODELAY, true)
                         .option(ChannelOption.SO_KEEPALIVE, true)
+                        .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) connectTimeout.toMillis())
                         .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
                         .option(ChannelOption.WRITE_BUFFER_WATER_MARK,
-                                new WriteBufferWaterMark(8 * 1024, 32 * 1024))
+                                new WriteBufferWaterMark(writeBufferLowWaterMark, writeBufferHighWaterMark))
                         .handler(new ChannelInitializer<SocketChannel>() {
                             @Override
                             protected void initChannel(SocketChannel ch) {
@@ -494,7 +609,15 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                                             uri.getPort() == -1 ? 443 : uri.getPort()));
                                 }
                                 p.addLast(new HttpClientCodec());
-                                p.addLast(new HttpObjectAggregator(65536));
+                                p.addLast(new HttpObjectAggregator(maxFrameSize));
+                                // Add IdleStateHandler if either timeout is non-zero
+                                if (!readIdleTimeout.isZero() || !writeIdleTimeout.isZero()) {
+                                    p.addLast(new IdleStateHandler(
+                                            readIdleTimeout.toMillis(),
+                                            writeIdleTimeout.toMillis(),
+                                            0,
+                                            TimeUnit.MILLISECONDS));
+                                }
                                 p.addLast(connectionHandler);
                             }
                         });
@@ -557,6 +680,23 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
                 log.warn("Connection lost, triggering reconnect");
                 reconnect();
             }
+        }
+
+        @Override
+        public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
+            if (evt instanceof IdleStateEvent idleEvent) {
+                IdleState state = idleEvent.state();
+                if (state == IdleState.WRITER_IDLE) {
+                    // Send WebSocket ping frame to keep connection alive on write idle
+                    ctx.writeAndFlush(new PingWebSocketFrame());
+                    log.debug("Sent ping frame due to write idle");
+                } else if (state == IdleState.READER_IDLE) {
+                    // No response from server for too long - connection is likely dead
+                    log.warn("Closing connection due to read idle timeout (no data received)");
+                    ctx.close();
+                }
+            }
+            super.userEventTriggered(ctx, evt);
         }
 
         @Override
@@ -944,7 +1084,7 @@ public class WebSocketProvider implements BraneProvider, AutoCloseable {
         // Check ring buffer saturation before publishing (metrics hook for early warning)
         int bufferSize = ringBuffer.getBufferSize();
         long remainingCapacity = ringBuffer.remainingCapacity();
-        if (remainingCapacity < bufferSize * RING_BUFFER_SATURATION_THRESHOLD) {
+        if (remainingCapacity < bufferSize * ringBufferSaturationThreshold) {
             metrics.onRingBufferSaturation(remainingCapacity, bufferSize);
         }
 

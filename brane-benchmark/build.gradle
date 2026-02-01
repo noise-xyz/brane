@@ -18,16 +18,18 @@ dependencies {
 }
 
 jmh {
-    warmupIterations = 1
-    iterations = 3
-    fork = 1
+    warmupIterations = project.hasProperty('jmh.wi') ? project.property('jmh.wi') as int : 1
+    iterations = project.hasProperty('jmh.i') ? project.property('jmh.i') as int : 3
+    fork = project.hasProperty('jmh.f') ? project.property('jmh.f') as int : 1
     failOnError = true
     resultFormat = 'JSON'
     // Benchmarks are specified via command line: -Pjmh.includes="..."
     // Leave empty to run all benchmarks by default
     includes = project.hasProperty('jmh.includes') ? [project.property('jmh.includes')] : []
     excludes = []
-    
+    // Profilers: -Pjmh.prof="gc" for GC allocation profiler
+    profilers = project.hasProperty('jmh.prof') ? [project.property('jmh.prof')] : []
+
     // Pass the system property to the forked JVM
     if (System.getProperty('brane.benchmark.useInfura') != null) {
         jvmArgsAppend = ["-Dbrane.benchmark.useInfura=" + System.getProperty('brane.benchmark.useInfura')]

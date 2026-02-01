@@ -63,7 +63,7 @@ public class RealWorldLatencyTest {
 
             // Warmup
             System.out.print("   Warming up...");
-            brane.sendAsync("eth_chainId", Collections.emptyList()).join();
+            brane.sendAsync("eth_chainId", List.of()).join();
             web3j.ethChainId().send();
             System.out.println(" Done.");
             Thread.sleep(SLEEP_MS);
@@ -71,7 +71,7 @@ public class RealWorldLatencyTest {
             for (int i = 1; i <= LATENCY_ITERATIONS; i++) {
                 // Brane
                 long startBrane = System.nanoTime();
-                brane.sendAsync("eth_blockNumber", Collections.emptyList()).join();
+                brane.sendAsync("eth_blockNumber", List.of()).join();
                 long endBrane = System.nanoTime();
                 braneLatencies.add((endBrane - startBrane) / 1000);
 
@@ -95,14 +95,14 @@ public class RealWorldLatencyTest {
     private static void runBurstComparison(String url) throws Exception {
         // Brane Burst
         try (sh.brane.rpc.WebSocketProvider brane = sh.brane.rpc.WebSocketProvider.create(url)) {
-            brane.sendAsync("eth_chainId", Collections.emptyList()).join(); // Warmup
+            brane.sendAsync("eth_chainId", List.of()).join(); // Warmup
             Thread.sleep(SLEEP_MS);
 
             System.out.print("   Running Brane Burst... ");
             long start = System.nanoTime();
             CompletableFuture<?>[] futures = new CompletableFuture[BURST_SIZE];
             for (int i = 0; i < BURST_SIZE; i++) {
-                futures[i] = brane.sendAsync("eth_blockNumber", Collections.emptyList());
+                futures[i] = brane.sendAsync("eth_blockNumber", List.of());
             }
             CompletableFuture.allOf(futures).join();
             long end = System.nanoTime();

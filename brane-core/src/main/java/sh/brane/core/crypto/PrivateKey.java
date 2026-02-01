@@ -61,6 +61,7 @@ import sh.brane.primitives.Hex;
  */
 public final class PrivateKey implements Destroyable {
 
+    private static final int PRIVATE_KEY_SIZE = 32;
     private static final X9ECParameters CURVE_PARAMS = CustomNamedCurves.getByName("secp256k1");
     private static final ECDomainParameters CURVE = new ECDomainParameters(
             CURVE_PARAMS.getCurve(),
@@ -73,8 +74,8 @@ public final class PrivateKey implements Destroyable {
     private volatile boolean destroyed = false;
 
     private PrivateKey(final byte[] keyBytes) {
-        if (keyBytes.length != 32) {
-            throw new IllegalArgumentException("Private key must be 32 bytes, got " + keyBytes.length);
+        if (keyBytes.length != PRIVATE_KEY_SIZE) {
+            throw new IllegalArgumentException("Private key must be " + PRIVATE_KEY_SIZE + " bytes, got " + keyBytes.length);
         }
 
         try {

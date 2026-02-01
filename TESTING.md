@@ -67,7 +67,7 @@ If you are an AI assistant (like Gemini) helping with this codebase, follow thes
 
 ### 3. Adding to Smoke Tests (`SmokeApp.java`)
 *   **Goal**: Stress test a feature in a "real world" scenario.
-*   **Location**: `smoke-test/src/main/java/sh/brane/smoke/SmokeApp.java`
+*   **Location**: `brane-smoke/src/main/java/sh/brane/smoke/SmokeApp.java`
 *   **Pattern**:
     *   Add a new `private static void testMyFeature()` method.
     *   Call it from `main()`.

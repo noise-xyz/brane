@@ -62,6 +62,35 @@ class HexTest {
     }
 
     @Test
+    @DisplayName("decode handles empty string edge cases")
+    void testDecodeEmptyEdgeCases() {
+        // Empty string without prefix
+        assertArrayEquals(new byte[] {}, Hex.decode(""));
+
+        // "0x" prefix only
+        assertArrayEquals(new byte[] {}, Hex.decode("0x"));
+
+        // "0X" prefix only (uppercase)
+        assertArrayEquals(new byte[] {}, Hex.decode("0X"));
+    }
+
+    @Test
+    @DisplayName("decode rejects odd-length hex strings")
+    void testDecodeOddLength() {
+        // Single character (odd length)
+        assertThrows(IllegalArgumentException.class, () -> Hex.decode("0x1"));
+        assertThrows(IllegalArgumentException.class, () -> Hex.decode("1"));
+
+        // Three characters (odd length)
+        assertThrows(IllegalArgumentException.class, () -> Hex.decode("0x123"));
+        assertThrows(IllegalArgumentException.class, () -> Hex.decode("123"));
+
+        // Five characters (odd length)
+        assertThrows(IllegalArgumentException.class, () -> Hex.decode("0x12345"));
+        assertThrows(IllegalArgumentException.class, () -> Hex.decode("12345"));
+    }
+
+    @Test
     void testRoundTrip() {
         byte[] values1 = new byte[] {};
         byte[] values2 = new byte[] {0x00, 0x01, 0x7F, (byte) 0x80, (byte) 0xFF};
@@ -140,5 +169,354 @@ class HexTest {
         // Also works with encodeNoPrefix
         String noPrefix = Hex.encodeNoPrefix(original);
         assertArrayEquals(original, Hex.toBytes(noPrefix));
+    }
+
+    @Test
+    @DisplayName("encodeTo writes hex chars with prefix to pre-allocated buffer")
+    void testEncodeToWithPrefix() {
+        byte[] bytes = new byte[] {0x01, 0x23, (byte) 0xAB, (byte) 0xCD};
+        char[] dest = new char[10];
+
+        int written = Hex.encodeTo(bytes, dest, 0, true);
+
+        assertEquals(10, written);
+        assertEquals("0x0123abcd", new String(dest, 0, written));
+    }
+
+    @Test
+    @DisplayName("encodeTo writes hex chars without prefix to pre-allocated buffer")
+    void testEncodeToWithoutPrefix() {
+        byte[] bytes = new byte[] {0x01, 0x23, (byte) 0xAB, (byte) 0xCD};
+        char[] dest = new char[8];
+
+        int written = Hex.encodeTo(bytes, dest, 0, false);
+
+        assertEquals(8, written);
+        assertEquals("0123abcd", new String(dest, 0, written));
+    }
+
+    @Test
+    @DisplayName("encodeTo writes at specified offset")
+    void testEncodeToWithOffset() {
+        byte[] bytes = new byte[] {(byte) 0xFF};
+        char[] dest = new char[10];
+        dest[0] = 'A';
+        dest[1] = 'B';
+
+        int written = Hex.encodeTo(bytes, dest, 2, true);
+
+        assertEquals(4, written);
+        assertEquals("AB0xff", new String(dest, 0, 6));
+    }
+
+    @Test
+    @DisplayName("encodeTo handles empty byte array")
+    void testEncodeToEmpty() {
+        byte[] bytes = new byte[] {};
+        char[] dest = new char[2];
+
+        int writtenWithPrefix = Hex.encodeTo(bytes, dest, 0, true);
+        assertEquals(2, writtenWithPrefix);
+        assertEquals("0x", new String(dest, 0, writtenWithPrefix));
+
+        char[] destNoPrefix = new char[0];
+        int writtenNoPrefix = Hex.encodeTo(bytes, destNoPrefix, 0, false);
+        assertEquals(0, writtenNoPrefix);
+    }
+
+    @Test
+    @DisplayName("encodeTo throws when buffer is too small")
+    void testEncodeToBufferTooSmall() {
+        byte[] bytes = new byte[] {0x01, 0x02};
+        char[] smallDest = new char[3]; // needs 6 chars with prefix
+
+        var ex = assertThrows(IllegalArgumentException.class, () -> Hex.encodeTo(bytes, smallDest, 0, true));
+        assertTrue(ex.getMessage().contains("too small"));
+    }
+
+    @Test
+    @DisplayName("encodeTo throws when offset leaves insufficient space")
+    void testEncodeToInsufficientSpaceWithOffset() {
+        byte[] bytes = new byte[] {0x01};
+        char[] dest = new char[5]; // enough for 4 chars but offset reduces available space
+
+        var ex = assertThrows(IllegalArgumentException.class, () -> Hex.encodeTo(bytes, dest, 3, true));
+        assertTrue(ex.getMessage().contains("too small"));
+    }
+
+    @Test
+    @DisplayName("encodeTo rejects null bytes")
+    void testEncodeToNullBytes() {
+        char[] dest = new char[10];
+        assertThrows(IllegalArgumentException.class, () -> Hex.encodeTo(null, dest, 0, true));
+    }
+
+    @Test
+    @DisplayName("encodeTo rejects null dest")
+    void testEncodeToNullDest() {
+        byte[] bytes = new byte[] {0x01};
+        assertThrows(IllegalArgumentException.class, () -> Hex.encodeTo(bytes, null, 0, true));
+    }
+
+    @Test
+    @DisplayName("decodeTo decodes hex into pre-allocated byte array")
+    void testDecodeToBasic() {
+        byte[] dest = new byte[4];
+
+        int written = Hex.decodeTo("0x0123abcd", 0, 10, dest, 0);
+
+        assertEquals(4, written);
+        assertArrayEquals(new byte[] {0x01, 0x23, (byte) 0xAB, (byte) 0xCD}, dest);
+    }
+
+    @Test
+    @DisplayName("decodeTo works without 0x prefix")
+    void testDecodeToNoPrefix() {
+        byte[] dest = new byte[2];
+
+        int written = Hex.decodeTo("abcd", 0, 4, dest, 0);
+
+        assertEquals(2, written);
+        assertArrayEquals(new byte[] {(byte) 0xAB, (byte) 0xCD}, dest);
+    }
+
+    @Test
+    @DisplayName("decodeTo writes at specified dest offset")
+    void testDecodeToWithDestOffset() {
+        byte[] dest = new byte[5];
+        dest[0] = (byte) 0xAA;
+        dest[1] = (byte) 0xBB;
+
+        int written = Hex.decodeTo("0xffee", 0, 6, dest, 2);
+
+        assertEquals(2, written);
+        assertEquals((byte) 0xAA, dest[0]);
+        assertEquals((byte) 0xBB, dest[1]);
+        assertEquals((byte) 0xFF, dest[2]);
+        assertEquals((byte) 0xEE, dest[3]);
+        assertEquals((byte) 0x00, dest[4]);
+    }
+
+    @Test
+    @DisplayName("decodeTo reads from specified hex offset and length")
+    void testDecodeToWithHexOffset() {
+        byte[] dest = new byte[2];
+        // String: "prefix0x1234suffix" - we want to decode "0x1234" starting at index 6
+        String input = "prefix0x1234suffix";
+
+        int written = Hex.decodeTo(input, 6, 6, dest, 0);
+
+        assertEquals(2, written);
+        assertArrayEquals(new byte[] {0x12, 0x34}, dest);
+    }
+
+    @Test
+    @DisplayName("decodeTo handles partial hex region without prefix")
+    void testDecodeToPartialRegion() {
+        byte[] dest = new byte[2];
+        String input = "00112233aabbccdd";
+
+        // Decode "aabb" from middle of string (offset 8, length 4)
+        int written = Hex.decodeTo(input, 8, 4, dest, 0);
+
+        assertEquals(2, written);
+        assertArrayEquals(new byte[] {(byte) 0xAA, (byte) 0xBB}, dest);
+    }
+
+    @Test
+    @DisplayName("decodeTo handles empty hex string")
+    void testDecodeToEmpty() {
+        byte[] dest = new byte[10];
+
+        int written = Hex.decodeTo("0x", 0, 2, dest, 0);
+        assertEquals(0, written);
+
+        written = Hex.decodeTo("", 0, 0, dest, 0);
+        assertEquals(0, written);
+    }
+
+    @Test
+    @DisplayName("decodeTo handles case insensitive hex")
+    void testDecodeToCaseInsensitive() {
+        byte[] dest = new byte[4];
+
+        int written = Hex.decodeTo("0xAbCdEf01", 0, 10, dest, 0);
+
+        assertEquals(4, written);
+        assertArrayEquals(new byte[] {(byte) 0xAB, (byte) 0xCD, (byte) 0xEF, 0x01}, dest);
+    }
+
+    @Test
+    @DisplayName("decodeTo handles uppercase 0X prefix")
+    void testDecodeToUppercasePrefix() {
+        byte[] dest = new byte[2];
+
+        int written = Hex.decodeTo("0Xaabb", 0, 6, dest, 0);
+
+        assertEquals(2, written);
+        assertArrayEquals(new byte[] {(byte) 0xAA, (byte) 0xBB}, dest);
+    }
+
+    @Test
+    @DisplayName("decodeTo works with CharSequence (StringBuilder)")
+    void testDecodeToCharSequence() {
+        byte[] dest = new byte[2];
+        StringBuilder sb = new StringBuilder("0x1234");
+
+        int written = Hex.decodeTo(sb, 0, sb.length(), dest, 0);
+
+        assertEquals(2, written);
+        assertArrayEquals(new byte[] {0x12, 0x34}, dest);
+    }
+
+    @Test
+    @DisplayName("decodeTo works with various CharSequence implementations")
+    void testDecodeToVariousCharSequences() {
+        byte[] expected = new byte[] {(byte) 0xAB, (byte) 0xCD};
+
+        // String
+        byte[] dest1 = new byte[2];
+        int written1 = Hex.decodeTo("0xabcd", 0, 6, dest1, 0);
+        assertEquals(2, written1);
+        assertArrayEquals(expected, dest1);
+
+        // StringBuilder
+        byte[] dest2 = new byte[2];
+        StringBuilder sb = new StringBuilder("0xabcd");
+        int written2 = Hex.decodeTo(sb, 0, sb.length(), dest2, 0);
+        assertEquals(2, written2);
+        assertArrayEquals(expected, dest2);
+
+        // StringBuffer
+        byte[] dest3 = new byte[2];
+        StringBuffer sbuf = new StringBuffer("0xabcd");
+        int written3 = Hex.decodeTo(sbuf, 0, sbuf.length(), dest3, 0);
+        assertEquals(2, written3);
+        assertArrayEquals(expected, dest3);
+    }
+
+    @Test
+    @DisplayName("decodeTo returns correct byte count for various input lengths")
+    void testDecodeToReturnsCorrectByteCount() {
+        // Empty input (just prefix) returns 0
+        byte[] dest = new byte[10];
+        assertEquals(0, Hex.decodeTo("0x", 0, 2, dest, 0));
+        assertEquals(0, Hex.decodeTo("", 0, 0, dest, 0));
+
+        // 2 hex chars = 1 byte
+        assertEquals(1, Hex.decodeTo("0xff", 0, 4, dest, 0));
+
+        // 4 hex chars = 2 bytes
+        assertEquals(2, Hex.decodeTo("0x1234", 0, 6, dest, 0));
+
+        // 8 hex chars = 4 bytes
+        assertEquals(4, Hex.decodeTo("0x12345678", 0, 10, dest, 0));
+
+        // Without prefix: 6 hex chars = 3 bytes
+        assertEquals(3, Hex.decodeTo("aabbcc", 0, 6, dest, 0));
+
+        // Partial region: 4 hex chars from middle = 2 bytes
+        assertEquals(2, Hex.decodeTo("00112233", 2, 4, dest, 0));
+    }
+
+    @Test
+    @DisplayName("decodeTo throws on null hex")
+    void testDecodeToNullHex() {
+        byte[] dest = new byte[10];
+        assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo(null, 0, 0, dest, 0));
+    }
+
+    @Test
+    @DisplayName("decodeTo throws on null dest")
+    void testDecodeToNullDest() {
+        assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("0x1234", 0, 6, null, 0));
+    }
+
+    @Test
+    @DisplayName("decodeTo throws on negative hexOffset")
+    void testDecodeToNegativeHexOffset() {
+        byte[] dest = new byte[10];
+        var ex = assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("0x1234", -1, 6, dest, 0));
+        assertTrue(ex.getMessage().contains("hexOffset"));
+    }
+
+    @Test
+    @DisplayName("decodeTo throws on negative hexLength")
+    void testDecodeToNegativeHexLength() {
+        byte[] dest = new byte[10];
+        var ex = assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("0x1234", 0, -1, dest, 0));
+        assertTrue(ex.getMessage().contains("hexLength"));
+    }
+
+    @Test
+    @DisplayName("decodeTo throws on negative destOffset")
+    void testDecodeToNegativeDestOffset() {
+        byte[] dest = new byte[10];
+        var ex = assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("0x1234", 0, 6, dest, -1));
+        assertTrue(ex.getMessage().contains("destOffset"));
+    }
+
+    @Test
+    @DisplayName("decodeTo throws on hex region out of bounds")
+    void testDecodeToHexOutOfBounds() {
+        byte[] dest = new byte[10];
+        var ex = assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("0x12", 0, 10, dest, 0));
+        assertTrue(ex.getMessage().contains("out of bounds"));
+    }
+
+    @Test
+    @DisplayName("decodeTo throws on odd hex length")
+    void testDecodeToOddLength() {
+        byte[] dest = new byte[10];
+
+        // "0x123" has 3 hex chars after prefix
+        var ex = assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("0x123", 0, 5, dest, 0));
+        assertTrue(ex.getMessage().contains("even length"));
+
+        // "123" without prefix
+        ex = assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("123", 0, 3, dest, 0));
+        assertTrue(ex.getMessage().contains("even length"));
+    }
+
+    @Test
+    @DisplayName("decodeTo throws when dest buffer too small")
+    void testDecodeToDestTooSmall() {
+        byte[] dest = new byte[1]; // needs 2 bytes
+
+        var ex = assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("0x1234", 0, 6, dest, 0));
+        assertTrue(ex.getMessage().contains("too small"));
+    }
+
+    @Test
+    @DisplayName("decodeTo throws when dest offset leaves insufficient space")
+    void testDecodeToDestOffsetTooLarge() {
+        byte[] dest = new byte[3]; // 3 bytes total, but offset 2 leaves only 1 byte
+
+        var ex = assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("0x1234", 0, 6, dest, 2));
+        assertTrue(ex.getMessage().contains("too small"));
+    }
+
+    @Test
+    @DisplayName("decodeTo throws on invalid hex characters")
+    void testDecodeToInvalidHex() {
+        byte[] dest = new byte[10];
+
+        assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("0xzz", 0, 4, dest, 0));
+        assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("0x1g", 0, 4, dest, 0));
+        assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("0x 1", 0, 4, dest, 0)); // space
+    }
+
+    @Test
+    @DisplayName("decodeTo round-trip with encodeTo")
+    void testDecodeToRoundTrip() {
+        byte[] original = new byte[] {0x00, 0x7F, (byte) 0x80, (byte) 0xFF};
+        char[] encoded = new char[10]; // 2 prefix + 8 hex chars
+        Hex.encodeTo(original, encoded, 0, true);
+
+        byte[] decoded = new byte[4];
+        int written = Hex.decodeTo(new String(encoded), 0, 10, decoded, 0);
+
+        assertEquals(4, written);
+        assertArrayEquals(original, decoded);
     }
 }

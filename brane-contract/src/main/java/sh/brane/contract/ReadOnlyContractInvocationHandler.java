@@ -18,8 +18,6 @@ import sh.brane.rpc.Brane;
  */
 final class ReadOnlyContractInvocationHandler extends AbstractContractInvocationHandler<Brane> {
 
-    private static final Object[] EMPTY_ARGS = new Object[0];
-
     ReadOnlyContractInvocationHandler(
             final Address address,
             final Abi abi,

@@ -2,6 +2,19 @@
 
 Low-level utilities with zero external dependencies. Foundation for all other modules.
 
+## Commands
+
+```bash
+# Compile
+./gradlew :brane-primitives:compileJava
+
+# Run tests
+./gradlew :brane-primitives:test
+
+# Run specific test
+./gradlew :brane-primitives:test --tests "sh.brane.primitives.MyTest"
+```
+
 ## Key Classes
 
 ### Hex (`sh.brane.primitives.Hex`)
@@ -9,7 +22,7 @@ Low-level utilities with zero external dependencies. Foundation for all other mo
 // Encode
 String hex = Hex.encode(bytes);           // "0xabcd..."
 String hex = Hex.encodeNoPrefix(bytes);   // "abcd..."
-String hex = Hex.encodeByte(0xff);        // "ff"
+String hex = Hex.encodeByte(0xff);        // "0xff"
 
 // Decode
 byte[] bytes = Hex.decode("0xabcd");
@@ -33,7 +46,7 @@ RlpList list = (RlpList) Rlp.decode(bytes);
 
 // Types
 RlpString str = RlpString.of(bytes);
-RlpNumeric num = RlpNumeric.of(bigInteger);
+RlpItem num = RlpNumeric.encodeBigIntegerUnsignedItem(bigInteger);
 RlpList list = RlpList.of(item1, item2);
 ```
 
@@ -49,3 +62,7 @@ RlpList list = RlpList.of(item1, item2);
 - **Hex prefix**: `decode()` handles both with and without "0x" prefix
 - **Empty bytes**: `Hex.encode(new byte[0])` returns `"0x"`
 - **RLP encoding**: Numbers must be minimal (no leading zeros except for 0 itself)
+
+## Dependencies
+
+None (pure Java, zero external dependencies)

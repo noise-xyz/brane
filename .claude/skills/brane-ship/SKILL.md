@@ -133,7 +133,7 @@ brane-primitives (no deps)
   brane-contract
        |
        v
-  brane-examples / smoke-test
+  brane-examples / brane-smoke
 ```
 
 When module X changes, all modules below X in the graph must be tested.
@@ -192,9 +192,10 @@ When `/brane-ship` is invoked, follow these steps:
 
 ### Phase 5: Commit Preparation
 1. Show `git diff --stat` summary
-2. Ask user for commit message (suggest based on changes)
-3. Ask user for confirmation before committing
-4. If approved: `git add -A && git commit -m "..."  && git push`
+2. **Docs Reminder**: If this change affects public API, ask if user wants to run `/brane-docs` first
+3. Ask user for commit message (suggest based on changes)
+4. Ask user for confirmation before committing
+5. If approved: `git add -A && git commit -m "..."  && git push`
 
 ---
 

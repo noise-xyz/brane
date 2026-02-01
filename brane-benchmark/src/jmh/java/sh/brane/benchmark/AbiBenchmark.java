@@ -2,11 +2,20 @@
 package sh.brane.benchmark;
 
 import java.math.BigInteger;
+import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 import org.openjdk.jmh.annotations.*;
 
 import sh.brane.core.abi.Abi;
+import sh.brane.core.abi.AbiDecoder;
+import sh.brane.core.abi.AbiType;
+import sh.brane.core.abi.TypeSchema;
+import sh.brane.core.abi.TypeSchema.ArraySchema;
+import sh.brane.core.abi.TypeSchema.BytesSchema;
+import sh.brane.core.abi.TypeSchema.StringSchema;
+import sh.brane.core.abi.TypeSchema.TupleSchema;
+import sh.brane.core.abi.TypeSchema.UIntSchema;
 import sh.brane.core.types.HexData;
 
 /**
@@ -27,13 +36,13 @@ import sh.brane.core.types.HexData;
 public class AbiBenchmark {
 
     private Abi complexAbi;
-    private java.util.List<Object> complexData;
+    private List<Object> complexData;
     private HexData encodedComplex;
     private Abi abi;
     private BigInteger supply;
     private Object[] complexArgs;
 
-    private java.util.List<sh.brane.core.abi.TypeSchema> schemas;
+    private List<TypeSchema> schemas;
 
     @Setup
     public void setup() {
@@ -87,15 +96,15 @@ public class AbiBenchmark {
         complexAbi = Abi.fromJson(complexJson);
 
         // Prepare Complex Data
-        java.util.List<Object> inner1 = java.util.List.of(BigInteger.ONE, "inner1");
-        java.util.List<Object> inner2 = java.util.List.of(BigInteger.TWO, "inner2");
-        java.util.List<java.util.List<Object>> inners = java.util.List.of(inner1, inner2);
+        List<Object> inner1 = List.of(BigInteger.ONE, "inner1");
+        List<Object> inner2 = List.of(BigInteger.TWO, "inner2");
+        List<List<Object>> inners = List.of(inner1, inner2);
 
         byte[] idBytes = new byte[32];
         idBytes[0] = (byte) 0xAB;
         HexData id = HexData.fromBytes(idBytes);
 
-        complexData = java.util.List.of(java.util.List.of(inners, id));
+        complexData = List.of(List.of(inners, id));
         complexArgs = complexData.toArray();
 
         // Pre-encode for decoding benchmark
@@ -107,16 +116,16 @@ public class AbiBenchmark {
         // Prepare schemas for decoding
         // (Outer) -> tuple(Inner[] inners, bytes32 id)
         // Inner -> tuple(uint256 a, string b)
-        schemas = java.util.List.of(
-            new sh.brane.core.abi.TypeSchema.TupleSchema(java.util.List.of(
-                new sh.brane.core.abi.TypeSchema.ArraySchema(
-                    new sh.brane.core.abi.TypeSchema.TupleSchema(java.util.List.of(
-                        new sh.brane.core.abi.TypeSchema.UIntSchema(256),
-                        new sh.brane.core.abi.TypeSchema.StringSchema()
+        schemas = List.of(
+            new TupleSchema(List.of(
+                new ArraySchema(
+                    new TupleSchema(List.of(
+                        new UIntSchema(256),
+                        new StringSchema()
                     )),
                     -1 // dynamic array
                 ),
-                new sh.brane.core.abi.TypeSchema.BytesSchema(32) // bytes32
+                new BytesSchema(32) // bytes32
             ))
         );
     }
@@ -132,7 +141,7 @@ public class AbiBenchmark {
     }
 
     @Benchmark
-    public java.util.List<sh.brane.core.abi.AbiType> decodeComplex() {
-        return sh.brane.core.abi.AbiDecoder.decode(encodedComplex.toBytes(), schemas);
+    public List<AbiType> decodeComplex() {
+        return AbiDecoder.decode(encodedComplex.toBytes(), schemas);
     }
 }

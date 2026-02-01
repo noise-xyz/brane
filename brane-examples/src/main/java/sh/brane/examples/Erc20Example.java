@@ -62,7 +62,9 @@ public final class Erc20Example {
         final String tokenAddress = System.getProperty("brane.examples.erc20.contract");
         final String holderAddress = System.getProperty("brane.examples.erc20.holder");
 
-        if (isBlank(rpcUrl) || isBlank(tokenAddress) || isBlank(holderAddress)) {
+        if (rpcUrl == null || rpcUrl.isBlank()
+                || tokenAddress == null || tokenAddress.isBlank()
+                || holderAddress == null || holderAddress.isBlank()) {
             System.out.println(
                     """
                     Please set the following system properties:
@@ -151,9 +153,5 @@ public final class Erc20Example {
         } finally {
             client.close();
         }
-    }
-
-    private static boolean isBlank(final String value) {
-        return value == null || value.isBlank();
     }
 }

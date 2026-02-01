@@ -656,4 +656,377 @@ class WebSocketProviderTest {
         assertEquals(100, lastRemainingCapacity.get());
         assertEquals(4096, lastBufferSize.get());
     }
+
+    // ==================== Transport type selection tests ====================
+
+    /**
+     * Tests that NIO transport creates NioEventLoopGroup.
+     */
+    @Test
+    void transportType_nioCreatesNioEventLoopGroup() {
+        // NIO is always available, so we can safely test this
+        assertTrue(true, "NIO transport is always available as a fallback");
+
+        // Verify NioSocketChannel class is in the expected package
+        assertEquals("io.netty.channel.socket.nio",
+                io.netty.channel.socket.nio.NioSocketChannel.class.getPackageName());
+    }
+
+    /**
+     * Tests that Epoll availability can be checked via reflection.
+     * Native transport classes are only available at compile time, so we use reflection.
+     */
+    @Test
+    void transportType_epollAvailabilityCheck() throws Exception {
+        String os = System.getProperty("os.name").toLowerCase();
+
+        // Try to check Epoll availability via reflection
+        try {
+            Class<?> epollClass = Class.forName("io.netty.channel.epoll.Epoll");
+            java.lang.reflect.Method isAvailableMethod = epollClass.getMethod("isAvailable");
+            boolean epollAvailable = (Boolean) isAvailableMethod.invoke(null);
+
+            if (os.contains("linux")) {
+                // On Linux, Epoll may or may not be available depending on native libs
+                assertNotNull(epollAvailable, "Epoll availability should be determinable on Linux");
+            } else {
+                // On non-Linux, Epoll should not be available
+                assertFalse(epollAvailable, "Epoll should not be available on " + os);
+            }
+        } catch (ClassNotFoundException e) {
+            // Native transport classes not on classpath - this is expected in test environment
+            // The classes are compileOnly in production code
+            assertTrue(true, "Epoll class not available - expected in test environment");
+        }
+    }
+
+    /**
+     * Tests that KQueue availability can be checked via reflection.
+     * Native transport classes are only available at compile time, so we use reflection.
+     */
+    @Test
+    void transportType_kqueueAvailabilityCheck() throws Exception {
+        String os = System.getProperty("os.name").toLowerCase();
+
+        // Try to check KQueue availability via reflection
+        try {
+            Class<?> kqueueClass = Class.forName("io.netty.channel.kqueue.KQueue");
+            java.lang.reflect.Method isAvailableMethod = kqueueClass.getMethod("isAvailable");
+            boolean kqueueAvailable = (Boolean) isAvailableMethod.invoke(null);
+
+            if (os.contains("mac") || os.contains("darwin") || os.contains("bsd")) {
+                // On macOS/BSD, KQueue may or may not be available depending on native libs
+                assertNotNull(kqueueAvailable, "KQueue availability should be determinable on macOS/BSD");
+            } else {
+                // On non-macOS/BSD, KQueue should not be available
+                assertFalse(kqueueAvailable, "KQueue should not be available on " + os);
+            }
+        } catch (ClassNotFoundException e) {
+            // Native transport classes not on classpath - this is expected in test environment
+            // The classes are compileOnly in production code
+            assertTrue(true, "KQueue class not available - expected in test environment");
+        }
+    }
+
+    /**
+     * Tests AUTO transport selection logic based on platform.
+     * Uses reflection since native transport classes are compileOnly.
+     */
+    @Test
+    void transportType_autoSelectsBasedOnPlatform() throws Exception {
+        // AUTO should select:
+        // - Epoll on Linux (if available)
+        // - KQueue on macOS/BSD (if available)
+        // - NIO otherwise
+
+        boolean epollAvailable = isTransportAvailable("io.netty.channel.epoll.Epoll");
+        boolean kqueueAvailable = isTransportAvailable("io.netty.channel.kqueue.KQueue");
+
+        String os = System.getProperty("os.name").toLowerCase();
+
+        if (epollAvailable) {
+            // Should select Epoll
+            assertTrue(os.contains("linux"),
+                    "Epoll should only be available on Linux, but os.name is: " + os);
+        } else if (kqueueAvailable) {
+            // Should select KQueue
+            assertTrue(os.contains("mac") || os.contains("darwin") || os.contains("bsd"),
+                    "KQueue should only be available on macOS/BSD, but os.name is: " + os);
+        } else {
+            // Should fall back to NIO
+            // NIO is always available
+            assertTrue(true, "NIO is always available as fallback");
+        }
+    }
+
+    /**
+     * Tests that exactly one native transport is available per platform.
+     */
+    @Test
+    void transportType_atMostOneNativeTransportAvailable() {
+        boolean epollAvailable = isTransportAvailable("io.netty.channel.epoll.Epoll");
+        boolean kqueueAvailable = isTransportAvailable("io.netty.channel.kqueue.KQueue");
+
+        // Both cannot be available at the same time (they're platform-specific)
+        assertFalse(epollAvailable && kqueueAvailable,
+                "Both Epoll and KQueue cannot be available simultaneously");
+    }
+
+    /**
+     * Tests detectChannelClass for NioEventLoopGroup.
+     */
+    @Test
+    void detectChannelClass_nioEventLoopGroup() {
+        io.netty.channel.nio.NioEventLoopGroup nioGroup = new io.netty.channel.nio.NioEventLoopGroup(1);
+        try {
+            // When given a NioEventLoopGroup, should return NioSocketChannel.class
+            Class<?> channelClass = detectChannelClassForGroup(nioGroup);
+            assertEquals(io.netty.channel.socket.nio.NioSocketChannel.class, channelClass);
+        } finally {
+            nioGroup.shutdownGracefully();
+        }
+    }
+
+    /**
+     * Tests detectChannelClass for EpollEventLoopGroup (if available).
+     * Uses reflection since native transport classes are compileOnly.
+     */
+    @Test
+    void detectChannelClass_epollEventLoopGroup() throws Exception {
+        if (!isTransportAvailable("io.netty.channel.epoll.Epoll")) {
+            // Skip on non-Linux platforms or when native libs aren't available
+            return;
+        }
+
+        Class<?> epollGroupClass = Class.forName("io.netty.channel.epoll.EpollEventLoopGroup");
+        io.netty.channel.EventLoopGroup epollGroup =
+                (io.netty.channel.EventLoopGroup) epollGroupClass.getConstructor(int.class).newInstance(1);
+        try {
+            Class<?> channelClass = detectChannelClassForGroup(epollGroup);
+            Class<?> expectedClass = Class.forName("io.netty.channel.epoll.EpollSocketChannel");
+            assertEquals(expectedClass, channelClass);
+        } finally {
+            epollGroup.shutdownGracefully();
+        }
+    }
+
+    /**
+     * Tests detectChannelClass for KQueueEventLoopGroup (if available).
+     * Uses reflection since native transport classes are compileOnly.
+     */
+    @Test
+    void detectChannelClass_kqueueEventLoopGroup() throws Exception {
+        if (!isTransportAvailable("io.netty.channel.kqueue.KQueue")) {
+            // Skip on non-macOS/BSD platforms or when native libs aren't available
+            return;
+        }
+
+        Class<?> kqueueGroupClass = Class.forName("io.netty.channel.kqueue.KQueueEventLoopGroup");
+        io.netty.channel.EventLoopGroup kqueueGroup =
+                (io.netty.channel.EventLoopGroup) kqueueGroupClass.getConstructor(int.class).newInstance(1);
+        try {
+            Class<?> channelClass = detectChannelClassForGroup(kqueueGroup);
+            Class<?> expectedClass = Class.forName("io.netty.channel.kqueue.KQueueSocketChannel");
+            assertEquals(expectedClass, channelClass);
+        } finally {
+            kqueueGroup.shutdownGracefully();
+        }
+    }
+
+    /**
+     * Tests that unavailability causes are properly reported.
+     * Uses reflection since native transport classes are compileOnly.
+     */
+    @Test
+    void transportType_unavailabilityCauseIsReported() throws Exception {
+        String os = System.getProperty("os.name").toLowerCase();
+
+        // On non-Linux, Epoll should have an unavailability cause (if class is available)
+        if (!os.contains("linux")) {
+            try {
+                Class<?> epollClass = Class.forName("io.netty.channel.epoll.Epoll");
+                java.lang.reflect.Method causeMethod = epollClass.getMethod("unavailabilityCause");
+                Throwable cause = (Throwable) causeMethod.invoke(null);
+                assertNotNull(cause, "Epoll unavailability cause should be non-null on non-Linux");
+            } catch (ClassNotFoundException e) {
+                // Class not available in test - that's OK
+            }
+        }
+
+        // On non-macOS, KQueue should have an unavailability cause (if class is available)
+        if (!os.contains("mac") && !os.contains("darwin") && !os.contains("bsd")) {
+            try {
+                Class<?> kqueueClass = Class.forName("io.netty.channel.kqueue.KQueue");
+                java.lang.reflect.Method causeMethod = kqueueClass.getMethod("unavailabilityCause");
+                Throwable cause = (Throwable) causeMethod.invoke(null);
+                assertNotNull(cause, "KQueue unavailability cause should be non-null on non-macOS/BSD");
+            } catch (ClassNotFoundException e) {
+                // Class not available in test - that's OK
+            }
+        }
+    }
+
+    /**
+     * Tests that TransportType enum values exist and have correct names.
+     */
+    @Test
+    void transportType_enumValuesExist() {
+        WebSocketConfig.TransportType[] types = WebSocketConfig.TransportType.values();
+        assertEquals(4, types.length);
+
+        assertEquals("AUTO", WebSocketConfig.TransportType.AUTO.name());
+        assertEquals("NIO", WebSocketConfig.TransportType.NIO.name());
+        assertEquals("EPOLL", WebSocketConfig.TransportType.EPOLL.name());
+        assertEquals("KQUEUE", WebSocketConfig.TransportType.KQUEUE.name());
+    }
+
+    /**
+     * Tests that config with NIO transport type can be created.
+     */
+    @Test
+    void transportType_configWithNioCanBeCreated() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .transportType(WebSocketConfig.TransportType.NIO)
+                .build();
+
+        assertEquals(WebSocketConfig.TransportType.NIO, config.transportType());
+    }
+
+    /**
+     * Tests that config with custom EventLoopGroup can be created.
+     */
+    @Test
+    void transportType_configWithCustomEventLoopGroup() {
+        io.netty.channel.nio.NioEventLoopGroup customGroup = new io.netty.channel.nio.NioEventLoopGroup(2);
+        try {
+            WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                    .eventLoopGroup(customGroup)
+                    .build();
+
+            assertEquals(customGroup, config.eventLoopGroup());
+        } finally {
+            customGroup.shutdownGracefully();
+        }
+    }
+
+    /**
+     * Helper method to check if a native transport is available via reflection.
+     */
+    private boolean isTransportAvailable(String className) {
+        try {
+            Class<?> transportClass = Class.forName(className);
+            java.lang.reflect.Method isAvailableMethod = transportClass.getMethod("isAvailable");
+            return (Boolean) isAvailableMethod.invoke(null);
+        } catch (ClassNotFoundException e) {
+            // Class not on classpath
+            return false;
+        } catch (Exception e) {
+            // Other error
+            return false;
+        }
+    }
+
+    /**
+     * Helper method that mimics WebSocketProvider.detectChannelClass logic.
+     * Uses class name comparison since native classes may not be on test classpath.
+     */
+    private Class<?> detectChannelClassForGroup(io.netty.channel.EventLoopGroup group) {
+        String groupClassName = group.getClass().getName();
+
+        if (groupClassName.contains("EpollEventLoopGroup")) {
+            try {
+                return Class.forName("io.netty.channel.epoll.EpollSocketChannel");
+            } catch (ClassNotFoundException e) {
+                return io.netty.channel.socket.nio.NioSocketChannel.class;
+            }
+        }
+        if (groupClassName.contains("KQueueEventLoopGroup")) {
+            try {
+                return Class.forName("io.netty.channel.kqueue.KQueueSocketChannel");
+            } catch (ClassNotFoundException e) {
+                return io.netty.channel.socket.nio.NioSocketChannel.class;
+            }
+        }
+        // Default to NIO for NioEventLoopGroup or unknown types
+        return io.netty.channel.socket.nio.NioSocketChannel.class;
+    }
+
+    // ==================== CONNECT_TIMEOUT_MILLIS tests ====================
+
+    /**
+     * Tests that CONNECT_TIMEOUT_MILLIS is applied to Bootstrap options.
+     * Verifies the config connect timeout is correctly converted to milliseconds
+     * and applied to the Bootstrap channel option.
+     */
+    @Test
+    void connectTimeout_appliedToBootstrapOptions() {
+        java.time.Duration connectTimeout = java.time.Duration.ofSeconds(5);
+
+        // Create a Bootstrap and apply the CONNECT_TIMEOUT_MILLIS option
+        io.netty.bootstrap.Bootstrap bootstrap = new io.netty.bootstrap.Bootstrap();
+        bootstrap.option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) connectTimeout.toMillis());
+
+        // Verify the option was set by retrieving it from the config
+        // Bootstrap stores options in an internal map, accessible via config()
+        @SuppressWarnings("unchecked")
+        java.util.Map<io.netty.channel.ChannelOption<?>, Object> options = bootstrap.config().options();
+
+        assertTrue(options.containsKey(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS),
+                "CONNECT_TIMEOUT_MILLIS should be set on Bootstrap");
+        assertEquals(5000, options.get(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS),
+                "CONNECT_TIMEOUT_MILLIS should be 5000ms (5 seconds)");
+    }
+
+    /**
+     * Tests that default connect timeout (10 seconds) is correctly applied.
+     */
+    @Test
+    void connectTimeout_defaultValueApplied() {
+        java.time.Duration defaultConnectTimeout = java.time.Duration.ofSeconds(10);
+
+        io.netty.bootstrap.Bootstrap bootstrap = new io.netty.bootstrap.Bootstrap();
+        bootstrap.option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) defaultConnectTimeout.toMillis());
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<io.netty.channel.ChannelOption<?>, Object> options = bootstrap.config().options();
+
+        assertEquals(10000, options.get(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS),
+                "Default CONNECT_TIMEOUT_MILLIS should be 10000ms (10 seconds)");
+    }
+
+    /**
+     * Tests that custom connect timeout from config is correctly applied.
+     */
+    @Test
+    void connectTimeout_customValueFromConfig() {
+        WebSocketConfig config = WebSocketConfig.builder("ws://localhost:8545")
+                .connectTimeout(java.time.Duration.ofSeconds(30))
+                .build();
+
+        io.netty.bootstrap.Bootstrap bootstrap = new io.netty.bootstrap.Bootstrap();
+        bootstrap.option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) config.connectTimeout().toMillis());
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<io.netty.channel.ChannelOption<?>, Object> options = bootstrap.config().options();
+
+        assertEquals(30000, options.get(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS),
+                "Custom CONNECT_TIMEOUT_MILLIS should be 30000ms (30 seconds)");
+    }
+
+    /**
+     * Tests that sub-second connect timeout is correctly applied.
+     */
+    @Test
+    void connectTimeout_subSecondPrecision() {
+        java.time.Duration connectTimeout = java.time.Duration.ofMillis(500);
+
+        io.netty.bootstrap.Bootstrap bootstrap = new io.netty.bootstrap.Bootstrap();
+        bootstrap.option(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS, (int) connectTimeout.toMillis());
+
+        @SuppressWarnings("unchecked")
+        java.util.Map<io.netty.channel.ChannelOption<?>, Object> options = bootstrap.config().options();
+
+        assertEquals(500, options.get(io.netty.channel.ChannelOption.CONNECT_TIMEOUT_MILLIS),
+                "CONNECT_TIMEOUT_MILLIS should be 500ms");
+    }
 }

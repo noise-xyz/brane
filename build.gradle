@@ -102,17 +102,17 @@ tasks.register('allJavadoc', Javadoc) {
 
     // Resolve everything at configuration time - no Project references stored
     def docProjectNames = subprojects
-        .findAll { !['brane-examples', 'brane-benchmark', 'smoke-test'].contains(it.name) }
+        .findAll { !['brane-examples', 'brane-benchmark', 'brane-smoke'].contains(it.name) }
         .collect { it.name }
 
     // Collect source directories eagerly
     def sourceDirs = subprojects
-        .findAll { !['brane-examples', 'brane-benchmark', 'smoke-test'].contains(it.name) }
+        .findAll { !['brane-examples', 'brane-benchmark', 'brane-smoke'].contains(it.name) }
         .collect { it.sourceSets.main.allJava }
 
     // Collect classpath eagerly
     def classpathFiles = files(subprojects
-        .findAll { !['brane-examples', 'brane-benchmark', 'smoke-test'].contains(it.name) }
+        .findAll { !['brane-examples', 'brane-benchmark', 'brane-smoke'].contains(it.name) }
         .collect { it.sourceSets.main.compileClasspath })
 
     // Use string-based task paths for dependencies
@@ -125,7 +125,7 @@ tasks.register('allJavadoc', Javadoc) {
 
     exclude 'sh/brane/internal/**'
     options.addStringOption('Xdoclint:none', '-quiet')
-    options.overview = file('overview.html')
+    options.overview = file('src/javadoc/overview.html')
     options.memberLevel = JavadocMemberLevel.PROTECTED
     options.links 'https://docs.oracle.com/en/java/javase/21/docs/api/'
 }
@@ -157,7 +157,7 @@ task dependencyReport {
         println "         ▼"
         println "  ┌──────┴──────┬───────────────┐"
         println "  │             │               │"
-        println "examples    benchmark      smoke-test"
+        println "examples    benchmark      brane-smoke"
         println ""
         println "═══════════════════════════════════════════════════════════════"
         println ""

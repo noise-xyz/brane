@@ -57,6 +57,9 @@ var config = WebSocketConfig.builder("wss://eth.example.com")
     .defaultRequestTimeout(Duration.ofSeconds(30))
     .connectTimeout(Duration.ofSeconds(10))
     .ioThreads(1)                           // Usually 1 is optimal
+    .writeIdleTimeout(Duration.ofSeconds(15)) // Ping if no writes
+    .readIdleTimeout(Duration.ofSeconds(30))  // Close if no reads
+    .maxFrameSize(4 * 1024 * 1024)          // 4MB for large responses
     .build();
 
 WebSocketProvider provider = WebSocketProvider.create(config);
@@ -75,6 +78,10 @@ Brane client = Brane.builder()
 | `defaultRequestTimeout` | 60 sec | Timeout for requests without explicit timeout. |
 | `connectTimeout` | 10 sec | WebSocket handshake timeout. |
 | `ioThreads` | 1 | Netty I/O threads. 1 is usually optimal (avoids context switching). |
+| `writeIdleTimeout` | 15 sec | Send WebSocket ping if no data written for this duration. Keeps connection alive through NAT. |
+| `readIdleTimeout` | 30 sec | Close connection if no data received for this duration. Detects dead connections. |
+| `maxFrameSize` | 64 KB | Maximum WebSocket frame size. Range: 1 byte to 16 MB. Increase for large `eth_getLogs` responses. |
+| `ringBufferSaturationThreshold` | 0.10 | Warn via `Metrics.onRingBufferSaturation()` when buffer capacity falls below this fraction (0.0-1.0). |
 
 :::tip
 **When to use YIELDING:** High-frequency trading, MEV bots, or any latency-critical application where you can afford higher CPU usage.
@@ -113,6 +120,41 @@ var logs = provider.sendAsync("eth_getLogs", List.of(filter), Duration.ofSeconds
 
 :::warning
 When a request times out, the slot is freed but the request may still complete on the server side. Design your application to handle this.
+:::
+
+## Connection Keepalive & Idle Timeouts
+
+WebSocket connections can be silently dropped by NAT devices, firewalls, or load balancers after 30-60 seconds of inactivity. Brane automatically handles this with configurable idle timeouts.
+
+### How It Works
+
+- **Write idle:** When no data has been written for `writeIdleTimeout`, a WebSocket ping frame is sent to keep the connection alive through NAT devices.
+- **Read idle:** When no data has been received for `readIdleTimeout`, the connection is considered dead and closed. The provider transitions to `RECONNECTING` state.
+
+### Configuration Examples
+
+```java
+// Standard settings (defaults work for most cases)
+var config = WebSocketConfig.builder("wss://...")
+    .writeIdleTimeout(Duration.ofSeconds(15))  // Ping every 15s of inactivity
+    .readIdleTimeout(Duration.ofSeconds(30))   // Close if no response for 30s
+    .build();
+
+// Aggressive NAT environments (some mobile networks)
+var config = WebSocketConfig.builder("wss://...")
+    .writeIdleTimeout(Duration.ofSeconds(10))
+    .readIdleTimeout(Duration.ofSeconds(20))
+    .build();
+
+// Disable idle timeouts (not recommended)
+var config = WebSocketConfig.builder("wss://...")
+    .writeIdleTimeout(Duration.ZERO)
+    .readIdleTimeout(Duration.ZERO)
+    .build();
+```
+
+:::tip
+Set `writeIdleTimeout` shorter than `readIdleTimeout` so pings are sent before the read timeout triggers. The defaults (15s write, 30s read) work well for most environments.
 :::
 
 ## Subscriptions
@@ -262,7 +304,7 @@ System.out.println("Connection state: " + state);
 |-------|-------------|
 | `CONNECTING` | Initial connection in progress |
 | `CONNECTED` | WebSocket is connected and operational |
-| `RECONNECTING` | Connection lost, attempting to reconnect |
+| `RECONNECTING` | Connection lost (network error or read idle timeout), attempting to reconnect |
 | `CLOSED` | Provider has been closed |
 
 ### Handling Reconnection

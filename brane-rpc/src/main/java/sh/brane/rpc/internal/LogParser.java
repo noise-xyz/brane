@@ -51,7 +51,7 @@ public final class LogParser {
         if (value == null) {
             return List.of();
         }
-        final List<Map<String, Object>> rawLogs = MAPPER.convertValue(
+        final var rawLogs = MAPPER.convertValue(
                 value,
                 new TypeReference<List<Map<String, Object>>>() {}
         );
@@ -132,7 +132,7 @@ public final class LogParser {
             return List.of();
         }
 
-        final List<Map<String, Object>> raw = MAPPER.convertValue(
+        final var raw = MAPPER.convertValue(
                 value,
                 new TypeReference<List<Map<String, Object>>>() {}
         );

@@ -109,7 +109,7 @@ JReleaser will:
 | brane-rpc | `sh.brane:brane-rpc` | JSON-RPC client |
 | brane-contract | `sh.brane:brane-contract` | Contract binding |
 
-Non-published modules: `brane-examples`, `brane-benchmark`, `smoke-test`
+Non-published modules: `brane-examples`, `brane-benchmark`, `brane-smoke`
 
 ## CI/CD Integration
 

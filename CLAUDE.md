@@ -13,7 +13,7 @@ Modern, type-safe Java 21 SDK for Ethereum/EVM. Inspired by viem (TS) and alloy 
 | `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `ReadOnlyContract` |
 | `brane-examples` | Usage examples & integration tests | Various `*Example.java` |
 | `brane-benchmark` | JMH performance benchmarks | `*Benchmark.java` |
-| `smoke-test` | E2E integration tests | `SmokeApp.java` |
+| `brane-smoke` | E2E integration tests | `SmokeApp.java` |
 
 ## Critical Rules
 
@@ -186,55 +186,31 @@ BraneException (sealed root)
 | Smoke | `./scripts/test_smoke.sh` | Anvil |
 | Full | `./verify_all.sh` | Anvil |
 
-## LSP Setup for Claude Code
+## Large File Navigation
 
-To enable Java LSP features (go-to-definition, find-references), set up cclsp:
-
-```bash
-# 1. Install cclsp globally
-npm install -g cclsp
-
-# 2. Copy example configs and customize paths
-cp .cclsp.example.json .cclsp.json
-cp .mcp.example.json .mcp.json
-
-# 3. Edit .cclsp.json - update jdtls path for your system:
-#    - macOS VSCode: ~/.vscode/extensions/redhat.java-*/server/bin/jdtls
-#    - Or install jdtls separately and use "jdtls" if in PATH
-
-# 4. Patch cclsp for jdtls timeout (run after each cclsp update)
-./.claude/scripts/patch_cclsp_timeout.sh
-```
-
-## Large File Navigation (IMPORTANT - READ THIS)
-
-For Java files over 500 lines, **ALL reads are BLOCKED**. You MUST use cclsp MCP tools.
+For large Java files (500+ lines), use `Grep` and targeted `Read` with line offsets instead of reading the entire file.
 
 **DO NOT ask the user what they want - USE THE TOOLS PROACTIVELY.**
 
-**NOTE:** First LSP call may take 1-3 minutes while jdtls indexes the project. Subsequent calls are fast.
-
 When asked about a large file, immediately:
 1. Use `Grep` to find relevant symbols/patterns
-2. Use `mcp__cclsp__find_definition(file_path, symbol_name)` to get definitions
-3. Use `mcp__cclsp__find_references(file_path, symbol_name)` to find usages
+2. Use `Read` with `offset` and `limit` to read specific sections
 
 **Example - user asks "Read Brane.java":**
 ```
 # WRONG: Asking "what would you like to know?"
-# RIGHT: Immediately search and use LSP tools
+# RIGHT: Immediately search and read targeted sections
 
 Grep("sealed interface", path="brane-rpc/.../Brane.java")
 → Found: line 229: "public sealed interface Brane"
 → Found: line 840: "sealed interface Reader"
-→ Found: line 934: "sealed interface Signer"
 
-mcp__cclsp__find_definition(file_path="brane-rpc/.../Brane.java", symbol_name="Reader")
-→ Returns the Reader interface definition
+Read(file_path="brane-rpc/.../Brane.java", offset=229, limit=50)
+→ Returns the Brane interface definition
 ```
 
-**Large files in this codebase (>500 lines) - CANNOT be read directly:**
-- `brane-rpc/.../Brane.java` (2336 lines) - Main client interface
+**Large files in this codebase (>500 lines):**
+- `brane-rpc/.../Brane.java` (~2300 lines) - Main client interface
 - `brane-core/.../Abi.java` - ABI encoding/decoding
 
 ## Gotchas
@@ -246,7 +222,43 @@ mcp__cclsp__find_definition(file_path="brane-rpc/.../Brane.java", symbol_name="R
 - **Blob transactions require Cancun**: Start Anvil with `anvil --hardfork cancun` for EIP-4844 support
 - **Default test key**: `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
 
+## Allocation Guidelines
+
+Brane is designed to be allocation-conscious. Key patterns:
+
+### Zero-Allocation APIs
+For hot paths, use `*To()` variants that write to pre-allocated buffers:
+```java
+// Instead of Hex.decode() (48 B/op)
+byte[] buffer = new byte[32];
+Hex.decodeTo(hexString, 0, hexString.length(), buffer, 0);  // 0 B/op
+
+// Instead of Hex.encode() (264 B/op)
+char[] charBuf = new char[66];
+Hex.encodeTo(bytes, charBuf, 0, true);  // 0 B/op
+
+// For ABI encoding
+ByteBuffer buffer = ByteBuffer.allocate(size);
+FastAbiEncoder.encodeTo(selector, args, buffer);  // 0 B/op
+```
+
+### Singleton Constants
+Use pre-allocated constants to avoid repeated allocations:
+- `Address.ZERO` - Zero address constant
+- `Wei.ZERO` - Zero wei constant
+
+### Allocation-Aware Methods
+Methods document their allocation behavior in Javadoc with `<b>Allocation:</b>` tags.
+
 ## For Full Details
 
 - `JAVA21.md` - Java 21 patterns reference (sealed types, pattern matching, records, virtual threads)
-- `AGENT.md` - Comprehensive development standards, testing protocol, and AI agent instructions
+- `TESTING.md` - Testing standards, acceptance criteria, and developer workflow
+
+## Module Documentation
+
+@include brane-primitives/CLAUDE.md
+@include brane-core/CLAUDE.md
+@include brane-kzg/CLAUDE.md
+@include brane-rpc/CLAUDE.md
+@include brane-contract/CLAUDE.md
