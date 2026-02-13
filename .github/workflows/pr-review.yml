@@ -1,0 +1,15 @@
+name: PR Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+
+jobs:
+  review:
+    uses: noise-xyz/noise-terraform/.github/workflows/pr-review-reusable.yml@9ebb41bb73ecc27078fdf1827372a06b2c533827
+    with:
+      project-review-rules-path: .github/project-pr-review-rules.md
+      auto-approve: true
+      dedupe-with-other-bots: true
+      auto-update-pr-description: true
+    secrets: inherit
