@@ -115,6 +115,58 @@ public final class Hex {
     }
 
     /**
+     * Convert a sub-range of a byte array into a lowercase hex string with a {@code 0x} prefix.
+     *
+     * <p><b>Allocation:</b> 2 allocations (char[] + String). Avoids copying the sub-range
+     * into a temporary byte array.
+     *
+     * @param bytes  the source byte array
+     * @param offset the starting offset in the byte array
+     * @param length the number of bytes to encode
+     * @return hex string with {@code 0x} prefix
+     * @throws IllegalArgumentException if {@code bytes} is {@code null},
+     *                                  or if offset/length are out of bounds
+     */
+    public static String encode(final byte[] bytes, final int offset, final int length) {
+        validateSubarray(bytes, offset, length);
+
+        final char[] chars = new char[2 + length * 2];
+        chars[0] = '0';
+        chars[1] = 'x';
+        for (int i = 0; i < length; i++) {
+            final int v = bytes[offset + i] & 0xFF;
+            chars[2 + i * 2] = HEX_CHARS[v >>> 4];
+            chars[2 + i * 2 + 1] = HEX_CHARS[v & 0x0F];
+        }
+        return new String(chars);
+    }
+
+    /**
+     * Convert a sub-range of a byte array into a lowercase hex string without a {@code 0x} prefix.
+     *
+     * <p><b>Allocation:</b> 1 allocation (char[] converted to String). Avoids copying the
+     * sub-range into a temporary byte array.
+     *
+     * @param bytes  the source byte array
+     * @param offset the starting offset in the byte array
+     * @param length the number of bytes to encode
+     * @return hex string without {@code 0x} prefix
+     * @throws IllegalArgumentException if {@code bytes} is {@code null},
+     *                                  or if offset/length are out of bounds
+     */
+    public static String encodeNoPrefix(final byte[] bytes, final int offset, final int length) {
+        validateSubarray(bytes, offset, length);
+
+        final char[] chars = new char[length * 2];
+        for (int i = 0; i < length; i++) {
+            final int v = bytes[offset + i] & 0xFF;
+            chars[i * 2] = HEX_CHARS[v >>> 4];
+            chars[i * 2 + 1] = HEX_CHARS[v & 0x0F];
+        }
+        return new String(chars);
+    }
+
+    /**
      * Convert a byte array into a lowercase hex string without a {@code 0x} prefix.
      *
      * @param bytes the bytes to encode
@@ -340,5 +392,21 @@ public final class Hex {
             throw new IllegalArgumentException("invalid hex character in: " + originalInput);
         }
         return NIBBLE_LOOKUP[c];
+    }
+
+    private static void validateSubarray(final byte[] bytes, final int offset, final int length) {
+        if (bytes == null) {
+            throw new IllegalArgumentException("bytes cannot be null");
+        }
+        if (offset < 0) {
+            throw new IllegalArgumentException("offset cannot be negative: " + offset);
+        }
+        if (length < 0) {
+            throw new IllegalArgumentException("length cannot be negative: " + length);
+        }
+        if (offset + length > bytes.length) {
+            throw new IllegalArgumentException(
+                    "range out of bounds: offset=" + offset + ", length=" + length + ", bytes.length=" + bytes.length);
+        }
     }
 }
