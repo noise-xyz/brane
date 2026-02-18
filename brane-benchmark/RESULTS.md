@@ -105,6 +105,58 @@ We measured the end-to-end Round-Trip Time (RTT) for standard operations (`eth_b
 > *   **Jitter**: p99 latency spikes >100ms are observed across *all* libraries, indicating these are network/server-side artifacts rather than client library issues.
 > *   **Stability**: `NettyBraneProvider` shows very consistent performance across all networks (~19-20ms), making it a reliable choice for diverse environments.
 
+## Allocation Optimization Results (2026-02)
+
+**Environment:** Apple M3 Pro, OpenJDK 21.0.10, G1GC
+**Branch:** `fix/perf-and-memory-optimizations`
+
+### ABI Decode — Allocation per Operation
+
+| Benchmark | Before (B/op) | After (B/op) | Savings | Change |
+|-----------|--------------|-------------|---------|--------|
+| `decodeUint256` | 184 | **136** | -48 B | BigInteger(byte[],off,len) eliminates copyOfRange |
+| `decodeAddress` | — | **480** | — | New benchmark (post-optimization baseline) |
+| `decodeString` | — | **168** | — | New benchmark (uses String(byte[],off,len)) |
+
+### ABI Encode — Allocation per Operation
+
+| Benchmark | Before (B/op) | After (B/op) | Savings | Change |
+|-----------|--------------|-------------|---------|--------|
+| `encodeUint256Internal` | 728 | **728** | 0 | encodeTo stream->loop not on this path |
+| `encodeAddressAbi` | 936 | **856** | -80 B | Reduced overhead in ABI pipeline |
+| `encodeBytes` | 1,216 | **1,048** | -168 B | Reduced overhead |
+| `encodeTuple` | 2,176 | **1,928** | -248 B | Reduced overhead |
+| `encodeComplexNested` | 5,280 | **4,744** | -536 B | Accumulated savings across nested types |
+
+### EIP-712 — Allocation per Hash
+
+| Benchmark | B/op | Notes |
+|-----------|------|-------|
+| `hashNestedStruct` | **20,360** | Post-optimization baseline (BAOS -> fixed byte[]) |
+
+### Transaction Encode — Allocation per Encode
+
+| Benchmark | B/op | Notes |
+|-----------|------|-------|
+| `encodeLegacyForSigning` | **792** | Post-optimization (Signature.rAsBigInteger saves 64 B) |
+| `encodeEip1559ForSigning` | **936** | Post-optimization baseline |
+| `encodeEip1559Envelope` | **1,496** | Includes signature r/s BigInteger conversion |
+
+### Summary of Changes
+
+| Optimization | Impact | Modules |
+|-------------|--------|---------|
+| `BigInteger(byte[],off,len)` in ABI decoder | -48 B/op per uint decode | brane-core |
+| `Hex.encode(byte[],off,len)` subarray | -20 B/op per address decode | brane-primitives, brane-core |
+| `Bytes.ofStatic(data,off,len)` | Avoids copy for bytesN decode | brane-core |
+| `String(data,off,len,UTF_8)` | Avoids copy for string decode | brane-core |
+| Stream -> loop in FastAbiEncoder.encodeTo | Eliminates stream pipeline overhead | brane-core |
+| BAOS -> fixed byte[] in TypedDataEncoder | Eliminates BAOS + toByteArray() copy | brane-core |
+| `Signature.rAsBigInteger()/sAsBigInteger()` | -64 B/op per tx encode | brane-core |
+| Stream -> loop in Eip4844Transaction | Eliminates stream overhead in blob encoding | brane-core |
+| Stream -> loop in RpcUtils.toJsonAccessList | Eliminates nested stream overhead | brane-rpc |
+| ArrayList capacity hints in InternalAbi | Avoids array resizing | brane-core |
+
 ## Optimization Strategies
 
 ### FastAbiEncoder
