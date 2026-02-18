@@ -10,7 +10,6 @@ import sh.brane.core.model.AccessListEntry;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.HexData;
 import sh.brane.core.types.Wei;
-import sh.brane.primitives.Hex;
 import sh.brane.primitives.rlp.Rlp;
 import sh.brane.primitives.rlp.RlpItem;
 import sh.brane.primitives.rlp.RlpList;
@@ -194,9 +193,7 @@ public record Eip1559Transaction(
             // Encode storage keys
             final List<RlpItem> storageKeys = new ArrayList<>(entry.storageKeys().size());
             for (sh.brane.core.types.Hash key : entry.storageKeys()) {
-                // Storage keys are 32-byte hashes
-                final byte[] keyBytes = Hex.decode(key.value());
-                storageKeys.add(new RlpString(keyBytes));
+                storageKeys.add(new RlpString(key.toBytes()));
             }
             entryItems.add(new RlpList(storageKeys));
 

@@ -16,7 +16,6 @@ import sh.brane.core.types.HexData;
 import sh.brane.core.types.KzgCommitment;
 import sh.brane.core.types.KzgProof;
 import sh.brane.core.types.Wei;
-import sh.brane.primitives.Hex;
 import sh.brane.primitives.rlp.Rlp;
 import sh.brane.primitives.rlp.RlpItem;
 import sh.brane.primitives.rlp.RlpList;
@@ -285,7 +284,11 @@ public record Eip4844Transaction(
      * @return RLP list of bytes
      */
     private static <T> RlpItem encodeBytesList(List<T> items, Function<T, byte[]> extractor) {
-        return new RlpList(items.stream().<RlpItem>map(item -> new RlpString(extractor.apply(item))).toList());
+        List<RlpItem> rlpItems = new ArrayList<>(items.size());
+        for (T item : items) {
+            rlpItems.add(new RlpString(extractor.apply(item)));
+        }
+        return new RlpList(rlpItems);
     }
 
     /**
@@ -348,9 +351,7 @@ public record Eip4844Transaction(
             // Encode storage keys
             final List<RlpItem> storageKeys = new ArrayList<>(entry.storageKeys().size());
             for (Hash key : entry.storageKeys()) {
-                // Storage keys are 32-byte hashes
-                final byte[] keyBytes = Hex.decode(key.value());
-                storageKeys.add(new RlpString(keyBytes));
+                storageKeys.add(new RlpString(key.toBytes()));
             }
             entryItems.add(new RlpList(storageKeys));
 
@@ -366,8 +367,10 @@ public record Eip4844Transaction(
      * @return RLP list of versioned hashes
      */
     private RlpItem encodeBlobVersionedHashes() {
-        return new RlpList(blobVersionedHashes.stream()
-                .<RlpItem>map(hash -> new RlpString(hash.toBytes()))
-                .toList());
+        List<RlpItem> items = new ArrayList<>(blobVersionedHashes.size());
+        for (var hash : blobVersionedHashes) {
+            items.add(new RlpString(hash.toBytes()));
+        }
+        return new RlpList(items);
     }
 }
