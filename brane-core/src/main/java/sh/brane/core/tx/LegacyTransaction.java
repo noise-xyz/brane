@@ -145,8 +145,8 @@ public record LegacyTransaction(
 
         // Add signature components (v is already EIP-155 encoded)
         items.add(RlpNumeric.encodeLongUnsignedItem(signature.v()));
-        items.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.r())));
-        items.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.s())));
+        items.add(RlpNumeric.encodeBigIntegerUnsignedItem(signature.rAsBigInteger()));
+        items.add(RlpNumeric.encodeBigIntegerUnsignedItem(signature.sAsBigInteger()));
 
         return Rlp.encodeList(items);
     }

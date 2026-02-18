@@ -213,8 +213,8 @@ public final class PrivateKey implements Destroyable {
             throw new IllegalArgumentException("Message hash must be 32 bytes");
         }
 
-        final BigInteger r = new BigInteger(1, signature.r());
-        final BigInteger s = new BigInteger(1, signature.s());
+        final BigInteger r = signature.rAsBigInteger();
+        final BigInteger s = signature.sAsBigInteger();
 
         // Get recovery ID from signature (handles both simple v and EIP-155 v)
         final int recoveryId;

@@ -169,8 +169,8 @@ public record Eip1559Transaction(
                         "EIP-1559 signature v must be yParity (0 or 1), got: " + yParity);
             }
             items.add(RlpNumeric.encodeLongUnsignedItem(yParity));
-            items.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.r())));
-            items.add(RlpNumeric.encodeBigIntegerUnsignedItem(new java.math.BigInteger(1, signature.s())));
+            items.add(RlpNumeric.encodeBigIntegerUnsignedItem(signature.rAsBigInteger()));
+            items.add(RlpNumeric.encodeBigIntegerUnsignedItem(signature.sAsBigInteger()));
         }
 
         return Rlp.encodeList(items);
