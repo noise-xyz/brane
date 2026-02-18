@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.crypto.eip712;
 
-import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -60,10 +59,12 @@ final class TypedDataEncoder {
         collectDependencies(typeName, types, allDeps, visiting);
 
         // Phase 2: Sort - primary type first, then remaining alphabetically
-        List<String> sortedTypes = new ArrayList<>();
-        sortedTypes.add(typeName);
         allDeps.remove(typeName);
-        allDeps.stream().sorted().forEach(sortedTypes::add);
+        List<String> remaining = new ArrayList<>(allDeps);
+        remaining.sort(null);
+        List<String> sortedTypes = new ArrayList<>(1 + remaining.size());
+        sortedTypes.add(typeName);
+        sortedTypes.addAll(remaining);
 
         // Phase 3: Format each type (NO recursion - just string formatting)
         var result = new StringBuilder();
@@ -174,7 +175,9 @@ final class TypedDataEncoder {
             Map<String, List<TypedDataField>> types,
             Map<String, Object> data) {
         var fields = types.get(typeName);
-        var encoded = new ByteArrayOutputStream();
+        // Each field encodes to exactly 32 bytes
+        var encoded = new byte[fields.size() * 32];
+        int offset = 0;
 
         for (var field : fields) {
             var value = data.get(field.name());
@@ -182,10 +185,11 @@ final class TypedDataEncoder {
                 throw Eip712Exception.missingField(typeName, field.name());
             }
             var fieldEncoded = encodeField(field.type(), value, types);
-            encoded.writeBytes(fieldEncoded);
+            System.arraycopy(fieldEncoded, 0, encoded, offset, 32);
+            offset += 32;
         }
 
-        return encoded.toByteArray();
+        return encoded;
     }
 
     /**
@@ -355,14 +359,18 @@ final class TypedDataEncoder {
      */
     private static byte[] encodeArray(Eip712Type.Array arr, Object value, Map<String, List<TypedDataField>> types) {
         List<?> list = (List<?>) value;
-        var encoded = new ByteArrayOutputStream();
+        // Each element encodes to exactly 32 bytes
+        var encoded = new byte[list.size() * 32];
         String elementType = arr.elementType() instanceof Eip712Type.Struct s
             ? s.name()
             : Eip712TypeParser.toSolidityType(arr.elementType());
+        int offset = 0;
         for (var item : list) {
-            encoded.writeBytes(encodeField(elementType, item, types));
+            var fieldEncoded = encodeField(elementType, item, types);
+            System.arraycopy(fieldEncoded, 0, encoded, offset, 32);
+            offset += 32;
         }
-        return Keccak256.hash(encoded.toByteArray());
+        return Keccak256.hash(encoded);
     }
 
     // ═══════════════════════════════════════════════════════════════
