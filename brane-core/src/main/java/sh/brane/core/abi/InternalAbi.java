@@ -954,7 +954,7 @@ final class InternalAbi implements Abi {
             throw new AbiDecodingException("Unknown event '" + eventName + "'");
         }
 
-        final List<T> decoded = new ArrayList<>();
+        final List<T> decoded = new ArrayList<>(logs.size());
         for (sh.brane.core.model.LogEntry log : logs) {
             for (AbiEvent event : matching) {
                 if (!matchesEvent(event, log)) {
@@ -1024,7 +1024,7 @@ final class InternalAbi implements Abi {
         final List<Object> values = new ArrayList<>(params.size());
 
         int topicIdx = 1;
-        final List<TypeSchema> nonIndexedSchemas = new ArrayList<>();
+        final List<TypeSchema> nonIndexedSchemas = new ArrayList<>(params.size());
         for (AbiParameter param : params) {
             if (param.indexed) {
                 if (log.topics().size() <= topicIdx) {
@@ -1146,7 +1146,7 @@ final class InternalAbi implements Abi {
             case Utf8String s -> s.value();
             case Bytes bytes -> bytes.value();
             case Array<?> array -> {
-                final List<Object> list = new ArrayList<>();
+                final List<Object> list = new ArrayList<>(array.values().size());
                 for (AbiType t : array.values()) {
                     list.add(toJavaValue(t));
                 }
@@ -1155,7 +1155,7 @@ final class InternalAbi implements Abi {
             case UInt u -> u.value();
             case Int i -> i.value();
             case Tuple t -> {
-                final List<Object> list = new ArrayList<>();
+                final List<Object> list = new ArrayList<>(t.components().size());
                 for (AbiType c : t.components()) {
                     list.add(toJavaValue(c));
                 }
@@ -1175,7 +1175,7 @@ final class InternalAbi implements Abi {
             if (param.components == null || param.components.isEmpty()) {
                 throw new AbiEncodingException("Tuple missing components");
             }
-            List<TypeSchema> componentSchemas = new ArrayList<>();
+            List<TypeSchema> componentSchemas = new ArrayList<>(param.components.size());
             for (AbiParameter component : param.components) {
                 componentSchemas.add(toTypeSchema(component));
             }
@@ -1245,7 +1245,7 @@ final class InternalAbi implements Abi {
                     return null;
                 }
 
-                final List<TypeSchema> schemas = new ArrayList<>();
+                final List<TypeSchema> schemas = new ArrayList<>(abiFunction.outputs().size());
                 for (AbiParameter param : abiFunction.outputs()) {
                     schemas.add(toTypeSchema(param));
                 }
