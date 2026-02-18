@@ -107,12 +107,12 @@ public final class AbiDecoder {
             case TypeSchema.UIntSchema s -> new UInt(s.width(), decodeUInt(data, offset));
             case TypeSchema.IntSchema s -> new Int(s.width(), decodeInt(data, offset));
             case TypeSchema.AddressSchema s ->
-                new AddressType(new Address(Hex.encode(Arrays.copyOfRange(data, offset + ADDRESS_PADDING_BYTES, offset + 32))));
+                new AddressType(new Address(Hex.encode(data, offset + ADDRESS_PADDING_BYTES, 20)));
             case TypeSchema.BoolSchema s -> new Bool(decodeUInt(data, offset).equals(BigInteger.ONE));
             case TypeSchema.BytesSchema s -> {
                 // Static bytesN: value is left-aligned in 32 bytes, extract only N bytes
                 int size = s.size();
-                yield Bytes.ofStatic(Arrays.copyOfRange(data, offset, offset + size));
+                yield Bytes.ofStatic(data, offset, size);
             }
             case TypeSchema.ArraySchema s -> {
                 // Static array: sequence of N elements
@@ -142,7 +142,13 @@ public final class AbiDecoder {
         if (schema.isDynamic())
             return 32;
         return switch (schema) {
-            case TypeSchema.TupleSchema t -> t.components().stream().mapToInt(AbiDecoder::getStaticSize).sum();
+            case TypeSchema.TupleSchema t -> {
+                int sum = 0;
+                for (TypeSchema c : t.components()) {
+                    sum += getStaticSize(c);
+                }
+                yield sum;
+            }
             case TypeSchema.ArraySchema a -> a.fixedLength() * getStaticSize(a.element());
             // All other static types are 32 bytes (single slot)
             case TypeSchema.UIntSchema s -> 32;
@@ -166,6 +172,7 @@ public final class AbiDecoder {
                 if (length > 0) {
                     validateOffset(data, dataOffset + length - 1, "bytes data");
                 }
+                // Dynamic bytes still need a copy since Bytes.of wraps via Hex.encode
                 byte[] bytes = Arrays.copyOfRange(data, dataOffset, dataOffset + length);
                 yield Bytes.of(bytes);
             }
@@ -177,8 +184,7 @@ public final class AbiDecoder {
                 if (length > 0) {
                     validateOffset(data, dataOffset + length - 1, "string data");
                 }
-                byte[] bytes = Arrays.copyOfRange(data, dataOffset, dataOffset + length);
-                yield new Utf8String(new String(bytes, StandardCharsets.UTF_8));
+                yield new Utf8String(new String(data, dataOffset, length, StandardCharsets.UTF_8));
             }
             case TypeSchema.ArraySchema s -> {
                 // Dynamic array: Length + Elements
@@ -234,13 +240,11 @@ public final class AbiDecoder {
     }
 
     private static BigInteger decodeUInt(byte[] data, int offset) {
-        byte[] slice = Arrays.copyOfRange(data, offset, offset + 32);
-        return new BigInteger(1, slice);
+        return new BigInteger(1, data, offset, 32);
     }
 
     private static BigInteger decodeInt(byte[] data, int offset) {
-        byte[] slice = Arrays.copyOfRange(data, offset, offset + 32);
-        return new BigInteger(slice);
+        return new BigInteger(data, offset, 32);
     }
 
     /**
