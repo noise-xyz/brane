@@ -506,6 +506,113 @@ class HexTest {
         assertThrows(IllegalArgumentException.class, () -> Hex.decodeTo("0x 1", 0, 4, dest, 0)); // space
     }
 
+    // ═══════════════════════════════════════════════════════════════
+    // Subarray encode tests: Hex.encode(byte[], int, int) and
+    // Hex.encodeNoPrefix(byte[], int, int)
+    // ═══════════════════════════════════════════════════════════════
+
+    @Test
+    @DisplayName("encode subarray encodes middle portion with 0x prefix")
+    void testEncodeSubarray() {
+        byte[] bytes = new byte[] {0x00, 0x11, 0x22, 0x33, 0x44};
+        assertEquals("0x112233", Hex.encode(bytes, 1, 3));
+    }
+
+    @Test
+    @DisplayName("encode subarray encodes full array when offset=0 and length=array.length")
+    void testEncodeSubarrayFullArray() {
+        byte[] bytes = new byte[] {0x0A, (byte) 0xBC};
+        assertEquals("0x0abc", Hex.encode(bytes, 0, 2));
+        assertEquals(Hex.encode(bytes), Hex.encode(bytes, 0, bytes.length));
+    }
+
+    @Test
+    @DisplayName("encode subarray handles zero-length range")
+    void testEncodeSubarrayZeroLength() {
+        byte[] bytes = new byte[] {0x01, 0x02};
+        assertEquals("0x", Hex.encode(bytes, 0, 0));
+        assertEquals("0x", Hex.encode(bytes, 1, 0));
+    }
+
+    @Test
+    @DisplayName("encode subarray handles single byte")
+    void testEncodeSubarraySingleByte() {
+        byte[] bytes = new byte[] {0x00, (byte) 0xFF, 0x42};
+        assertEquals("0xff", Hex.encode(bytes, 1, 1));
+        assertEquals("0x42", Hex.encode(bytes, 2, 1));
+    }
+
+    @Test
+    @DisplayName("encode subarray at end of array")
+    void testEncodeSubarrayEnd() {
+        byte[] bytes = new byte[] {0x00, 0x11, 0x22, 0x33};
+        assertEquals("0x2233", Hex.encode(bytes, 2, 2));
+    }
+
+    @Test
+    @DisplayName("encodeNoPrefix subarray encodes without 0x prefix")
+    void testEncodeNoPrefixSubarray() {
+        byte[] bytes = new byte[] {0x00, 0x11, 0x22, 0x33, 0x44};
+        assertEquals("112233", Hex.encodeNoPrefix(bytes, 1, 3));
+    }
+
+    @Test
+    @DisplayName("encodeNoPrefix subarray full array matches encodeNoPrefix(byte[])")
+    void testEncodeNoPrefixSubarrayFullArray() {
+        byte[] bytes = new byte[] {0x0A, (byte) 0xBC};
+        assertEquals("0abc", Hex.encodeNoPrefix(bytes, 0, 2));
+        assertEquals(Hex.encodeNoPrefix(bytes), Hex.encodeNoPrefix(bytes, 0, bytes.length));
+    }
+
+    @Test
+    @DisplayName("encodeNoPrefix subarray handles zero-length range")
+    void testEncodeNoPrefixSubarrayZeroLength() {
+        byte[] bytes = new byte[] {0x01};
+        assertEquals("", Hex.encodeNoPrefix(bytes, 0, 0));
+    }
+
+    @Test
+    @DisplayName("encode subarray rejects null bytes")
+    void testEncodeSubarrayNullBytes() {
+        assertThrows(IllegalArgumentException.class, () -> Hex.encode(null, 0, 1));
+        assertThrows(IllegalArgumentException.class, () -> Hex.encodeNoPrefix(null, 0, 1));
+    }
+
+    @Test
+    @DisplayName("encode subarray rejects negative offset")
+    void testEncodeSubarrayNegativeOffset() {
+        byte[] bytes = new byte[] {0x01};
+        assertThrows(IllegalArgumentException.class, () -> Hex.encode(bytes, -1, 1));
+        assertThrows(IllegalArgumentException.class, () -> Hex.encodeNoPrefix(bytes, -1, 1));
+    }
+
+    @Test
+    @DisplayName("encode subarray rejects negative length")
+    void testEncodeSubarrayNegativeLength() {
+        byte[] bytes = new byte[] {0x01};
+        assertThrows(IllegalArgumentException.class, () -> Hex.encode(bytes, 0, -1));
+        assertThrows(IllegalArgumentException.class, () -> Hex.encodeNoPrefix(bytes, 0, -1));
+    }
+
+    @Test
+    @DisplayName("encode subarray rejects out-of-bounds range")
+    void testEncodeSubarrayOutOfBounds() {
+        byte[] bytes = new byte[] {0x01, 0x02};
+        assertThrows(IllegalArgumentException.class, () -> Hex.encode(bytes, 1, 2));
+        assertThrows(IllegalArgumentException.class, () -> Hex.encodeNoPrefix(bytes, 1, 2));
+        assertThrows(IllegalArgumentException.class, () -> Hex.encode(bytes, 3, 0));
+    }
+
+    @Test
+    @DisplayName("encode subarray round-trip with decode")
+    void testEncodeSubarrayRoundTrip() {
+        byte[] bytes = new byte[] {0x00, 0x7F, (byte) 0x80, (byte) 0xFF, 0x42};
+        // Encode middle 3 bytes, decode, verify
+        String hex = Hex.encode(bytes, 1, 3);
+        byte[] decoded = Hex.decode(hex);
+        assertArrayEquals(new byte[] {0x7F, (byte) 0x80, (byte) 0xFF}, decoded);
+    }
+
     @Test
     @DisplayName("decodeTo round-trip with encodeTo")
     void testDecodeToRoundTrip() {
