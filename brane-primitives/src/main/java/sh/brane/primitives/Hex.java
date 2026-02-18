@@ -125,8 +125,8 @@ public final class Hex {
      * @param offset the starting offset in the byte array
      * @param length the number of bytes to encode
      * @return hex string with {@code 0x} prefix
-     * @throws IllegalArgumentException if {@code bytes} is {@code null},
-     *                                  or if offset/length are out of bounds
+     * @throws IllegalArgumentException if {@code bytes} is {@code null}
+     * @throws IndexOutOfBoundsException if offset/length are out of bounds
      */
     public static String encode(final byte[] bytes, final int offset, final int length) {
         validateSubarray(bytes, offset, length);
@@ -152,8 +152,8 @@ public final class Hex {
      * @param offset the starting offset in the byte array
      * @param length the number of bytes to encode
      * @return hex string without {@code 0x} prefix
-     * @throws IllegalArgumentException if {@code bytes} is {@code null},
-     *                                  or if offset/length are out of bounds
+     * @throws IllegalArgumentException if {@code bytes} is {@code null}
+     * @throws IndexOutOfBoundsException if offset/length are out of bounds
      */
     public static String encodeNoPrefix(final byte[] bytes, final int offset, final int length) {
         validateSubarray(bytes, offset, length);
