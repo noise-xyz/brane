@@ -3,6 +3,8 @@ package sh.brane.core.crypto;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+import java.math.BigInteger;
+
 import org.junit.jupiter.api.Test;
 
 /**
@@ -220,6 +222,71 @@ class SignatureTest {
 
         // Using chainId=2 would compute: 37 - 2*2 - 35 = -2, which is invalid
         assertThrows(IllegalArgumentException.class, () -> sig.getRecoveryId(2L));
+    }
+
+    @Test
+    void testRAsBigInteger() {
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+        r[0] = 0x01;
+        r[31] = 0x02;
+
+        final Signature sig = new Signature(r, s, 27);
+        BigInteger rBig = sig.rAsBigInteger();
+
+        // Verify positive (unsigned) interpretation
+        assertTrue(rBig.signum() > 0);
+        // Value should match: 0x01 << 248 | 0x02
+        assertEquals(new BigInteger(1, sig.r()), rBig);
+    }
+
+    @Test
+    void testSAsBigInteger() {
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+        s[0] = (byte) 0xFF; // High bit set — must still be positive (unsigned)
+        s[31] = 0x01;
+
+        final Signature sig = new Signature(r, s, 27);
+        BigInteger sBig = sig.sAsBigInteger();
+
+        // Must be positive even though the high byte is 0xFF
+        assertTrue(sBig.signum() > 0);
+        assertEquals(new BigInteger(1, sig.s()), sBig);
+    }
+
+    @Test
+    void testAsBigIntegerMatchesDefensiveCopyPath() {
+        // Verify the optimization produces identical results to the old code path:
+        // new BigInteger(1, sig.r()) vs sig.rAsBigInteger()
+        final byte[] r = new byte[32];
+        final byte[] s = new byte[32];
+        // Fill with realistic-looking values
+        for (int i = 0; i < 32; i++) {
+            r[i] = (byte) (i + 1);
+            s[i] = (byte) (32 - i);
+        }
+
+        final Signature sig = new Signature(r, s, 28);
+
+        // Old path: new BigInteger(1, sig.r()) — uses defensive copy from r()
+        BigInteger rOldPath = new BigInteger(1, sig.r());
+        BigInteger sOldPath = new BigInteger(1, sig.s());
+
+        // New path: rAsBigInteger() — uses internal array directly
+        assertEquals(rOldPath, sig.rAsBigInteger());
+        assertEquals(sOldPath, sig.sAsBigInteger());
+    }
+
+    @Test
+    void testAsBigIntegerZeroComponents() {
+        final byte[] r = new byte[32]; // all zeros
+        final byte[] s = new byte[32]; // all zeros
+
+        final Signature sig = new Signature(r, s, 0);
+
+        assertEquals(BigInteger.ZERO, sig.rAsBigInteger());
+        assertEquals(BigInteger.ZERO, sig.sAsBigInteger());
     }
 
     @Test

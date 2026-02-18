@@ -4,6 +4,7 @@ package sh.brane.rpc.internal;
 import java.lang.reflect.Array;
 import java.math.BigInteger;
 import java.net.URI;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -288,15 +289,18 @@ public final class RpcUtils {
      * @return list of maps suitable for JSON-RPC serialization
      */
     public static List<Map<String, Object>> toJsonAccessList(final List<AccessListEntry> entries) {
-        return entries.stream()
-                .map(entry -> {
-                    // Explicit type required: var would infer LinkedHashMap, causing List<Map> incompatibility
-                    final Map<String, Object> map = new LinkedHashMap<>();
-                    map.put("address", entry.address().value());
-                    map.put("storageKeys", entry.storageKeys().stream().map(Hash::value).toList());
-                    return map;
-                })
-                .toList();
+        List<Map<String, Object>> result = new ArrayList<>(entries.size());
+        for (AccessListEntry entry : entries) {
+            final Map<String, Object> map = new LinkedHashMap<>();
+            map.put("address", entry.address().value());
+            List<String> keys = new ArrayList<>(entry.storageKeys().size());
+            for (Hash key : entry.storageKeys()) {
+                keys.add(key.value());
+            }
+            map.put("storageKeys", keys);
+            result.add(map);
+        }
+        return result;
     }
 
     /**

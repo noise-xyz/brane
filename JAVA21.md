@@ -535,6 +535,63 @@ If disabled: `-XX:+ShowCodeDetailsInExceptionMessages`
 - **`instanceof` patterns** compile to same bytecode as manual cast - no overhead
 - **Virtual threads:** ~1μs creation, ~1KB stack. Don't spawn for nano-operations
 
+### Allocation-Conscious Patterns
+
+On hot paths (ABI encoding/decoding, transaction serialization, hashing), prefer JDK APIs
+that operate on subarrays in-place over `Arrays.copyOfRange` + constructor:
+
+```java
+// AVOID on hot paths: copy then construct (2 allocations)
+new BigInteger(1, Arrays.copyOfRange(data, offset, offset + 32))
+new String(Arrays.copyOfRange(data, offset, offset + len), UTF_8)
+
+// PREFER: subarray constructors (1 allocation, Java 9+)
+new BigInteger(1, data, offset, 32)        // BigInteger(int, byte[], int, int)
+new BigInteger(data, offset, 32)           // signed variant
+new String(data, offset, len, UTF_8)       // String(byte[], int, int, Charset)
+```
+
+**When streams become overhead:** Stream pipelines allocate ~5-7 objects per invocation
+(Spliterator, Stream, AbstractPipeline, collector). On paths called 1000s of times/sec with
+small collections (2-5 elements), a pre-sized `ArrayList` + `for` loop is measurably cheaper:
+
+```java
+// Default style — clean and readable (use in most code)
+return items.stream().map(Item::transform).toList();
+
+// Hot-path style — when JMH gc profiler shows stream overhead
+List<Result> results = new ArrayList<>(items.size());
+for (Item item : items) {
+    results.add(item.transform());
+}
+return results;
+```
+
+**Rule of thumb:** Use streams by default. Switch to loops only when:
+1. The method is on a benchmark-proven hot path
+2. JMH `-prof gc` shows measurable allocation from the stream pipeline
+3. The collection is typically small (< 10 elements), making pipeline overhead proportionally large
+
+### Bounds Checking with `Objects.checkFromIndexSize`
+
+For offset/length validation on subarrays, prefer `Objects.checkFromIndexSize` (Java 16+)
+over manual checks. It handles integer overflow correctly and is a JVM intrinsic:
+
+```java
+// AVOID: manual check (integer overflow risk when offset + length > Integer.MAX_VALUE)
+if (offset < 0 || length < 0 || offset + length > array.length)
+    throw new IllegalArgumentException();
+
+// PREFER: overflow-safe, JVM-optimized
+Objects.checkFromIndexSize(offset, length, array.length);
+```
+
+| Method | Use Case |
+|--------|----------|
+| `Objects.checkIndex(index, length)` | Single index into array/list |
+| `Objects.checkFromToIndex(from, to, length)` | Exclusive-end range `[from, to)` |
+| `Objects.checkFromIndexSize(from, size, length)` | Offset + length range |
+
 ## Preview Features
 
 **Policy:** Do not use preview features in production code.

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.crypto;
 
+import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -90,6 +91,30 @@ public record Signature(byte[] r, byte[] s, int v) {
     @Override
     public byte[] s() {
         return Arrays.copyOf(s, s.length);
+    }
+
+    /**
+     * Returns the r component as a positive BigInteger.
+     * <p>
+     * This avoids the 32-byte defensive copy from {@link #r()} when the caller
+     * only needs a BigInteger (e.g., for RLP encoding in transaction serialization).
+     *
+     * @return r as unsigned BigInteger
+     */
+    public BigInteger rAsBigInteger() {
+        return new BigInteger(1, r);
+    }
+
+    /**
+     * Returns the s component as a positive BigInteger.
+     * <p>
+     * This avoids the 32-byte defensive copy from {@link #s()} when the caller
+     * only needs a BigInteger (e.g., for RLP encoding in transaction serialization).
+     *
+     * @return s as unsigned BigInteger
+     */
+    public BigInteger sAsBigInteger() {
+        return new BigInteger(1, s);
     }
 
     /**

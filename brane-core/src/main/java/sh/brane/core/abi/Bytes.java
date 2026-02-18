@@ -58,4 +58,16 @@ public record Bytes(HexData value, boolean isDynamic) implements DynamicAbiType 
     public static Bytes ofStatic(byte[] data) {
         return new Bytes(new HexData(sh.brane.primitives.Hex.encode(data)), false);
     }
+
+    /**
+     * Creates a static bytesN type from a sub-range of a byte array without copying.
+     *
+     * @param data   the source byte array
+     * @param offset the starting offset
+     * @param length the number of bytes (1-32)
+     * @return a new static Bytes instance
+     */
+    public static Bytes ofStatic(byte[] data, int offset, int length) {
+        return new Bytes(new HexData(sh.brane.primitives.Hex.encode(data, offset, length)), false);
+    }
 }
