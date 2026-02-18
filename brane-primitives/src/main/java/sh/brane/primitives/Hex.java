@@ -2,6 +2,7 @@
 package sh.brane.primitives;
 
 import java.util.Arrays;
+import java.util.Objects;
 
 /**
  * Utility methods for hex encoding/decoding with optional {@code 0x} prefixes.
@@ -398,15 +399,7 @@ public final class Hex {
         if (bytes == null) {
             throw new IllegalArgumentException("bytes cannot be null");
         }
-        if (offset < 0) {
-            throw new IllegalArgumentException("offset cannot be negative: " + offset);
-        }
-        if (length < 0) {
-            throw new IllegalArgumentException("length cannot be negative: " + length);
-        }
-        if (offset + length > bytes.length) {
-            throw new IllegalArgumentException(
-                    "range out of bounds: offset=" + offset + ", length=" + length + ", bytes.length=" + bytes.length);
-        }
+        // Overflow-safe bounds check (JVM intrinsic, Java 16+)
+        Objects.checkFromIndexSize(offset, length, bytes.length);
     }
 }

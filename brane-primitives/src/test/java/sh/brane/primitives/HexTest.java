@@ -582,25 +582,25 @@ class HexTest {
     @DisplayName("encode subarray rejects negative offset")
     void testEncodeSubarrayNegativeOffset() {
         byte[] bytes = new byte[] {0x01};
-        assertThrows(IllegalArgumentException.class, () -> Hex.encode(bytes, -1, 1));
-        assertThrows(IllegalArgumentException.class, () -> Hex.encodeNoPrefix(bytes, -1, 1));
+        assertThrows(IndexOutOfBoundsException.class, () -> Hex.encode(bytes, -1, 1));
+        assertThrows(IndexOutOfBoundsException.class, () -> Hex.encodeNoPrefix(bytes, -1, 1));
     }
 
     @Test
     @DisplayName("encode subarray rejects negative length")
     void testEncodeSubarrayNegativeLength() {
         byte[] bytes = new byte[] {0x01};
-        assertThrows(IllegalArgumentException.class, () -> Hex.encode(bytes, 0, -1));
-        assertThrows(IllegalArgumentException.class, () -> Hex.encodeNoPrefix(bytes, 0, -1));
+        assertThrows(IndexOutOfBoundsException.class, () -> Hex.encode(bytes, 0, -1));
+        assertThrows(IndexOutOfBoundsException.class, () -> Hex.encodeNoPrefix(bytes, 0, -1));
     }
 
     @Test
     @DisplayName("encode subarray rejects out-of-bounds range")
     void testEncodeSubarrayOutOfBounds() {
         byte[] bytes = new byte[] {0x01, 0x02};
-        assertThrows(IllegalArgumentException.class, () -> Hex.encode(bytes, 1, 2));
-        assertThrows(IllegalArgumentException.class, () -> Hex.encodeNoPrefix(bytes, 1, 2));
-        assertThrows(IllegalArgumentException.class, () -> Hex.encode(bytes, 3, 0));
+        assertThrows(IndexOutOfBoundsException.class, () -> Hex.encode(bytes, 1, 2));
+        assertThrows(IndexOutOfBoundsException.class, () -> Hex.encodeNoPrefix(bytes, 1, 2));
+        assertThrows(IndexOutOfBoundsException.class, () -> Hex.encode(bytes, 3, 0));
     }
 
     @Test
