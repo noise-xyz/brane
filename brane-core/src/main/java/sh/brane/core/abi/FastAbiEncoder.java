@@ -4,6 +4,7 @@ package sh.brane.core.abi;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -96,9 +97,10 @@ public final class FastAbiEncoder {
             throw new IllegalArgumentException("Selector must be exactly 4 bytes, got " + selector.length);
         }
         buffer.put(selector);
-        List<AbiType> abiArgs = Arrays.stream(args)
-                .map(arg -> (AbiType) arg)
-                .toList();
+        List<AbiType> abiArgs = new ArrayList<>(args.length);
+        for (Object arg : args) {
+            abiArgs.add((AbiType) arg);
+        }
         encodeTuple(abiArgs, buffer);
     }
 
