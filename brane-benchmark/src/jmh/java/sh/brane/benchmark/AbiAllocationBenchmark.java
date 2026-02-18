@@ -411,4 +411,107 @@ public class AbiAllocationBenchmark {
         // Cast to Object to pass the array as a single tuple argument, not varargs
         return complexNestedAbi.encodeFunction("processComplex", (Object) complexNestedInput);
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // DECODE BENCHMARKS — measure allocation in ABI decoding paths
+    // ═══════════════════════════════════════════════════════════════
+
+    /** Pre-encoded address for decoding benchmarks (20 bytes left-padded to 32). */
+    public byte[] preEncodedAddress;
+
+    /** Schema for decoding a single address. */
+    public List<TypeSchema> addressSchema;
+
+    /** Pre-encoded string for decoding benchmarks (offset + length + UTF-8 data). */
+    public byte[] preEncodedString;
+
+    /** Schema for decoding a single string. */
+    public List<TypeSchema> stringSchema;
+
+    /** Pre-encoded mixed tuple for decoding benchmarks (address, uint256, string). */
+    public byte[] preEncodedMixedTuple;
+
+    /** Schema for decoding a mixed tuple (address, uint256, string). */
+    public List<TypeSchema> mixedTupleSchema;
+
+    @Setup(Level.Trial)
+    public void setupDecodeData() {
+        // Pre-encode an address (20 bytes left-padded to 32)
+        preEncodedAddress = new byte[32];
+        byte[] addrBytes = Hex.decode("0x1234567890123456789012345678901234567890");
+        System.arraycopy(addrBytes, 0, preEncodedAddress, 12, 20);
+        addressSchema = List.of(new TypeSchema.AddressSchema());
+
+        // Pre-encode a string: "Hello, World!" (13 bytes)
+        // ABI encoding: offset (32) + length (32) + data padded to 32 = 96 bytes
+        byte[] stringBytes = "Hello, World!".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        preEncodedString = new byte[96];
+        // offset = 32 (pointing past the head)
+        preEncodedString[31] = 32;
+        // length = 13
+        preEncodedString[63] = 13;
+        // string data
+        System.arraycopy(stringBytes, 0, preEncodedString, 64, stringBytes.length);
+        stringSchema = List.of(new TypeSchema.StringSchema());
+
+        // Pre-encode a mixed tuple: (address, uint256, string)
+        // Head: address (32) + uint256 (32) + string offset (32) = 96 bytes
+        // Tail: string length (32) + string data (32) = 64 bytes
+        // Total: 160 bytes
+        preEncodedMixedTuple = new byte[160];
+        // address at offset 0 (left-padded)
+        System.arraycopy(addrBytes, 0, preEncodedMixedTuple, 12, 20);
+        // uint256 at offset 32 (value = 1000000)
+        preEncodedMixedTuple[56] = 0x0F;
+        preEncodedMixedTuple[57] = 0x42;
+        preEncodedMixedTuple[58] = 0x40;
+        // string offset at offset 64 (= 96, pointing to start of tail)
+        preEncodedMixedTuple[95] = 96;
+        // string length at offset 96 (= 13)
+        preEncodedMixedTuple[127] = 13;
+        // string data at offset 128
+        System.arraycopy(stringBytes, 0, preEncodedMixedTuple, 128, stringBytes.length);
+
+        mixedTupleSchema = List.of(new TypeSchema.TupleSchema(List.of(
+                new TypeSchema.AddressSchema(),
+                new TypeSchema.UIntSchema(256),
+                new TypeSchema.StringSchema()
+        )));
+    }
+
+    /**
+     * Benchmarks ABI decoding of a pre-encoded address.
+     * Measures allocation from Arrays.copyOfRange + Hex.encode in address decoding.
+     *
+     * @return the decoded ABI types list (for blackhole consumption)
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public List<AbiType> decodeAddress() {
+        return AbiDecoder.decode(preEncodedAddress, addressSchema);
+    }
+
+    /**
+     * Benchmarks ABI decoding of a pre-encoded string.
+     * Measures allocation from Arrays.copyOfRange + new String() in string decoding.
+     *
+     * @return the decoded ABI types list (for blackhole consumption)
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public List<AbiType> decodeString() {
+        return AbiDecoder.decode(preEncodedString, stringSchema);
+    }
+
+    /**
+     * Benchmarks ABI decoding of a pre-encoded mixed tuple (address, uint256, string).
+     * Measures combined allocation from multiple decode paths.
+     *
+     * @return the decoded ABI types list (for blackhole consumption)
+     */
+    @Benchmark
+    @BenchmarkMode(Mode.AverageTime)
+    public List<AbiType> decodeMixedTuple() {
+        return AbiDecoder.decode(preEncodedMixedTuple, mixedTupleSchema);
+    }
 }
