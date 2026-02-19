@@ -55,10 +55,9 @@ Brane provides pre-configured domain builders for common EIP-3009 tokens:
 ### USDC
 
 ```java
-// USDC uses domain name "USD Coin" and version "2" across all chains
+// USDC uses domain name "USD Coin" and version "2" across all supported chains
+Eip712Domain domain = Eip3009.usdcDomain(8453L, usdcAddress);    // Base (primary x402 chain)
 Eip712Domain domain = Eip3009.usdcDomain(1L, usdcAddress);       // Ethereum
-Eip712Domain domain = Eip3009.usdcDomain(8453L, usdcAddress);    // Base
-Eip712Domain domain = Eip3009.usdcDomain(42161L, usdcAddress);   // Arbitrum
 ```
 
 ### EURC
