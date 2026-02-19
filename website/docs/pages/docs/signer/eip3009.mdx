@@ -1,0 +1,189 @@
+# EIP-3009 Gasless Transfers
+
+## Overview
+
+EIP-3009 enables **gasless token transfers** via signed EIP-712 authorizations. Instead of the token holder submitting an on-chain transaction (and paying gas), they sign an authorization off-chain and a relayer submits it.
+
+This is the on-chain primitive powering [x402](https://www.x402.org/) — Coinbase's HTTP-native payment protocol for USDC.
+
+| Authorization Type | Purpose |
+|---|---|
+| **TransferWithAuthorization** | Transfer tokens from signer to any recipient |
+| **ReceiveWithAuthorization** | Transfer tokens where `msg.sender` must be the recipient (front-run protection) |
+| **CancelAuthorization** | Cancel an outstanding authorization before it is used |
+
+## Quick Start
+
+```java
+import sh.brane.core.crypto.PrivateKeySigner;
+import sh.brane.core.crypto.Signature;
+import sh.brane.core.crypto.eip3009.Eip3009;
+import sh.brane.core.crypto.eip3009.TransferAuthorization;
+import sh.brane.core.crypto.eip712.Eip712Domain;
+import sh.brane.core.types.Address;
+
+import java.math.BigInteger;
+
+// Create signer
+var signer = new PrivateKeySigner("0x...");
+
+// USDC domain on Base
+Address usdcAddress = new Address("0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
+Eip712Domain domain = Eip3009.usdcDomain(8453L, usdcAddress);
+
+// Create authorization (valid for 1 hour, auto nonce)
+TransferAuthorization auth = Eip3009.transferAuthorization(
+        signer.address(),
+        new Address("0x70997970c51812dc3a010c7d01b50e0d17dc79c8"),
+        BigInteger.valueOf(1_000_000),  // 1 USDC (6 decimals)
+        3600                            // valid for 1 hour
+);
+
+// Sign
+Signature sig = Eip3009.sign(auth, domain, signer);
+
+// Extract v, r, s for on-chain submission
+int v = sig.v();
+byte[] r = sig.r();
+byte[] s = sig.s();
+```
+
+## Domain Helpers
+
+Brane provides pre-configured domain builders for common EIP-3009 tokens:
+
+### USDC
+
+```java
+// USDC uses domain name "USD Coin" and version "2" across all supported chains
+Eip712Domain domain = Eip3009.usdcDomain(8453L, usdcAddress);    // Base (primary x402 chain)
+Eip712Domain domain = Eip3009.usdcDomain(1L, usdcAddress);       // Ethereum
+```
+
+### EURC
+
+```java
+// EURC uses domain name "EURC" and version "2"
+Eip712Domain domain = Eip3009.eurcDomain(1L, eurcAddress);
+```
+
+### Custom Token
+
+```java
+// Any EIP-3009 token with custom domain parameters
+Eip712Domain domain = Eip3009.tokenDomain(
+        "My Token",       // EIP-712 domain name
+        "1",              // EIP-712 domain version
+        1L,               // chain ID
+        tokenAddress      // contract address
+);
+```
+
+:::warning
+The domain name and version must exactly match what the token contract uses in its `DOMAIN_SEPARATOR`. Check the token's documentation or read the contract to confirm these values.
+:::
+
+## Authorization Types
+
+### TransferWithAuthorization
+
+The standard authorization for transferring tokens. Any address can submit this on-chain.
+
+```java
+// Convenience factory (auto nonce + time window)
+TransferAuthorization auth = Eip3009.transferAuthorization(
+        from,                           // payer address
+        to,                             // payee address
+        BigInteger.valueOf(1_000_000),  // amount in smallest units
+        3600                            // valid for 1 hour
+);
+
+// Explicit factory (for deterministic testing)
+TransferAuthorization auth = Eip3009.transferAuthorization(
+        from, to, value,
+        BigInteger.ZERO,                    // validAfter (unix seconds)
+        BigInteger.valueOf(2_000_000_000L), // validBefore (unix seconds)
+        nonce                               // 32-byte random nonce
+);
+```
+
+### ReceiveWithAuthorization
+
+Like `TransferWithAuthorization` but requires `msg.sender == to`. This prevents front-running by ensuring only the intended recipient can submit the authorization on-chain.
+
+```java
+ReceiveAuthorization auth = Eip3009.receiveAuthorization(
+        from, to, value, 3600  // valid for 1 hour
+);
+
+Signature sig = Eip3009.sign(auth, domain, signer);
+```
+
+### CancelAuthorization
+
+Cancel an outstanding authorization before it is used. Once canceled, the nonce is permanently consumed and cannot be reused.
+
+```java
+import sh.brane.core.crypto.eip3009.CancelAuthorization;
+
+// Cancel a specific authorization by its nonce
+CancelAuthorization cancel = Eip3009.cancelAuthorization(
+        signerAddress,  // the address that signed the original authorization
+        originalNonce   // the 32-byte nonce to cancel
+);
+
+Signature sig = Eip3009.sign(cancel, domain, signer);
+```
+
+## Signing and Hashing
+
+### Signing
+
+All authorization types use the same `Eip3009.sign()` method:
+
+```java
+Signature sig = Eip3009.sign(auth, domain, signer);
+```
+
+### Hashing Without Signing
+
+Compute the EIP-712 hash without signing (useful for verification or logging):
+
+```java
+import sh.brane.core.types.Hash;
+
+Hash hash = Eip3009.hash(auth, domain);
+```
+
+## Nonce Generation
+
+EIP-3009 uses **random** `bytes32` nonces (not sequential), allowing multiple concurrent authorizations without ordering constraints:
+
+```java
+byte[] nonce = Eip3009.randomNonce();  // 32 cryptographically random bytes
+```
+
+The convenience factory methods (`transferAuthorization(from, to, value, validForSeconds)`) generate a random nonce automatically.
+
+## On-Chain Submission
+
+After signing, pass the authorization parameters and signature to the token contract:
+
+```java
+// Parameters for transferWithAuthorization(from, to, value, validAfter, validBefore, nonce, v, r, s)
+Address from = auth.from();
+Address to = auth.to();
+BigInteger value = auth.value();
+BigInteger validAfter = auth.validAfter();
+BigInteger validBefore = auth.validBefore();
+byte[] nonce = auth.nonce();
+int v = sig.v();
+byte[] r = sig.r();
+byte[] s = sig.s();
+```
+
+## See Also
+
+- [EIP-712 Typed Data](/docs/signer/eip712) — The underlying signing mechanism
+- [Signers](/docs/signer/signers) — Signer interface and PrivateKeySigner
+- [EIP-3009 Specification](https://eips.ethereum.org/EIPS/eip-3009) — Full EIP specification

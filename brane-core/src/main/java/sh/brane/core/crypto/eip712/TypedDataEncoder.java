@@ -175,7 +175,8 @@ final class TypedDataEncoder {
             Map<String, List<TypedDataField>> types,
             Map<String, Object> data) {
         var fields = types.get(typeName);
-        // Each field encodes to exactly 32 bytes
+        // EIP-712: every field encodes to exactly 32 bytes
+        // (dynamic types like string/bytes are keccak256-hashed, structs are hashStruct'd)
         var encoded = new byte[fields.size() * 32];
         int offset = 0;
 

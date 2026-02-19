@@ -7,7 +7,7 @@ Modern, type-safe Java 21 SDK for Ethereum/EVM. Inspired by viem (TS) and alloy 
 | Module | Purpose | Key Classes |
 |--------|---------|-------------|
 | `brane-primitives` | Hex/RLP utilities (zero deps) | `Hex`, `Rlp` |
-| `brane-core` | Types, ABI, crypto, EIP-712, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `MnemonicWallet`, `TypedData`, `TxBuilder`, `Blob`, `BlobSidecar`, `Eip4844Builder` |
+| `brane-core` | Types, ABI, crypto, EIP-712, EIP-3009, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `MnemonicWallet`, `TypedData`, `Eip3009`, `TxBuilder`, `Blob`, `BlobSidecar`, `Eip4844Builder` |
 | `brane-kzg` | KZG commitments for EIP-4844 blobs | `CKzg`, `Kzg` |
 | `brane-rpc` | JSON-RPC client layer | `Brane`, `Brane.Reader`, `Brane.Signer`, `Brane.Tester`, `BraneProvider` |
 | `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `ReadOnlyContract` |
@@ -136,6 +136,25 @@ Hash hash = typedData.hash();
 
 // JSON parsing (WalletConnect, dapp requests)
 TypedData<?> fromJson = TypedDataJson.parseAndValidate(jsonString);
+```
+
+### EIP-3009 Gasless Token Transfers
+```java
+// USDC domain (name="USD Coin", version="2" across all chains)
+var domain = Eip3009.usdcDomain(8453L, usdcAddress);  // Base mainnet
+
+// Create authorization (auto nonce + 1 hour validity)
+var auth = Eip3009.transferAuthorization(
+    signer.address(), recipient,
+    BigInteger.valueOf(1_000_000),  // 1 USDC
+    3600                            // valid for 1 hour
+);
+
+// Sign and extract v/r/s for on-chain submission
+Signature sig = Eip3009.sign(auth, domain, signer);
+int v = sig.v();
+byte[] r = sig.r();
+byte[] s = sig.s();
 ```
 
 ### Integration Testing with Brane.Tester
