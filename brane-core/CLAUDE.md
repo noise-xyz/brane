@@ -24,6 +24,7 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 | `sh.brane.core.crypto` | ECDSA: `PrivateKey`, `Signer`, `Signature`, `Keccak256`; KZG: `Kzg` interface |
 | `sh.brane.core.crypto.hd` | HD Wallet (BIP-39/BIP-44): `MnemonicWallet`, `DerivationPath` |
 | `sh.brane.core.crypto.eip712` | EIP-712: `TypedData`, `Eip712Domain`, `TypedDataSigner`, `TypedDataJson` |
+| `sh.brane.core.crypto.eip3009` | EIP-3009 gasless transfers: `Eip3009`, `TransferAuthorization`, `ReceiveAuthorization`, `CancelAuthorization` |
 | `sh.brane.core.builder` | Transaction builders: `TxBuilder`, `Eip1559Builder`, `LegacyBuilder`, `Eip4844Builder` |
 | `sh.brane.core.model` | Data models: `TransactionRequest`, `TransactionReceipt`, `BlockHeader`, `BlobTransactionRequest` |
 | `sh.brane.core.tx` | Transaction types: `LegacyTransaction`, `Eip1559Transaction`, `Eip4844Transaction`; Blob utils: `SidecarBuilder`, `BlobDecoder` |
@@ -64,6 +65,12 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 - **`TypedDataJson`** - JSON parsing for eth_signTypedData_v4 format (WalletConnect, MetaMask)
 - **`TypeDefinition<T>`** - Type schema with field mappings and extractor
 - **`TypedDataField`** - Single field definition (name + Solidity type)
+
+### EIP-3009 Gasless Transfers (`sh.brane.core.crypto.eip3009`)
+- **`Eip3009`** - Entry point: domain helpers (`usdcDomain`, `eurcDomain`, `tokenDomain`), factory methods, `sign()`, `hash()`
+- **`TransferAuthorization`** - Record for `transferWithAuthorization` (any relayer can submit)
+- **`ReceiveAuthorization`** - Record for `receiveWithAuthorization` (`msg.sender == to` required)
+- **`CancelAuthorization`** - Record for canceling an outstanding authorization by nonce
 
 ### Builders (`sh.brane.core.builder`)
 - **`TxBuilder`** - Sealed interface for transaction building
@@ -164,6 +171,19 @@ TypedData<?> fromJson = TypedDataJson.parseAndValidate(jsonString);
 Signature sig2 = fromJson.sign(signer);
 ```
 
+### EIP-3009 Gasless Token Transfer (USDC/EURC)
+```java
+// Create domain for USDC on Base
+var domain = Eip3009.usdcDomain(8453L, usdcAddress);
+
+// Create authorization (auto nonce + time window)
+TransferAuthorization auth = Eip3009.transferAuthorization(
+    signer.address(), recipient, BigInteger.valueOf(1_000_000), 3600);
+
+// Sign and extract v/r/s for on-chain submission
+Signature sig = Eip3009.sign(auth, domain, signer);
+```
+
 ### ThreadLocal Cleanup in Pooled Threads
 ```java
 executor.submit(() -> {
@@ -215,6 +235,8 @@ request.sidecar().validate(kzg);
 - **BlobSidecar max blobs**: Maximum 6 blobs per transaction (EIP-4844 limit)
 - **Blob data encoding**: Use `SidecarBuilder.from(bytes)` - each blob holds ~126KB usable data
 - **Kzg instance**: Obtain from `brane-kzg` module via `CKzg.loadFromClasspath()`
+- **EIP-3009 nonces are random**: Use `Eip3009.randomNonce()` — NOT sequential like transaction nonces
+- **EIP-3009 domain must match contract**: USDC uses name `"USD Coin"` version `"2"` — use `Eip3009.usdcDomain()` to avoid mistakes
 
 ## Dependencies
 

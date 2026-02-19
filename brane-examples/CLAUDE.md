@@ -39,6 +39,7 @@ anvil --hardfork cancun
 | `TxBuilderExample` | Transaction builder patterns |
 | `Erc20TransferLogExample` | Event log decoding |
 | `MultiChainLatestBlockExample` | Multi-chain support |
+| `Eip3009Example` | EIP-3009 gasless transfer authorization signing (USDC) |
 
 ## Sanity Checks
 
