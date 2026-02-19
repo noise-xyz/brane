@@ -84,6 +84,7 @@ export default defineConfig({
           { text: 'Signers', link: '/docs/signer/signers' },
           { text: 'HD Wallets', link: '/docs/signer/hd-wallets' },
           { text: 'EIP-712 Typed Data', link: '/docs/signer/eip712' },
+          { text: 'EIP-3009 Gasless Transfers', link: '/docs/signer/eip3009' },
           { text: 'Blob Transactions', link: '/docs/signer/blobs' },
           { text: 'Custom Signers', link: '/docs/signer/custom-signers' },
         ],
