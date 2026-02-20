@@ -295,10 +295,10 @@ public final class TrustlessAgents {
             agentId.value(),
             score.value(),
             BigInteger.valueOf(score.decimals()),
-            tag1 != null ? tag1 : "",
-            tag2 != null ? tag2 : "",
-            endpoint != null ? endpoint : "",
-            feedbackURI != null ? feedbackURI : "",
+            Objects.requireNonNullElse(tag1, ""),
+            Objects.requireNonNullElse(tag2, ""),
+            Objects.requireNonNullElse(endpoint, ""),
+            Objects.requireNonNullElse(feedbackURI, ""),
             feedbackHash != null ? feedbackHash.toBytes() : new byte[32]);
     }
 
@@ -329,7 +329,7 @@ public final class TrustlessAgents {
         reputation.appendResponse(
             agentId.value(), clientAddress,
             BigInteger.valueOf(feedbackIndex),
-            responseURI != null ? responseURI : "",
+            Objects.requireNonNullElse(responseURI, ""),
             responseHash != null ? responseHash.toBytes() : new byte[32]);
     }
 
@@ -357,7 +357,8 @@ public final class TrustlessAgents {
         Objects.requireNonNull(agentId, "agentId");
         var call = reputationAbi.encodeFunction("getSummary",
             agentId.value(), clients.toArray(Address[]::new),
-            tag1 != null ? tag1 : "", tag2 != null ? tag2 : "");
+            Objects.requireNonNullElse(tag1, ""),
+            Objects.requireNonNullElse(tag2, ""));
         HexData result = client.call(CallRequest.builder()
             .to(reputationAddress)
             .data(new HexData(call.data()))
@@ -486,7 +487,8 @@ public final class TrustlessAgents {
                                           String tag1, String tag2) {
             var call = reputationAbi.encodeFunction("getSummary",
                 agentId.value(), clients.toArray(Address[]::new),
-                tag1 != null ? tag1 : "", tag2 != null ? tag2 : "");
+                Objects.requireNonNullElse(tag1, ""),
+                Objects.requireNonNullElse(tag2, ""));
             HexData result = client.call(CallRequest.builder()
                 .to(reputationAddress)
                 .data(new HexData(call.data()))
