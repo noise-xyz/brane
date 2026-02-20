@@ -20,6 +20,11 @@ High-level contract interaction via dynamic proxy binding. No code generation re
 - **`BraneContract`** - Main entry point: `bind()` and `bindReadOnly()` create typed contract proxies
 - **`ContractOptions`** - Configuration (gas limit, timeouts, poll intervals)
 - **`@Payable`** - Annotation for payable functions
+- **`TrustlessAgents`** - ERC-8004 client for Identity, Reputation, and Validation registries
+- **`TrustlessAgents.ReadOnly`** - Read-only facade (no signer needed)
+- **`FeedbackSummary`** - Aggregated feedback count + score from Reputation Registry
+- **`ValidationSummary`** - Aggregated validation count + average response
+- **`ValidationStatus`** - Individual validation status record
 
 ## Patterns
 
@@ -73,6 +78,30 @@ interface WETH {
 // Decode events from transaction receipt using Abi
 Abi abi = Abi.fromJson(abiJson);
 List<Transfer> events = abi.decodeEvents("Transfer", receipt.logs(), Transfer.class);
+```
+
+### ERC-8004 Trustless Agents
+```java
+// Connect to mainnet registries (read-write)
+TrustlessAgents agents = TrustlessAgents.connectMainnet(signer);
+
+// Connect read-only (no signer)
+TrustlessAgents.ReadOnly readOnly = TrustlessAgents.connectMainnet(reader);
+
+// Register an agent
+AgentId agentId = agents.register("https://example.com/agent.json");
+
+// Query feedback summary (uses raw eth_call + tuple decoding)
+FeedbackSummary summary = agents.getSummary(agentId);
+
+// Give feedback
+agents.giveFeedback(agentId, FeedbackValue.of(95, 2), "quality", "", "", "", null);
+
+// Listen for events
+List<AgentRegistered> events = agents.getRegisteredEvents(fromBlock, toBlock);
+
+// Parse agent registration file
+AgentRegistration card = TrustlessAgents.parseRegistration(jsonString);
 ```
 
 ## How It Works

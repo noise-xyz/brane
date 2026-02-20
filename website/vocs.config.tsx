@@ -95,6 +95,7 @@ export default defineConfig({
           { text: 'Contract Interaction', link: '/docs/contracts/interaction' },
           { text: 'Contract Bindings', link: '/docs/contracts/bindings' },
           { text: 'Multicall', link: '/docs/contracts/multicall' },
+          { text: 'ERC-8004 Trustless Agents', link: '/docs/contracts/erc8004' },
         ],
       },
       {

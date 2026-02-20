@@ -25,6 +25,9 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 | `sh.brane.core.crypto.hd` | HD Wallet (BIP-39/BIP-44): `MnemonicWallet`, `DerivationPath` |
 | `sh.brane.core.crypto.eip712` | EIP-712: `TypedData`, `Eip712Domain`, `TypedDataSigner`, `TypedDataJson` |
 | `sh.brane.core.crypto.eip3009` | EIP-3009 gasless transfers: `Eip3009`, `TransferAuthorization`, `ReceiveAuthorization`, `CancelAuthorization` |
+| `sh.brane.core.crypto.erc8004` | ERC-8004 wallet binding: `Erc8004Wallet`, `Erc8004Wallet.AgentWalletBinding` |
+| `sh.brane.core.erc8004` | ERC-8004 domain types: `AgentId`, `FeedbackValue`, `MetadataEntry`, `RegistryId`, `AgentIdentifier`, `Erc8004Addresses`, events |
+| `sh.brane.core.erc8004.registration` | Agent registration file model: `AgentRegistration`, `AgentService`, `ChainRegistration` |
 | `sh.brane.core.builder` | Transaction builders: `TxBuilder`, `Eip1559Builder`, `LegacyBuilder`, `Eip4844Builder` |
 | `sh.brane.core.model` | Data models: `TransactionRequest`, `TransactionReceipt`, `BlockHeader`, `BlobTransactionRequest` |
 | `sh.brane.core.tx` | Transaction types: `LegacyTransaction`, `Eip1559Transaction`, `Eip4844Transaction`; Blob utils: `SidecarBuilder`, `BlobDecoder` |
@@ -71,6 +74,24 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 - **`TransferAuthorization`** - Record for `transferWithAuthorization` (any relayer can submit)
 - **`ReceiveAuthorization`** - Record for `receiveWithAuthorization` (`msg.sender == to` required)
 - **`CancelAuthorization`** - Record for canceling an outstanding authorization by nonce
+
+### ERC-8004 Trustless Agents (`sh.brane.core.erc8004`)
+- **`AgentId`** - ERC-721 token ID wrapping `BigInteger` with `of(long)` factory
+- **`FeedbackValue`** - Signed feedback score with decimal precision, `toBigDecimal()` for human-readable values
+- **`MetadataEntry`** - Key-value metadata with defensive `byte[]` copies
+- **`RegistryId`** - CAIP-10 compatible registry identifier (`eip155:{chainId}:{address}`)
+- **`AgentIdentifier`** - Combines `RegistryId` + `AgentId` for cross-chain agent addressing
+- **`Erc8004Addresses`** - Deterministic CREATE2 contract addresses for mainnet and Sepolia
+- **`AgentRegistered`** / **`FeedbackSubmitted`** / **`FeedbackRevoked`** / **`ValidationRequested`** / **`ValidationResponded`** - Event records for `Abi.decodeEvents()`
+
+### ERC-8004 Registration Model (`sh.brane.core.erc8004.registration`)
+- **`AgentRegistration`** - Agent Card JSON model with `fromJson(String)` via Jackson
+- **`AgentService`** - Service endpoint descriptor (name, endpoint, version, skills, domains)
+- **`ChainRegistration`** - Cross-chain registration with `toRegistryId()` and `toAgentIdentifier()` bridge methods
+
+### ERC-8004 Wallet Binding (`sh.brane.core.crypto.erc8004`)
+- **`Erc8004Wallet`** - Utility for EIP-712 agent wallet binding signatures
+- **`Erc8004Wallet.AgentWalletBinding`** - EIP-712 typed struct with `DEFINITION` for signing
 
 ### Builders (`sh.brane.core.builder`)
 - **`TxBuilder`** - Sealed interface for transaction building
@@ -182,6 +203,32 @@ TransferAuthorization auth = Eip3009.transferAuthorization(
 
 // Sign and extract v/r/s for on-chain submission
 Signature sig = Eip3009.sign(auth, domain, signer);
+```
+
+### ERC-8004 Agent Types
+```java
+// Agent identity
+AgentId agentId = AgentId.of(42);
+
+// Feedback with decimal precision
+FeedbackValue score = FeedbackValue.of(985, 2);  // 9.85
+BigDecimal readable = score.toBigDecimal();       // 9.85
+
+// Registry identifier (CAIP-10 format)
+RegistryId registry = RegistryId.parse("eip155:1:0x8004...");
+
+// Cross-chain agent identifier
+AgentIdentifier agent = AgentIdentifier.of(1L, identityAddress, agentId);
+
+// Parse agent registration JSON
+AgentRegistration card = AgentRegistration.fromJson(jsonString);
+```
+
+### ERC-8004 Wallet Binding (EIP-712)
+```java
+// Sign agent wallet binding
+Eip712Domain domain = Erc8004Wallet.domain(chainId, identityRegistryAddress);
+Signature sig = Erc8004Wallet.signWalletBinding(agentId, newWallet, deadline, domain, signer);
 ```
 
 ### ThreadLocal Cleanup in Pooled Threads

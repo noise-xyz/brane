@@ -7,10 +7,10 @@ Modern, type-safe Java 21 SDK for Ethereum/EVM. Inspired by viem (TS) and alloy 
 | Module | Purpose | Key Classes |
 |--------|---------|-------------|
 | `brane-primitives` | Hex/RLP utilities (zero deps) | `Hex`, `Rlp` |
-| `brane-core` | Types, ABI, crypto, EIP-712, EIP-3009, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `MnemonicWallet`, `TypedData`, `Eip3009`, `TxBuilder`, `Blob`, `BlobSidecar`, `Eip4844Builder` |
+| `brane-core` | Types, ABI, crypto, EIP-712, EIP-3009, ERC-8004, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `MnemonicWallet`, `TypedData`, `Eip3009`, `Erc8004Wallet`, `AgentId`, `RegistryId`, `TxBuilder`, `Blob`, `BlobSidecar`, `Eip4844Builder` |
 | `brane-kzg` | KZG commitments for EIP-4844 blobs | `CKzg`, `Kzg` |
 | `brane-rpc` | JSON-RPC client layer | `Brane`, `Brane.Reader`, `Brane.Signer`, `Brane.Tester`, `BraneProvider` |
-| `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `ReadOnlyContract` |
+| `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `ReadOnlyContract`, `TrustlessAgents` |
 | `brane-examples` | Usage examples & integration tests | Various `*Example.java` |
 | `brane-benchmark` | JMH performance benchmarks | `*Benchmark.java` |
 | `brane-smoke` | E2E integration tests | `SmokeApp.java` |
@@ -155,6 +155,27 @@ Signature sig = Eip3009.sign(auth, domain, signer);
 int v = sig.v();
 byte[] r = sig.r();
 byte[] s = sig.s();
+```
+
+### ERC-8004 Trustless Agents
+```java
+// Connect to ERC-8004 registries (read-only)
+TrustlessAgents.ReadOnly agents = TrustlessAgents.connectMainnet(reader);
+
+// Register an agent
+AgentId agentId = agents.register("https://example.com/agent.json");
+
+// Query feedback summary
+FeedbackSummary summary = agents.getSummary(agentId);
+long count = summary.count();
+BigDecimal score = summary.aggregateScore().toBigDecimal();
+
+// Parse an agent registration file
+AgentRegistration card = TrustlessAgents.parseRegistration(jsonString);
+
+// Sign a wallet binding (EIP-712)
+Eip712Domain domain = Erc8004Wallet.domain(chainId, identityRegistryAddress);
+Signature sig = Erc8004Wallet.signWalletBinding(agentId, newWallet, deadline, domain, signer);
 ```
 
 ### Integration Testing with Brane.Tester

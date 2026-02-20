@@ -1,0 +1,239 @@
+# ERC-8004 Trustless Agents
+
+## Overview
+
+[ERC-8004](https://eips.ethereum.org/EIPS/eip-8004) defines on-chain registries for autonomous AI agent **identity**, **reputation**, and **validation**. Brane provides a type-safe client for interacting with all three registries.
+
+| Registry | Purpose |
+|---|---|
+| **Identity Registry** | ERC-721 token representing agent identity, with metadata and wallet binding |
+| **Reputation Registry** | On-chain feedback with signed scores, tags, and aggregate summaries |
+| **Validation Registry** | Third-party validation responses with aggregated scoring |
+
+## Quick Start
+
+```java
+import sh.brane.contract.erc8004.TrustlessAgents;
+import sh.brane.contract.erc8004.FeedbackSummary;
+import sh.brane.core.erc8004.AgentId;
+import sh.brane.core.erc8004.FeedbackValue;
+import sh.brane.core.erc8004.registration.AgentRegistration;
+
+// Connect to mainnet registries (read-write)
+TrustlessAgents agents = TrustlessAgents.connectMainnet(signer);
+
+// Register an agent (mints ERC-721 token)
+AgentId agentId = agents.register("https://example.com/agent.json");
+
+// Query reputation
+FeedbackSummary summary = agents.getSummary(agentId);
+long feedbackCount = summary.count();
+BigDecimal averageScore = summary.aggregateScore().toBigDecimal();
+```
+
+## Connecting
+
+`TrustlessAgents` uses deterministic CREATE2 addresses — the same contract addresses work across all mainnet EVM chains.
+
+```java
+// Mainnet (read-write with signer)
+TrustlessAgents agents = TrustlessAgents.connectMainnet(signer);
+
+// Mainnet (read-only)
+TrustlessAgents.ReadOnly readOnly = TrustlessAgents.connectMainnet(reader);
+
+// Sepolia testnet
+TrustlessAgents testAgents = TrustlessAgents.connectSepolia(signer);
+
+// Custom registry addresses
+TrustlessAgents custom = TrustlessAgents.connect(
+        signer, identityAddress, reputationAddress);
+```
+
+## Identity Registry
+
+### Registering an Agent
+
+Registration mints an ERC-721 token and associates it with an agent URI pointing to the [Agent Registration File](#agent-registration-file).
+
+```java
+AgentId agentId = agents.register("https://example.com/agent.json");
+```
+
+### Metadata
+
+Store and retrieve arbitrary key-value metadata on-chain:
+
+```java
+// Set metadata
+agents.setMetadata(agentId, "version", "1.2.0".getBytes());
+
+// Read metadata
+byte[] value = agents.getMetadata(agentId, "version");
+```
+
+### Wallet Binding (EIP-712)
+
+Bind an Ethereum wallet to an agent identity using EIP-712 signed authorization:
+
+```java
+import sh.brane.core.crypto.erc8004.Erc8004Wallet;
+import sh.brane.core.crypto.eip712.Eip712Domain;
+
+// Create domain for the identity registry
+Eip712Domain domain = Erc8004Wallet.domain(chainId, identityRegistryAddress);
+
+// Sign wallet binding
+Signature sig = Erc8004Wallet.signWalletBinding(
+        agentId, newWallet, deadline, domain, signer);
+```
+
+## Reputation Registry
+
+### Giving Feedback
+
+Submit on-chain feedback with a signed score value:
+
+```java
+// Simple feedback with score
+FeedbackValue score = FeedbackValue.of(95, 2);  // 0.95
+agents.giveFeedback(agentId, score, "quality", "fast", "/api/chat", "", null);
+
+// FeedbackValue supports negative scores
+FeedbackValue negative = FeedbackValue.of(-50, 1);  // -5.0
+```
+
+### Querying Summaries
+
+Get aggregated feedback for an agent:
+
+```java
+FeedbackSummary summary = agents.getSummary(agentId);
+long count = summary.count();
+FeedbackValue aggregate = summary.aggregateScore();
+BigDecimal readable = aggregate.toBigDecimal();
+
+// Filter by client addresses and tags
+FeedbackSummary filtered = agents.getSummary(
+        agentId, clientAddresses, "quality", "");
+```
+
+### Revoking Feedback
+
+```java
+agents.revokeFeedback(agentId, feedbackIndex);
+```
+
+## Domain Types
+
+### AgentId
+
+ERC-721 token ID wrapping `BigInteger`:
+
+```java
+AgentId id = AgentId.of(42);
+BigInteger raw = id.value();
+```
+
+### FeedbackValue
+
+Signed score with decimal precision:
+
+```java
+FeedbackValue score = FeedbackValue.of(985, 2);   // 9.85
+FeedbackValue neg = FeedbackValue.of(-32, 1);      // -3.2
+BigDecimal readable = score.toBigDecimal();         // 9.85
+```
+
+### RegistryId
+
+CAIP-10 compatible registry identifier:
+
+```java
+RegistryId registry = RegistryId.parse("eip155:1:0x8004...");
+long chainId = registry.chainId();
+Address address = registry.address();
+```
+
+### AgentIdentifier
+
+Cross-chain agent addressing combining registry and token ID:
+
+```java
+AgentIdentifier agent = AgentIdentifier.of(1L, identityAddress, agentId);
+RegistryId registry = agent.registry();
+AgentId id = agent.agentId();
+```
+
+## Agent Registration File
+
+The agent registration file is a JSON document hosted at the agent URI. Parse it with:
+
+```java
+AgentRegistration card = TrustlessAgents.parseRegistration(jsonString);
+
+// Or directly
+AgentRegistration card = AgentRegistration.fromJson(jsonString);
+String name = card.name();
+String description = card.description();
+List<AgentService> services = card.services();
+```
+
+Example JSON:
+
+```json
+{
+  "type": "https://eips.ethereum.org/EIPS/eip-8004",
+  "name": "MyAgent",
+  "description": "An autonomous trading agent",
+  "services": [
+    {
+      "name": "trading",
+      "endpoint": "https://api.example.com/trade",
+      "version": "1.0"
+    }
+  ]
+}
+```
+
+## Events
+
+Listen for on-chain events from the registries:
+
+```java
+// Agent registration events
+List<AgentRegistered> registered = agents.getRegisteredEvents(fromBlock, toBlock);
+
+// Feedback events
+List<FeedbackSubmitted> feedback = agents.getFeedbackEvents(fromBlock, toBlock);
+
+// Revocation events
+List<FeedbackRevoked> revoked = agents.getRevokedEvents(fromBlock, toBlock);
+```
+
+Event records use raw ABI types and provide typed converter methods:
+
+```java
+AgentRegistered event = registered.get(0);
+AgentId agentId = event.toAgentId();       // BigInteger -> AgentId
+Address owner = event.owner();
+```
+
+## Known Addresses
+
+Deterministic CREATE2 addresses for ERC-8004 registries:
+
+| Network | Registry | Address |
+|---|---|---|
+| Mainnet | Identity | `Erc8004Addresses.MAINNET_IDENTITY` |
+| Mainnet | Reputation | `Erc8004Addresses.MAINNET_REPUTATION` |
+| Sepolia | Identity | `Erc8004Addresses.SEPOLIA_IDENTITY` |
+| Sepolia | Reputation | `Erc8004Addresses.SEPOLIA_REPUTATION` |
+
+All addresses start with the `0x8004` vanity prefix.
+
+## See Also
+
+- [Contract Interaction](/docs/contracts/interaction) — General contract binding patterns
+- [EIP-712 Typed Data](/docs/signer/eip712) — Underlying signing mechanism for wallet binding
+- [ERC-8004 Specification](https://eips.ethereum.org/EIPS/eip-8004) — Full EIP specification
