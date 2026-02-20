@@ -41,10 +41,9 @@ class TrustlessAgentsTest {
 
     @Test
     void decodeFeedbackSummary_negativeValue() {
-        // int128 -32 = 2^128 - 32 in unsigned = ffffffffffffffffffffffffffffffe0
+        // int128 -32: ABI sign-extends to 256 bits → all ff in upper bytes
         String slot0 = leftPad64("1");       // count = 1
-        String slot1 = "00000000000000000000000000000000" +
-                        "ffffffffffffffffffffffffffffffe0"; // int128 = -32
+        String slot1 = "ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe0";
         String slot2 = leftPad64("1");       // decimals = 1
         String hex = "0x" + slot0 + slot1 + slot2;
 

@@ -565,7 +565,8 @@ public final class TrustlessAgents {
 
     /**
      * Decodes a getSummary() return value: (uint64 count, int128 summaryValue, uint8 decimals).
-     * ABI encoding: 3 contiguous 32-byte slots.
+     * ABI encoding: 3 contiguous 32-byte slots. The int128 slot is sign-extended to 256 bits
+     * per the Solidity ABI specification.
      */
     static FeedbackSummary decodeFeedbackSummary(String hexOutput) {
         String hex = hexOutput.startsWith("0x") ? hexOutput.substring(2) : hexOutput;
@@ -573,12 +574,9 @@ public final class TrustlessAgents {
             throw new IllegalArgumentException("Unexpected output length for getSummary: " + hex.length());
         }
         long count = new BigInteger(hex.substring(0, 64), 16).longValue();
-        // int128 is signed — use BigInteger with sign handling
-        BigInteger summaryValue = new BigInteger(hex.substring(64, 128), 16);
-        // If high bit is set in the 128-bit value, it's negative
-        if (summaryValue.testBit(127)) {
-            summaryValue = summaryValue.subtract(BigInteger.ONE.shiftLeft(128));
-        }
+        // int128 is signed — decode as signed two's complement (ABI sign-extends to 256 bits)
+        byte[] slot1Bytes = sh.brane.primitives.Hex.decode(hex.substring(64, 128));
+        BigInteger summaryValue = new BigInteger(slot1Bytes);
         int decimals = new BigInteger(hex.substring(128, 192), 16).intValue();
         return new FeedbackSummary(count, new FeedbackValue(summaryValue, decimals));
     }
