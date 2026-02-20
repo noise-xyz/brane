@@ -2,6 +2,7 @@
 package sh.brane.core.erc8004;
 
 import sh.brane.core.types.Address;
+import sh.brane.core.types.HexData;
 
 import java.math.BigInteger;
 
@@ -27,9 +28,9 @@ import java.math.BigInteger;
 public record ValidationResponded(
     Address validator,
     BigInteger agentId,
-    byte[] requestHash,
+    HexData requestHash,
     BigInteger response,
     String responseURI,
-    byte[] responseHash,
+    HexData responseHash,
     String tag
 ) {}
