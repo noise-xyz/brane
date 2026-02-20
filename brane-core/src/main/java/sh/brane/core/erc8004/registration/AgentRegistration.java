@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import java.util.List;
+import java.util.Objects;
 
 /**
  * ERC-8004 Agent Registration File (the "Agent Card").
@@ -59,6 +60,7 @@ public record AgentRegistration(
      * @throws IllegalArgumentException if the JSON is invalid or null
      */
     public static AgentRegistration fromJson(String json) {
+        Objects.requireNonNull(json, "json");
         try {
             return MAPPER.readValue(json, AgentRegistration.class);
         } catch (JsonProcessingException e) {

@@ -167,7 +167,7 @@ class AgentRegistrationTest {
 
     @Test
     void fromJson_rejectsNull() {
-        assertThrows(IllegalArgumentException.class,
+        assertThrows(NullPointerException.class,
             () -> AgentRegistration.fromJson(null));
     }
 

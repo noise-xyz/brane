@@ -72,6 +72,15 @@ public record ReceiveAuthorization(
         Objects.requireNonNull(validAfter, "validAfter");
         Objects.requireNonNull(validBefore, "validBefore");
         Objects.requireNonNull(nonce, "nonce");
+        if (value.signum() < 0) {
+            throw new IllegalArgumentException("value must be non-negative, got " + value);
+        }
+        if (validAfter.signum() < 0) {
+            throw new IllegalArgumentException("validAfter must be non-negative, got " + validAfter);
+        }
+        if (validBefore.signum() < 0) {
+            throw new IllegalArgumentException("validBefore must be non-negative, got " + validBefore);
+        }
         if (validBefore.compareTo(validAfter) <= 0) {
             throw new IllegalArgumentException(
                 "validBefore (" + validBefore + ") must be greater than validAfter (" + validAfter + ")");
