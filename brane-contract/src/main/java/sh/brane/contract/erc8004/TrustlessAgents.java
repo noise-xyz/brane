@@ -173,6 +173,7 @@ public final class TrustlessAgents {
      * @return the assigned agent token ID
      */
     public AgentId register(String agentURI, List<MetadataEntry> metadata) {
+        Objects.requireNonNull(metadata, "metadata");
         AgentId id = register(agentURI);
         for (MetadataEntry entry : metadata) {
             setMetadata(id, entry.key(), entry.value());

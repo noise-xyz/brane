@@ -232,16 +232,6 @@ public final class Eip3009 {
         return new CancelAuthorization(authorizer, nonce);
     }
 
-    /**
-     * Creates a CancelAuthorization with a random nonce.
-     *
-     * @param authorizer the address that originally signed the authorization
-     * @return the cancel authorization message with a random nonce
-     * @throws NullPointerException if authorizer is null
-     */
-    public static CancelAuthorization cancelAuthorization(Address authorizer) {
-        return new CancelAuthorization(authorizer, randomNonce());
-    }
 
     // ═══════════════════════════════════════════════════════════════════
     // Signing
