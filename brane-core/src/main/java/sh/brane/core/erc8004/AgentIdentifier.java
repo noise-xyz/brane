@@ -38,7 +38,7 @@ public record AgentIdentifier(RegistryId registry, AgentId agentId) {
      * @param chainId         the EIP-155 chain ID
      * @param registryAddress the registry contract address
      * @param agentId         the agent token ID
-     * @return the agent identifier
+     * @return the cross-chain agent identifier
      */
     public static AgentIdentifier of(long chainId, Address registryAddress, AgentId agentId) {
         return new AgentIdentifier(new RegistryId(chainId, registryAddress), agentId);

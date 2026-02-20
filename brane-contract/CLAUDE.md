@@ -86,7 +86,7 @@ List<Transfer> events = abi.decodeEvents("Transfer", receipt.logs(), Transfer.cl
 TrustlessAgents agents = TrustlessAgents.connectMainnet(signer);
 
 // Connect read-only (no signer)
-TrustlessAgents.ReadOnly readOnly = TrustlessAgents.connectMainnet(reader);
+TrustlessAgents.ReadOnly readOnly = TrustlessAgents.connectMainnetReadOnly(reader);
 
 // Register an agent
 AgentId agentId = agents.register("https://example.com/agent.json");
@@ -95,10 +95,10 @@ AgentId agentId = agents.register("https://example.com/agent.json");
 FeedbackSummary summary = agents.getSummary(agentId);
 
 // Give feedback
-agents.giveFeedback(agentId, FeedbackValue.of(95, 2), "quality", "", "", "", null);
+agents.giveFeedback(agentId, FeedbackValue.of(95, 2), "quality", "");
 
 // Listen for events
-List<AgentRegistered> events = agents.getRegisteredEvents(fromBlock, toBlock);
+List<AgentRegistered> events = agents.getRegistrations(fromBlock, toBlock);
 
 // Parse agent registration file
 AgentRegistration card = TrustlessAgents.parseRegistration(jsonString);

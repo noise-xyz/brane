@@ -226,9 +226,14 @@ AgentRegistration card = AgentRegistration.fromJson(jsonString);
 
 ### ERC-8004 Wallet Binding (EIP-712)
 ```java
-// Sign agent wallet binding
-Eip712Domain domain = Erc8004Wallet.domain(chainId, identityRegistryAddress);
-Signature sig = Erc8004Wallet.signWalletBinding(agentId, newWallet, deadline, domain, signer);
+// Build domain for the Identity Registry
+var domain = Eip712Domain.builder()
+    .name("ERC8004IdentityRegistry").version("1")
+    .chainId(1L).verifyingContract(identityRegistryAddress).build();
+
+// Sign wallet binding (proves wallet ownership)
+var binding = new Erc8004Wallet.AgentWalletBinding(agentId.value(), wallet, deadline);
+Signature sig = Erc8004Wallet.signWalletBinding(binding, domain, walletSigner);
 ```
 
 ### ThreadLocal Cleanup in Pooled Threads

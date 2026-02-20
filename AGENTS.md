@@ -159,14 +159,13 @@ byte[] s = sig.s();
 
 ### ERC-8004 Trustless Agents
 ```java
-// Connect to ERC-8004 registries (read-only)
-TrustlessAgents.ReadOnly agents = TrustlessAgents.connectMainnet(reader);
-
-// Register an agent
+// Connect to ERC-8004 registries (read-write)
+TrustlessAgents agents = TrustlessAgents.connectMainnet(signer);
 AgentId agentId = agents.register("https://example.com/agent.json");
 
-// Query feedback summary
-FeedbackSummary summary = agents.getSummary(agentId);
+// Read-only querying
+TrustlessAgents.ReadOnly readOnly = TrustlessAgents.connectMainnetReadOnly(reader);
+FeedbackSummary summary = readOnly.getSummary(agentId);
 long count = summary.count();
 BigDecimal score = summary.aggregateScore().toBigDecimal();
 
@@ -174,8 +173,11 @@ BigDecimal score = summary.aggregateScore().toBigDecimal();
 AgentRegistration card = TrustlessAgents.parseRegistration(jsonString);
 
 // Sign a wallet binding (EIP-712)
-Eip712Domain domain = Erc8004Wallet.domain(chainId, identityRegistryAddress);
-Signature sig = Erc8004Wallet.signWalletBinding(agentId, newWallet, deadline, domain, signer);
+var domain = Eip712Domain.builder()
+    .name("ERC8004IdentityRegistry").version("1")
+    .chainId(1L).verifyingContract(identityRegistryAddress).build();
+var binding = new Erc8004Wallet.AgentWalletBinding(agentId.value(), wallet, deadline);
+Signature sig = Erc8004Wallet.signWalletBinding(binding, domain, walletSigner);
 ```
 
 ### Integration Testing with Brane.Tester

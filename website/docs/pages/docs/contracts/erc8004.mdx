@@ -40,7 +40,7 @@ BigDecimal averageScore = summary.aggregateScore().toBigDecimal();
 TrustlessAgents agents = TrustlessAgents.connectMainnet(signer);
 
 // Mainnet (read-only)
-TrustlessAgents.ReadOnly readOnly = TrustlessAgents.connectMainnet(reader);
+TrustlessAgents.ReadOnly readOnly = TrustlessAgents.connectMainnetReadOnly(reader);
 
 // Sepolia testnet
 TrustlessAgents testAgents = TrustlessAgents.connectSepolia(signer);
@@ -80,12 +80,18 @@ Bind an Ethereum wallet to an agent identity using EIP-712 signed authorization:
 import sh.brane.core.crypto.erc8004.Erc8004Wallet;
 import sh.brane.core.crypto.eip712.Eip712Domain;
 
-// Create domain for the identity registry
-Eip712Domain domain = Erc8004Wallet.domain(chainId, identityRegistryAddress);
+// Build domain for the identity registry
+Eip712Domain domain = Eip712Domain.builder()
+        .name("ERC8004IdentityRegistry")
+        .version("1")
+        .chainId(chainId)
+        .verifyingContract(identityRegistryAddress)
+        .build();
 
-// Sign wallet binding
-Signature sig = Erc8004Wallet.signWalletBinding(
-        agentId, newWallet, deadline, domain, signer);
+// Create binding and sign (proves wallet ownership)
+var binding = new Erc8004Wallet.AgentWalletBinding(
+        agentId.value(), newWallet, deadline);
+Signature sig = Erc8004Wallet.signWalletBinding(binding, domain, walletSigner);
 ```
 
 ## Reputation Registry
@@ -202,13 +208,10 @@ Listen for on-chain events from the registries:
 
 ```java
 // Agent registration events
-List<AgentRegistered> registered = agents.getRegisteredEvents(fromBlock, toBlock);
+List<AgentRegistered> registered = agents.getRegistrations(fromBlock, toBlock);
 
-// Feedback events
-List<FeedbackSubmitted> feedback = agents.getFeedbackEvents(fromBlock, toBlock);
-
-// Revocation events
-List<FeedbackRevoked> revoked = agents.getRevokedEvents(fromBlock, toBlock);
+// Feedback events for a specific agent
+List<FeedbackSubmitted> feedback = agents.getFeedbackEvents(agentId, fromBlock, toBlock);
 ```
 
 Event records use raw ABI types and provide typed converter methods:
