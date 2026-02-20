@@ -1021,44 +1021,62 @@ final class InternalAbi implements Abi {
     private <T> T decodeEvent(
             final AbiEvent event, final sh.brane.core.model.LogEntry log, final Class<T> eventType) {
         final List<AbiParameter> params = event.inputs();
-        final List<Object> values = new ArrayList<>(params.size());
 
+        // First pass: decode indexed params from topics, collect non-indexed schemas.
+        // Indexed dynamic types (string, bytes, arrays, tuples) are stored as keccak256
+        // hashes in topics — the original value is unrecoverable, so we skip them.
         int topicIdx = 1;
+        final Object[] indexedValues = new Object[params.size()];
+        final boolean[] hasValue = new boolean[params.size()];
+        final List<Integer> nonIndexedPositions = new ArrayList<>(params.size());
         final List<TypeSchema> nonIndexedSchemas = new ArrayList<>(params.size());
-        for (AbiParameter param : params) {
+
+        for (int i = 0; i < params.size(); i++) {
+            final AbiParameter param = params.get(i);
             if (param.indexed) {
+                if (isIndexedHashedType(param.type)) {
+                    // Indexed dynamic/complex types are keccak256-hashed in topics;
+                    // the original value cannot be recovered — skip this field.
+                    topicIdx++;
+                    continue;
+                }
                 if (log.topics().size() <= topicIdx) {
                     throw new AbiDecodingException("Missing topic for indexed param '" + param.name + "'");
                 }
                 final String topic = log.topics().get(topicIdx).value();
                 try {
-                    // Indexed params are just 32 bytes (except dynamic types which are hashed)
-                    // For now assume simple types.
-                    // We need to decode the topic hex.
                     final byte[] topicBytes = Hex.decode(topic);
                     final TypeSchema schema = toTypeSchema(param);
-                    // Decode as if it's a single static value
-                    // But AbiDecoder expects a tuple.
-                    // Actually indexed params are just values.
-                    // We can use AbiDecoder.decodeStatic if we expose it, or wrap in tuple.
-                    // Let's wrap in tuple.
                     final List<AbiType> decoded = AbiDecoder.decode(topicBytes, List.of(schema));
-                    values.add(toJavaValue(decoded.get(0)));
+                    indexedValues[i] = toJavaValue(decoded.get(0));
+                    hasValue[i] = true;
                 } catch (AbiDecodingException | IllegalArgumentException | ArrayIndexOutOfBoundsException e) {
-                    // Catch expected decoding failures; let programming errors (NPE, etc.) propagate
                     throw new AbiDecodingException("Failed to decode indexed param '" + param.name + "'", e);
                 }
                 topicIdx++;
             } else {
+                nonIndexedPositions.add(i);
                 nonIndexedSchemas.add(toTypeSchema(param));
             }
         }
 
+        // Second pass: decode non-indexed params from log data.
+        final Object[] nonIndexedValues = new Object[params.size()];
         if (!nonIndexedSchemas.isEmpty()) {
             final byte[] data = Hex.decode(log.data().value());
             final List<AbiType> decoded = AbiDecoder.decode(data, nonIndexedSchemas);
-            for (AbiType t : decoded) {
-                values.add(toJavaValue(t));
+            for (int j = 0; j < decoded.size(); j++) {
+                final int pos = nonIndexedPositions.get(j);
+                nonIndexedValues[pos] = toJavaValue(decoded.get(j));
+                hasValue[pos] = true;
+            }
+        }
+
+        // Build values list in ABI parameter order (skipping indexed dynamic types).
+        final List<Object> values = new ArrayList<>(params.size());
+        for (int i = 0; i < params.size(); i++) {
+            if (hasValue[i]) {
+                values.add(indexedValues[i] != null ? indexedValues[i] : nonIndexedValues[i]);
             }
         }
 
@@ -1208,6 +1226,21 @@ final class InternalAbi implements Abi {
         }
 
         throw new AbiEncodingException("Unsupported type schema: " + solidityType);
+    }
+
+    /**
+     * Returns {@code true} if the given Solidity type is a dynamic/complex type that
+     * gets keccak256-hashed when used as an indexed event parameter.
+     *
+     * <p>Per the Solidity ABI spec, indexed parameters of dynamic types (string, bytes,
+     * arrays, tuples/structs) are stored as their keccak256 hash in the topic — the
+     * original value cannot be recovered from the log.
+     */
+    private static boolean isIndexedHashedType(final String type) {
+        return type.equals("string")
+                || type.equals("bytes")
+                || type.contains("[")
+                || type.startsWith("tuple");
     }
 
     private static final class Call implements Abi.FunctionCall {

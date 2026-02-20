@@ -398,12 +398,14 @@ public final class TrustlessAgents {
     public List<FeedbackSubmitted> getFeedbackEvents(AgentId agentId,
                                                      long fromBlock, long toBlock) {
         Objects.requireNonNull(agentId, "agentId");
-        Hash topic = Abi.eventTopic(
+        Hash topic0 = Abi.eventTopic(
             "NewFeedback(uint256,address,uint64,int128,uint8,string,string,string,string,string,bytes32)");
+        // topic1 = agentId as left-padded 32-byte uint256
+        Hash topic1 = new Hash("0x" + String.format("%064x", agentId.value()));
         var filter = new LogFilter(
             Optional.of(fromBlock), Optional.of(toBlock),
             Optional.of(List.of(reputationAddress)),
-            Optional.of(List.of(topic)));
+            Optional.of(List.of(topic0, topic1)));
         List<LogEntry> logs = client.getLogs(filter);
         return reputationAbi.decodeEvents("NewFeedback", logs, FeedbackSubmitted.class);
     }

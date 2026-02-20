@@ -2,6 +2,7 @@
 package sh.brane.core.erc8004;
 
 import sh.brane.core.types.Address;
+import sh.brane.core.types.HexData;
 
 import java.math.BigInteger;
 
@@ -12,6 +13,9 @@ import java.math.BigInteger;
  * {@code event NewFeedback(uint256 indexed agentId, address indexed clientAddress,
  * uint64 feedbackIndex, int128 value, uint8 valueDecimals, string indexed indexedTag1,
  * string tag1, string tag2, string endpoint, string feedbackURI, bytes32 feedbackHash)}
+ *
+ * <p>The indexed {@code indexedTag1} parameter is a keccak256 hash in the topic and
+ * cannot be recovered — it is omitted from this record. Use {@code tag1} instead.
  *
  * <p>Constructor uses raw ABI types for compatibility with {@code Abi.decodeEvents()}.
  *
@@ -37,7 +41,7 @@ public record FeedbackSubmitted(
     String tag2,
     String endpoint,
     String feedbackURI,
-    byte[] feedbackHash
+    HexData feedbackHash
 ) {
 
     /** Converts the raw {@code agentId} to a typed {@link AgentId}. */
