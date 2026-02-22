@@ -7,10 +7,10 @@ Modern, type-safe Java 21 SDK for Ethereum/EVM. Inspired by viem (TS) and alloy 
 | Module | Purpose | Key Classes |
 |--------|---------|-------------|
 | `brane-primitives` | Hex/RLP utilities (zero deps) | `Hex`, `Rlp` |
-| `brane-core` | Types, ABI, crypto, EIP-712, EIP-3009, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `MnemonicWallet`, `TypedData`, `Eip3009`, `TxBuilder`, `Blob`, `BlobSidecar`, `Eip4844Builder` |
+| `brane-core` | Types, ABI, crypto, EIP-712, EIP-3009, ERC-8004, models | `Address`, `Wei`, `Abi`, `PrivateKey`, `MnemonicWallet`, `TypedData`, `Eip3009`, `Erc8004Wallet`, `AgentId`, `FeedbackValue`, `RegistryId`, `TxBuilder`, `Blob`, `BlobSidecar`, `Eip4844Builder` |
 | `brane-kzg` | KZG commitments for EIP-4844 blobs | `CKzg`, `Kzg` |
 | `brane-rpc` | JSON-RPC client layer | `Brane`, `Brane.Reader`, `Brane.Signer`, `Brane.Tester`, `BraneProvider` |
-| `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `ReadOnlyContract` |
+| `brane-contract` | Contract binding (no codegen) | `BraneContract.bind()`, `TrustlessAgents`, `TrustlessAgents.ReadOnly`, `FeedbackSummary` |
 | `brane-examples` | Usage examples & integration tests | Various `*Example.java` |
 | `brane-benchmark` | JMH performance benchmarks | `*Benchmark.java` |
 | `brane-smoke` | E2E integration tests | `SmokeApp.java` |
@@ -157,6 +157,33 @@ byte[] r = sig.r();
 byte[] s = sig.s();
 ```
 
+### ERC-8004 Trustless Agents
+```java
+// Connect to ERC-8004 registries (read-write)
+TrustlessAgents agents = TrustlessAgents.connectMainnet(signer);
+AgentId agentId = agents.register("https://example.com/agent.json");
+
+// Read-only querying
+TrustlessAgents.ReadOnly readOnly = TrustlessAgents.connectMainnetReadOnly(reader);
+FeedbackSummary summary = readOnly.getSummary(agentId);
+long count = summary.count();
+BigDecimal score = summary.aggregateScore().toBigDecimal();
+
+// Parse an agent registration file
+AgentRegistration card = TrustlessAgents.parseRegistration(jsonString);
+
+// Bind a wallet to an agent (high-level — handles EIP-712 internally)
+agents.bindWallet(agentId, walletAddress, walletSigner);
+
+// Or sign a wallet binding manually (low-level EIP-712)
+var domain = Eip712Domain.builder()
+    .name("ERC8004IdentityRegistry").version("1")
+    .chainId(1L).verifyingContract(identityRegistryAddress).build();
+var binding = new Erc8004Wallet.AgentWalletBinding(
+    agentId.value(), wallet, BigInteger.valueOf(deadline));
+Signature sig = Erc8004Wallet.signWalletBinding(binding, domain, walletSigner);
+```
+
 ### Integration Testing with Brane.Tester
 ```java
 // Connect to local Anvil
@@ -187,6 +214,7 @@ tester.mine();
 BraneException (sealed root)
 ├── AbiDecodingException - ABI decoding failures
 ├── AbiEncodingException - ABI encoding failures
+├── Eip712Exception - EIP-712 typed data failures
 ├── KzgException - KZG proof/commitment failures
 ├── RevertException - EVM execution reverts (includes decoded reason)
 ├── RpcException - JSON-RPC communication failures

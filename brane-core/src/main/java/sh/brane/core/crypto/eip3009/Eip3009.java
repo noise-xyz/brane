@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.crypto.eip3009;
 
+import java.math.BigInteger;
+import java.security.SecureRandom;
+import java.util.Objects;
+
 import sh.brane.core.crypto.Signature;
 import sh.brane.core.crypto.Signer;
 import sh.brane.core.crypto.eip712.Eip712Domain;
 import sh.brane.core.crypto.eip712.TypedData;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.Hash;
-
-import java.math.BigInteger;
-import java.security.SecureRandom;
-import java.util.Objects;
 
 /**
  * EIP-3009 Transfer With Authorization utilities.
@@ -232,16 +232,6 @@ public final class Eip3009 {
         return new CancelAuthorization(authorizer, nonce);
     }
 
-    /**
-     * Creates a CancelAuthorization with a random nonce.
-     *
-     * @param authorizer the address that originally signed the authorization
-     * @return the cancel authorization message with a random nonce
-     * @throws NullPointerException if authorizer is null
-     */
-    public static CancelAuthorization cancelAuthorization(Address authorizer) {
-        return new CancelAuthorization(authorizer, randomNonce());
-    }
 
     // ═══════════════════════════════════════════════════════════════════
     // Signing

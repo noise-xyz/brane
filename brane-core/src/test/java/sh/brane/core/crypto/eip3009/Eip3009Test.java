@@ -11,7 +11,6 @@ import sh.brane.core.crypto.Keccak256;
 import sh.brane.core.crypto.PrivateKey;
 import sh.brane.core.crypto.PrivateKeySigner;
 import sh.brane.core.crypto.Signature;
-import sh.brane.core.crypto.eip712.Eip712Domain;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.Hash;
 
@@ -408,14 +407,6 @@ class Eip3009Test {
         assertEquals((byte) 0x42, cancel.nonce()[0]);
     }
 
-    @Test
-    void cancelAuthorizationFactory_randomNonce() {
-        var cancel1 = Eip3009.cancelAuthorization(TEST_ADDRESS);
-        var cancel2 = Eip3009.cancelAuthorization(TEST_ADDRESS);
-
-        assertEquals(32, cancel1.nonce().length);
-        assertFalse(java.util.Arrays.equals(cancel1.nonce(), cancel2.nonce()));
-    }
 
     // ═══════════════════════════════════════════════════════════════════
     // Validity window validation

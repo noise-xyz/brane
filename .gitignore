@@ -45,9 +45,7 @@ benchmark-results/*
 
 # Planning files
 TODO.md
-spec.md
 ROADMAP.md
-spec/
 
 # macOS duplicate files (created when copying/downloading conflicts)
 *\ [0-9].md

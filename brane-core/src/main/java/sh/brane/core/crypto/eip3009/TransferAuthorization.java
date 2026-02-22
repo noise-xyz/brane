@@ -1,17 +1,16 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.crypto.eip3009;
 
-import sh.brane.core.crypto.eip712.TypeDefinition;
-import sh.brane.core.crypto.eip712.TypedDataField;
-import sh.brane.core.types.Address;
-import sh.brane.core.types.Hash;
-
 import java.math.BigInteger;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import sh.brane.core.crypto.eip712.TypeDefinition;
+import sh.brane.core.crypto.eip712.TypedDataField;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Hash;
 import sh.brane.primitives.Hex;
 
 /**
@@ -72,6 +71,15 @@ public record TransferAuthorization(
         Objects.requireNonNull(validAfter, "validAfter");
         Objects.requireNonNull(validBefore, "validBefore");
         Objects.requireNonNull(nonce, "nonce");
+        if (value.signum() < 0) {
+            throw new IllegalArgumentException("value must be non-negative, got " + value);
+        }
+        if (validAfter.signum() < 0) {
+            throw new IllegalArgumentException("validAfter must be non-negative, got " + validAfter);
+        }
+        if (validBefore.signum() < 0) {
+            throw new IllegalArgumentException("validBefore must be non-negative, got " + validBefore);
+        }
         if (validBefore.compareTo(validAfter) <= 0) {
             throw new IllegalArgumentException(
                 "validBefore (" + validBefore + ") must be greater than validAfter (" + validAfter + ")");
