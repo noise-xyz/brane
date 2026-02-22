@@ -72,15 +72,24 @@ agents.setMetadata(agentId, "version", "1.2.0".getBytes());
 byte[] value = agents.getMetadata(agentId, "version");
 ```
 
-### Wallet Binding (EIP-712)
+### Wallet Binding
 
-Bind an Ethereum wallet to an agent identity using EIP-712 signed authorization:
+Bind a payment wallet to an agent identity. The high-level API handles EIP-712 domain construction and signing internally:
+
+```java
+// Bind a wallet (proves ownership via EIP-712 signature)
+agents.bindWallet(agentId, walletAddress, walletSigner);
+
+// Query the bound wallet
+Address wallet = agents.getAgentWallet(agentId);
+```
+
+For manual control over the EIP-712 signing process:
 
 ```java
 import sh.brane.core.crypto.erc8004.Erc8004Wallet;
 import sh.brane.core.crypto.eip712.Eip712Domain;
 
-// Build domain for the identity registry
 Eip712Domain domain = Eip712Domain.builder()
         .name("ERC8004IdentityRegistry")
         .version("1")
@@ -88,10 +97,18 @@ Eip712Domain domain = Eip712Domain.builder()
         .verifyingContract(identityRegistryAddress)
         .build();
 
-// Create binding and sign (proves wallet ownership)
 var binding = new Erc8004Wallet.AgentWalletBinding(
-        agentId.value(), newWallet, deadline);
+        agentId.value(), newWallet, BigInteger.valueOf(deadline));
 Signature sig = Erc8004Wallet.signWalletBinding(binding, domain, walletSigner);
+```
+
+### Updating Agent URI
+
+```java
+agents.setAgentURI(agentId, "https://example.com/agent-v2.json");
+
+// Query the current URI
+String uri = agents.getAgentURI(agentId);
 ```
 
 ## Reputation Registry
@@ -101,9 +118,13 @@ Signature sig = Erc8004Wallet.signWalletBinding(binding, domain, walletSigner);
 Submit on-chain feedback with a signed score value:
 
 ```java
-// Simple feedback with score
+// Simple feedback with tags
 FeedbackValue score = FeedbackValue.of(95, 2);  // 0.95
-agents.giveFeedback(agentId, score, "quality", "fast", "/api/chat", "", null);
+agents.giveFeedback(agentId, score, "quality", "fast");
+
+// Full feedback with endpoint, URI, and content hash
+agents.giveFeedback(agentId, score, "quality", "fast",
+        "/api/chat", "https://example.com/feedback/1", feedbackHash);
 
 // FeedbackValue supports negative scores
 FeedbackValue negative = FeedbackValue.of(-50, 1);  // -5.0
@@ -128,6 +149,15 @@ FeedbackSummary filtered = agents.getSummary(
 
 ```java
 agents.revokeFeedback(agentId, feedbackIndex);
+```
+
+### Responding to Feedback
+
+Agents can append a response to existing feedback:
+
+```java
+agents.appendResponse(agentId, clientAddress, feedbackIndex,
+        "https://example.com/response/1", responseHash);
 ```
 
 ## Domain Types
@@ -202,6 +232,20 @@ Example JSON:
 }
 ```
 
+## Read-Only Querying
+
+Use `TrustlessAgents.ReadOnly` when no signing is needed:
+
+```java
+TrustlessAgents.ReadOnly readOnly = TrustlessAgents.connectMainnetReadOnly(reader);
+
+FeedbackSummary summary = readOnly.getSummary(agentId);
+String uri = readOnly.getAgentURI(agentId);
+Address wallet = readOnly.getAgentWallet(agentId);
+byte[] metadata = readOnly.getMetadata(agentId, "version");
+List<AgentRegistered> events = readOnly.getRegistrations(fromBlock, toBlock);
+```
+
 ## Events
 
 Listen for on-chain events from the registries:
@@ -217,7 +261,7 @@ List<FeedbackSubmitted> feedback = agents.getFeedbackEvents(agentId, fromBlock, 
 Event records use raw ABI types and provide typed converter methods:
 
 ```java
-AgentRegistered event = registered.get(0);
+AgentRegistered event = registered.getFirst();
 AgentId agentId = event.toAgentId();       // BigInteger -> AgentId
 Address owner = event.owner();
 ```

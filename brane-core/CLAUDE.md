@@ -82,7 +82,7 @@ The foundation module. Types, ABI encoding/decoding, crypto, transaction buildin
 - **`RegistryId`** - CAIP-10 compatible registry identifier (`eip155:{chainId}:{address}`)
 - **`AgentIdentifier`** - Combines `RegistryId` + `AgentId` for cross-chain agent addressing
 - **`Erc8004Addresses`** - Deterministic CREATE2 contract addresses for mainnet and Sepolia
-- **`AgentRegistered`** / **`FeedbackSubmitted`** / **`FeedbackRevoked`** / **`ValidationRequested`** / **`ValidationResponded`** - Event records for `Abi.decodeEvents()`
+- **`AgentRegistered`** / **`FeedbackSubmitted`** / **`FeedbackRevoked`** / **`ValidationRequested`** / **`ValidationResponded`** - Event records for `Abi.decodeEvents()`. **Note:** Java class names differ from Solidity event names — use `decodeEvents("Registered", ...)`, `decodeEvents("NewFeedback", ...)`, `decodeEvents("FeedbackRevoked", ...)`, `decodeEvents("ValidationRequest", ...)`, `decodeEvents("ValidationResponse", ...)`
 
 ### ERC-8004 Registration Model (`sh.brane.core.erc8004.registration`)
 - **`AgentRegistration`** - Agent Card JSON model with `fromJson(String)` via Jackson
@@ -232,7 +232,8 @@ var domain = Eip712Domain.builder()
     .chainId(1L).verifyingContract(identityRegistryAddress).build();
 
 // Sign wallet binding (proves wallet ownership)
-var binding = new Erc8004Wallet.AgentWalletBinding(agentId.value(), wallet, deadline);
+var binding = new Erc8004Wallet.AgentWalletBinding(
+    agentId.value(), wallet, BigInteger.valueOf(deadline));
 Signature sig = Erc8004Wallet.signWalletBinding(binding, domain, walletSigner);
 ```
 
