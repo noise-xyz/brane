@@ -72,7 +72,7 @@ class AgentRegistrationTest {
         assertNotNull(card.services());
         assertEquals(2, card.services().size());
 
-        var a2a = card.services().get(0);
+        var a2a = card.services().getFirst();
         assertEquals("a2a", a2a.name());
         assertEquals("https://agent.example.com/a2a", a2a.endpoint());
         assertEquals("1.0", a2a.version());
@@ -92,7 +92,7 @@ class AgentRegistrationTest {
         assertNotNull(card.registrations());
         assertEquals(2, card.registrations().size());
 
-        var reg = card.registrations().get(0);
+        var reg = card.registrations().getFirst();
         assertEquals(BigInteger.valueOf(42), reg.agentId());
         assertEquals("eip155:1:0x8004a169fb4a3325136eb29fa0ceb6d2e539a432", reg.agentRegistry());
     }
@@ -152,7 +152,7 @@ class AgentRegistrationTest {
             }
             """;
         var card = AgentRegistration.fromJson(json);
-        assertEquals("a2a", card.services().get(0).name());
+        assertEquals("a2a", card.services().getFirst().name());
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -178,7 +178,7 @@ class AgentRegistrationTest {
     @Test
     void chainRegistration_toRegistryId() {
         var card = AgentRegistration.fromJson(FULL_JSON);
-        var reg = card.registrations().get(0);
+        var reg = card.registrations().getFirst();
         var registryId = reg.toRegistryId();
 
         assertEquals(1L, registryId.chainId());
