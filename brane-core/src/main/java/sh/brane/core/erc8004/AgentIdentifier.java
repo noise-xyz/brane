@@ -13,6 +13,7 @@ import sh.brane.core.types.Address;
  *
  * @param registry identifies the chain and registry contract
  * @param agentId  the ERC-721 token ID within that registry
+ * @throws NullPointerException if registry or agentId is null
  * @see <a href="https://eips.ethereum.org/EIPS/eip-8004">EIP-8004</a>
  */
 public record AgentIdentifier(RegistryId registry, AgentId agentId) {
@@ -22,12 +23,20 @@ public record AgentIdentifier(RegistryId registry, AgentId agentId) {
         Objects.requireNonNull(agentId, "agentId");
     }
 
-    /** Shortcut: the chain ID from the registry. */
+    /**
+     * Shortcut: the chain ID from the registry.
+     *
+     * @return the EIP-155 chain ID
+     */
     public long chainId() {
         return registry.chainId();
     }
 
-    /** Shortcut: the registry contract address. */
+    /**
+     * Shortcut: the registry contract address.
+     *
+     * @return the registry contract address
+     */
     public Address registryAddress() {
         return registry.address();
     }
@@ -39,6 +48,7 @@ public record AgentIdentifier(RegistryId registry, AgentId agentId) {
      * @param registryAddress the registry contract address
      * @param agentId         the agent token ID
      * @return the cross-chain agent identifier
+     * @throws NullPointerException if registryAddress or agentId is null
      */
     public static AgentIdentifier of(long chainId, Address registryAddress, AgentId agentId) {
         return new AgentIdentifier(new RegistryId(chainId, registryAddress), agentId);

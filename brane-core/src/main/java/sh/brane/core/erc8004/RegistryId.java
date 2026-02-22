@@ -15,6 +15,8 @@ import sh.brane.core.types.Address;
  *
  * @param chainId the EIP-155 chain ID (e.g., 1 for mainnet, 8453 for Base)
  * @param address the registry contract address on that chain
+ * @throws IllegalArgumentException if chainId is not positive
+ * @throws NullPointerException     if address is null
  * @see <a href="https://eips.ethereum.org/EIPS/eip-8004">EIP-8004</a>
  */
 public record RegistryId(long chainId, Address address) {
@@ -35,6 +37,7 @@ public record RegistryId(long chainId, Address address) {
      * @return the parsed RegistryId
      * @throws NullPointerException     if id is null
      * @throws IllegalArgumentException if the format is invalid or namespace is not "eip155"
+     * @throws NumberFormatException    if chainId segment is not a valid number
      */
     public static RegistryId parse(String id) {
         Objects.requireNonNull(id, "id");

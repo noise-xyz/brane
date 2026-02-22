@@ -20,7 +20,11 @@ import sh.brane.core.types.Address;
  */
 public record AgentRegistered(BigInteger agentId, String agentURI, Address owner) {
 
-    /** Converts the raw {@code agentId} to a typed {@link AgentId}. */
+    /**
+     * Converts the raw {@code agentId} to a typed {@link AgentId}.
+     *
+     * @return the typed AgentId
+     */
     public AgentId toAgentId() {
         return new AgentId(agentId);
     }

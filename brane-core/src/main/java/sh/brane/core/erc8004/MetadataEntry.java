@@ -12,6 +12,7 @@ import java.util.Objects;
  *
  * @param key   the metadata key
  * @param value the metadata value (arbitrary bytes)
+ * @throws NullPointerException if key or value is null
  * @see <a href="https://eips.ethereum.org/EIPS/eip-8004">EIP-8004</a>
  */
 public record MetadataEntry(String key, byte[] value) {

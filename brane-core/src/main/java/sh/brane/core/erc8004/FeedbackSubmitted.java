@@ -44,12 +44,20 @@ public record FeedbackSubmitted(
     HexData feedbackHash
 ) {
 
-    /** Converts the raw {@code agentId} to a typed {@link AgentId}. */
+    /**
+     * Converts the raw {@code agentId} to a typed {@link AgentId}.
+     *
+     * @return the typed AgentId
+     */
     public AgentId toAgentId() {
         return new AgentId(agentId);
     }
 
-    /** Converts the raw value/decimals to a typed {@link FeedbackValue}. */
+    /**
+     * Converts the raw value/decimals to a typed {@link FeedbackValue}.
+     *
+     * @return the typed FeedbackValue
+     */
     public FeedbackValue toFeedbackValue() {
         return new FeedbackValue(value, valueDecimals.intValue());
     }

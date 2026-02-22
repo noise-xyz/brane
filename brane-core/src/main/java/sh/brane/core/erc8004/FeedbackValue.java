@@ -20,6 +20,8 @@ import java.util.Objects;
  *
  * @param value    the raw score value
  * @param decimals the number of decimal places (0–18)
+ * @throws NullPointerException     if value is null
+ * @throws IllegalArgumentException if decimals is out of range
  * @see <a href="https://eips.ethereum.org/EIPS/eip-8004">EIP-8004</a>
  */
 public record FeedbackValue(BigInteger value, int decimals) {

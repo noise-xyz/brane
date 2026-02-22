@@ -11,6 +11,8 @@ import java.util.Objects;
  * registered in an Identity Registry.
  *
  * @param value the ERC-721 token ID (must be non-negative)
+ * @throws NullPointerException     if value is null
+ * @throws IllegalArgumentException if value is negative
  * @see <a href="https://eips.ethereum.org/EIPS/eip-8004">EIP-8004</a>
  */
 public record AgentId(BigInteger value) {

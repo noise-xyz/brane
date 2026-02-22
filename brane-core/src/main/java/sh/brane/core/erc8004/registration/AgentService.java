@@ -10,9 +10,9 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
  *
  * @param name     service type: "a2a", "mcp", "web", "ens", etc. (MUST)
  * @param endpoint service URL or identifier (MUST)
- * @param version  protocol version
- * @param skills   capability tags (OASF taxonomy)
- * @param domains  domain categories
+ * @param version  protocol version (may be null if absent in JSON)
+ * @param skills   capability tags (OASF taxonomy) (may be null if absent in JSON)
+ * @param domains  domain categories (may be null if absent in JSON)
  * @see <a href="https://eips.ethereum.org/EIPS/eip-8004">EIP-8004</a>
  */
 @JsonIgnoreProperties(ignoreUnknown = true)

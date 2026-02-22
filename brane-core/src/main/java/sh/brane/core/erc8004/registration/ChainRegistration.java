@@ -26,6 +26,7 @@ public record ChainRegistration(
      * Parses the {@code agentRegistry} string into a typed {@link RegistryId}.
      *
      * @return the parsed registry identifier
+     * @throws NullPointerException     if agentRegistry is null
      * @throws IllegalArgumentException if the format is invalid
      */
     public RegistryId toRegistryId() {
@@ -36,6 +37,7 @@ public record ChainRegistration(
      * Constructs a full {@link AgentIdentifier} from this registration entry.
      *
      * @return the agent identifier
+     * @throws NullPointerException     if agentRegistry is null
      * @throws IllegalArgumentException if the registry format is invalid
      */
     public AgentIdentifier toAgentIdentifier() {

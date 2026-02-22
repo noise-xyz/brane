@@ -82,6 +82,7 @@ public final class TrustlessAgents {
      * @param identity   the Identity Registry address
      * @param reputation the Reputation Registry address
      * @return the connected client
+     * @throws NullPointerException if any argument is null
      */
     public static TrustlessAgents connect(Brane.Signer client,
                                           Address identity, Address reputation) {
@@ -96,6 +97,7 @@ public final class TrustlessAgents {
      *
      * @param client a signing client
      * @return the connected client
+     * @throws NullPointerException if any argument is null
      */
     public static TrustlessAgents connectMainnet(Brane.Signer client) {
         return connect(client,
@@ -108,6 +110,7 @@ public final class TrustlessAgents {
      *
      * @param client a signing client
      * @return the connected client
+     * @throws NullPointerException if any argument is null
      */
     public static TrustlessAgents connectSepolia(Brane.Signer client) {
         return connect(client,
@@ -122,6 +125,7 @@ public final class TrustlessAgents {
      * @param identity   the Identity Registry address
      * @param reputation the Reputation Registry address
      * @return the read-only client
+     * @throws NullPointerException if any argument is null
      */
     public static ReadOnly connectReadOnly(Brane client,
                                            Address identity, Address reputation) {
@@ -136,6 +140,7 @@ public final class TrustlessAgents {
      *
      * @param client a read-only client
      * @return the read-only client
+     * @throws NullPointerException if any argument is null
      */
     public static ReadOnly connectMainnetReadOnly(Brane client) {
         return connectReadOnly(client,
@@ -152,6 +157,7 @@ public final class TrustlessAgents {
      *
      * @param agentURI the agent registration file URI
      * @return the assigned agent token ID
+     * @throws NullPointerException if any required argument is null
      */
     public AgentId register(String agentURI) {
         Objects.requireNonNull(agentURI, "agentURI");
@@ -172,6 +178,7 @@ public final class TrustlessAgents {
      * @param agentURI the agent registration file URI
      * @param metadata initial metadata entries
      * @return the assigned agent token ID
+     * @throws NullPointerException if any required argument is null
      */
     public AgentId register(String agentURI, List<MetadataEntry> metadata) {
         Objects.requireNonNull(metadata, "metadata");
@@ -187,6 +194,7 @@ public final class TrustlessAgents {
      *
      * @param agentId the agent token ID
      * @param newURI  the new URI
+     * @throws NullPointerException if any required argument is null
      */
     public void setAgentURI(AgentId agentId, String newURI) {
         Objects.requireNonNull(agentId, "agentId");
@@ -200,6 +208,7 @@ public final class TrustlessAgents {
      * @param agentId the agent token ID
      * @param key     the metadata key
      * @param value   the metadata value
+     * @throws NullPointerException if any required argument is null
      */
     public void setMetadata(AgentId agentId, String key, byte[] value) {
         Objects.requireNonNull(agentId, "agentId");
@@ -213,7 +222,7 @@ public final class TrustlessAgents {
      *
      * @param agentId the agent token ID
      * @param key     the metadata key
-     * @return the metadata value bytes
+     * @return the metadata value bytes (empty if key not set)
      */
     public byte[] getMetadata(AgentId agentId, String key) {
         Objects.requireNonNull(agentId, "agentId");
@@ -227,6 +236,7 @@ public final class TrustlessAgents {
      * @param agentId      the agent token ID
      * @param wallet       the wallet address to bind
      * @param walletSigner the wallet's signer (proves ownership)
+     * @throws NullPointerException if any required argument is null
      */
     public void bindWallet(AgentId agentId, Address wallet, Signer walletSigner) {
         Objects.requireNonNull(agentId, "agentId");
@@ -253,7 +263,7 @@ public final class TrustlessAgents {
      * Gets the payment wallet address bound to the agent.
      *
      * @param agentId the agent token ID
-     * @return the wallet address
+     * @return the wallet address (zero address if not bound)
      */
     public Address getAgentWallet(AgentId agentId) {
         Objects.requireNonNull(agentId, "agentId");
@@ -269,8 +279,8 @@ public final class TrustlessAgents {
      *
      * @param agentId the agent token ID
      * @param score   the feedback score
-     * @param tag1    primary tag
-     * @param tag2    secondary tag
+     * @param tag1    primary tag ({@code null} accepted, defaults to empty)
+     * @param tag2    secondary tag ({@code null} accepted, defaults to empty)
      */
     public void giveFeedback(AgentId agentId, FeedbackValue score,
                              String tag1, String tag2) {
@@ -282,11 +292,12 @@ public final class TrustlessAgents {
      *
      * @param agentId      the agent token ID
      * @param score        the feedback score
-     * @param tag1         primary tag
-     * @param tag2         secondary tag
-     * @param endpoint     the endpoint being rated
-     * @param feedbackURI  URI to off-chain feedback details
-     * @param feedbackHash hash of off-chain feedback content
+     * @param tag1         primary tag ({@code null} accepted, defaults to empty)
+     * @param tag2         secondary tag ({@code null} accepted, defaults to empty)
+     * @param endpoint     the endpoint being rated ({@code null} accepted, defaults to empty)
+     * @param feedbackURI  URI to off-chain feedback details ({@code null} accepted, defaults to empty)
+     * @param feedbackHash hash of off-chain feedback content ({@code null} for no hash)
+     * @throws NullPointerException if any required argument is null
      */
     public void giveFeedback(AgentId agentId, FeedbackValue score,
                              String tag1, String tag2,
@@ -309,6 +320,7 @@ public final class TrustlessAgents {
      *
      * @param agentId       the agent token ID
      * @param feedbackIndex the index of the feedback to revoke
+     * @throws NullPointerException if any required argument is null
      */
     public void revokeFeedback(AgentId agentId, long feedbackIndex) {
         Objects.requireNonNull(agentId, "agentId");
@@ -321,8 +333,9 @@ public final class TrustlessAgents {
      * @param agentId       the agent token ID
      * @param clientAddress the original feedback submitter
      * @param feedbackIndex the feedback index
-     * @param responseURI   URI to the response content
-     * @param responseHash  hash of the response content
+     * @param responseURI   URI to the response content ({@code null} accepted, defaults to empty)
+     * @param responseHash  hash of the response content ({@code null} for no hash)
+     * @throws NullPointerException if any required argument is null
      */
     public void appendResponse(AgentId agentId, Address clientAddress,
                                long feedbackIndex, String responseURI, Hash responseHash) {
@@ -340,6 +353,7 @@ public final class TrustlessAgents {
      *
      * @param agentId the agent token ID
      * @return the aggregated feedback summary
+     * @throws NullPointerException if agentId is null
      */
     public FeedbackSummary getSummary(AgentId agentId) {
         return getSummary(agentId, List.of(), "", "");
@@ -350,9 +364,10 @@ public final class TrustlessAgents {
      *
      * @param agentId the agent token ID
      * @param clients client addresses to include (empty for all)
-     * @param tag1    primary tag filter (empty for all)
-     * @param tag2    secondary tag filter (empty for all)
+     * @param tag1    primary tag filter (empty for all; {@code null} accepted, defaults to empty)
+     * @param tag2    secondary tag filter (empty for all; {@code null} accepted, defaults to empty)
      * @return the aggregated feedback summary
+     * @throws NullPointerException if agentId or clients is null
      */
     public FeedbackSummary getSummary(AgentId agentId, List<Address> clients,
                                       String tag1, String tag2) {
@@ -378,7 +393,7 @@ public final class TrustlessAgents {
      *
      * @param fromBlock start block (inclusive)
      * @param toBlock   end block (inclusive)
-     * @return the registration events
+     * @return the registration events (empty list if none found)
      */
     public List<AgentRegistered> getRegistrations(long fromBlock, long toBlock) {
         Hash topic = Abi.eventTopic("Registered(uint256,string,address)");
@@ -396,7 +411,7 @@ public final class TrustlessAgents {
      * @param agentId   the agent token ID
      * @param fromBlock start block (inclusive)
      * @param toBlock   end block (inclusive)
-     * @return the feedback events
+     * @return the feedback events (empty list if none found)
      */
     public List<FeedbackSubmitted> getFeedbackEvents(AgentId agentId,
                                                      long fromBlock, long toBlock) {
@@ -422,6 +437,7 @@ public final class TrustlessAgents {
      *
      * @param agentId the agent token ID
      * @return the URI string
+     * @throws NullPointerException if agentId is null
      */
     public String getAgentURI(AgentId agentId) {
         Objects.requireNonNull(agentId, "agentId");
@@ -436,6 +452,8 @@ public final class TrustlessAgents {
      *
      * @param json the JSON string
      * @return the parsed registration
+     * @throws NullPointerException     if json is null
+     * @throws IllegalArgumentException if the JSON cannot be parsed
      */
     public static AgentRegistration parseRegistration(String json) {
         return AgentRegistration.fromJson(json);
@@ -467,31 +485,65 @@ public final class TrustlessAgents {
                 client, IdentityRegistryReadOnlyContract.class);
         }
 
-        /** Reads a metadata entry. */
+        /**
+         * Reads a metadata entry.
+         *
+         * @param agentId the agent token ID
+         * @param key     the metadata key
+         * @return the metadata value bytes (empty if key not set)
+         * @throws NullPointerException if any argument is null
+         */
         public byte[] getMetadata(AgentId agentId, String key) {
             Objects.requireNonNull(agentId, "agentId");
             Objects.requireNonNull(key, "key");
             return identity.getMetadata(agentId.value(), key);
         }
 
-        /** Gets the agent's bound wallet address. */
+        /**
+         * Gets the agent's bound wallet address.
+         *
+         * @param agentId the agent token ID
+         * @return the wallet address (zero address if not bound)
+         * @throws NullPointerException if agentId is null
+         */
         public Address getAgentWallet(AgentId agentId) {
             Objects.requireNonNull(agentId, "agentId");
             return identity.getAgentWallet(agentId.value());
         }
 
-        /** Gets the agent's registration URI. */
+        /**
+         * Gets the agent's registration URI.
+         *
+         * @param agentId the agent token ID
+         * @return the URI string
+         * @throws NullPointerException if agentId is null
+         */
         public String getAgentURI(AgentId agentId) {
             Objects.requireNonNull(agentId, "agentId");
             return identity.tokenURI(agentId.value());
         }
 
-        /** Gets the feedback summary for an agent. */
+        /**
+         * Gets the feedback summary for an agent.
+         *
+         * @param agentId the agent token ID
+         * @return the aggregated feedback summary
+         * @throws NullPointerException if agentId is null
+         */
         public FeedbackSummary getSummary(AgentId agentId) {
             return getSummary(agentId, List.of(), "", "");
         }
 
-        /** Gets the feedback summary with filters. */
+        /**
+         * Gets the feedback summary with filters.
+         *
+         * @param agentId the agent token ID
+         * @param clients client addresses to include (empty for all)
+         * @param tag1    primary tag filter (empty for all; {@code null} accepted, defaults to empty)
+         * @param tag2    secondary tag filter (empty for all; {@code null} accepted, defaults to empty)
+         * @return the aggregated feedback summary
+         * @throws NullPointerException if agentId or clients is null
+         */
         public FeedbackSummary getSummary(AgentId agentId, List<Address> clients,
                                           String tag1, String tag2) {
             Objects.requireNonNull(agentId, "agentId");
@@ -507,7 +559,13 @@ public final class TrustlessAgents {
             return decodeFeedbackSummary(result.value());
         }
 
-        /** Gets registration events in a block range. */
+        /**
+         * Gets registration events in a block range.
+         *
+         * @param fromBlock start block (inclusive)
+         * @param toBlock   end block (inclusive)
+         * @return the registration events (empty list if none found)
+         */
         public List<AgentRegistered> getRegistrations(long fromBlock, long toBlock) {
             Hash topic = Abi.eventTopic("Registered(uint256,string,address)");
             var filter = new LogFilter(

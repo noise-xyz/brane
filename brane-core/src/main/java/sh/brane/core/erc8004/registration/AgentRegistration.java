@@ -57,7 +57,8 @@ public record AgentRegistration(
      *
      * @param json the JSON string
      * @return the parsed registration
-     * @throws IllegalArgumentException if the JSON is invalid or null
+     * @throws NullPointerException     if json is null
+     * @throws IllegalArgumentException if the JSON cannot be parsed
      */
     public static AgentRegistration fromJson(String json) {
         Objects.requireNonNull(json, "json");

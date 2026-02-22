@@ -51,6 +51,7 @@ public final class Erc8004Wallet {
      * @param agentId  the ERC-721 token ID of the agent
      * @param wallet   the wallet address being bound
      * @param deadline the unix timestamp after which the signature expires
+     * @throws NullPointerException if any field is null
      */
     public record AgentWalletBinding(BigInteger agentId, Address wallet, BigInteger deadline) {
 
