@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.erc8004;
 
-import sh.brane.core.types.Address;
-
 import java.util.Objects;
+
+import sh.brane.core.types.Address;
 
 /**
  * Identifies an ERC-8004 registry on a specific chain.

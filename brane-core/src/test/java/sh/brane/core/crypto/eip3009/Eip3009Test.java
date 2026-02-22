@@ -11,7 +11,6 @@ import sh.brane.core.crypto.Keccak256;
 import sh.brane.core.crypto.PrivateKey;
 import sh.brane.core.crypto.PrivateKeySigner;
 import sh.brane.core.crypto.Signature;
-import sh.brane.core.crypto.eip712.Eip712Domain;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.Hash;
 

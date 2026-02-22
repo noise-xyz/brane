@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.erc8004.registration;
 
+import java.util.List;
+import java.util.Objects;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
-
-import java.util.List;
-import java.util.Objects;
 
 /**
  * ERC-8004 Agent Registration File (the "Agent Card").

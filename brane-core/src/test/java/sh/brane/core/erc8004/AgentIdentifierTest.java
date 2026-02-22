@@ -3,9 +3,9 @@ package sh.brane.core.erc8004;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-import sh.brane.core.types.Address;
-
 import org.junit.jupiter.api.Test;
+
+import sh.brane.core.types.Address;
 
 class AgentIdentifierTest {
 

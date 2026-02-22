@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.erc8004.registration;
 
+import java.math.BigInteger;
+
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 import sh.brane.core.erc8004.AgentId;
 import sh.brane.core.erc8004.AgentIdentifier;
 import sh.brane.core.erc8004.RegistryId;
-
-import java.math.BigInteger;
 
 /**
  * Cross-chain registration entry linking an on-chain identity to an Agent Card.

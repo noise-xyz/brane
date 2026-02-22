@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.crypto.eip3009;
 
+import java.math.BigInteger;
+import java.security.SecureRandom;
+import java.util.Objects;
+
 import sh.brane.core.crypto.Signature;
 import sh.brane.core.crypto.Signer;
 import sh.brane.core.crypto.eip712.Eip712Domain;
 import sh.brane.core.crypto.eip712.TypedData;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.Hash;
-
-import java.math.BigInteger;
-import java.security.SecureRandom;
-import java.util.Objects;
 
 /**
  * EIP-3009 Transfer With Authorization utilities.

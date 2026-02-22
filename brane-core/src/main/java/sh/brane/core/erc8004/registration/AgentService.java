@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.erc8004.registration;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 /**
  * A service endpoint exposed by an ERC-8004 agent.

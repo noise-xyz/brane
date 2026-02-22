@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.crypto.erc8004;
 
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
 import sh.brane.core.crypto.Signature;
 import sh.brane.core.crypto.Signer;
 import sh.brane.core.crypto.eip712.Eip712Domain;
@@ -8,11 +13,6 @@ import sh.brane.core.crypto.eip712.TypeDefinition;
 import sh.brane.core.crypto.eip712.TypedData;
 import sh.brane.core.crypto.eip712.TypedDataField;
 import sh.brane.core.types.Address;
-
-import java.math.BigInteger;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 
 /**
  * ERC-8004 agent wallet binding utilities.

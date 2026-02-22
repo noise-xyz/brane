@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.erc8004;
 
-import sh.brane.core.types.Address;
-
 import java.util.Objects;
+
+import sh.brane.core.types.Address;
 
 /**
  * Globally unique identifier for an ERC-8004 agent across all chains.

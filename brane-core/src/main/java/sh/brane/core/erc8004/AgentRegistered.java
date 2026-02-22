@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.erc8004;
 
-import sh.brane.core.types.Address;
-
 import java.math.BigInteger;
+
+import sh.brane.core.types.Address;
 
 /**
  * Decoded ERC-8004 {@code Registered} event from the Identity Registry.

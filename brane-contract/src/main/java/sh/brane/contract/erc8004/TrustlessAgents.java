@@ -1,6 +1,11 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.contract.erc8004;
 
+import java.math.BigInteger;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
+
 import sh.brane.contract.BraneContract;
 import sh.brane.core.abi.Abi;
 import sh.brane.core.crypto.Signature;
@@ -15,19 +20,15 @@ import sh.brane.core.erc8004.FeedbackSubmitted;
 import sh.brane.core.erc8004.FeedbackValue;
 import sh.brane.core.erc8004.MetadataEntry;
 import sh.brane.core.erc8004.registration.AgentRegistration;
+import sh.brane.core.model.LogEntry;
 import sh.brane.core.model.TransactionReceipt;
 import sh.brane.core.types.Address;
 import sh.brane.core.types.Hash;
 import sh.brane.core.types.HexData;
+import sh.brane.primitives.Hex;
 import sh.brane.rpc.Brane;
 import sh.brane.rpc.CallRequest;
 import sh.brane.rpc.LogFilter;
-import sh.brane.core.model.LogEntry;
-
-import java.math.BigInteger;
-import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 
 /**
  * High-level client for ERC-8004 Trustless Agents registries.
@@ -356,6 +357,7 @@ public final class TrustlessAgents {
     public FeedbackSummary getSummary(AgentId agentId, List<Address> clients,
                                       String tag1, String tag2) {
         Objects.requireNonNull(agentId, "agentId");
+        Objects.requireNonNull(clients, "clients");
         var call = reputationAbi.encodeFunction("getSummary",
             agentId.value(), clients.toArray(Address[]::new),
             Objects.requireNonNullElse(tag1, ""),
@@ -467,16 +469,20 @@ public final class TrustlessAgents {
 
         /** Reads a metadata entry. */
         public byte[] getMetadata(AgentId agentId, String key) {
+            Objects.requireNonNull(agentId, "agentId");
+            Objects.requireNonNull(key, "key");
             return identity.getMetadata(agentId.value(), key);
         }
 
         /** Gets the agent's bound wallet address. */
         public Address getAgentWallet(AgentId agentId) {
+            Objects.requireNonNull(agentId, "agentId");
             return identity.getAgentWallet(agentId.value());
         }
 
         /** Gets the agent's registration URI. */
         public String getAgentURI(AgentId agentId) {
+            Objects.requireNonNull(agentId, "agentId");
             return identity.tokenURI(agentId.value());
         }
 
@@ -488,6 +494,8 @@ public final class TrustlessAgents {
         /** Gets the feedback summary with filters. */
         public FeedbackSummary getSummary(AgentId agentId, List<Address> clients,
                                           String tag1, String tag2) {
+            Objects.requireNonNull(agentId, "agentId");
+            Objects.requireNonNull(clients, "clients");
             var call = reputationAbi.encodeFunction("getSummary",
                 agentId.value(), clients.toArray(Address[]::new),
                 Objects.requireNonNullElse(tag1, ""),
@@ -580,7 +588,7 @@ public final class TrustlessAgents {
         }
         long count = new BigInteger(hex.substring(0, 64), 16).longValue();
         // int128 is signed — decode as signed two's complement (ABI sign-extends to 256 bits)
-        byte[] slot1Bytes = sh.brane.primitives.Hex.decode(hex.substring(64, 128));
+        byte[] slot1Bytes = Hex.decode(hex.substring(64, 128));
         BigInteger summaryValue = new BigInteger(slot1Bytes);
         int decimals = new BigInteger(hex.substring(128, 192), 16).intValue();
         return new FeedbackSummary(count, new FeedbackValue(summaryValue, decimals));

@@ -1,16 +1,15 @@
 // SPDX-License-Identifier: MIT OR Apache-2.0
 package sh.brane.core.crypto.eip3009;
 
-import sh.brane.core.crypto.eip712.TypeDefinition;
-import sh.brane.core.crypto.eip712.TypedDataField;
-import sh.brane.core.types.Address;
-import sh.brane.core.types.Hash;
-
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
+import sh.brane.core.crypto.eip712.TypeDefinition;
+import sh.brane.core.crypto.eip712.TypedDataField;
+import sh.brane.core.types.Address;
+import sh.brane.core.types.Hash;
 import sh.brane.primitives.Hex;
 
 /**
